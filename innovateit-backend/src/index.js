@@ -17,7 +17,11 @@ const davomatRouter   = require('./routes/davomat');
 const jadvalRouter    = require('./routes/jadval');
 const teachersRouter  = require('./routes/teachers');
 const buxgalterRouter = require('./routes/buxgalter');
-const portfolioRouter = require('./routes/portfolio');   // ← YANGI
+const portfolioRouter = require('./routes/portfolio');
+const maktablarRouter = require('./routes/maktablar');
+const telegramRouter = require('./routes/telegram');
+
+
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -52,12 +56,19 @@ const upload = multer({
 // ─── Middleware ───
 app.use(cors({
   origin: (origin, cb) => {
-    if (!origin || origin === 'null' || origin.includes('localhost') || origin.includes('127.0.0.1') || origin === 'https://innovateitschool.uz')
+    if (!origin || origin === 'null' || 
+        origin.includes('localhost') || 
+        origin.includes('127.0.0.1') || 
+        origin.includes('ngrok') ||          // ← shu qator qo'shildi
+        origin.includes('ngrok-free.app') || // ← shu qator qo'shildi
+        origin === 'https://innovateitschool.uz' ||
+        origin === 'https://web.telegram.org')
       return cb(null, true);
     cb(new Error('CORS: ruxsat yoq'));
   },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(UPLOAD_DIR));
@@ -84,7 +95,13 @@ app.use('/api/davomat',   davomatRouter);
 app.use('/api/jadval',    jadvalRouter);
 app.use('/api/teachers',  teachersRouter);
 app.use('/api/buxgalter', buxgalterRouter);
-app.use('/api/portfolio', portfolioRouter);   // ← YANGI
+app.use('/api/portfolio', portfolioRouter);
+app.use('/api/maktablar', maktablarRouter);
+app.use('/api/telegram', telegramRouter);
+app.use('/miniapp', express.static(path.join(__dirname, '../../telegram-bot/miniapp')));
+
+
+
 
 // ─── Xatolik handlerlari ───
 app.use((req, res) => res.status(404).json({ ok: false, error: `Topilmadi: ${req.method} ${req.path}` }));

@@ -49,4 +49,9 @@ function requireAuth(allowedRoles = ['admin', 'buxgalter', 'viewer']) {
   };
 }
 
-module.exports = { generateToken, requireAuth };
+// ─── Token tekshirish (middleware emas, to'g'ridan-to'g'ri) ──────────────────
+function verifyToken(token) {
+  return jwt.verify(token, SECRET);
+}
+
+module.exports = { generateToken, requireAuth, verifyToken };

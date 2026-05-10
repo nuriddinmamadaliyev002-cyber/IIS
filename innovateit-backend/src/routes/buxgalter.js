@@ -1,73 +1,22 @@
-// ─── Buxgalter routes ──────────────────────────────
-// GET  /api/buxgalter/students         — o'quvchilar (buxgalter uchun)
-// GET  /api/buxgalter/tolovlar         — to'lovlar
-// POST /api/buxgalter/tolovlar         — to'lov saqlash
-// POST /api/buxgalter/init-oy          — oyni boshlash
-// GET  /api/buxgalter                  — ro'yxat + biriktirmalar
-// POST /api/buxgalter                  — yaratish
-// PUT  /api/buxgalter                  — tahrirlash
-// DELETE /api/buxgalter                — o'chirish
-// POST /api/buxgalter/biriktiruv       — admin biriktirish
-// DELETE /api/buxgalter/biriktiruv     — admin ajratish
-const { Router } = require('express');
-const pool = require('../db');
-const { hashPassword }  = require('../middleware/auth');
-const { requireAuth }   = require('../middleware/jwt');
+// ─── Buxgalter routes ────────────────────────────────────────────────────────
+// GET    /api/buxgalter/students      — o'quvchilar (buxgalter uchun)
+// GET    /api/buxgalter/tolovlar      — to'lovlar
+// POST   /api/buxgalter/tolovlar      — to'lov saqlash
+// POST   /api/buxgalter/init-oy       — oyni boshlash
+// GET    /api/buxgalter               — ro'yxat + maktab biriktirmalari (superadmin)
+// POST   /api/buxgalter               — yaratish (superadmin)
+// PUT    /api/buxgalter/:id           — tahrirlash (superadmin)
+// DELETE /api/buxgalter/:id           — o'chirish (superadmin)
+// POST   /api/buxgalter/biriktiruv    — maktab biriktirish (superadmin)
+// DELETE /api/buxgalter/biriktiruv    — maktab ajratish (superadmin)
+const { Router }      = require('express');
+const pool            = require('../db');
+const { requireAuth } = require('../middleware/jwt');
 
 const router = Router();
-
-// Barcha buxgalter routerlari authentifikatsiya talab qiladi
-// Har bir route ichida rol tekshiriladi
 function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
 
-
-
-// GET /api/buxgalter/students
-router.get('/students', requireAuth(['admin','buxgalter']), async (req, res) => {
-  const { oy } = req.query;
-  const auth = req.user;  // requireAuth middleware
-  const username = auth?.username || '';
-  if (!oy) return res.status(400).json({ ok: false, error: 'oy parametri kerak' });
-
-  try {
-    const bindRes = await pool.query('SELECT admin_username FROM buxgalter_adminlar WHERE buxgalter_username=$1', [username]);
-    const boundAdmins = bindRes.rows.map(r => r.admin_username);
-    const hasFilter = boundAdmins.length > 0;
-    const adminFilter = hasFilter ? 'AND admin = ANY($2)' : '';
-
-    const activeRes = await pool.query(
-      `SELECT ism,familiya,maktab,sinf,telefon,telefon2,admin,boshlagan FROM oquvchilar
-       WHERE boshlagan IS NOT NULL AND boshlagan!='' AND LEFT(boshlagan,7)<=$1 ${adminFilter} ORDER BY maktab,sinf,familiya,ism`,
-      hasFilter ? [oy, boundAdmins] : [oy]
-    );
-    const nofaolRes = await pool.query(
-      `SELECT ism,familiya,maktab,sinf,telefon,telefon2,admin,boshlagan,chiqgan FROM nofaol_oquvchilar
-       WHERE boshlagan IS NOT NULL AND boshlagan!='' AND chiqgan IS NOT NULL AND chiqgan!=''
-         AND LEFT(boshlagan,7)<=$1
-         AND CASE WHEN SUBSTRING(chiqgan,3,1)='.' THEN CONCAT(RIGHT(chiqgan,4),'-',SUBSTRING(chiqgan,4,2)) ELSE LEFT(chiqgan,7) END>=$1
-         ${adminFilter} ORDER BY maktab,sinf,familiya,ism`,
-      hasFilter ? [oy, boundAdmins] : [oy]
-    );
-    res.json({ ok: true, students: [
-      ...activeRes.rows.map(r => ({ ...r, maktab:r.maktab||'', sinf:r.sinf||'', telefon:r.telefon||'', telefon2:r.telefon2||'', admin:r.admin||'', boshlagan:r.boshlagan||'', nofaol:false })),
-      ...nofaolRes.rows.map(r => ({ ...r, maktab:r.maktab||'', sinf:r.sinf||'', telefon:r.telefon||'', telefon2:r.telefon2||'', admin:r.admin||'', boshlagan:r.boshlagan||'', nofaol:true }))
-    ]});
-  } catch (err) { res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message }); }
-});
-
-// GET /api/buxgalter/tolovlar
-router.get('/tolovlar', requireAuth(['admin','buxgalter']), async (req, res) => {
-  const { oy } = req.query;
-  const auth = req.user;  // requireAuth middleware
-  if (!oy) return res.status(400).json({ ok: false, error: 'oy parametri kerak' });
-
-  const result = await pool.query('SELECT * FROM tolovlar WHERE oy=$1 ORDER BY maktab,sinf,oquvchi_familiya', [oy]);
-  res.json({ ok: true, tolovlar: result.rows });
-});
-
-// kvitansiya_fayl ni normalize qilish:
-// Eski format: "fayl.jpg" (string) → yangi format: ["fayl.jpg","fayl2.png"] (JSON array)
-// DB da TEXT saqlanadi, ichida JSON array yoziladi.
+// ─── kvitansiya fayl yordamchilari ───────────────────────────────────────────
 function normalizeKvitFiles(raw) {
   if (!raw) return [];
   if (Array.isArray(raw)) return raw.filter(Boolean);
@@ -76,146 +25,462 @@ function normalizeKvitFiles(raw) {
     if (Array.isArray(parsed)) return parsed.filter(Boolean);
     if (typeof parsed === 'string' && parsed) return [parsed];
   } catch {}
-  // Eski string format (bitta fayl nomi)
   if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
   return [];
 }
-
 function serializeKvitFiles(files) {
   const arr = (Array.isArray(files) ? files : []).filter(Boolean);
-  if (arr.length === 0) return '';
-  return JSON.stringify(arr);
+  return arr.length === 0 ? '' : JSON.stringify(arr);
 }
 
-// POST /api/buxgalter/tolovlar
-router.post('/tolovlar', requireAuth(['admin','buxgalter']), async (req, res) => {
-  const p = req.body;
-  const auth = req.user;  // requireAuth middleware
+// ─── Buxgalterni maktab id lariga ko'ra olish ────────────────────────────────
+async function getBuxMaktabIds(buxId) {
+  const res = await pool.query(
+    `SELECT maktab_id FROM buxgalter_maktablar WHERE buxgalter_id = $1`,
+    [buxId]
+  );
+  return res.rows.map(r => r.maktab_id);
+}
 
-  const oy = p.oy, ism = (p.oquvchi_ism||'').trim(), familiya = (p.oquvchi_familiya||'').trim(), adminU = (p.admin_username||'').trim();
-  if (!oy || !ism || !familiya) return res.status(400).json({ ok: false, error: 'Majburiy maydonlar yetishmaydi' });
+// ─── GET /api/buxgalter/students ─────────────────────────────────────────────
+router.get('/students', requireAuth(['admin', 'buxgalter']), async (req, res) => {
+  const { oy } = req.query;
+  if (!oy) return res.status(400).json({ ok: false, error: 'oy parametri kerak' });
 
-  // kvitansiya_fayl: array yoki string qabul qilib, JSON array sifatida saqlash
+  try {
+    let maktabFilter = '';
+    let params       = [oy];
+
+    if (req.user.role === 'buxgalter') {
+      const maktabIds = await getBuxMaktabIds(req.user.entityId);
+      if (maktabIds.length > 0) {
+        maktabFilter = 'AND maktab_id = ANY($2)';
+        params.push(maktabIds);
+      }
+    }
+
+    const activeRes = await pool.query(
+      `SELECT o.ism, o.familiya, o.maktab_id, m.nomi AS maktab_nomi,
+              o.sinf, o.telefon, o.telefon2, o.boshlagan
+       FROM oquvchilar o
+       LEFT JOIN maktablar m ON m.id = o.maktab_id
+       WHERE o.boshlagan IS NOT NULL AND o.boshlagan != ''
+         AND LEFT(o.boshlagan,7) <= $1 ${maktabFilter}
+       ORDER BY o.maktab_id, o.sinf, o.familiya, o.ism`,
+      params
+    );
+
+    const nofaolRes = await pool.query(
+      `SELECT n.ism, n.familiya, n.maktab_id, m.nomi AS maktab_nomi,
+              n.sinf, n.telefon, n.telefon2, n.boshlagan, n.chiqgan
+       FROM nofaol_oquvchilar n
+       LEFT JOIN maktablar m ON m.id = n.maktab_id
+       WHERE n.boshlagan IS NOT NULL AND n.boshlagan != ''
+         AND n.chiqgan IS NOT NULL AND n.chiqgan != ''
+         AND LEFT(n.boshlagan,7) <= $1
+         AND CASE
+               WHEN SUBSTRING(n.chiqgan,3,1)='.'
+               THEN CONCAT(RIGHT(n.chiqgan,4),'-',SUBSTRING(n.chiqgan,4,2))
+               ELSE LEFT(n.chiqgan,7)
+             END >= $1
+         ${maktabFilter}
+       ORDER BY n.maktab_id, n.sinf, n.familiya, n.ism`,
+      params
+    );
+
+    res.json({
+      ok: true,
+      students: [
+        ...activeRes.rows.map(r => ({ ...r, maktab: r.maktab_nomi || String(r.maktab_id || ''), nofaol: false })),
+        ...nofaolRes.rows.map(r => ({ ...r, maktab: r.maktab_nomi || String(r.maktab_id || ''), nofaol: true })),
+      ]
+    });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message });
+  }
+});
+
+// ─── GET /api/buxgalter/tolovlar ─────────────────────────────────────────────
+router.get('/tolovlar', requireAuth(['admin', 'buxgalter']), async (req, res) => {
+  const { oy } = req.query;
+  if (!oy) return res.status(400).json({ ok: false, error: 'oy parametri kerak' });
+
+  try {
+    let q      = 'SELECT * FROM tolovlar WHERE oy=$1';
+    let params = [oy];
+
+    if (req.user.role === 'buxgalter') {
+      const maktabIds = await getBuxMaktabIds(req.user.entityId);
+      if (maktabIds.length > 0) {
+        q += ' AND maktab_id = ANY($2)';
+        params.push(maktabIds);
+      }
+    }
+
+    q += ' ORDER BY maktab_id, sinf, oquvchi_familiya';
+    const result = await pool.query(q, params);
+    res.json({ ok: true, tolovlar: result.rows });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message });
+  }
+});
+
+// ─── POST /api/buxgalter/tolovlar ────────────────────────────────────────────
+router.post('/tolovlar', requireAuth(['admin', 'buxgalter']), async (req, res) => {
+  const p        = req.body;
+  const oy       = p.oy;
+  const ism      = (p.oquvchi_ism      || '').trim();
+  const familiya = (p.oquvchi_familiya || '').trim();
+  const maktabId = p.maktab_id ? parseInt(p.maktab_id) : null;
+  const oquvchiId = p.oquvchi_id ? parseInt(p.oquvchi_id) : null;
+
+  if (!oy || !ism || !familiya)
+    return res.status(400).json({ ok: false, error: 'Majburiy maydonlar yetishmaydi' });
+
   const kvFiles = serializeKvitFiles(normalizeKvitFiles(p.kvitansiya_fayl));
 
   try {
     await pool.query(
-      `INSERT INTO tolovlar (oy,oquvchi_ism,oquvchi_familiya,maktab,sinf,telefon,admin_username,tarif,qaydnoma,gaplashilgan_vaqt,tolov_kerak,tolov_qildi,tolov_sanasi,kvitansiya_fayl,yangilangan)
+      `INSERT INTO tolovlar
+         (oy, oquvchi_id, oquvchi_ism, oquvchi_familiya, maktab_id, sinf, telefon,
+          tarif, qaydnoma, gaplashilgan_vaqt, tolov_kerak, tolov_qildi,
+          tolov_sanasi, kvitansiya_fayl, yangilangan)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
-       ON CONFLICT (oy,oquvchi_ism,oquvchi_familiya,admin_username) DO UPDATE SET
-         tarif=EXCLUDED.tarif, qaydnoma=EXCLUDED.qaydnoma, gaplashilgan_vaqt=EXCLUDED.gaplashilgan_vaqt,
-         tolov_kerak=EXCLUDED.tolov_kerak, tolov_qildi=EXCLUDED.tolov_qildi, tolov_sanasi=EXCLUDED.tolov_sanasi,
-         kvitansiya_fayl=EXCLUDED.kvitansiya_fayl, yangilangan=EXCLUDED.yangilangan`,
-      [oy, ism, familiya, p.maktab||'', p.sinf||'', p.telefon||'', adminU,
+       ON CONFLICT (oy, oquvchi_id) DO UPDATE SET
+         tarif             = EXCLUDED.tarif,
+         qaydnoma          = EXCLUDED.qaydnoma,
+         gaplashilgan_vaqt = EXCLUDED.gaplashilgan_vaqt,
+         tolov_kerak       = EXCLUDED.tolov_kerak,
+         tolov_qildi       = EXCLUDED.tolov_qildi,
+         tolov_sanasi      = EXCLUDED.tolov_sanasi,
+         kvitansiya_fayl   = EXCLUDED.kvitansiya_fayl,
+         yangilangan       = EXCLUDED.yangilangan`,
+      [oy, oquvchiId, ism, familiya, maktabId,
+       p.sinf||'', p.telefon||'',
        parseInt(p.tarif)||0, p.qaydnoma||'', p.gaplashilgan_vaqt||'',
        parseInt(p.tolov_kerak)||0, parseInt(p.tolov_qildi)||0,
        p.tolov_sanasi||'', kvFiles, todayUZ()]
     );
     res.json({ ok: true });
-  } catch (err) { res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message }); }
-});
-
-// POST /api/buxgalter/init-oy
-router.post('/init-oy', requireAuth(['admin','buxgalter']), async (req, res) => {
-  const p = req.body;
-  const auth = req.user;  // requireAuth middleware
-  if (!p.oy) return res.status(400).json({ ok: false, error: 'oy kerak' });
-
-  try {
-    const activeQ  = await pool.query(`SELECT ism,familiya,maktab,sinf,telefon,admin,boshlagan FROM oquvchilar WHERE boshlagan IS NOT NULL AND boshlagan!='' AND LEFT(boshlagan,7)<=$1`, [p.oy]);
-    const nofaolQ  = await pool.query(`SELECT ism,familiya,maktab,sinf,telefon,admin,boshlagan FROM nofaol_oquvchilar WHERE boshlagan IS NOT NULL AND boshlagan!='' AND chiqgan IS NOT NULL AND chiqgan!='' AND LEFT(boshlagan,7)<=$1 AND CASE WHEN SUBSTRING(chiqgan,3,1)='.' THEN CONCAT(RIGHT(chiqgan,4),'-',SUBSTRING(chiqgan,4,2)) ELSE LEFT(chiqgan,7) END>=$1`, [p.oy]);
-    const all = [...activeQ.rows, ...nofaolQ.rows];
-    let inserted = 0;
-    for (const s of all) {
-      let tarif = 0, tolov_kerak = 0;
-      if (p.oldingi_oy) {
-        const prev = await pool.query(`SELECT tarif,tolov_kerak FROM tolovlar WHERE oy=$1 AND oquvchi_ism=$2 AND oquvchi_familiya=$3 AND admin_username=$4 LIMIT 1`, [p.oldingi_oy, s.ism, s.familiya, s.admin]);
-        if (prev.rows.length > 0) { tarif = prev.rows[0].tarif||0; tolov_kerak = prev.rows[0].tolov_kerak||0; }
-      }
-      await pool.query(`INSERT INTO tolovlar (oy,oquvchi_ism,oquvchi_familiya,maktab,sinf,telefon,admin_username,tarif,tolov_kerak) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) ON CONFLICT DO NOTHING`,
-        [p.oy, s.ism, s.familiya, s.maktab||'', s.sinf||'', s.telefon||'', s.admin||'', tarif, tolov_kerak]);
-      inserted++;
-    }
-    res.json({ ok: true, count: inserted });
-  } catch (err) { res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message }); }
-});
-
-// GET /api/buxgalter — biriktirmalar + ro'yxat
-router.get('/', requireAuth(['admin']), async (req, res) => {
-  if (!req.user?.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
-
-  const adminsRes = await pool.query(`SELECT a.ism,a.username,b.buxgalter_username FROM adminlar a LEFT JOIN buxgalter_adminlar b ON a.username=b.admin_username ORDER BY a.ism`);
-  const buxRes    = await pool.query(`SELECT bx.ism,bx.username,ARRAY_AGG(ba.admin_username) FILTER (WHERE ba.admin_username IS NOT NULL) as adminlar FROM buxgalterlar bx LEFT JOIN buxgalter_adminlar ba ON bx.username=ba.buxgalter_username GROUP BY bx.ism,bx.username ORDER BY bx.ism`);
-  res.json({ ok: true, adminlar: adminsRes.rows, buxgalterlar: buxRes.rows });
-});
-
-// POST /api/buxgalter — yaratish
-router.post('/', requireAuth(['admin']), async (req, res) => {
-  const { newUsername, newParol, newIsm } = req.body;
-  if (!req.user?.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
-  if (!newUsername?.trim() || !newParol?.trim() || !newIsm?.trim()) return res.status(400).json({ ok: false, error: 'Barcha maydonlar majburiy' });
-  try {
-    const hashed = await hashPassword(newParol.trim());
-    await pool.query('INSERT INTO buxgalterlar (ism,username,parol,yaratilgan) VALUES ($1,$2,$3,$4)', [newIsm.trim(), newUsername.trim(), hashed, todayUZ()]);
-    res.json({ ok: true });
   } catch (err) {
-    if (err.code === '23505') return res.status(409).json({ ok: false, error: 'Bu username allaqachon mavjud' });
-    throw err;
+    res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message });
   }
 });
 
-// PUT /api/buxgalter — tahrirlash
-router.put('/', requireAuth(['admin']), async (req, res) => {
-  const { oldUsername, newIsm, newUsername: nu, newParol: np } = req.body;
-  if (!req.user?.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
-  if (!oldUsername || !newIsm || !nu) return res.status(400).json({ ok: false, error: 'Majburiy maydonlar yetishmaydi' });
+// ─── POST /api/buxgalter/init-oy ─────────────────────────────────────────────
+router.post('/init-oy', requireAuth(['admin', 'buxgalter']), async (req, res) => {
+  const p = req.body;
+  if (!p.oy) return res.status(400).json({ ok: false, error: 'oy kerak' });
+
+  try {
+    const activeQ = await pool.query(
+      `SELECT id, ism, familiya, maktab_id, sinf, telefon, boshlagan
+       FROM oquvchilar
+       WHERE boshlagan IS NOT NULL AND boshlagan != '' AND LEFT(boshlagan,7) <= $1`,
+      [p.oy]
+    );
+    const nofaolQ = await pool.query(
+      `SELECT id, ism, familiya, maktab_id, sinf, telefon, boshlagan
+       FROM nofaol_oquvchilar
+       WHERE boshlagan IS NOT NULL AND boshlagan != ''
+         AND chiqgan IS NOT NULL AND chiqgan != ''
+         AND LEFT(boshlagan,7) <= $1
+         AND CASE
+               WHEN SUBSTRING(chiqgan,3,1)='.'
+               THEN CONCAT(RIGHT(chiqgan,4),'-',SUBSTRING(chiqgan,4,2))
+               ELSE LEFT(chiqgan,7)
+             END >= $1`,
+      [p.oy]
+    );
+
+    const all = [...activeQ.rows, ...nofaolQ.rows];
+    let inserted = 0;
+
+    for (const s of all) {
+      let tarif = 0, tolov_kerak = 0;
+      if (p.oldingi_oy) {
+        const prev = await pool.query(
+          `SELECT tarif, tolov_kerak FROM tolovlar
+           WHERE oy=$1 AND oquvchi_id=$2 LIMIT 1`,
+          [p.oldingi_oy, s.id]
+        );
+        if (prev.rows.length > 0) {
+          tarif       = prev.rows[0].tarif       || 0;
+          tolov_kerak = prev.rows[0].tolov_kerak || 0;
+        }
+      }
+      await pool.query(
+        `INSERT INTO tolovlar
+           (oy, oquvchi_id, oquvchi_ism, oquvchi_familiya, maktab_id, sinf, telefon, tarif, tolov_kerak)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)
+         ON CONFLICT (oy, oquvchi_id) DO NOTHING`,
+        [p.oy, s.id, s.ism, s.familiya, s.maktab_id, s.sinf||'', s.telefon||'', tarif, tolov_kerak]
+      );
+      inserted++;
+    }
+
+    res.json({ ok: true, count: inserted });
+  } catch (err) {
+    res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message });
+  }
+});
+
+// ─── GET /api/buxgalter — ro'yxat + maktab biriktirmalari (superadmin) ────────
+router.get('/', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+
+  try {
+    const maktablarRes = await pool.query('SELECT id, nomi FROM maktablar ORDER BY nomi');
+
+    const buxRes = await pool.query(
+      `SELECT
+         b.id,
+         b.ism,
+         b.familiya,
+         b.username,
+         b.telegram_id,
+         b.yaratilgan,
+         COALESCE(
+           JSON_AGG(
+             JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi)
+           ) FILTER (WHERE m.id IS NOT NULL),
+           '[]'
+         ) AS maktablar
+       FROM buxgalterlar b
+       LEFT JOIN buxgalter_maktablar bm ON bm.buxgalter_id = b.id
+       LEFT JOIN maktablar m            ON m.id = bm.maktab_id
+       GROUP BY b.id
+       ORDER BY b.yaratilgan DESC`
+    );
+
+    res.json({
+      ok: true,
+      buxgalterlar: buxRes.rows,
+      maktablar:    maktablarRes.rows,
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── POST /api/buxgalter — yangi buxgalter yaratish (superadmin) ──────────────
+router.post('/', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+
+  const ism       = req.body.ism?.trim();
+  const familiya  = req.body.familiya?.trim() || '';
+  const username  = req.body.username?.trim().toLowerCase();
+  const parol     = req.body.parol;
+  const maktablar = req.body.maktablar || [];
+
+  if (!ism)
+    return res.status(400).json({ ok: false, error: 'Ism majburiy' });
+  if (!username || !parol)
+    return res.status(400).json({ ok: false, error: 'Username va parol majburiy' });
+  if (parol.length < 6)
+    return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
+
+  const { hashPassword } = require('../middleware/auth');
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
-    if (np?.trim()) {
-      const hashed = await hashPassword(np.trim());
-      await client.query('UPDATE buxgalterlar SET ism=$1,username=$2,parol=$3 WHERE username=$4', [newIsm, nu, hashed, oldUsername]);
-    } else {
-      await client.query('UPDATE buxgalterlar SET ism=$1,username=$2 WHERE username=$3', [newIsm, nu, oldUsername]);
+
+    // Username takrorlanishini tekshirish
+    const uCheck = await client.query('SELECT id FROM buxgalterlar WHERE username=$1', [username]);
+    if (uCheck.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(400).json({ ok: false, error: 'Bu username allaqachon band' });
     }
-    if (nu !== oldUsername) {
-      await client.query('UPDATE buxgalter_adminlar SET buxgalter_username=$1 WHERE buxgalter_username=$2', [nu, oldUsername]);
+
+    const parolHash = await hashPassword(parol);
+
+    const result = await client.query(
+      `INSERT INTO buxgalterlar (ism, familiya, username, parol, yaratilgan)
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
+      [ism, familiya, username, parolHash, todayUZ()]
+    );
+    const buxId = result.rows[0].id;
+
+    for (const maktabId of maktablar) {
+      await client.query(
+        `INSERT INTO buxgalter_maktablar (buxgalter_id, maktab_id)
+         VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [buxId, maktabId]
+      );
     }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, id: buxId });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
+  }
+});
+
+// ─── PUT /api/buxgalter/:id — tahrirlash (superadmin) ────────────────────────
+router.put('/:id', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+
+  const id        = parseInt(req.params.id);
+  const ism       = req.body.ism?.trim();
+  const familiya  = req.body.familiya?.trim() || '';
+  const username  = req.body.username?.trim().toLowerCase();
+  const parol     = req.body.parol;
+  const maktablar = req.body.maktablar;
+
+  if (!ism)
+    return res.status(400).json({ ok: false, error: 'Ism majburiy' });
+
+  const { hashPassword } = require('../middleware/auth');
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Username o'zgartirilsa — takrorlanishini tekshir
+    if (username) {
+      const uCheck = await client.query(
+        'SELECT id FROM buxgalterlar WHERE username=$1 AND id != $2',
+        [username, id]
+      );
+      if (uCheck.rowCount > 0) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ ok: false, error: 'Bu username allaqachon band' });
+      }
+    }
+
+    // Parol o'zgartirilsa — hash
+    let parolHash = null;
+    if (parol && parol.length > 0) {
+      if (parol.length < 6) {
+        await client.query('ROLLBACK');
+        return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
+      }
+      parolHash = await hashPassword(parol);
+    }
+
+    const result = await client.query(
+      `UPDATE buxgalterlar
+       SET ism=$1, familiya=$2,
+           username=COALESCE($3, username),
+           parol=COALESCE($4, parol)
+       WHERE id=$5`,
+      [ism, familiya, username || null, parolHash, id]
+    );
+    if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ ok: false, error: 'Buxgalter topilmadi' });
+    }
+
+    if (Array.isArray(maktablar)) {
+      await client.query('DELETE FROM buxgalter_maktablar WHERE buxgalter_id=$1', [id]);
+      for (const maktabId of maktablar) {
+        await client.query(
+          `INSERT INTO buxgalter_maktablar (buxgalter_id, maktab_id)
+           VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [id, maktabId]
+        );
+      }
+    }
+
     await client.query('COMMIT');
     res.json({ ok: true });
   } catch (err) {
     await client.query('ROLLBACK');
-    if (err.code === '23505') return res.status(409).json({ ok: false, error: 'Bu username allaqachon mavjud' });
-    throw err;
-  } finally { client.release(); }
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
+  }
 });
 
-// DELETE /api/buxgalter
-router.delete('/', requireAuth(['admin']), async (req, res) => {
-  const { deleteUsername } = req.body;
-  if (!req.user?.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
-  const result = await pool.query('DELETE FROM buxgalterlar WHERE username=$1', [deleteUsername?.trim()]);
-  if (result.rowCount === 0) return res.status(404).json({ ok: false, error: 'Buxgalter topilmadi' });
-  res.json({ ok: true });
-});
-
-// POST /api/buxgalter/biriktiruv
+// ─── DELETE /api/buxgalter/:id — o'chirish (superadmin) ──────────────────────
+// ─── POST /api/buxgalter/biriktiruv — maktab biriktirish ─────────────────────
 router.post('/biriktiruv', requireAuth(['admin']), async (req, res) => {
-  const { buxUsername, adminUsername } = req.body;
-  if (!req.user?.isSuper) return res.status(403).json({ ok: false, error: "Ruxsat yo'q" });
-  if (!buxUsername || !adminUsername) return res.status(400).json({ ok: false, error: 'buxUsername va adminUsername kerak' });
-  await pool.query(`INSERT INTO buxgalter_adminlar (buxgalter_username,admin_username) VALUES ($1,$2) ON CONFLICT (admin_username) DO UPDATE SET buxgalter_username=$1`, [buxUsername, adminUsername]);
-  res.json({ ok: true });
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: "Ruxsat yo'q" });
+
+  const { buxId, maktabId } = req.body;
+  if (!buxId || !maktabId)
+    return res.status(400).json({ ok: false, error: 'buxId va maktabId kerak' });
+
+  try {
+    await pool.query(
+      `INSERT INTO buxgalter_maktablar (buxgalter_id, maktab_id)
+       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [buxId, maktabId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
 });
 
-// DELETE /api/buxgalter/biriktiruv
+// ─── DELETE /api/buxgalter/biriktiruv — maktab ajratish ──────────────────────
 router.delete('/biriktiruv', requireAuth(['admin']), async (req, res) => {
-  const { adminUsername } = req.body;
-  if (!req.user?.isSuper) return res.status(403).json({ ok: false, error: "Ruxsat yo'q" });
-  if (!adminUsername) return res.status(400).json({ ok: false, error: 'adminUsername kerak' });
-  await pool.query('DELETE FROM buxgalter_adminlar WHERE admin_username=$1', [adminUsername]);
-  res.json({ ok: true });
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: "Ruxsat yo'q" });
+
+  const { buxId, maktabId } = req.body;
+  if (!buxId || !maktabId)
+    return res.status(400).json({ ok: false, error: 'buxId va maktabId kerak' });
+
+  try {
+    await pool.query(
+      'DELETE FROM buxgalter_maktablar WHERE buxgalter_id=$1 AND maktab_id=$2',
+      [buxId, maktabId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── DELETE /api/buxgalter/:id — buxgalterni o'chirish ───────────────────────
+router.delete('/:id', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+
+  const id = parseInt(req.params.id);
+
+  try {
+    const buxRes = await pool.query(
+      'SELECT telegram_id FROM buxgalterlar WHERE id=$1', [id]
+    );
+    if (buxRes.rowCount === 0)
+      return res.status(404).json({ ok: false, error: 'Buxgalter topilmadi' });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const tgId = buxRes.rows[0].telegram_id;
+      if (tgId) {
+        await client.query('DELETE FROM telegram_users WHERE telegram_id=$1', [tgId]);
+      }
+      await client.query('DELETE FROM buxgalterlar WHERE id=$1', [id]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
 });
 
 module.exports = router;

@@ -2,9 +2,15 @@
 //  InnovateIT School — Markazlashgan API Client (v6.0 JWT)
 // ═══════════════════════════════════════════════════
 
-const BASE = (window.location.hostname === 'localhost' ||
-              window.location.hostname === '127.0.0.1' ||
-              window.location.hostname === '')
+// ─── Backend manzili ─────────────────────────────────────────────────────────
+// LOCAL (file:// yoki localhost): backend 127.0.0.1:3001 da ishlaydi
+// PRODUCTION (innovateitschool.uz): relative URL ishlatiladi
+const _host = window.location.hostname;
+const _proto = window.location.protocol;
+const BASE = (_proto === 'file:' ||
+              _host === 'localhost' ||
+              _host === '127.0.0.1' ||
+              _host === '')
   ? 'http://127.0.0.1:3001'
   : '';
 
@@ -63,14 +69,21 @@ async function autoRefreshToken() {
 // ─── 401 holatida login sahifasiga qaytish ───────────────────────────────────
 function handleUnauthorized() {
   tokenStore.clear();
-  // Qaysi sahifada ekanligimizni aniqlaymiz
+  // file:// va http:// ikkalasida ham to'g'ri ishlashi uchun
   const page = window.location.pathname;
+  const isFile = window.location.protocol === 'file:';
+
+  // file:// da to'liq papka yo'lini olamiz, http:// da oddiy /
+  const baseDir = isFile
+    ? window.location.href.substring(0, window.location.href.lastIndexOf('/') + 1)
+    : '/';
+
   if (page.includes('buxgalter')) {
-    window.location.href = '/buxgalter.html';
+    window.location.href = baseDir + 'buxgalter.html';
   } else if (page.includes('portfolio')) {
-    window.location.href = '/portfolio-viewer.html';
+    window.location.href = baseDir + 'portfolio-viewer.html';
   } else {
-    window.location.href = '/index.html';
+    window.location.href = baseDir + 'index.html';
   }
 }
 
@@ -98,9 +111,19 @@ async function apiReq(method, path, data = {}) {
     const qs = new URLSearchParams(filtered).toString();
     if (qs) url += `?${qs}`;
   } else {
-    // POST/PUT/DELETE da username va parolni body dan olib tashlaymiz
-    const { username, parol, ...rest } = data;
-    opts.body = JSON.stringify(rest);
+    // username va parolni faqat eski endpoint lar uchun olib tashlaymiz
+    // /api/admins va /api/auth/* endpointlari uchun body ni to'liq yuboramiz
+    const keepAsIs = path.startsWith('/api/auth/') 
+                  || path === '/api/admins'
+                  || path.startsWith('/api/admins/')
+                  || path === '/api/buxgalter'
+                  || path.startsWith('/api/buxgalter/');
+    if (keepAsIs) {
+      opts.body = JSON.stringify(data);
+    } else {
+      const { username, parol, ...rest } = data;
+      opts.body = JSON.stringify(rest);
+    }
   }
 
   try {
@@ -148,6 +171,15 @@ const api = {
     if (res.ok && res.token) tokenStore.set(res.token);
     return res;
   },
+  loginAdmin: async (d) => {
+    const res = await fetch(`${BASE}/api/auth/login-admin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(d)
+    }).then(r => r.json());
+    if (res.ok && res.token) tokenStore.set(res.token);
+    return res;
+  },
   loginViewer: async (d) => {
     const res = await fetch(`${BASE}/api/auth/login-viewer`, {
       method: 'POST',
@@ -163,6 +195,8 @@ const api = {
   },
   getUser:    () => tokenStore.getUser(),
   getToken:   () => tokenStore.get(),
+  setToken:   (t) => tokenStore.set(t),
+  isExpired:  ()  => { const t = tokenStore.get(); return t ? tokenStore.isExpired(t) : true; },
   isLoggedIn: () => {
     const t = tokenStore.get();
     return t ? !tokenStore.isExpired(t) : false;
@@ -183,8 +217,9 @@ const api = {
   // ─── Adminlar ───
   getAdmins:   (d) => api.get('/api/admins', d),
   createAdmin: (d) => api.post('/api/admins', d),
-  editAdmin:   (d) => api.put('/api/admins', d),
-  deleteAdmin: (d) => api.del('/api/admins', d),
+  editAdmin:        (d) => api.put('/api/admins', d),
+  changeAdminParol: (d) => api.put('/api/admins', d),
+  deleteAdmin:      (d) => api.del('/api/admins', d),
 
   // ─── Davomat ───
   saveDavomat:        (d) => api.post('/api/davomat', d),
@@ -206,6 +241,8 @@ const api = {
   deleteTeacher:       (d) => api.del('/api/teachers', d),
   addTeacherMaktab:    (d) => api.post('/api/teachers/maktab', d),
   removeTeacherMaktab: (d) => api.del('/api/teachers/maktab', d),
+  biriktirTeacher:     (d) => api.post('/api/teachers/biriktiruv', d),
+  ajratTeacher:        (d) => api.del('/api/teachers/biriktiruv', d),
   mergeTeachers:       (d) => api.post('/api/teachers/merge', d),
 
   // ─── Buxgalter ───
@@ -263,6 +300,21 @@ const api = {
     });
     return r.json();
   },
+
+  // ─── Maktablar ───
+  getMaktablar:    ()  => api.get('/api/maktablar'),
+  createMaktab:    (d) => api.post('/api/maktablar', d),
+  editMaktab:      (d) => api.put(`/api/maktablar/${d.id}`, d),
+  deleteMaktab:    (id) => api.del(`/api/maktablar/${id}`),
+
+  // ─── Telegram birikmalar ───
+  getTgBirikmalar:  ()  => api.get('/api/telegram/birikmalar'),
+  tgBirikdir:       (d) => api.post('/api/telegram/birikdir', d),
+  tgAjrat:          (tgId) => api.del(`/api/telegram/birikdir/${tgId}`),
+
+  // ─── Anketa so'rovlar ───
+  getSorovlar:      (d) => api.get('/api/telegram/anketa', d),
+  sorovTasdiqlash:  (id, d) => api.put(`/api/telegram/anketa/${id}`, d),
 
   // ─── Fayl upload (kvitansiya) — token bilan ───
   uploadFile: async (formData) => {

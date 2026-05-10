@@ -3,3 +3,8 @@ node_modules/
 .DS_Store
 uploads/
 *.log
+
+**/.env
+# Subfolder .env fayllar
+telegram-bot/.env
+innovateit-backend/.env

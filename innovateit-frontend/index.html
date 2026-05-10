@@ -6,6 +6,7 @@
   <title>InnovateIT School — Admin Panel</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/oqituvchilar.css">
   <link rel="stylesheet" href="css/responsive.css">
   <link rel="stylesheet" href="css/security-patch.css">
   <link rel="stylesheet" href="css/hover.css">
@@ -64,6 +65,7 @@
       </div>
 
       <span class="admin-badge" id="admin-badge"></span>
+      <span class="maktab-badge" id="maktab-badge" style="display:none;background:#e8f0fe;color:#3c5fb0;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600;align-items:center;gap:4px;"></span>
       <span class="stat-badge"  id="total-count">0</span>
       <!-- ✅ YANGI: Nofaol tugmasi -->
       <button class="btn-nofaol" id="btn-nofaol" onclick="openNofaol()">🚫 Nofaol</button>
@@ -78,6 +80,11 @@
     <button class="tab-btn active" onclick="switchTab('s')">📋 O'quvchilar</button>
     <button class="tab-btn"        onclick="switchTab('a')">👥 Adminlar</button>
     <button class="tab-btn"        onclick="switchTab('b')">💼 Buxgalterlar</button>
+    <button class="tab-btn"        onclick="switchTab('m')">🏫 Maktablar</button>
+    <!-- TelegramID lar tabi so'rovlar tabiga birlashtirildi -->
+    <button class="tab-btn"        onclick="switchTab('sr')">📨 So'rovlar</button>
+    <button class="tab-btn"        onclick="switchTab('oq')">👩‍🏫 O'qituvchilar</button>
+    <button class="tab-btn"        onclick="switchTab('pf')">📂 Portfolio</button>
 
   </div>
 
@@ -209,22 +216,31 @@
         <div class="card-title">➕ Yangi admin yaratish</div>
         <div class="create-grid">
           <div class="field-group" style="margin:0">
-            <label class="field-label">Maktab nomi</label>
-            <input class="field-input" id="a-ism" placeholder="InnovateIT School5">
+            <label class="field-label">Familiya</label>
+            <input class="field-input" id="a-familiya" placeholder="Valiyev" autocomplete="off">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Ism</label>
+            <input class="field-input" id="a-ism" placeholder="Ali" autocomplete="off">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Maktab</label>
+            <select class="field-input" id="a-maktab-id">
+              <option value="">— Tanlang —</option>
+            </select>
           </div>
           <div class="field-group" style="margin:0">
             <label class="field-label">Username</label>
-            <input class="field-input" id="a-username" placeholder="ali_valiyev" autocomplete="off">
+            <input class="field-input" id="a-username" placeholder="ali_valiyev" autocomplete="new-password" spellcheck="false">
           </div>
           <div class="field-group" style="margin:0">
             <label class="field-label">Parol</label>
-            <div class="pw-wrap">
-              <input class="field-input" id="a-parol" type="password" placeholder="Parol123!">
-              <button class="eye-btn" onclick="togglePw('a-parol')" tabindex="-1" type="button">
-                <svg id="eye-a-parol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                  <line x1="1" y1="1" x2="23" y2="23"/>
+            <div style="position:relative;display:flex;align-items:center;">
+              <input class="field-input" id="a-parol" type="password" placeholder="Kamida 6 belgi" autocomplete="new-password" style="padding-right:40px;width:100%;box-sizing:border-box;">
+              <button type="button" onclick="togglePw('a-parol')" tabindex="-1"
+                style="position:absolute;right:10px;background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;color:#888;">
+                <svg id="eye-a-parol" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
               </button>
             </div>
@@ -252,22 +268,25 @@
         <div class="card-title">➕ Yangi buxgalter yaratish</div>
         <div class="create-grid">
           <div class="field-group" style="margin:0">
-            <label class="field-label">Ism (to'liq)</label>
-            <input class="field-input" id="bux-ism" placeholder="Malika Karimova">
+            <label class="field-label">Familiya</label>
+            <input class="field-input" id="bux-familiya" placeholder="Sodiqov" autocomplete="off">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Ism</label>
+            <input class="field-input" id="bux-ism" placeholder="Javohir" autocomplete="off">
           </div>
           <div class="field-group" style="margin:0">
             <label class="field-label">Username</label>
-            <input class="field-input" id="bux-username" placeholder="buxgalter1" autocomplete="off">
+            <input class="field-input" id="bux-username" placeholder="buxgalter1" autocomplete="new-password" spellcheck="false">
           </div>
           <div class="field-group" style="margin:0">
             <label class="field-label">Parol</label>
-            <div class="pw-wrap">
-              <input class="field-input" id="bux-parol" type="password" placeholder="Parol123!">
-              <button class="eye-btn" onclick="togglePw('bux-parol')" tabindex="-1" type="button">
-                <svg id="eye-bux-parol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-                  <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-                  <line x1="1" y1="1" x2="23" y2="23"/>
+            <div style="position:relative;display:flex;align-items:center;">
+              <input class="field-input" id="bux-parol" type="password" placeholder="Kamida 6 belgi" autocomplete="new-password" style="padding-right:40px;width:100%;box-sizing:border-box;">
+              <button type="button" onclick="togglePw('bux-parol')" tabindex="-1"
+                style="position:absolute;right:10px;background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;color:#888;">
+                <svg id="eye-bux-parol" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
                 </svg>
               </button>
             </div>
@@ -298,8 +317,234 @@
 
 
 
+
+    <!-- ─── MAKTABLAR TABI ─── -->
+    <div id="tab-m" style="display:none;">
+      <div class="form-card" style="margin-top:14px;">
+        <div class="card-title">🏫 Maktablarni boshqarish</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label">Maktab nomi</label>
+            <input class="field-input" id="m-nomi" placeholder="1-maktab" autocomplete="off">
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn-primary" onclick="createMaktab()">➕ Qo'shish</button>
+        </div>
+        <p class="err-msg" id="m-err" style="display:none;"></p>
+      </div>
+      <div class="form-card" style="margin-top:14px;">
+        <div class="card-title">📋 Maktablar ro'yxati</div>
+        <table class="data-table" id="maktablar-table">
+          <thead><tr>
+            <th>Nomi</th>
+            <th>Adminlar</th>
+            <th>O'qituvchilar</th>
+            <th>O'quvchilar</th>
+            <th>Yaratilgan</th>
+            <th>Amal</th>
+          </tr></thead>
+          <tbody id="maktablar-tbody"></tbody>
+        </table>
+      </div>
+    </div><!-- /tab-m -->
+
+    <!-- ─── TELEGRAMID LAR TABI ─── -->
+    <div id="tab-tg" style="display:none;">
+      <div class="form-card" style="margin-top:14px;">
+        <div class="card-title">📱 TelegramID biriktirish</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label">TelegramID</label>
+            <input class="field-input" id="tg-id" placeholder="123456789" type="number" autocomplete="off">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Telegram ismi</label>
+            <input class="field-input" id="tg-ism" placeholder="Sardor Karimov" autocomplete="off">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Rol</label>
+            <select class="field-input" id="tg-rol" onchange="onTgRolChange()">
+              <option value="">— Tanlang —</option>
+              <option value="buxgalter">💼 Buxgalter</option>
+              <option value="oqituvchi">👩‍🏫 O'qituvchi</option>
+              <option value="oquvchi">🎓 O'quvchi</option>
+            </select>
+          </div>
+          <div class="field-group" id="tg-entity-wrap" style="display:none;">
+            <label class="field-label" id="tg-entity-label">Foydalanuvchi</label>
+            <select class="field-input" id="tg-entity-id">
+              <option value="">— Tanlang —</option>
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;">
+          <button class="btn-primary" onclick="tgBirikdir()">🔗 Biriktirish</button>
+        </div>
+        <p class="err-msg" id="tg-err" style="display:none;"></p>
+      </div>
+      <div class="form-card" style="margin-top:14px;">
+        <div class="card-title">🔗 Biriktirilgan foydalanuvchilar</div>
+        <table class="data-table" id="tg-table">
+          <thead><tr>
+            <th>TelegramID</th>
+            <th>Telegram ismi</th>
+            <th>Rol</th>
+            <th>Foydalanuvchi</th>
+            <th>Biriktirilgan</th>
+            <th>Amal</th>
+          </tr></thead>
+          <tbody id="tg-tbody"></tbody>
+        </table>
+      </div>
+    </div><!-- /tab-tg -->
+
+    <!-- ─── SO'ROVLAR TABI ─── -->
+    <div id="tab-sr" style="display:none;">
+      <div class="form-card" style="margin-top:14px;">
+        <div class="card-title">📨 Anketa so'rovlari</div>
+        <div style="display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;">
+          <button class="sr-filter-btn" onclick="loadSorovlar('kutilmoqda')" id="sr-btn-k">⏳ Kutilmoqda</button>
+          <button class="sr-filter-btn" onclick="loadSorovlar('tasdiqlandi')" id="sr-btn-t">✅ Tasdiqlandi</button>
+          <button class="sr-filter-btn" onclick="loadSorovlar('rad etildi')" id="sr-btn-r">❌ Rad etildi</button>
+          <button class="sr-filter-btn" onclick="loadSorovlar()" id="sr-btn-a">📋 Barchasi</button>
+        </div>
+        <table class="data-table" id="sr-table">
+          <thead><tr>
+            <th>TelegramID</th>
+            <th>Telegram ismi</th>
+            <th>Pozitsiya</th>
+            <th>FISh</th>
+            <th>Maktab(lar)</th>
+            <th>Sinf</th>
+            <th>Telefon</th>
+            <th>Holat</th>
+            <th style="min-width:280px">Biriktirish / Amal</th>
+          </tr></thead>
+          <tbody id="sr-tbody"></tbody>
+        </table>
+      </div>
+    </div><!-- /tab-sr -->
+
+    <!-- ─── O'QITUVCHILAR TABI ─── -->
+    <div id="tab-oq" style="display:none;">
+      <!-- SUPERADMIN: Yangi o'qituvchi tugmasi -->
+      <div id="super-add-bar" style="display:none;margin-bottom:16px;">
+        <button class="btn-submit" style="max-width:300px;" onclick="openSuperAdd()">
+          ➕ Yangi o'qituvchi qo'shish
+        </button>
+      </div>
+      <!-- ODDIY ADMIN: Qo'shish formasi -->
+      <div class="form-card" id="add-form-oq" style="display:none;">
+        <div class="card-title">➕ Yangi o'qituvchi qo'shish</div>
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label">Familiya</label>
+            <input class="field-input" id="f-familiya" placeholder="Yusupova" autocomplete="off">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Ism</label>
+            <input class="field-input" id="f-ism" placeholder="Nodira" autocomplete="off">
+          </div>
+          <div class="field-group">
+            <label class="field-label">Fan</label>
+            <select class="field-input" id="f-fan">
+              <option value="">— Tanlang —</option>
+              <option value="Matematika">Matematika</option>
+              <option value="Ingliz tili">Ingliz tili</option>
+              <option value="IT">IT</option>
+            </select>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Telefon</label>
+            <div class="tel-wrap">
+              <input class="field-input tel-input" id="f-tel" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel">
+              <div class="tel-hint" id="f-tel-hint"></div>
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Qo'sh. telefon <span style="font-weight:400;text-transform:none;font-size:10px;">(ixtiyoriy)</span></label>
+            <div class="tel-wrap">
+              <input class="field-input tel-input" id="f-tel2" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel">
+              <div class="tel-hint" id="f-tel2-hint"></div>
+            </div>
+          </div>
+        </div>
+        <button class="btn-submit" id="submit-btn-oq" onclick="addTeacher()">
+          <span class="spinner" id="spinner-oq"></span>
+          <span id="btn-txt-oq">Saqlash</span>
+        </button>
+      </div>
+      <!-- Jadval -->
+      <div class="table-card" id="oq-teachers-table" style="margin-top:14px;">
+        <div class="table-header">
+          <div class="table-title">O'qituvchilar ro'yxati</div>
+          <div class="search-wrap" style="position:relative;">
+            <input class="search-input" id="f-search-oq" placeholder="🔍 Ism, fan…" oninput="applyTeacherFilter()">
+          </div>
+        </div>
+        <div class="tbl-wrap">
+          <table>
+            <thead><tr>
+              <th>#</th>
+              <th>Ism Familiya</th>
+              <th>Fan</th>
+              <th id="th-maktab-oq">Maktab</th>
+              <th>Telefon</th>
+              <th>Qo'sh. tel</th>
+              <th>Amal</th>
+            </tr></thead>
+            <tbody id="tbl-body-oq"></tbody>
+          </table>
+        </div>
+        <div id="loading-oq" style="text-align:center;padding:24px;display:none;"><div class="loading-spinner"></div></div>
+      </div>
+    </div><!-- /tab-oq -->
+
+    <!-- ─── PORTFOLIO TABI ─── -->
+    <div id="tab-pf" style="display:none;">
+      <div id="oq-tab-portfolio-content">
+        <!-- Viewers -->
+        <div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:16px;padding:24px;margin-bottom:24px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:10px;">
+            <div>
+              <div style="font-size:16px;font-weight:700;color:#111827;">👁️ Portfolio Ko'ruvchilar</div>
+              <div style="font-size:12px;color:#9ca3af;margin-top:2px;">Viewer portfolio-viewer.html sahifasiga kiradi</div>
+            </div>
+            <button onclick="oqToggleViewerForm()" style="padding:9px 18px;background:#6c63ff;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">➕ Yangi viewer</button>
+          </div>
+          <div id="oq-viewer-form" style="display:none;background:#f8f9fc;border-radius:12px;padding:18px;margin-bottom:18px;">
+            <div style="font-weight:600;font-size:14px;color:#374151;margin-bottom:14px;">➕ Yangi viewer yaratish</div>
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;">
+              <div>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">ISM</div>
+                <input id="oq-pv-ism" type="text" placeholder="Abdullayev Jasur" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:14px;outline:none;font-family:inherit;">
+              </div>
+              <div>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">USERNAME</div>
+                <input id="oq-pv-username" type="text" placeholder="jasur_viewer" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:14px;outline:none;font-family:inherit;">
+              </div>
+              <div>
+                <div style="font-size:11px;color:#6b7280;margin-bottom:5px;font-weight:600;text-transform:uppercase;letter-spacing:.5px;">PAROL</div>
+                <input id="oq-pv-parol" type="password" placeholder="Parol123!" style="width:100%;box-sizing:border-box;padding:10px 12px;border:1.5px solid #e5e7eb;border-radius:9px;font-size:14px;outline:none;font-family:inherit;">
+              </div>
+              <button onclick="oqCreateViewer()" style="padding:10px 18px;background:#6c63ff;color:#fff;border:none;border-radius:9px;font-size:14px;font-weight:600;cursor:pointer;height:42px;">Yaratish</button>
+            </div>
+            <div id="oq-pv-err" style="display:none;color:#ef4444;font-size:12px;margin-top:8px;"></div>
+          </div>
+          <div id="oq-viewers-list"><div style="text-align:center;padding:24px;color:#9ca3af;">⏳ Yuklanmoqda…</div></div>
+        </div>
+        <!-- Portfolio list -->
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <div style="font-size:16px;font-weight:700;color:#111827;">🎓 O'qituvchilar Portfolio</div>
+          <input id="oq-pt-search" type="text" placeholder="🔍 Ism, familiya yoki fan…" oninput="oqFilterPortfolio(this.value)"
+            style="padding:9px 14px;border:1.5px solid #e5e7eb;border-radius:22px;font-size:13px;font-family:inherit;outline:none;background:#fff;width:240px;">
+        </div>
+        <div id="oq-pt-list"></div>
+      </div>
+    </div><!-- /tab-pf -->
+
   </div><!-- /main -->
-</div><!-- /app -->
 
 <!-- MODAL: Admin tahrirlash -->
 <div class="modal-overlay" id="ae-modal" onclick="if(event.target===this)closeAE()">
@@ -308,17 +553,21 @@
     <div class="modal-title">✏️ Adminni tahrirlash</div>
     <div class="form-grid">
       <div class="field-group">
-        <label class="field-label">Maktab nomi</label>
-        <input class="field-input" id="ae-ism">
+        <label class="field-label">Familiya</label>
+        <input class="field-input" id="ae-familiya" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Ism</label>
+        <input class="field-input" id="ae-ism" autocomplete="off">
       </div>
       <div class="field-group">
         <label class="field-label">Username</label>
         <input class="field-input" id="ae-username" autocomplete="off">
       </div>
       <div class="field-group" style="grid-column:1/-1">
-        <label class="field-label">Yangi parol</label>
+        <label class="field-label">Parol</label>
         <div class="pw-wrap">
-          <input class="field-input" type="password" id="ae-parol" placeholder="Bo'sh qoldirsa o'zgarmaydi">
+          <input class="field-input" type="password" id="ae-parol" placeholder="••••••••" autocomplete="new-password">
           <button class="eye-btn" onclick="togglePw('ae-parol')" tabindex="-1" type="button">
             <svg id="eye-ae-parol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
@@ -445,8 +694,12 @@
     <div style="font-size:16px;font-weight:700;margin-bottom:18px;">✏️ Buxgalterni tahrirlash</div>
 
     <div class="field-group" style="margin-bottom:12px;">
-      <label class="field-label">Ism (to'liq)</label>
-      <input class="field-input" id="edit-bux-ism" placeholder="Javohir Sodiqov">
+      <label class="field-label">Familiya</label>
+      <input class="field-input" id="edit-bux-familiya" placeholder="Sodiqov" autocomplete="off">
+    </div>
+    <div class="field-group" style="margin-bottom:12px;">
+      <label class="field-label">Ism</label>
+      <input class="field-input" id="edit-bux-ism" placeholder="Javohir" autocomplete="off">
     </div>
     <div class="field-group" style="margin-bottom:12px;">
       <label class="field-label">Username</label>
@@ -454,7 +707,21 @@
     </div>
     <div class="field-group" style="margin-bottom:4px;">
       <label class="field-label">Yangi parol <span style="color:#9ca3af;font-weight:400;">(bo'sh qolsa o'zgarmaydi)</span></label>
-      <input class="field-input" id="edit-bux-parol" type="password" placeholder="••••••" autocomplete="new-password">
+      <div style="position:relative;">
+        <input class="field-input" id="edit-bux-parol" type="password" placeholder="••••••" autocomplete="new-password" style="padding-right:42px;">
+        <button type="button" onclick="toggleEditBuxParol()" id="edit-bux-parol-eye"
+          style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                 background:none;border:none;cursor:pointer;padding:4px;
+                 color:#9ca3af;display:flex;align-items:center;justify-content:center;
+                 border-radius:4px;transition:color .15s;"
+          onmouseenter="this.style.color='#374151'"
+          onmouseleave="this.style.color='#9ca3af'">
+          <svg id="edit-bux-eye-icon" xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+            <circle cx="12" cy="12" r="3"/>
+          </svg>
+        </button>
+      </div>
     </div>
 
     <p id="edit-bux-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;"></p>
@@ -628,7 +895,8 @@
 </div>
 
 <script src="js/api.js"></script>
-  <script src="js/app.js"></script>
+<script src="js/app.js"></script>
+<script src="js/app-superadmin.js"></script>
 <script src="js/mobile-nav.js"></script>
 
 

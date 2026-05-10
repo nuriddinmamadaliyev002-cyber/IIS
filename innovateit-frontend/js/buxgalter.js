@@ -417,11 +417,11 @@ function buildFilterOptions() {
   const sinfSel   = g('filter-sinf');
   const curM = maktabSel.value, curS = sinfSel.value;
 
-  const maktablar = [...new Set(ALL_DATA.map(d => d.student.maktab).filter(Boolean))].sort((a,b) => +a - +b);
+  const maktablar = [...new Set(ALL_DATA.map(d => d.student.maktab).filter(Boolean))].sort();
   const sinflar   = [...new Set(ALL_DATA.map(d => d.student.sinf).filter(Boolean))].sort();
 
   maktabSel.innerHTML = '<option value="">🏫 Barcha maktablar</option>'
-    + maktablar.map(m => `<option value="${m}"${m===curM?' selected':''}>${m}-maktab</option>`).join('');
+    + maktablar.map(m => `<option value="${m}"${m===curM?' selected':''}>${m}</option>`).join('');
   sinfSel.innerHTML   = '<option value="">📚 Barcha sinflar</option>'
     + sinflar.map(s => `<option value="${s}"${s===curS?' selected':''}>${s}</option>`).join('');
 }

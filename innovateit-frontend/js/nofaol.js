@@ -52,7 +52,7 @@ function applyFilters() {
   const fs = g('f-sinf-f').value;
   FILTERED = NS.filter(s =>
     (!q  || (s.familiya + ' ' + s.ism + ' ' + (s.telefon||'')).toLowerCase().includes(q)) &&
-    (!fm || String(s.maktab) === String(fm)) &&
+    (!fm || String(s.maktabId) === String(fm)) &&
     (!fs || s.sinf === fs)
   );
   renderTbl(FILTERED);
@@ -69,7 +69,7 @@ function renderTbl(d) {
   tb.innerHTML = d.map((s, i) => `<tr>
     <td class="mono">${i + 1}</td>
     <td><strong>${s.familiya}</strong> ${s.ism}</td>
-    <td><span class="maktab-badge">${s.maktab || '—'}</span></td>
+    <td><span class="maktab-badge">${s.maktabId || '—'}</span></td>
     <td><span class="sinf-badge">${s.sinf || '—'}</span></td>
     <td class="mono">${s.telefon || '—'}</td>
     <td class="mono">${fTug(s.tug)}</td>
@@ -80,7 +80,7 @@ function renderTbl(d) {
         ? `<span style="font-size:12px;color:#374151;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;" title="${s.izoh.replace(/"/g,'&quot;')}">${s.izoh}</span>`
         : '<span style="color:#ccc;font-size:12px;">—</span>'}
     </td>
-    ${sup ? `<td class="mono" style="font-size:11px;">${s.admin || '—'}</td>` : ''}
+    
     <td>
       <div style="display:flex;gap:4px;align-items:center;">
         <button class="btn-faollashtir" onclick="openFaolModal(${s.ri})" title="Faollashtirish">♻️</button>
@@ -105,7 +105,7 @@ function renderMob(d) {
           <div class="sc-name">${s.familiya} ${s.ism}</div>
           <div class="sc-num">#${i + 1}</div>
           <div class="sc-tags">
-            <span class="maktab-badge">${s.maktab || '—'}-maktab</span>
+            <span class="maktab-badge">${s.maktabId || '—'}-maktab</span>
             <span class="sinf-badge">${s.sinf || '—'}</span>
           </div>
         </div>
@@ -122,14 +122,14 @@ function renderMob(d) {
         <div class="sc-row sc-full"><span class="sc-lbl">🚪 Chiqgan</span><span class="sc-val">${fChiqgan(s.chiqgan)}</span></div>
         ${s.izoh ? `<div class="sc-row sc-full"><span class="sc-lbl">💬 Sabab</span><span class="sc-val" style="color:#374151;">${s.izoh}</span></div>` : ''}
         <div class="sc-row"><span class="sc-lbl">📍 Manzil</span><span class="sc-val">${s.manzil || '—'}</span></div>
-        ${sup ? `<div class="sc-row sc-full"><span class="sc-lbl">👤 Admin</span><span class="sc-val m" style="font-size:11px;">${s.admin || '—'}</span></div>` : ''}
+        
       </div>
     </div>`).join('');
 }
 
 function updMaktabF() {
   const sel  = g('f-maktab-f'), cur = sel.value;
-  const list = [...new Set(NS.map(s => s.maktab).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+  const list = [...new Set(NS.map(s => s.maktabId).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
   sel.innerHTML = '<option value="">Barcha maktab</option>' +
     list.map(m => `<option${String(m) === String(cur) ? ' selected' : ''}>${m}</option>`).join('');
 }
@@ -148,7 +148,7 @@ async function confirmFaollashtir() {
   const s = NS[faolIdx]; if (!s) return;
   setBtnLoading('faol-confirm-btn', 'faol-spinner', 'faol-btn-txt', 'Saqlanmoqda…');
   try {
-    const r = await api.moveToActive({ username: U.username, parol: U.parol, delIsm: s.ism, delFamiliya: s.familiya });
+    const r = await api.moveToActive({ id: s.id });
     if (r.ok) { closeFaolModal(); await loadNofaol(); toast("✅ O'quvchi faol ro'yxatga qaytarildi!", 'success'); }
     else toast('❌ ' + r.error, 'error');
   } catch (e) { toast('❌ Xatolik', 'error'); }
@@ -190,7 +190,7 @@ async function saveEditNofaol() {
   const chiqganUZ = chiqgan.includes('-') ? chiqgan.split('-').reverse().join('.') : chiqgan;
   setBtnLoading('edit-nofaol-btn', 'edit-nofaol-spinner', 'edit-nofaol-txt', 'Saqlanmoqda…');
   try {
-    const r = await api.editNofaol({ username: U.username, parol: U.parol, delIsm: s.ism, delFamiliya: s.familiya, chiqgan: chiqganUZ, izoh });
+    const r = await api.editNofaol({ id: s.id, chiqgan: chiqganUZ, izoh });
     if (r.ok) { closeEditNofaol(); await loadNofaol(); toast("✅ Ma'lumotlar yangilandi!", 'success'); }
     else toast('❌ ' + r.error, 'error');
   } catch (e) { toast('❌ Xatolik', 'error'); }
@@ -211,7 +211,7 @@ async function confirmDeleteNofaol() {
   const s = NS[delIdx]; if (!s) return;
   setBtnLoading('del-nofaol-btn', 'del-nofaol-spinner', 'del-nofaol-txt', "O'chirilmoqda…");
   try {
-    const r = await api.deleteNofaol({ username: U.username, parol: U.parol, delIsm: s.ism, delFamiliya: s.familiya });
+    const r = await api.deleteNofaol({ id: s.id });
     if (r.ok) { closeDelNofaol(); await loadNofaol(); toast("✅ O'quvchi o'chirildi", 'success'); }
     else toast('❌ ' + r.error, 'error');
   } catch (e) { toast('❌ Xatolik', 'error'); }

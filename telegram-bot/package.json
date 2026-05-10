@@ -1,0 +1,17 @@
+{
+  "name": "innovateit-telegram-bot",
+  "version": "1.0.0",
+  "description": "InnovateIT School Telegram Bot",
+  "main": "bot.js",
+  "scripts": {
+    "start": "node bot.js",
+    "dev": "nodemon bot.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "node-telegram-bot-api": "^0.66.0"
+  },
+  "devDependencies": {
+    "nodemon": "^3.1.0"
+  }
+}

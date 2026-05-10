@@ -59,27 +59,35 @@ async function doLogin() {
   btn.disabled = true; btn.textContent = 'Tekshirilmoqda…';
 
   try {
-    // Avval admin sifatida tekshiramiz
+    // 1. Avval superadmin sifatida tekshiramiz
     const r = await api.login({ username, parol });
     if (r.ok) {
       U = { username, parol, ism: r.ism, isSuper: r.isSuper };
       localStorage.setItem('iit_u', JSON.stringify(U));
       showApp();
     } else {
-      // Admin bo'lmasa, buxgalter sifatida tekshiramiz
-      const rb = await api.loginBuxgalter({ username, parol });
-      if (rb.ok) {
-        localStorage.setItem('iit_bux_u', JSON.stringify({ username, parol, ism: rb.ism }));
-        window.location.href = 'buxgalter.html';
+      // 2. Maktab admini sifatida tekshiramiz
+      const ra = await api.loginAdmin({ username, parol });
+      if (ra.ok) {
+        U = { username, parol, ism: ra.ism, isSuper: false, maktabId: ra.maktabId, maktabNomi: ra.maktabNomi };
+        localStorage.setItem('iit_u', JSON.stringify(U));
+        showApp();
       } else {
-        // Buxgalter ham bo'lmasa, viewer sifatida tekshiramiz
-        const rv = await api.loginViewer({ username, parol });
-        if (rv.ok) {
-          // token alohida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
-          localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
-          window.location.href = 'portfolio-viewer.html';
+        // 3. Buxgalter sifatida tekshiramiz
+        const rb = await api.loginBuxgalter({ username, parol });
+        if (rb.ok) {
+          localStorage.setItem('iit_bux_u', JSON.stringify({ username, parol, ism: rb.ism }));
+          window.location.href = 'buxgalter.html';
         } else {
-          showErr(g('login-err'), "Username yoki parol noto'g'ri");
+          // 4. Viewer sifatida tekshiramiz
+          const rv = await api.loginViewer({ username, parol });
+          if (rv.ok) {
+            // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
+            localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
+            window.location.href = 'portfolio-viewer.html';
+          } else {
+            showErr(g('login-err'), "Username yoki parol noto'g'ri");
+          }
         }
       }
     }
@@ -125,7 +133,7 @@ async function showApp() {
     g('admin-selector-wrap').style.display = 'flex';
     const amalCol = g('amal-col'); if(amalCol) amalCol.style.display = 'none';
     g('btn-davomat').style.display   = 'none';
-    g('btn-teachers').style.display  = '';
+    g('btn-teachers').style.display  = 'none';  // Superadmin uchun tab ichida bor
     g('btn-nofaol').style.display    = '';
     g('add-student-form').style.display = 'none';
     await loadAdmins();
@@ -147,17 +155,19 @@ async function showApp() {
 }
 
 function switchTab(t) {
-  g('tab-s').style.display = t === 's' ? 'block' : 'none';
-  g('tab-a').style.display = t === 'a' ? 'block' : 'none';
-  g('tab-b').style.display = t === 'b' ? 'block' : 'none';
+  const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf'];
+  allTabs.forEach(id => {
+    const el = g('tab-' + id);
+    if (el) el.style.display = (t === id) ? 'block' : 'none';
+  });
   document.querySelectorAll('.tab-btn').forEach((b, i) =>
-    b.classList.toggle('active',
-      (i === 0 && t === 's') ||
-      (i === 1 && t === 'a') ||
-      (i === 2 && t === 'b')
-    )
+    b.classList.toggle('active', allTabs[i] === t)
   );
-  if (t === 'b') loadBuxgalterlar();
+  if (t === 'b')  loadBuxgalterlar();
+  if (t === 'm')  loadMaktablar();
+  if (t === 'sr' && typeof loadSorovlar === 'function') loadSorovlar();
+  if (t === 'oq') loadTeachersTab();
+  if (t === 'pf') loadPortfolioTab();
 }
 
 // ─────────────────────────────────────────────
@@ -177,13 +187,13 @@ async function onAdminSelect() {
   if (!val) {
     viewingAdmin = null;
     g('btn-davomat').style.display   = 'none';
-    g('btn-teachers').style.display  = '';
+    g('btn-teachers').style.display  = 'none';  // Tab ichida bor
     g('add-student-form').style.display = 'none';
   } else {
     const found = ADMINS.find(a => a.username === val);
     viewingAdmin = found ? { username: found.username, ism: found.ism, parol: found.parol } : null;
     g('btn-davomat').style.display   = '';
-    g('btn-teachers').style.display  = '';
+    g('btn-teachers').style.display  = 'none';  // Tab ichida bor
     g('add-student-form').style.display = 'block';
   }
 
@@ -629,8 +639,19 @@ function openNofaol() {
 // ─────────────────────────────────────────────
 async function loadAdmins() {
   try {
-    const d = await api.getAdmins({ username: U.username, parol: U.parol });
+    const [d, dm] = await Promise.all([
+      api.getAdmins({ username: U.username, parol: U.parol }),
+      api.getMaktablar()
+    ]);
     if (d.ok) { ADMINS = d.admins; renderAdmins(d.admins); }
+    // a-maktab-id selectni to'ldirish
+    const sel = g('a-maktab-id');
+    if (sel && dm.ok) {
+      sel.innerHTML = '<option value="">— Tanlang —</option>' +
+        (dm.maktablar || []).map(m =>
+          `<option value="${m.id}">${esc(m.nomi)}</option>`
+        ).join('');
+    }
   } catch (e) {}
 }
 
@@ -643,31 +664,36 @@ function renderAdmins(admins) {
   el.innerHTML = admins.map(a => `
     <div class="admin-item">
       <div class="admin-info">
-        <span class="admin-name">${a.ism}</span>
-        <span class="admin-email">${a.username}</span>
+        <span class="admin-name">${a.familiya ? esc(a.familiya) + ' ' : ''}${esc(a.ism)}</span>
+        <span class="admin-email">${esc(a.username)}</span>
         <span class="admin-ptag">🔑 ${a.parol || '—'}</span>
       </div>
       <div class="admin-acts">
         <button class="btn-action" onclick="openAE('${esc(a.username)}','${esc(a.ism)}','${esc(a.parol || '')}')">✏️</button>
-        <button class="btn-small"  onclick="delA('${esc(a.username)}','${esc(a.ism)}')">O'chirish</button>
+        <button class="btn-small"  onclick="delA('${esc(a.username)}','${esc(a.familiya ? a.familiya + ' ' + a.ism : a.ism)}')">O'chirish</button>
       </div>
     </div>`).join('');
 }
 
 async function createAdmin() {
+  const familiya = (g('a-familiya')?.value || '').trim();
   const ism      = g('a-ism').value.trim();
   const username = g('a-username').value.trim();
   const parol    = g('a-parol').value.trim();
+  const maktabId = g('a-maktab-id')?.value || '';
   if (!ism || !username || !parol) { toast("⚠️ Barcha maydonlarni to'ldiring", 'error'); return; }
 
   bl(null, 'a-spinner', 'a-btn-txt', true, 'Yaratilmoqda…');
   try {
     const r = await api.createAdmin({
       username: U.username, parol: U.parol,
-      newIsm: ism, newUsername: username, newParol: parol
+      newIsm: ism, newFamiliya: familiya, newUsername: username, newParol: parol,
+      newMaktabId: maktabId || null
     });
     if (r.ok) {
       ['a-ism', 'a-username', 'a-parol'].forEach(id => g(id).value = '');
+      if (g('a-familiya')) g('a-familiya').value = '';
+      if (g('a-maktab-id')) g('a-maktab-id').value = '';
       toast('✅ Admin yaratildi!', 'success');
       await loadAdmins();
       buildAdminSelector();
@@ -727,11 +753,14 @@ async function saveAE() {
 function openTeachers() {
   let teacherUser;
   if (!U.isSuper) {
-    teacherUser = { username: U.username, parol: U.parol, ism: U.ism, isSuper: false, isSuperProxy: false };
+    // Oddiy admin — o'zining maktabId si
+    const adminMaktabId = U.maktabId || (ADMINS.find(a => a.username === U.username)?.maktab_id) || null;
+    teacherUser = { username: U.username, parol: U.parol, ism: U.ism, isSuper: false, isSuperProxy: false, maktabId: adminMaktabId };
   } else if (viewingAdmin) {
-    teacherUser = { username: viewingAdmin.username, parol: viewingAdmin.parol, ism: viewingAdmin.ism, isSuper: false, isSuperProxy: true, superUsername: U.username, superParol: U.parol, superIsm: U.ism };
+    const adminMaktabId = viewingAdmin.maktab_id || null;
+    teacherUser = { username: viewingAdmin.username, parol: viewingAdmin.parol, ism: viewingAdmin.ism, isSuper: false, isSuperProxy: true, superUsername: U.username, superParol: U.parol, superIsm: U.ism, maktabId: adminMaktabId };
   } else {
-    teacherUser = { username: U.username, parol: U.parol, ism: U.ism, isSuper: true, adminsMap: JSON.stringify(ADMINS.map(a => ({ username: a.username, ism: a.ism }))) };
+    teacherUser = { username: U.username, parol: U.parol, ism: U.ism, isSuper: true, adminsMap: JSON.stringify(ADMINS.map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))) };
   }
   sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
   window.location.href = 'oqituvchilar.html';
@@ -748,7 +777,7 @@ function openTeachersFromViewer(viewerUsername, viewerIsm) {
     fromPortfolio: true,
     viewerUsername,
     viewerIsm,
-    adminsMap: JSON.stringify(ADMINS.map(a => ({ username: a.username, ism: a.ism })))
+    adminsMap: JSON.stringify(ADMINS.map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null })))
   };
   sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
   window.location.href = 'oqituvchilar.html';
@@ -909,7 +938,7 @@ function toast(msg, type = '') {
 // ═══════════════════════════════════════════════════
 
 // Barcha buxgalterlar + biriktirilgan adminlar ma'lumoti
-let BUX_DATA = { buxgalterlar: [], adminlar: [] };
+let BUX_DATA = { buxgalterlar: [], maktablar: [] };
 
 async function loadBuxgalterlar() {
   const listEl = g('bux-list');
@@ -919,7 +948,7 @@ async function loadBuxgalterlar() {
     const r = await api.getBiriktirmalar({ username: U.username, parol: U.parol });
     if (!r.ok) { listEl.innerHTML = `<div style="color:#dc2626;padding:12px;font-size:13px;">❌ ${r.error}</div>`; return; }
 
-    BUX_DATA = { buxgalterlar: r.buxgalterlar || [], adminlar: r.adminlar || [] };
+    BUX_DATA = { buxgalterlar: r.buxgalterlar || [], maktablar: r.maktablar || [] };
     renderBuxgalterList();
   } catch(e) {
     listEl.innerHTML = `<div style="color:#dc2626;padding:12px;font-size:13px;">❌ Xatolik: ${e.message}</div>`;
@@ -928,37 +957,32 @@ async function loadBuxgalterlar() {
 
 function renderBuxgalterList() {
   const listEl = g('bux-list');
-  const { buxgalterlar, adminlar } = BUX_DATA;
+  const { buxgalterlar, maktablar } = BUX_DATA;
 
   if (buxgalterlar.length === 0) {
     listEl.innerHTML = '<div class="empty-state"><div class="empty-state-icon">💼</div><p>Buxgalterlar yo\'q</p></div>';
     return;
   }
 
-  // Qaysi adminlar allaqachon biriktirilganini aniqlash
-  const takenAdmins = new Set(
-    adminlar.filter(a => a.buxgalter_username).map(a => a.username)
-  );
-
   listEl.innerHTML = buxgalterlar.map(b => {
-    const myAdmins     = b.adminlar || [];
-    const myAdminNames = myAdmins.map(u => {
-      const a = adminlar.find(x => x.username === u);
-      return a ? `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border-radius:10px;background:#eff4ff;color:#2563eb;font-size:11px;font-weight:600;border:1px solid #bfdbfe;">
-        ${esc(a.ism)}
-        <button onclick="ajratAdmin('${esc(u)}','${esc(b.username)}')"
+    // b.maktablar = [{id, nomi}, ...] — backend dan keladi
+    const myMaktablar = Array.isArray(b.maktablar) ? b.maktablar : [];
+    const myIds = new Set(myMaktablar.map(m => m.id));
+
+    const maktabTags = myMaktablar.map(m =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border-radius:10px;background:#eff4ff;color:#2563eb;font-size:11px;font-weight:600;border:1px solid #bfdbfe;">
+        ${esc(m.nomi)}
+        <button onclick="ajratBuxMaktab(${b.id},${m.id})"
           title="Maktabni ajratish"
           style="width:16px;height:16px;border-radius:50%;border:none;background:#bfdbfe;
                  color:#1d4ed8;font-size:10px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
-      </span>` : '';
-    }).join('');
+      </span>`
+    ).join('');
 
-    // Biriktirilmagan adminlar dropdown uchun
-    const freeAdmins = adminlar.filter(a =>
-      !a.buxgalter_username || myAdmins.includes(a.username)
-    );
-    const dropdownOpts = freeAdmins.map(a =>
-      `<option value="${esc(a.username)}" ${myAdmins.includes(a.username) ? 'disabled' : ''}>${esc(a.ism)} (@${esc(a.username)})</option>`
+    // Hali biriktirilmagan maktablar dropdown uchun
+    const freeMaktablar = maktablar.filter(m => !myIds.has(m.id));
+    const dropdownOpts = freeMaktablar.map(m =>
+      `<option value="${m.id}">${esc(m.nomi)}</option>`
     ).join('');
 
     return `<div style="padding:14px 16px;border-bottom:1px solid var(--border);">
@@ -986,18 +1010,18 @@ function renderBuxgalterList() {
       <!-- Biriktirilgan maktablar -->
       <div style="margin-top:10px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
         <span style="font-size:11px;color:#7a7870;font-weight:600;margin-right:4px;">Maktablar:</span>
-        ${myAdmins.length ? myAdminNames : '<span style="font-size:11px;color:#9ca3af;">Biriktirilmagan</span>'}
+        ${myMaktablar.length ? maktabTags : '<span style="font-size:11px;color:#9ca3af;">Biriktirilmagan</span>'}
       </div>
 
       <!-- Maktab biriktirish -->
       <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="add-admin-sel-${esc(b.username)}"
+        <select id="add-maktab-sel-${b.id}"
           style="padding:5px 8px;border-radius:7px;border:1.5px solid var(--border);
                  font-family:inherit;font-size:12px;background:var(--bg);flex:1;min-width:180px;">
           <option value="">+ Maktab biriktirish…</option>
           ${dropdownOpts}
         </select>
-        <button class="bux-biriktiruv-btn" onclick="biriktirAdmin('${esc(b.username)}')">
+        <button class="bux-biriktiruv-btn" onclick="biriktirBuxMaktab(${b.id})">
           Biriktirish
         </button>
       </div>
@@ -1079,29 +1103,33 @@ function openBuxgalterPanel() {
   window.open('buxgalter.html', '_blank');
 }
 
-// ─── Buxgalter admin biriktirish / ajratish ───────
-async function biriktirAdmin(buxUsername) {
-  const sel  = g(`add-admin-sel-${buxUsername}`);
-  const adminU = sel?.value;
-  if (!adminU) return;
+// ─── Buxgalter maktab biriktirish / ajratish ───────
+async function biriktirBuxMaktab(buxId) {
+  const sel = g(`add-maktab-sel-${buxId}`);
+  const maktabId = sel?.value;
+  if (!maktabId) { toast('⚠️ Maktab tanlang', 'error'); return; }
 
   const r = await api.biriktirAdmin({
     username: U.username, parol: U.parol,
-    buxUsername, adminUsername: adminU
+    buxId, maktabId: parseInt(maktabId, 10)
   });
-  if (r.ok) { toast('✅ Admin biriktirildi', 'success'); loadBuxgalterlar(); }
+  if (r.ok) { toast('✅ Maktab biriktirildi', 'success'); loadBuxgalterlar(); }
   else       toast('❌ ' + r.error, 'error');
 }
 
-async function ajratAdmin(adminUsername, buxUsername) {
+async function ajratBuxMaktab(buxId, maktabId) {
   if (!confirm(`Bu maktabni buxgalterdan ajratasizmi?`)) return;
   const r = await api.ajratAdmin({
     username: U.username, parol: U.parol,
-    adminUsername
+    buxId, maktabId
   });
   if (r.ok) { toast('✅ Ajratildi'); loadBuxgalterlar(); }
   else       toast('❌ ' + r.error, 'error');
 }
+
+// ─── Eski nom aliaslar (backward compat) ───────────
+async function biriktirAdmin(buxUsername) { toast('⚠️ Eski API. Sahifani yangilang.', 'error'); }
+async function ajratAdmin(adminUsername, buxUsername) { toast('⚠️ Eski API. Sahifani yangilang.', 'error'); }
 
 // ─── Buxgalter tahrirlash modal ───────────────────
 let _editBuxOldUsername = '';
@@ -1147,6 +1175,8 @@ async function saveEditBux() {
 // ─── Global exports (HTML onclick lari uchun) ───
 window.biriktirAdmin    = biriktirAdmin;
 window.ajratAdmin       = ajratAdmin;
+window.biriktirBuxMaktab = biriktirBuxMaktab;
+window.ajratBuxMaktab    = ajratBuxMaktab;
 window.openEditBux      = openEditBux;
 window.closeEditBux     = closeEditBux;
 window.saveEditBux      = saveEditBux;
@@ -1578,3 +1608,91 @@ window.openViewerTeachersModal = openViewerTeachersModal;
 window.closeVTModal           = closeVTModal;
 window.vtToggle               = vtToggle;
 window.renderVTList           = renderVTList;
+
+// ═══════════════════════════════════════════════════════
+//  👩‍🏫 O'QITUVCHILAR TAB (index.html ichida)
+// ═══════════════════════════════════════════════════════
+let TEACHERS_TAB = [];
+let TEACHERS_TAB_LOADED = false;
+
+async function loadTeachersTab() {
+  if (!U) return;
+  try {
+    g('loading-oq') && (g('loading-oq').style.display = 'block');
+    const token = localStorage.getItem('innovateit_token');
+    const res = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '')
+      ? 'http://127.0.0.1:3001/api/teachers'
+      : '/api/teachers', {
+      headers: { 'Authorization': 'Bearer ' + token }
+    });
+    const d = await res.json();
+    if (d.ok) {
+      TEACHERS_TAB = d.teachers || [];
+      renderTeachersTab(TEACHERS_TAB);
+      TEACHERS_TAB_LOADED = true;
+    } else {
+      toast('❌ ' + (d.error || 'Xatolik'), 'error');
+    }
+  } catch(e) {
+    toast('❌ Server bilan aloqa yo\'q', 'error');
+  }
+  g('loading-oq') && (g('loading-oq').style.display = 'none');
+}
+
+function renderTeachersTab(list) {
+  const tbody = g('tbl-body-oq');
+  if (!tbody) return;
+  if (!list || !list.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:24px;opacity:.5;">O\'qituvchi yo\'q</td></tr>';
+    return;
+  }
+  const filtered = (() => {
+    const q = (g('f-search-oq')?.value || '').toLowerCase().trim();
+    if (!q) return list;
+    return list.filter(t =>
+      (t.ism || '').toLowerCase().includes(q) ||
+      (t.familiya || '').toLowerCase().includes(q) ||
+      (t.fan || '').toLowerCase().includes(q)
+    );
+  })();
+
+  tbody.innerHTML = filtered.map((t, i) => {
+    const maktablar = (t.maktablar || []).map(m => m.nomi || m).join(', ') || '<i style="color:#9ca3af">Biriktirilmagan</i>';
+    return `<tr>
+      <td>${i + 1}</td>
+      <td><strong>${esc(t.familiya || '')}</strong> ${esc(t.ism || '')}</td>
+      <td><span class="maktab-badge" style="background:#ede9fe;color:#6c63ff;">${esc(t.fan || '—')}</span></td>
+      <td style="font-size:12px;color:#6b7280;">${maktablar}</td>
+      <td>${esc(t.telefon || '—')}</td>
+      <td>${esc(t.telefon2 || '—')}</td>
+      <td>
+        <button class="btn-action" onclick="openTeachersPage()" title="Batafsil">✏️</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+function applyTeacherFilter() {
+  renderTeachersTab(TEACHERS_TAB);
+}
+
+// O'qituvchilar sahifasiga o'tish (to'liq funksional)
+function openTeachersPage() {
+  openTeachers();
+}
+
+// ═══════════════════════════════════════════════════════
+//  📂 PORTFOLIO TAB (index.html ichida)
+// ═══════════════════════════════════════════════════════
+function loadPortfolioTab() {
+  // Portfolio tabi — oqituvchilar.js dagi initPortfolioTab logikasini chaqiradi
+  // Lekin bu sahifada oqituvchilar.js yuklangan emas, shuning uchun
+  // to'liq portfolio sahifasiga yo'naltiramiz
+  const teacherUser = {
+    username: U.username, parol: U.parol, ism: U.ism, isSuper: U.isSuper,
+    adminsMap: JSON.stringify((ADMINS || []).map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))),
+    fromPortfolioTab: true
+  };
+  sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
+  window.location.href = 'oqituvchilar.html';
+}

@@ -9,8 +9,9 @@ let T           = [];
 let eIdx        = null;          // oddiy admin edit index
 let SE_ID       = null;          // superadmin edit teacher id
 let SE_SERTS    = [];            // superadmin edit modal sertifikatlar
-let ADMINS_MAP  = {};
-let ADMINS_LIST = [];
+let ADMINS_MAP    = {};
+let ADMINS_LIST   = [];
+let MAKTABLAR_LIST = [];  // { id, nomi } — maktab biriktirish uchun
 
 const BASE_URL = (location.hostname === 'localhost' || location.hostname === '127.0.0.1' || location.hostname === '')
   ? 'http://127.0.0.1:3001' : '';
@@ -94,7 +95,7 @@ function toggleClearBtn() {
 
 function goBack() { window.location.href = 'index.html'; }
 function openDavomat() { sessionStorage.setItem('iit_teacher_dav_user', JSON.stringify(U)); window.location.href = 'oqituvchilar-davomat.html'; }
-function openJadval()  { sessionStorage.setItem('iit_jadval_user', JSON.stringify(U)); window.location.href = 'dars-jadvali.html'; }
+function openJadval()  { sessionStorage.setItem('iit_jadval_user', JSON.stringify({ ...U, maktabId: U.maktabId || null })); window.location.href = 'dars-jadvali.html'; }
 
 // ─────────────────────────────────────────────
 //  YUKLASH
@@ -106,7 +107,15 @@ async function loadTeachers() {
     try {
       const list = JSON.parse(U.adminsMap);
       ADMINS_LIST = list;
-      list.forEach(a => { ADMINS_MAP[a.username] = a.ism; });
+      list.forEach(a => { ADMINS_MAP[a.username] = a.maktab_nomi || a.ism; });
+    } catch(e) {}
+  }
+
+  // Maktablar ro'yxatini yuklash (biriktirish uchun select)
+  if (U.isSuper && !MAKTABLAR_LIST.length) {
+    try {
+      const md = await api.getMaktablar({ username: U.username, parol: U.parol });
+      if (md.ok) MAKTABLAR_LIST = md.maktablar || [];
     } catch(e) {}
   }
 
@@ -159,20 +168,19 @@ function renderTable(d) {
 
   tb.innerHTML = d.map((t, i) => {
     if (isSuper) {
-      // Biriktirilgan maktab badge'lari (superadmin o'zi filtrlanadi)
-      const validMaktablar = (t.maktablar || []).filter(u => u && u !== 'superadmin');
-      const maktabBadges = validMaktablar.map(u => {
-        const nom = ADMINS_MAP[u] || u;
-        return '<span class="maktab-badge-item">' + esc2(nom)
-          + ' <button class="maktab-badge-x" onclick="removeMaktab(' + t.ri + ',\'' + esc(u) + '\')" title="Ajratish">✕</button></span>';
+      // Biriktirilgan maktab badge'lari — endi {id, nomi} obyektlar
+      const maktablar = (t.maktablar || []).filter(m => m && m.id);
+      const maktabBadges = maktablar.map(m => {
+        return '<span class="maktab-badge-item">' + esc2(m.nomi)
+          + ' <button class="maktab-badge-x" onclick="removeMaktab(' + t.ri + ',' + m.id + ',\'' + esc(m.nomi) + '\')" title="Ajratish">✕</button></span>';
       }).join('');
 
-      const taken = new Set(validMaktablar);
-      const freeOpts = ADMINS_LIST
-        .filter(a => !taken.has(a.username))
-        .map(a => '<option value="' + esc(a.username) + '">' + esc2(a.ism) + '</option>')
+      const takenIds = new Set(maktablar.map(m => m.id));
+      const freeOpts = MAKTABLAR_LIST
+        .filter(m => !takenIds.has(m.id))
+        .map(m => '<option value="' + m.id + '">' + esc2(m.nomi) + '</option>')
         .join('');
-      const hasFree = ADMINS_LIST.some(a => !taken.has(a.username));
+      const hasFree = MAKTABLAR_LIST.some(m => !takenIds.has(m.id));
 
       return '<tr>'
         + '<td class="mono">' + (i+1) + '</td>'
@@ -225,7 +233,7 @@ function renderMobile(d) {
   }
 
   el.innerHTML = d.map((t, i) => {
-    const maktabText = (t.maktablar||[]).map(u => ADMINS_MAP[u]||u).join(', ') || '—';
+    const maktabText = (t.maktablar||[]).map(m => m.nomi || m).join(', ') || '—';
     return '<div class="tc">'
       + '<div class="tc-head">'
         + '<div>'
@@ -256,27 +264,31 @@ function renderMobile(d) {
 // ─────────────────────────────────────────────
 //  SUPERADMIN: MAKTAB BIRIKTIRISH / AJRATISH
 // ─────────────────────────────────────────────
+// ─────────────────────────────────────────────
+//  SUPERADMIN: MAKTAB BIRIKTIRISH / AJRATISH
+// ─────────────────────────────────────────────
 async function addMaktab(ri) {
   const t = T[ri]; if (!t) return;
   const sel = g('maktab-sel-' + ri); if (!sel) return;
-  const adminUsername = sel.value;
-  if (!adminUsername) { toast('⚠️ Maktab tanlang', 'error'); return; }
+  const maktabId = sel.value;
+  if (!maktabId) { toast('⚠️ Maktab tanlang', 'error'); return; }
+  const maktab = MAKTABLAR_LIST.find(m => m.id == maktabId);
+  const maktabNomi = maktab ? maktab.nomi : ('Maktab #' + maktabId);
   try {
-    const r = await api.addTeacherMaktab({ username: U.username, parol: U.parol, teacherId: t.id, adminUsername });
+    const r = await api.biriktirTeacher({ username: U.username, parol: U.parol, teacherId: t.id, maktabId });
     if (r.ok) {
-      toast('✅ ' + (ADMINS_MAP[adminUsername]||adminUsername) + " maktabiga biriktirildi!", 'success');
+      toast('✅ ' + maktabNomi + " maktabiga biriktirildi!", 'success');
       await loadTeachers();
     } else toast('❌ ' + r.error, 'error');
   } catch { toast('❌ Xatolik', 'error'); }
 }
 
-async function removeMaktab(ri, adminUsername) {
+async function removeMaktab(ri, maktabId, maktabNomi) {
   const t = T[ri]; if (!t) return;
-  const nom = ADMINS_MAP[adminUsername] || adminUsername;
-  if (!confirm('"' + t.familiya + ' ' + t.ism + '" o\'qituvchini ' + nom + ' maktabidan ajratasizmi?')) return;
+  if (!confirm('"' + t.familiya + ' ' + t.ism + '" o\'qituvchini ' + maktabNomi + ' maktabidan ajratasizmi?')) return;
   try {
-    const r = await api.removeTeacherMaktab({ username: U.username, parol: U.parol, teacherId: t.id, adminUsername });
-    if (r.ok) { toast('✅ ' + nom + " maktabidan ajratildi", 'success'); await loadTeachers(); }
+    const r = await api.ajratTeacher({ username: U.username, parol: U.parol, teacherId: t.id, maktabId });
+    if (r.ok) { toast('✅ ' + maktabNomi + " maktabidan ajratildi", 'success'); await loadTeachers(); }
     else toast('❌ ' + r.error, 'error');
   } catch { toast('❌ Xatolik', 'error'); }
 }
@@ -709,7 +721,7 @@ function openMergeModal(ri) {
   } else {
     // Ro'yxatdan tanlash
     const lines = candidates.map((c, i) =>
-      `${i+1}. ${c.familiya} ${c.ism} — ${c.fan||"Fan yo'q"} — Maktablar: ${(c.maktablar||[]).map(u => ADMINS_MAP[u]||u).join(', ')||'Biriktirilmagan'}`
+      `${i+1}. ${c.familiya} ${c.ism} — ${c.fan||"Fan yo'q"} — Maktablar: ${(c.maktablar||[]).map(m => m.nomi||m).join(', ')||'Biriktirilmagan'}`
     );
     const choice = prompt(
       '🔀 Qaysi o\'qituvchini o\'chirish (birlashtirish) kerak?\n\nSaqlanadigan: ' + keep.familiya + ' ' + keep.ism +
@@ -736,11 +748,11 @@ function renderMergeModal() {
   // Info panellarini to'ldirish
   g('mg-keep-name').textContent   = keep.familiya + ' ' + keep.ism;
   g('mg-keep-fan').textContent    = keep.fan || "Fan ko'rsatilmagan";
-  g('mg-keep-maktab').textContent = (keep.maktablar||[]).map(u => ADMINS_MAP[u]||u).join(', ') || 'Maktab biriktirilmagan';
+  g('mg-keep-maktab').textContent = (keep.maktablar||[]).map(m => m.nomi||m).join(', ') || 'Maktab biriktirilmagan';
 
   g('mg-remove-name').textContent   = remove.familiya + ' ' + remove.ism;
   g('mg-remove-fan').textContent    = remove.fan || "Fan ko'rsatilmagan";
-  g('mg-remove-maktab').textContent = (remove.maktablar||[]).map(u => ADMINS_MAP[u]||u).join(', ') || 'Maktab biriktirilmagan';
+  g('mg-remove-maktab').textContent = (remove.maktablar||[]).map(m => m.nomi||m).join(', ') || 'Maktab biriktirilmagan';
 
   // Ism/familiya tanlov tugmalari
   const keepName   = keep.ism   + ' ' + keep.familiya;

@@ -1,5 +1,10 @@
-const bcrypt = require('bcrypt');
-const pool   = require('../db');
+// ═══════════════════════════════════════════════════════════════════════════
+//  Auth Middleware
+//  Faqat superadmin username+parol bilan kiradi.
+//  Qolgan barcha foydalanuvchilar (admin, buxgalter, o'qituvchi, o'quvchi)
+//  Telegram Mini App orqali kiradi → /api/telegram/check/:telegramId
+// ═══════════════════════════════════════════════════════════════════════════
+const bcrypt = require('bcryptjs');
 require('dotenv').config();
 
 const SUPER_ADMIN_USERNAME = process.env.SUPER_ADMIN_USERNAME || 'superadmin';
@@ -14,45 +19,17 @@ async function checkPassword(input, stored) {
   return input === stored;
 }
 
-async function verifyAdmin(username, parol) {
+// ─── Faqat superadmin uchun ──────────────────────────────────────────────────
+async function verifySuperAdmin(username, parol) {
   if (!username || !parol) return null;
-  if (username === SUPER_ADMIN_USERNAME) {
-    const ok = await checkPassword(parol, SUPER_ADMIN_PAROL);
-    if (ok) return { ism: SUPER_ADMIN_ISM, isSuper: true };
-    return null;
-  }
-  try {
-    const result = await pool.query(
-      'SELECT ism, parol FROM adminlar WHERE username = $1',
-      [username.trim()]
-    );
-    if (result.rows.length === 0) return null;
-    const { ism, parol: stored } = result.rows[0];
-    const ok = await checkPassword(parol, stored);
-    return ok ? { ism, isSuper: false } : null;
-  } catch (err) {
-    console.error('verifyAdmin xatolik:', err.message);
-    return null;
-  }
+  if (username !== SUPER_ADMIN_USERNAME) return null;
+  const ok = await checkPassword(parol, SUPER_ADMIN_PAROL);
+  if (!ok) return null;
+  return { ism: SUPER_ADMIN_ISM, isSuper: true };
 }
 
-async function verifyBuxgalter(username, parol) {
-  if (!username || !parol) return null;
-  try {
-    const result = await pool.query(
-      'SELECT ism, parol FROM buxgalterlar WHERE username = $1',
-      [username.trim()]
-    );
-    if (result.rows.length === 0) return null;
-    const { ism, parol: stored } = result.rows[0];
-    const ok = await checkPassword(parol, stored);
-    return ok ? { ism, username: username.trim() } : null;
-  } catch (err) {
-    console.error('verifyBuxgalter xatolik:', err.message);
-    return null;
-  }
-}
-
+// ─── Portfolio viewer uchun (hali ham username/parol ishlatadi) ──────────────
+const pool = require('../db');
 async function verifyViewer(username, parol) {
   if (!username || !parol) return null;
   try {
@@ -76,8 +53,7 @@ async function hashPassword(plainText) {
 }
 
 module.exports = {
-  verifyAdmin,
-  verifyBuxgalter,
+  verifySuperAdmin,
   verifyViewer,
   hashPassword,
   SUPER_ADMIN_USERNAME,

@@ -176,8 +176,8 @@ body {
   font-size: 11px; color: var(--muted);
   background: var(--bg); border: 1px solid var(--border);
   padding: 3px 10px; border-radius: 20px;
-  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
-  max-width: 120px; flex-shrink: 1;
+  overflow: visible; text-overflow: clip; white-space: nowrap;
+  max-width: 220px; flex-shrink: 0;
 }
 @media (max-width: 480px) { .admin-badge { display: none; } }
 .admin-badge.super { background: #fef3c7; border-color: #fbbf24; color: #92400e; }
@@ -556,3 +556,177 @@ tbody td { padding: 10px 14px; font-size: 13px; }
 .tel-hint.err { color: var(--danger); }
 .field-input.tel-ok  { border-color: var(--success); }
 .field-input.tel-err { border-color: var(--danger); }
+/* ══ SO'ROVLAR FILTER TUGMALARI ══ */
+.sr-filter-btn {
+  padding: 7px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  border: 1.5px solid #e5e7eb;
+  border-radius: 20px;
+  background: #f9fafb;
+  color: #374151;
+  cursor: pointer;
+  transition: all .15s;
+  -webkit-tap-highlight-color: transparent;
+}
+.sr-filter-btn:hover {
+  background: #f3f4f6;
+  border-color: #d1d5db;
+}
+.sr-filter-btn.active {
+  background: #6c63ff;
+  border-color: #6c63ff;
+  color: #fff;
+}
+
+/* ══ SO'ROVLAR AMAL TUGMALARI ══ */
+.sr-approve-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  background: #ecfdf5;
+  color: #059669;
+  border: 1.5px solid #6ee7b7;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  margin-right: 6px;
+  white-space: nowrap;
+}
+.sr-approve-btn:hover {
+  background: #059669;
+  color: #fff;
+  border-color: #059669;
+}
+.sr-reject-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  background: #fff1f2;
+  color: #e11d48;
+  border: 1.5px solid #fda4af;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.sr-reject-btn:hover {
+  background: #e11d48;
+  color: #fff;
+  border-color: #e11d48;
+}
+
+/* ══ SO'ROVLAR — BIRIKTIRISH BLOKI ══ */
+.sr-birikma-wrap {
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+}
+.sr-birikma-label {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: .04em;
+  margin-bottom: 6px;
+}
+.sr-entity-sel {
+  width: 100%;
+  padding: 7px 10px;
+  font-size: 13px;
+  font-family: 'DM Sans', sans-serif;
+  border: 1.5px solid #cbd5e1;
+  border-radius: 8px;
+  background: #fff;
+  color: #1e293b;
+  outline: none;
+  cursor: pointer;
+  transition: border-color .15s;
+}
+.sr-entity-sel:focus { border-color: #6c63ff; }
+.sr-birikma-hint {
+  font-size: 12px;
+  margin-top: 5px;
+  font-weight: 600;
+  min-height: 16px;
+}
+.sr-amal-wrap { min-width: 240px; }
+.sr-amal-td { vertical-align: top; padding-top: 12px !important; }
+.sr-btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* SO'ROVLAR — APPROVE/REJECT tugmalari (disabled holat) */
+.sr-approve-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #6ee7b7;
+}
+.sr-approve-btn:disabled:hover {
+  background: #ecfdf5;
+  color: #059669;
+  border-color: #6ee7b7;
+}
+
+/* SO'ROVLAR — holat badge */
+.sr-holat {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+.sr-holat.kutilmoqda  { background: #fef3c7; color: #92400e; }
+.sr-holat.tasdiqlandi { background: #d1fae5; color: #065f46; }
+.sr-holat.rad-etildi  { background: #fee2e2; color: #991b1b; }
+
+/* SO'ROVLAR — TelegramID kod */
+.sr-tgid {
+  font-size: 12px;
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #475569;
+}
+
+/* SO'ROVLAR — pozitsiya */
+.sr-poz {
+  font-size: 12px;
+  font-weight: 600;
+  color: #4f46e5;
+}
+
+/* ══ SO'ROVLAR — AJRATISH TUGMASI ══ */
+.sr-detach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  font-family: 'DM Sans', sans-serif;
+  background: #fff7ed;
+  color: #c2410c;
+  border: 1.5px solid #fdba74;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all .15s;
+  white-space: nowrap;
+}
+.sr-detach-btn:hover {
+  background: #c2410c;
+  color: #fff;
+  border-color: #c2410c;
+}

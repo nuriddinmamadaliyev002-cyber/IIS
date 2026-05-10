@@ -167,17 +167,20 @@ async function loadTeachersAndDavomat(date) {
     const dd = await api.getTeacherDavomat({ username:U.username, parol:U.parol, sana:dateStr(date) });
     if (dd.ok && dd.records.length) {
       dd.records.forEach(r => {
-        attendance[r.ism] = r.status;
+        // Backend oqituvchi_ism field qaytaradi (r.ism emas!)
+        const key = r.oqituvchi_ism || r.ism;
+        if (!key) return;
+        attendance[key] = r.status;
         if (r.izoh) {
-          izohlar[r.ism] = r.izoh;
-          if (r.status === 'kelmadi') kelmadiSabab[r.ism] = r.izoh;
-          if (r.status === 'sababli') sababliIzoh[r.ism]  = r.izoh;
-          if (r.status === 'kech')    kechSabablar[r.ism] = r.izoh;
+          izohlar[key] = r.izoh;
+          if (r.status === 'kelmadi') kelmadiSabab[key] = r.izoh;
+          if (r.status === 'sababli') sababliIzoh[key]  = r.izoh;
+          if (r.status === 'kech')    kechSabablar[key] = r.izoh;
         }
         if (r.dars_soat || r.dars_daqiqa) {
-          darsVaqtlar[r.ism] = { soat: r.dars_soat || 0, daqiqa: r.dars_daqiqa || 0 };
+          darsVaqtlar[key] = { soat: r.dars_soat || 0, daqiqa: r.dars_daqiqa || 0 };
         }
-        if (r.kech_minut) kechMinutlar[r.ism] = r.kech_minut;
+        if (r.kech_minut) kechMinutlar[key] = r.kech_minut;
       });
     }
 

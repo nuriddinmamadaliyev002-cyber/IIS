@@ -308,6 +308,16 @@ function applyGroup(sinflar, btn) {
     if (chip) chip.classList.toggle('sel', !allSel);
   });
   if (!allSel) btn.classList.add('sel');
+
+  // O'quvchilar paneli: oxirgi tanlangan sinfni ko'rsat
+  const selChips = [...g('b-sinf-chips').querySelectorAll('.sinf-chip.sel')];
+  if (selChips.length) {
+    activeSinfChip = selChips[selChips.length - 1].dataset.s;
+    loadOquvchilarForSinf(activeSinfChip);
+  } else {
+    g('b-oquvchilar-panel').style.display = 'none';
+    activeSinfChip = null;
+  }
 }
 
 function clearBirikChips() {
@@ -323,18 +333,31 @@ function clearBirik() {
   clearBirikChips();
   g('b-bosh-s').value='08'; g('b-bosh-m').value='00';
   g('b-tug-s').value='14';  g('b-tug-m').value='00';
-  editingJadvalId = null;  // Tahrirlash rejimini tugatish
+  // O'quvchilar panelini tozalash
+  g('b-oquvchilar-panel').style.display = 'none';
+  g('b-oquvchilar-list').innerHTML = '';
+  activeSinfChip = null;
+  selectedOquvchilarMap.clear();
+  editingJadvalId = null;
 }
 
 async function saveBiriktir() {
   const teacherVal = g('b-teacher').value;
   if (!teacherVal) { toast('⚠️ O\'qituvchi tanlang', 'error'); return; }
 
+  // Joriy ko'rsatilgan sinfni Map ga saqlash (Saqlash bosilgan payt)
+  saveCurrentCheckboxState();
+
   const sinflar = [...g('b-sinf-chips').querySelectorAll('.sinf-chip.sel')].map(c => c.dataset.s);
   const kunlar  = [...g('b-kun-chips').querySelectorAll('.kun-chip.sel')].map(c => parseInt(c.dataset.k));
 
-  if (!sinflar.length) { toast('⚠️ Kamida 1 sinf tanlang', 'error'); return; }
+  // Sinf tekshiruvi: chip belgilangan YOKI Map da o'quvchilar bor
+  const hasSinf = sinflar.length > 0 || selectedOquvchilarMap.size > 0;
+  if (!hasSinf) { toast('⚠️ Kamida 1 sinf tanlang', 'error'); return; }
   if (!kunlar.length)  { toast('⚠️ Kamida 1 kun tanlang', 'error'); return; }
+
+  // Agar chip belgilanmagan lekin Map da bor bo'lsa, Map kalit laridan sinflar sifatida foydalanamiz
+  const effectiveSinflar = sinflar.length > 0 ? sinflar : [...selectedOquvchilarMap.keys()];
 
   const teacher = TEACHERS.find(t => t.familiya + ' ' + t.ism === teacherVal);
   const boshlanish = padZ(g('b-bosh-s').value) + ':' + padZ(g('b-bosh-m').value);
@@ -342,24 +365,52 @@ async function saveBiriktir() {
 
   bl('b-save-btn','b-spinner','b-btn-txt',true,'Saqlanmoqda…');
   try {
+    // 1. Jadval saqlash
     const r = await api.saveJadval({
       username: U.username, parol: U.parol,
-      id: editingJadvalId || undefined,   // Tahrirlash: UPDATE, yo'q bo'lsa: INSERT
+      id: editingJadvalId || undefined,
       teacher_ism: teacher ? teacher.ism : teacherVal.split(' ').slice(1).join(' '),
       teacher_familiya: teacher ? teacher.familiya : teacherVal.split(' ')[0],
       fan: teacher ? teacher.fan : '',
-      sinflar: sinflar.join(','),
+      sinflar: effectiveSinflar.join(','),
       kunlar: kunlar.join(','),
       boshlanish, tugash
     });
-    if (r.ok) {
-      await loadJadvallar();
-      populateFilters();
-      renderJadval();
-      renderSavedJadvallar();
-      clearBirik();
-      toast('✅ Jadval saqlandi!', 'success');
-    } else toast('❌ ' + r.error, 'error');
+
+    if (!r.ok) { toast('❌ ' + r.error, 'error'); return; }
+
+    // 2. O'quvchilarni biriktirish — selectedOquvchilarMap dagi barcha sinflar uchun
+    if (teacher && selectedOquvchilarMap.size > 0) {
+      const maktabId = (teacher.maktablar && teacher.maktablar.length > 0)
+        ? teacher.maktablar[0].id
+        : (U && U.maktabId ? U.maktabId : null);
+
+      if (maktabId) {
+        // Avval joriy ko'rsatilgan sinfni ham Map ga saqlash
+        saveCurrentCheckboxState();
+
+        const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+          ? 'http://127.0.0.1:3001' : '';
+        const token = localStorage.getItem('innovateit_token');
+
+        // Faqat tanlangan sinflar uchun saqlash (parallel)
+        const savePromises = [...selectedOquvchilarMap.entries()].map(([sinf, ids]) =>
+          fetch(`${BASE}/api/teachers/oquvchi-birik`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + token },
+            body: JSON.stringify({ teacherId: teacher.id, oquvchiIds: [...ids], sinf, maktabId })
+          })
+        );
+        await Promise.all(savePromises);
+      }
+    }
+
+    await loadJadvallar();
+    populateFilters();
+    renderJadval();
+    renderSavedJadvallar();
+    clearBirik();
+    toast('✅ Jadval va o\'quvchilar saqlandi!', 'success');
   } catch { toast('❌ Xatolik', 'error'); }
   bl('b-save-btn','b-spinner','b-btn-txt',false,'💾 Saqlash');
 }
@@ -374,14 +425,34 @@ function renderSavedJadvallar() {
     return;
   }
 
-  wrap.innerHTML = JADVALLAR.map((j, i) => `
+  wrap.innerHTML = JADVALLAR.map((j, i) => {
+    // O'qituvchini TEACHERS dan topib ID sini olamiz
+    const teacherObj = TEACHERS.find(t =>
+      t.ism === j.teacher_ism && t.familiya === j.teacher_familiya
+    );
+    const teacherId  = teacherObj ? teacherObj.id : null;
+    const maktabId   = teacherObj && teacherObj.maktablar && teacherObj.maktablar.length > 0
+      ? teacherObj.maktablar[0].id
+      : (U && U.maktabId ? U.maktabId : null);
+
+    const sinfBadges = j.sinflar.map(s => {
+      if (teacherId && maktabId) {
+        return `<span class="sji-sinf sji-sinf-link"
+          title="${s}-sinf o'quvchilarini ko'rish"
+          onclick="showSinfOquvchilar('${esc(j.teacher_familiya+' '+j.teacher_ism)}',${teacherId},'${esc(s)}',${maktabId})"
+        >${s}</span>`;
+      }
+      return `<span class="sji-sinf">${s}</span>`;
+    }).join('');
+
+    return `
     <div class="saved-jad-item">
       <div class="sji-info">
         <div class="sji-name">${j.teacher_familiya} ${j.teacher_ism}
           <span style="font-size:11px;color:var(--muted);margin-left:6px;">${j.fan||'—'}</span>
         </div>
         <div style="display:flex;gap:8px;align-items:center;margin-top:4px;flex-wrap:wrap;">
-          <div class="sji-sinflar">${j.sinflar.map(s=>`<span class="sji-sinf">${s}</span>`).join('')}</div>
+          <div class="sji-sinflar">${sinfBadges}</div>
           <div class="sji-kunlar">${j.kunlar.map(k=>`<span class="sji-kun">${KUN_SHORT[k]||k}</span>`).join('')}</div>
           ${j.boshlanish ? `<span style="font-size:11px;color:var(--muted);">⏰ ${j.boshlanish}–${j.tugash}</span>` : ''}
         </div>
@@ -390,7 +461,67 @@ function renderSavedJadvallar() {
         <button class="btn-action" title="Tahrirlash" onclick="editJadval(${i})">✏️</button>
         <button class="btn-action" title="O'chirish"  onclick="deleteJadval(${j.id},'${esc(j.teacher_familiya+' '+j.teacher_ism)}')">🗑️</button>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
+}
+
+// ─────────────────────────────────────────────
+//  SINF O'QUVCHILARI MODALI
+// ─────────────────────────────────────────────
+async function showSinfOquvchilar(teacherFish, teacherId, sinf, maktabId) {
+  const modal   = g('sinf-oquv-modal');
+  const title   = g('sinf-oquv-title');
+  const body    = g('sinf-oquv-body');
+
+  const sinfLabel = sinf.replace(/-?sinf$/i, '').trim();
+  title.textContent = `${teacherFish} — ${sinfLabel}-sinf o'quvchilari`;
+  body.innerHTML    = `<div class="sinf-oquv-loading"><span class="spinner" style="display:inline-block;width:20px;height:20px;border:3px solid #e2e8f0;border-top-color:var(--primary);border-radius:50%;animation:spin .7s linear infinite;"></span> Yuklanmoqda...</div>`;
+  modal.style.display = 'flex';
+
+  try {
+    const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://127.0.0.1:3001' : '';
+    const res  = await fetch(
+      `${BASE}/api/teachers/sinf-oquvchilar?sinf=${encodeURIComponent(sinf)}&maktabId=${maktabId}&teacherId=${teacherId}`,
+      { headers: { Authorization: `Bearer ${getToken()}` } }
+    );
+    const data = await res.json();
+
+    if (!data.ok) {
+      body.innerHTML = `<div class="sinf-oquv-empty">❌ ${data.error || 'Xatolik yuz berdi'}</div>`;
+      return;
+    }
+
+    // Faqat biriktirilgan o'quvchilarni ko'rsatamiz
+    const biriktirilganlar = data.oquvchilar.filter(o => o.biriktirilgan);
+
+    if (!biriktirilganlar.length) {
+      body.innerHTML = `<div class="sinf-oquv-empty">Bu sinfdan o'quvchi biriktirilmagan</div>`;
+      return;
+    }
+
+    body.innerHTML = `
+      <div class="sinf-oquv-count">${biriktirilganlar.length} ta o'quvchi biriktirilgan</div>
+      <ul class="sinf-oquv-list">
+        ${biriktirilganlar.map((o, idx) => `
+          <li class="sinf-oquv-item">
+            <span class="sinf-oquv-num">${idx + 1}</span>
+            <span class="sinf-oquv-name">${o.familiya} ${o.ism}</span>
+          </li>
+        `).join('')}
+      </ul>`;
+  } catch (err) {
+    body.innerHTML = `<div class="sinf-oquv-empty">❌ Server bilan aloqa yo'q</div>`;
+  }
+}
+
+function closeSinfOquvModal() {
+  g('sinf-oquv-modal').style.display = 'none';
+}
+
+// Token olish yordamchi funksiyasi
+function getToken() {
+  return localStorage.getItem('innovateit_token') || '';
 }
 
 function editJadval(idx) {
@@ -789,9 +920,11 @@ function buildTeacherSheet(wb, tName) {
 
 function setupChips(containerId, cls) {
   const cont = g(containerId); if (!cont) return;
-  cont.querySelectorAll('.' + cls).forEach(c =>
-    c.addEventListener('click', () => c.classList.toggle('sel'))
-  );
+  cont.querySelectorAll('.' + cls).forEach(c => {
+    // sinf-chip larni o'tkazib yuboramiz — ular toggleSinfChip orqali boshqariladi
+    if (cls === 'sinf-chip') return;
+    c.addEventListener('click', () => c.classList.toggle('sel'));
+  });
 }
 
 function setupVaqtInp(id) {
@@ -812,6 +945,177 @@ function parseDays(str) {
 function parseSinflar(str) {
   if (!str) return [];
   return String(str).split(',').map(s => s.trim()).filter(Boolean);
+}
+
+// ─── O'QUVCHILAR BIRIKTIRISH LOGIKASI ────────────────────────────────────────
+
+// Joriy tanlangan sinf chip
+let activeSinfChip = null;
+// Har bir sinf uchun tanlangan o'quvchi IDlarini saqlaydigan Map
+// { '5-sinf': Set([1, 2, 3]), '6-sinf': Set([4, 5]) }
+const selectedOquvchilarMap = new Map();
+
+// Joriy ko'rsatilgan sinfning checkbox holatini Map ga saqlash
+function saveCurrentCheckboxState() {
+  const cbs = g('b-oquvchilar-list').querySelectorAll('.oquvchi-cb');
+  if (!cbs.length || !activeSinfChip) return;
+  const ids = new Set([...cbs].filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id)));
+  selectedOquvchilarMap.set(activeSinfChip, ids);
+}
+
+// Sinf chip bosilganda — toggle + o'quvchilarni yuklash
+async function toggleSinfChip(chipEl) {
+  const sinf = chipEl.dataset.s;
+  const isNowSel = !chipEl.classList.contains('sel');
+
+  // Avval joriy sinfning checkbox holatini saqlash
+  saveCurrentCheckboxState();
+
+  // Chipsni toggle qilish
+  chipEl.classList.toggle('sel', isNowSel);
+
+  if (isNowSel) {
+    activeSinfChip = sinf;
+    await loadOquvchilarForSinf(sinf);
+  } else {
+    // Bu sinf deselect bo'ldi — uning saqlangan ma'lumotlarini o'chirish
+    selectedOquvchilarMap.delete(sinf);
+
+    // Hali tanlangan boshqa chip bormi?
+    const stillSel = [...g('b-sinf-chips').querySelectorAll('.sinf-chip.sel')];
+    if (stillSel.length) {
+      activeSinfChip = stillSel[stillSel.length - 1].dataset.s;
+      await loadOquvchilarForSinf(activeSinfChip);
+    } else {
+      activeSinfChip = null;
+      g('b-oquvchilar-panel').style.display = 'none';
+      g('b-oquvchilar-list').innerHTML = '';
+    }
+  }
+}
+
+// Berilgan sinf uchun o'quvchilarni yuklash va checkbox bilan ko'rsatish
+async function loadOquvchilarForSinf(sinf) {
+  const teacherVal = g('b-teacher').value;
+  if (!teacherVal) return;
+
+  const teacher = TEACHERS.find(t => t.familiya + ' ' + t.ism === teacherVal);
+  if (!teacher) return;
+
+  // O'qituvchining maktabini olamiz — teacher.maktablar dan, yoki login qilgan admin maktabidan
+  const maktabId = (teacher.maktablar && teacher.maktablar.length > 0)
+    ? teacher.maktablar[0].id
+    : (U && U.maktabId ? U.maktabId : null);
+
+  if (!maktabId) {
+    g('b-oquvchilar-list').innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:12px;">Maktab topilmadi</div>';
+    g('b-oquvchilar-panel').style.display = '';
+    return;
+  }
+
+  g('b-sinf-label').textContent = sinf;
+  g('b-oquvchilar-panel').style.display = '';
+  g('b-oquvchilar-list').innerHTML = '<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:12px;"><span class="spinner" style="display:inline-block;width:18px;height:18px;"></span> Yuklanmoqda...</div>';
+
+  try {
+    const BASE = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+      ? 'http://127.0.0.1:3001' : '';
+    const token = localStorage.getItem('innovateit_token');
+    const r = await fetch(
+      `${BASE}/api/teachers/sinf-oquvchilar?sinf=${encodeURIComponent(sinf)}&maktabId=${maktabId}&teacherId=${teacher.id}`,
+      { headers: { 'Authorization': 'Bearer ' + token } }
+    );
+    const d = await r.json();
+
+    if (!d.ok) {
+      g('b-oquvchilar-list').innerHTML = `<div style="color:#f87171;font-size:13px;grid-column:1/-1;text-align:center;padding:12px;">❌ ${d.error || 'Xatolik'}</div>`;
+      return;
+    }
+
+    if (!d.oquvchilar.length) {
+      g('b-oquvchilar-list').innerHTML = `<div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:12px;">Bu sinfda o'quvchi yo'q</div>`;
+      updateSelectedCount();
+      return;
+    }
+
+    // Map da saqlangan holatni olamiz (agar mavjud bo'lsa)
+    const savedIds = selectedOquvchilarMap.get(sinf);
+
+    g('b-oquvchilar-list').innerHTML = d.oquvchilar.map(o => {
+      // Saqlangan holatni ustunlik berish — aks holda DB dan kelgan holat
+      const isChecked = savedIds !== undefined
+        ? savedIds.has(o.id)
+        : o.biriktirilgan;
+      return `
+      <label class="oquvchi-check-item" style="
+        display:flex;align-items:center;gap:8px;padding:7px 10px;
+        border-radius:8px;cursor:pointer;transition:background .15s;
+        background:${isChecked ? 'var(--accent-bg,rgba(99,102,241,0.08))' : 'transparent'};
+      " onmouseenter="this.style.background='var(--hover-bg,rgba(0,0,0,0.04))'"
+         onmouseleave="this.style.background='${isChecked ? 'var(--accent-bg,rgba(99,102,241,0.08))' : 'transparent'}'">
+        <input type="checkbox" class="oquvchi-cb" data-id="${o.id}" data-sinf="${sinf}"
+          ${isChecked ? 'checked' : ''}
+          onchange="onOquvchiCbChange(this)"
+          style="width:16px;height:16px;cursor:pointer;accent-color:var(--accent,#6366f1);">
+        <span style="font-size:13px;">${esc(o.familiya)} ${esc(o.ism)}</span>
+      </label>`;
+    }).join('');
+
+    // Agar bu sinf uchun Map da yozuv yo'q bo'lsa (birinchi marta yuklanayapti),
+    // DB dan kelgan holatni Map ga yozamiz
+    if (!selectedOquvchilarMap.has(sinf)) {
+      const initIds = new Set(d.oquvchilar.filter(o => o.biriktirilgan).map(o => o.id));
+      selectedOquvchilarMap.set(sinf, initIds);
+    }
+
+    updateSelectedCount();
+  } catch(e) {
+    g('b-oquvchilar-list').innerHTML = `<div style="color:#f87171;font-size:13px;grid-column:1/-1;text-align:center;padding:12px;">❌ Server bilan aloqa yo'q</div>`;
+  }
+}
+
+// Checkbox o'zgarganda Map ni yangilash va fon rangini o'zgartirish
+function onOquvchiCbChange(cb) {
+  const sinf = cb.dataset.sinf;
+  const id   = parseInt(cb.dataset.id);
+  if (!selectedOquvchilarMap.has(sinf)) selectedOquvchilarMap.set(sinf, new Set());
+  if (cb.checked) selectedOquvchilarMap.get(sinf).add(id);
+  else            selectedOquvchilarMap.get(sinf).delete(id);
+  // Label fon rangini yangilash
+  const label = cb.closest('label');
+  if (label) label.style.background = cb.checked ? 'var(--accent-bg,rgba(99,102,241,0.08))' : 'transparent';
+  updateSelectedCount();
+}
+
+function updateSelectedCount() {
+  // Barcha tanlanganlar soni — barcha sinflar bo'yicha
+  let total = 0, checked = 0;
+  g('b-oquvchilar-list').querySelectorAll('.oquvchi-cb').forEach(cb => {
+    total++;
+    if (cb.checked) checked++;
+  });
+  const el = g('b-selected-count');
+  // Barcha sinflardagi jami tanlangan soni ham ko'rsatish
+  const allSelected = [...selectedOquvchilarMap.values()].reduce((acc, s) => acc + s.size, 0);
+  if (el) el.textContent = total
+    ? `${checked} / ${total} (jami ${allSelected} ta)`
+    : '';
+}
+
+function selectAllOquvchilar(val) {
+  const cbs = g('b-oquvchilar-list').querySelectorAll('.oquvchi-cb');
+  cbs.forEach(cb => {
+    cb.checked = val;
+    const label = cb.closest('label');
+    if (label) label.style.background = val ? 'var(--accent-bg,rgba(99,102,241,0.08))' : 'transparent';
+  });
+  // Map ni yangilash
+  if (activeSinfChip) {
+    if (!selectedOquvchilarMap.has(activeSinfChip)) selectedOquvchilarMap.set(activeSinfChip, new Set());
+    if (val) cbs.forEach(cb => selectedOquvchilarMap.get(activeSinfChip).add(parseInt(cb.dataset.id)));
+    else     selectedOquvchilarMap.get(activeSinfChip).clear();
+  }
+  updateSelectedCount();
 }
 
 function bl(btnId, spId, txtId, loading, txt) {

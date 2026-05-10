@@ -1,0 +1,732 @@
+:root {
+      --bg:       var(--tg-theme-bg-color, #0f0f13);
+      --text:     var(--tg-theme-text-color, #f0f0f5);
+      --hint:     var(--tg-theme-hint-color, #888899);
+      --btn:      var(--tg-theme-button-color, #6c63ff);
+      --btn-text: var(--tg-theme-button-text-color, #ffffff);
+      --second:   var(--tg-theme-secondary-bg-color, #1a1a24);
+      --radius:   16px;
+      --accent:   #6c63ff;
+      --accent2:  #a78bfa;
+      --success:  #10b981;
+      --danger:   #ef4444;
+      --warn:     #f59e0b;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+    body {
+      font-family: 'SF Pro Display', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Sahifalar ── */
+    .page { display: none; min-height: 100vh; flex-direction: column; }
+    .page.active { display: flex; }
+
+    /* ══════════════════════════════════
+       YUKLANISH SAHIFASI
+    ══════════════════════════════════ */
+    #loadingPage {
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+    }
+    .pulse-logo {
+      width: 88px; height: 88px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 24px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 42px;
+      animation: pulse 1.8s ease-in-out infinite;
+      box-shadow: 0 0 40px rgba(108,99,255,0.4);
+    }
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); box-shadow: 0 0 40px rgba(108,99,255,0.4); }
+      50%       { transform: scale(1.06); box-shadow: 0 0 60px rgba(108,99,255,0.7); }
+    }
+    .loading-label {
+      color: var(--hint);
+      font-size: 15px;
+      letter-spacing: 0.5px;
+    }
+    .dot-anim::after {
+      content: '';
+      animation: dots 1.4s steps(4, end) infinite;
+    }
+    @keyframes dots {
+      0%   { content: ''; }
+      25%  { content: '.'; }
+      50%  { content: '..'; }
+      75%  { content: '...'; }
+    }
+
+    /* ══════════════════════════════════
+       ANKETA SAHIFASI
+    ══════════════════════════════════ */
+    #anketaPage {
+      padding: 0;
+    }
+    .anketa-header {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      padding: 32px 24px 28px;
+      text-align: center;
+    }
+    .anketa-header .logo {
+      width: 64px; height: 64px;
+      background: rgba(255,255,255,0.15);
+      border-radius: 18px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 30px; margin: 0 auto 12px;
+      backdrop-filter: blur(10px);
+    }
+    .anketa-header h1 { font-size: 20px; font-weight: 700; color: white; }
+    .anketa-header p { font-size: 13px; color: rgba(255,255,255,0.75); margin-top: 6px; }
+
+    .anketa-body {
+      padding: 20px 16px;
+      flex: 1;
+      overflow-y: auto;
+    }
+
+    .step-indicator {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 24px;
+      justify-content: center;
+    }
+    .step-dot {
+      width: 8px; height: 8px;
+      border-radius: 4px;
+      background: var(--second);
+      transition: all 0.3s;
+    }
+    .step-dot.active {
+      background: var(--accent);
+      width: 24px;
+    }
+    .step-dot.done { background: var(--success); }
+
+    .field-group {
+      margin-bottom: 16px;
+    }
+    .field-label {
+      font-size: 13px;
+      color: var(--hint);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .field-label .req { color: var(--danger); }
+
+    .field-input {
+      width: 100%;
+      padding: 14px 16px;
+      background: var(--second);
+      border: 1.5px solid transparent;
+      border-radius: var(--radius);
+      font-size: 15px;
+      color: var(--text);
+      outline: none;
+      transition: border-color 0.2s;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .field-input:focus { border-color: var(--accent); }
+    .field-input::placeholder { color: var(--hint); }
+
+    /* Pozitsiya kartochkalari */
+    .pozitsiya-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .poz-card {
+      background: var(--second);
+      border: 2px solid transparent;
+      border-radius: var(--radius);
+      padding: 18px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .poz-card:active { transform: scale(0.97); }
+    .poz-card.selected {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.12);
+    }
+    .poz-card .poz-icon { font-size: 28px; margin-bottom: 6px; }
+    .poz-card .poz-label { font-size: 13px; font-weight: 600; }
+
+    /* Maktab checkboxlar */
+    .maktab-list { display: flex; flex-direction: column; gap: 8px; }
+    .maktab-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--second);
+      border: 2px solid transparent;
+      border-radius: var(--radius);
+      padding: 14px 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .maktab-item.selected {
+      border-color: var(--accent);
+      background: rgba(108,99,255,0.1);
+    }
+    .maktab-check {
+      width: 22px; height: 22px;
+      border-radius: 6px;
+      border: 2px solid var(--hint);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+      transition: all 0.2s;
+      font-size: 13px;
+    }
+    .maktab-item.selected .maktab-check {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+    .maktab-name { font-size: 15px; font-weight: 500; }
+
+    .btn-primary {
+      width: 100%;
+      padding: 16px;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: white;
+      border: none;
+      border-radius: var(--radius);
+      font-size: 16px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-top: 8px;
+      letter-spacing: 0.3px;
+    }
+    .btn-primary:active { transform: scale(0.98); opacity: 0.9; }
+    .btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+    .btn-secondary {
+      width: 100%;
+      padding: 14px;
+      background: var(--second);
+      color: var(--text);
+      border: none;
+      border-radius: var(--radius);
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 8px;
+    }
+
+    .err-msg {
+      background: rgba(239,68,68,0.12);
+      color: var(--danger);
+      border-radius: 10px;
+      padding: 12px;
+      font-size: 13px;
+      text-align: center;
+      display: none;
+      margin-top: 8px;
+    }
+    .err-msg.show { display: block; }
+
+    /* ══════════════════════════════════
+       KUTISH SAHIFASI
+    ══════════════════════════════════ */
+    #kutishPage {
+      align-items: center;
+      justify-content: center;
+      padding: 32px;
+      text-align: center;
+      gap: 16px;
+    }
+    .kutish-icon {
+      font-size: 64px;
+      animation: float 3s ease-in-out infinite;
+    }
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50%       { transform: translateY(-12px); }
+    }
+    .kutish-title { font-size: 22px; font-weight: 700; }
+    .kutish-sub {
+      font-size: 14px;
+      color: var(--hint);
+      line-height: 1.6;
+      max-width: 280px;
+    }
+    .kutish-card {
+      background: var(--second);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      width: 100%;
+      max-width: 320px;
+      text-align: left;
+    }
+    .kutish-card-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 0;
+      font-size: 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.06);
+    }
+    .kutish-card-row:last-child { border-bottom: none; }
+    .kutish-card-key { color: var(--hint); }
+    .kutish-card-val { font-weight: 600; }
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 700;
+    }
+    .status-pending { background: rgba(245,158,11,0.15); color: var(--warn); }
+    .status-ok      { background: rgba(16,185,129,0.15); color: var(--success); }
+    .status-no      { background: rgba(239,68,68,0.15); color: var(--danger); }
+
+    /* ══════════════════════════════════
+       DASHBOARD
+    ══════════════════════════════════ */
+    #dashPage { padding-bottom: 80px; }
+
+    .topbar {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      padding: 20px 20px 18px;
+    }
+    .topbar-top {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+    }
+    .topbar-greeting { font-size: 13px; color: rgba(255,255,255,0.75); }
+    .topbar-name { font-size: 20px; font-weight: 700; color: white; margin-top: 2px; }
+    .topbar-rol {
+      background: rgba(255,255,255,0.2);
+      color: white;
+      padding: 5px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      backdrop-filter: blur(4px);
+      margin-top: 2px;
+    }
+
+    /* Maktab tanlash (o'qituvchi uchun) */
+    .maktab-selector {
+      background: rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 10px 14px;
+      margin-top: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+    }
+    .maktab-selector select {
+      background: transparent;
+      border: none;
+      color: white;
+      font-size: 14px;
+      font-weight: 600;
+      outline: none;
+      flex: 1;
+      cursor: pointer;
+    }
+    .maktab-selector select option { color: #222; background: white; }
+
+    .cards-grid {
+      padding: 16px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+    .stat-card {
+      background: var(--second);
+      border-radius: var(--radius);
+      padding: 18px 14px;
+      cursor: pointer;
+      transition: transform 0.15s;
+      position: relative;
+      overflow: hidden;
+    }
+    .stat-card::before {
+      content: '';
+      position: absolute;
+      top: -20px; right: -20px;
+      width: 70px; height: 70px;
+      border-radius: 50%;
+      background: var(--card-color, var(--accent));
+      opacity: 0.08;
+    }
+    .stat-card:active { transform: scale(0.97); }
+    .stat-icon { font-size: 26px; margin-bottom: 8px; }
+    .stat-num { font-size: 28px; font-weight: 800; color: var(--card-color, var(--accent)); }
+    .stat-label { font-size: 13px; font-weight: 600; margin-top: 2px; }
+    .stat-sub { font-size: 11px; color: var(--hint); margin-top: 2px; }
+
+    /* ── List Page ── */
+    #listPage { padding-bottom: 80px; }
+    .list-header {
+      background: var(--second);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+      position: sticky; top: 0; z-index: 10;
+    }
+    .back-btn {
+      width: 36px; height: 36px;
+      background: rgba(255,255,255,0.08);
+      border: none;
+      border-radius: 10px;
+      color: var(--text);
+      font-size: 18px;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .list-title { font-size: 17px; font-weight: 700; }
+
+    .search-wrap { padding: 12px 16px; background: var(--bg); }
+    .search-input {
+      width: 100%;
+      padding: 11px 16px;
+      background: var(--second);
+      border: none;
+      border-radius: 12px;
+      font-size: 15px;
+      color: var(--text);
+      outline: none;
+    }
+
+    .list-items { padding: 8px 16px; }
+    .list-item {
+      background: var(--second);
+      border-radius: var(--radius);
+      padding: 14px;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .avatar {
+      width: 44px; height: 44px;
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      color: white; font-size: 18px; font-weight: 700;
+      flex-shrink: 0;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+    .item-info { flex: 1; min-width: 0; }
+    .item-name { font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .item-detail { font-size: 13px; color: var(--hint); margin-top: 3px; }
+
+    .badge {
+      padding: 4px 10px; border-radius: 20px;
+      font-size: 12px; font-weight: 600; white-space: nowrap; flex-shrink: 0;
+    }
+    .badge-green  { background: rgba(16,185,129,0.15);  color: var(--success); }
+    .badge-red    { background: rgba(239,68,68,0.15);   color: var(--danger); }
+    .badge-blue   { background: rgba(108,99,255,0.15);  color: var(--accent2); }
+    .badge-orange { background: rgba(245,158,11,0.15);  color: var(--warn); }
+
+    /* ── Bottom Nav ── */
+    .bottom-nav {
+      position: fixed; bottom: 0; left: 0; right: 0;
+      background: var(--second);
+      border-top: 1px solid rgba(255,255,255,0.06);
+      display: flex;
+      padding-bottom: env(safe-area-inset-bottom);
+      z-index: 100;
+    }
+    .nav-item {
+      flex: 1; padding: 10px 0;
+      display: flex; flex-direction: column;
+      align-items: center; gap: 3px;
+      cursor: pointer; border: none;
+      background: none; color: var(--hint);
+      font-size: 11px; font-weight: 500;
+      transition: color 0.15s;
+    }
+    .nav-item.active { color: var(--accent); }
+    .nav-icon { font-size: 22px; }
+
+    /* ── Spinner ── */
+    .loading {
+      display: flex; align-items: center; justify-content: center;
+      padding: 48px; flex-direction: column; gap: 12px;
+    }
+    .spinner {
+      width: 36px; height: 36px;
+      border: 3px solid rgba(108,99,255,0.2);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .loading-text { color: var(--hint); font-size: 14px; }
+
+    .empty {
+      text-align: center; padding: 48px 24px; color: var(--hint);
+    }
+    .empty-icon { font-size: 48px; margin-bottom: 12px; }
+
+  /* ── Sinflar sahifasi ── */
+  .sinf-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    background: var(--card-bg, #1e1e2e);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 10px;
+    cursor: pointer;
+    transition: transform 0.12s, opacity 0.12s;
+    border: 1px solid rgba(255,255,255,0.07);
+  }
+  .sinf-card:active { transform: scale(0.97); opacity: 0.85; }
+  .sinf-card-icon { font-size: 28px; line-height: 1; }
+  .sinf-num-badge {
+    width: 46px; height: 46px; min-width: 46px;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #6c63ff 0%, #9c8fff 100%);
+    color: #fff;
+    font-size: 18px;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: row;
+    gap: 1px;
+    box-shadow: 0 3px 10px rgba(108,99,255,0.35);
+  }
+  .sinf-harf {
+    font-size: 12px;
+    font-weight: 600;
+    opacity: 0.9;
+    line-height: 1;
+    align-self: flex-end;
+    margin-bottom: 3px;
+  }
+  .sinf-card-info { flex: 1; }
+  .sinf-card-name { font-size: 16px; font-weight: 600; color: var(--text, #fff); }
+  .sinf-card-count { font-size: 13px; color: var(--hint, #aaa); margin-top: 2px; }
+  .sinf-card-arrow { font-size: 22px; color: var(--hint, #aaa); font-weight: 300; }
+  .sinf-oquv-num-badge {
+    min-width: 26px; height: 26px;
+    border-radius: 50%;
+    background: #6c63ff;
+    color: #fff;
+    font-size: 12px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+/* ── O'qituvchi Davomati ── */
+.davomat-info-card {
+  background: var(--card-bg, #1e1e2e);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.davomat-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14px;
+  padding: 4px 0;
+  color: var(--text, #f0f0f5);
+}
+.davomat-info-row span { color: var(--hint, #888); }
+.davomat-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.08);
+  margin: 12px 0;
+}
+.davomat-stats-row {
+  display: flex;
+  justify-content: space-around;
+  margin-bottom: 14px;
+}
+.dav-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+}
+.dav-num { font-size: 22px; font-weight: 700; }
+.dav-lbl { font-size: 11px; color: var(--hint, #888); }
+.davomat-progress-wrap {
+  height: 6px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 6px;
+}
+.davomat-progress-bar {
+  height: 100%;
+  background: linear-gradient(90deg, #10b981, #34d399);
+  border-radius: 3px;
+  transition: width 0.4s ease;
+}
+.davomat-progress-label {
+  font-size: 12px;
+  color: var(--hint, #888);
+  text-align: right;
+}
+.davomat-list-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hint, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 8px;
+}
+.davomat-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  background: var(--card-bg, #1e1e2e);
+  border-radius: 12px;
+  margin-bottom: 8px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.dav-status-dot {
+  width: 36px; height: 36px; min-width: 36px;
+  border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+  opacity: 0.9;
+}
+.dav-item-body { flex: 1; }
+.dav-item-date  { font-size: 13px; color: var(--hint, #aaa); margin-bottom: 2px; }
+.dav-item-status { font-size: 15px; font-weight: 600; }
+.dav-item-detail { font-size: 12px; color: var(--hint, #888); margin-top: 3px; }
+/* ── My Davomat Page (O'qituvchi o'z davomati) ───────────────────────────── */
+.my-dav-header-card {
+  background: var(--card-bg, #1e1e2e);
+  border-radius: 16px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,0.07);
+}
+.my-dav-teacher-name {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text, #f0f0f5);
+  margin-bottom: 10px;
+}
+.my-dav-meta-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+  padding: 4px 0;
+  color: var(--text, #f0f0f5);
+}
+.my-dav-meta-row span { color: var(--hint, #888); }
+.my-dav-meta-row strong { font-weight: 600; text-align: right; max-width: 60%; }
+
+/* Kun bo'limlari */
+.my-dav-kun-section {
+  background: var(--card-bg, #1e1e2e);
+  border-radius: 14px;
+  padding: 14px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.my-dav-kun-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+.my-dav-kun-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #f0f0f5);
+}
+.my-dav-kun-count {
+  font-size: 12px;
+  color: var(--hint, #888);
+  background: rgba(255,255,255,0.07);
+  padding: 2px 8px;
+  border-radius: 20px;
+}
+.my-dav-kun-progress-wrap {
+  height: 4px;
+  background: rgba(255,255,255,0.1);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 4px;
+}
+.my-dav-kun-foiz {
+  font-size: 11px;
+  color: var(--hint, #888);
+  text-align: right;
+  margin-bottom: 10px;
+}
+.my-dav-empty-kun {
+  font-size: 13px;
+  color: var(--hint, #888);
+  text-align: center;
+  padding: 10px 0;
+}
+
+/* ── Carousel navigatsiya ─────────────────────────────────────────────────── */
+.my-dav-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: var(--card-bg, #1e1e2e);
+  border-radius: 14px;
+  padding: 10px 8px;
+  margin-bottom: 12px;
+  border: 1px solid rgba(255,255,255,0.08);
+  gap: 8px;
+}
+.my-dav-carousel-center {
+  flex: 1;
+  text-align: center;
+}
+.my-dav-carousel-date {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #f0f0f5);
+  line-height: 1.3;
+}
+.my-dav-carousel-pos {
+  font-size: 11px;
+  color: var(--hint, #888);
+  margin-top: 2px;
+}
+.my-dav-nav-btn {
+  width: 36px; height: 36px; min-width: 36px;
+  border-radius: 10px;
+  border: none;
+  background: rgba(255,255,255,0.08);
+  color: var(--text, #f0f0f5);
+  font-size: 20px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: background 0.15s, opacity 0.15s;
+}
+.my-dav-nav-btn:active { background: rgba(255,255,255,0.18); }
+.my-dav-nav-btn:disabled {
+  opacity: 0.25;
+  cursor: not-allowed;
+}

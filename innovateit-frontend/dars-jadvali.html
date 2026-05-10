@@ -93,15 +93,38 @@
           <div class="group-chip" data-g="1-9" onclick="applyGroup(['1-sinf','2-sinf','3-sinf','4-sinf','5-sinf','6-sinf','7-sinf','8-sinf','9-sinf'],this)">Barcha sinflar</div>
         </div>
         <div class="sinf-chips" id="b-sinf-chips">
-          <div class="sinf-chip" data-s="1-sinf">1</div>
-          <div class="sinf-chip" data-s="2-sinf">2</div>
-          <div class="sinf-chip" data-s="3-sinf">3</div>
-          <div class="sinf-chip" data-s="4-sinf">4</div>
-          <div class="sinf-chip" data-s="5-sinf">5</div>
-          <div class="sinf-chip" data-s="6-sinf">6</div>
-          <div class="sinf-chip" data-s="7-sinf">7</div>
-          <div class="sinf-chip" data-s="8-sinf">8</div>
-          <div class="sinf-chip" data-s="9-sinf">9</div>
+          <div class="sinf-chip" data-s="1-sinf" onclick="toggleSinfChip(this)">1</div>
+          <div class="sinf-chip" data-s="2-sinf" onclick="toggleSinfChip(this)">2</div>
+          <div class="sinf-chip" data-s="3-sinf" onclick="toggleSinfChip(this)">3</div>
+          <div class="sinf-chip" data-s="4-sinf" onclick="toggleSinfChip(this)">4</div>
+          <div class="sinf-chip" data-s="5-sinf" onclick="toggleSinfChip(this)">5</div>
+          <div class="sinf-chip" data-s="6-sinf" onclick="toggleSinfChip(this)">6</div>
+          <div class="sinf-chip" data-s="7-sinf" onclick="toggleSinfChip(this)">7</div>
+          <div class="sinf-chip" data-s="8-sinf" onclick="toggleSinfChip(this)">8</div>
+          <div class="sinf-chip" data-s="9-sinf" onclick="toggleSinfChip(this)">9</div>
+        </div>
+
+        <!-- O'QUVCHILAR PANELI: sinf bosilganda chiqadi -->
+        <div id="b-oquvchilar-panel" style="display:none;margin-top:14px;">
+          <div class="birik-section-title">
+            📋 O'quvchilarni belgilang
+            <span style="font-weight:400;color:var(--muted);font-size:11px;margin-left:6px;" id="b-sinf-label"></span>
+          </div>
+          <div id="b-oquvchilar-list" style="
+            display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+            gap:6px;max-height:260px;overflow-y:auto;
+            border:1px solid var(--border);border-radius:10px;padding:10px;
+            margin-top:8px;background:var(--bg2);
+          ">
+            <div style="color:var(--muted);font-size:13px;grid-column:1/-1;text-align:center;padding:12px;">
+              Sinf tanlang...
+            </div>
+          </div>
+          <div style="margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn-small" onclick="selectAllOquvchilar(true)" style="font-size:12px;padding:4px 10px;">✅ Barchasini</button>
+            <button class="btn-small" onclick="selectAllOquvchilar(false)" style="font-size:12px;padding:4px 10px;">☐ Bekorlashtirish</button>
+            <span id="b-selected-count" style="font-size:12px;color:var(--muted);margin-left:4px;"></span>
+          </div>
         </div>
         <div class="birik-section-title" style="margin-top:14px;">Dars kunlari</div>
         <div class="kun-chips" id="b-kun-chips">
@@ -224,6 +247,137 @@
 <div class="toast" id="toast"></div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+<!-- ── Sinf o'quvchilari modali ── -->
+<div class="modal-overlay" id="sinf-oquv-modal"
+     onclick="if(event.target===this)closeSinfOquvModal()"
+     style="display:none;">
+  <div class="modal-box sinf-oquv-modal-box">
+    <div class="sinf-oquv-header">
+      <h3 class="sinf-oquv-title" id="sinf-oquv-title">O'quvchilar</h3>
+      <button class="modal-close-btn" onclick="closeSinfOquvModal()">✕</button>
+    </div>
+    <div class="sinf-oquv-body" id="sinf-oquv-body"></div>
+  </div>
+</div>
+
+<style>
+/* ── Sinf badge clickable ── */
+.sji-sinf-link {
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s, transform 0.1s;
+}
+.sji-sinf-link:hover {
+  background: var(--primary, #4f46e5) !important;
+  color: #fff !important;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(79,70,229,0.25);
+}
+.sji-sinf-link:active { transform: scale(0.95); }
+
+/* ── Modal box ── */
+.sinf-oquv-modal-box {
+  background: #fff;
+  border-radius: 16px;
+  width: 420px;
+  max-width: 95vw;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+  overflow: hidden;
+}
+.sinf-oquv-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 20px 14px;
+  border-bottom: 1px solid #f0f0f0;
+}
+.sinf-oquv-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: #1e293b;
+  margin: 0;
+}
+.sinf-oquv-body {
+  padding: 16px 20px;
+  overflow-y: auto;
+  flex: 1;
+}
+.sinf-oquv-loading {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #64748b;
+  font-size: 14px;
+  padding: 20px 0;
+  justify-content: center;
+}
+.sinf-oquv-empty {
+  text-align: center;
+  color: #94a3b8;
+  font-size: 14px;
+  padding: 24px 0;
+}
+.sinf-oquv-count {
+  font-size: 12px;
+  color: #64748b;
+  margin-bottom: 12px;
+  font-weight: 500;
+  background: #f8fafc;
+  border-radius: 8px;
+  padding: 6px 10px;
+  display: inline-block;
+}
+.sinf-oquv-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.sinf-oquv-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 12px;
+  border-radius: 10px;
+  background: #f8fafc;
+  border: 1px solid #f0f0f0;
+  transition: background 0.12s;
+}
+.sinf-oquv-item:hover { background: #f1f5f9; }
+.sinf-oquv-num {
+  min-width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--primary, #4f46e5);
+  color: #fff;
+  font-size: 11px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.sinf-oquv-name {
+  font-size: 14px;
+  color: #1e293b;
+  font-weight: 500;
+}
+.modal-close-btn {
+  background: none;
+  border: none;
+  font-size: 16px;
+  cursor: pointer;
+  color: #94a3b8;
+  padding: 4px 8px;
+  border-radius: 6px;
+  line-height: 1;
+}
+.modal-close-btn:hover { background: #f1f5f9; color: #1e293b; }
+</style>
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/api.js"></script>
   <script src="js/dars-jadvali.js"></script>

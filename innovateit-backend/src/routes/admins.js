@@ -16,16 +16,24 @@ function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
 router.get('/', async (req, res) => {
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
-  const result = await pool.query('SELECT ism, username, yaratilgan FROM adminlar ORDER BY id');
+  // maktablar bilan JOIN qilib maktab nomini ham qaytaramiz
+  const result = await pool.query(`
+    SELECT a.id, a.ism, a.familiya, a.username, a.yaratilgan, a.maktab_id, m.nomi AS maktab_nomi
+    FROM adminlar a
+    LEFT JOIN maktablar m ON a.maktab_id = m.id
+    ORDER BY a.id
+  `);
   // Parolni HECH QACHON frontendga yubormang!
   res.json({ ok: true, admins: result.rows.map(r => ({
-    ism: r.ism, username: r.username, date: r.yaratilgan
+    id: r.id, ism: r.ism, familiya: r.familiya || '',
+    username: r.username, date: r.yaratilgan,
+    maktab_id: r.maktab_id, maktab_nomi: r.maktab_nomi || null
   })) });
 });
 
 // ─── POST /api/admins — yangi admin yaratish ───
 router.post('/', async (req, res) => {
-  const { newUsername, newParol, newIsm } = req.body;
+  const { newUsername, newParol, newIsm, newFamiliya, newMaktabId } = req.body;
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
   if (!newUsername?.trim() || !newParol?.trim() || !newIsm?.trim())
@@ -34,11 +42,13 @@ router.post('/', async (req, res) => {
   if (newParol.trim().length < 6)
     return res.status(400).json({ ok: false, error: "Parol kamida 6 ta belgi bo'lishi kerak" });
 
+  const maktabId = newMaktabId ? parseInt(newMaktabId, 10) : null;
+
   try {
     const hashed = await hashPassword(newParol.trim());
     await pool.query(
-      'INSERT INTO adminlar (ism, username, parol, yaratilgan) VALUES ($1, $2, $3, $4)',
-      [newIsm.trim(), newUsername.trim(), hashed, todayUZ()]
+      'INSERT INTO adminlar (ism, familiya, username, parol, maktab_id, yaratilgan) VALUES ($1, $2, $3, $4, $5, $6)',
+      [newIsm.trim(), (newFamiliya || '').trim(), newUsername.trim(), hashed, maktabId || null, todayUZ()]
     );
     res.json({ ok: true });
   } catch (err) {
