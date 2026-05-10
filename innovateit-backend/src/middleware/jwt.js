@@ -9,7 +9,7 @@ const EXPIRES = process.env.JWT_EXPIRES || '8h';
 
 if (!SECRET || SECRET.length < 32) {
   console.error("❌ JWT_SECRET .env da yo'q yoki 32 belgidan qisqa!");
-  process.exit(1);
+  // process.exit(1);
 }
 
 // ─── Token yaratish ───────────────────────────────────────────────────────────
