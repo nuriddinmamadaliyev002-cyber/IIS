@@ -9,12 +9,12 @@
 -- ║       sudo -u postgres psql                                                ║
 -- ║                                                                            ║
 -- ║  2) Foydalanuvchi va bazani yarating (birinchi marta):                     ║
--- ║       CREATE USER innovateit_user WITH PASSWORD '1234';                    ║
--- ║       CREATE DATABASE innovateit OWNER innovateit_user;                    ║
+-- ║       CREATE USER iis_user WITH PASSWORD 'IIS_2026_Strong!';                    ║
+-- ║       CREATE DATABASE iis_db OWNER iis_user;                    ║
 -- ║       \q                                                                   ║
 -- ║                                                                            ║
 -- ║  3) Ushbu faylni ishga tushiring:                                          ║
--- ║       psql -U innovateit_user -d innovateit -f innovateit_schema_setup.sql ║
+-- ║       psql -U iis_user -d iis_db -f innovateit_schema_setup.sql ║
 -- ║                                                                            ║
 -- ║  Natija: barcha jadvallar, indekslar va ruxsatlar tayyor bo'ladi.          ║
 -- ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -299,17 +299,17 @@ CREATE TABLE IF NOT EXISTS oqituvchi_oquvchilar (
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
---  innovateit_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
+--  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
 -- ════════════════════════════════════════════════════════════════════════════
-GRANT ALL PRIVILEGES ON ALL TABLES    IN SCHEMA public TO innovateit_user;
-GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO innovateit_user;
-GRANT USAGE ON SCHEMA public TO innovateit_user;
+GRANT ALL PRIVILEGES ON ALL TABLES    IN SCHEMA public TO iis_user;
+GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO iis_user;
+GRANT USAGE ON SCHEMA public TO iis_user;
 
 -- Kelajakda qo'shiladigan jadval va sequence-lar uchun ham
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL PRIVILEGES ON TABLES    TO innovateit_user;
+    GRANT ALL PRIVILEGES ON TABLES    TO iis_user;
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-    GRANT ALL PRIVILEGES ON SEQUENCES TO innovateit_user;
+    GRANT ALL PRIVILEGES ON SEQUENCES TO iis_user;
 
 
 -- ════════════════════════════════════════════════════════════════════════════
@@ -386,7 +386,7 @@ CREATE INDEX IF NOT EXISTS idx_oqit_oquv_student       ON oqituvchi_oquvchilar(o
 --  MUVAFFAQIYATLI TUGADI
 --  Barcha 19 ta jadval va 28 ta indeks yaratildi.
 -- ════════════════════════════════════════════════════════════════════════════
-\echo '✅ InnovateIT schema muvaffaqiyatli yaratildi!'
+\echo '✅ IIS schema muvaffaqiyatli yaratildi!'
 \echo '   Jadvallar: maktablar, adminlar, buxgalterlar, oquvchilar,'
 \echo '              nofaol_oquvchilar, davomat, oqituvchilar,'
 \echo '              oqituvchi_maktablar, oqituvchilar_davomat,'
