@@ -7,15 +7,10 @@ on:
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted   # ← faqat shu qator o'zgaradi
     steps:
-      - name: Deploy to Ubuntu Server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.SSH_HOST }}
-          username: ${{ secrets.SSH_USERNAME }}
-          password: ${{ secrets.SSH_PASSWORD }}
-          script: |
-            cd /var/www/IIS
-            git pull origin main
-            pm2 restart all
+      - name: Deploy
+        run: |
+          cd /var/www/IIS
+          git pull origin main
+          pm2 restart all
