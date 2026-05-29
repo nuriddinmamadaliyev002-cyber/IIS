@@ -901,5 +901,28 @@
 <script src="js/mobile-nav.js"></script>
 
 
+<!-- Scroll to top tugmasi -->
+<button id="scroll-top-btn" onclick="window.scrollTo({top:0,behavior:'smooth'})"
+  title="Yuqoriga"
+  style="display:none;position:fixed;bottom:24px;right:24px;z-index:9998;
+         width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;
+         background:#2563eb;color:#fff;font-size:20px;
+         box-shadow:0 4px 16px rgba(37,99,235,.35);
+         align-items:center;justify-content:center;
+         transition:opacity .2s,transform .2s;">
+  ↑
+</button>
+<script>
+  (function() {
+    var btn = document.getElementById('scroll-top-btn');
+    window.addEventListener('scroll', function() {
+      if (window.scrollY > 300) {
+        btn.style.display = 'flex';
+      } else {
+        btn.style.display = 'none';
+      }
+    });
+  })();
+</script>
 </body>
 </html>
