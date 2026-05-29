@@ -388,6 +388,8 @@ function renderTbl(d) {
     </div></td>` : ''}
   </tr>`;
   }).join('');
+  // Sticky header yangilash
+  if (typeof window._initStickyHeader === 'function') setTimeout(window._initStickyHeader, 50);
 }
 
 function renderMob(d) {

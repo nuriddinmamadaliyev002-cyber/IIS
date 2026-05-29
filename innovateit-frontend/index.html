@@ -916,13 +916,75 @@
   (function() {
     var btn = document.getElementById('scroll-top-btn');
     window.addEventListener('scroll', function() {
-      if (window.scrollY > 300) {
-        btn.style.display = 'flex';
-      } else {
-        btn.style.display = 'none';
-      }
+      btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
     });
   })();
+</script>
+<!-- Sticky jadval header (JS clone) -->
+<script>
+(function() {
+  var cloneEl = null;
+  var TOPBAR_H = 52;
+
+  function initStickyHeader() {
+    var tblWrap = document.querySelector('#tbl-body')?.closest('.tbl-wrap');
+    if (!tblWrap) return;
+    var thead = tblWrap.querySelector('thead');
+    if (!thead) return;
+
+    if (cloneEl) cloneEl.remove();
+    cloneEl = document.createElement('div');
+    cloneEl.className = 'sticky-thead-clone';
+
+    var cloneTable = document.createElement('table');
+    cloneTable.style.cssText = 'border-collapse:collapse;';
+    cloneTable.appendChild(thead.cloneNode(true));
+    cloneEl.appendChild(cloneTable);
+    document.body.appendChild(cloneEl);
+    syncClone();
+  }
+
+  function syncClone() {
+    if (!cloneEl) return;
+    var tblWrap = document.querySelector('#tbl-body')?.closest('.tbl-wrap');
+    if (!tblWrap) return;
+    var thead = tblWrap.querySelector('thead');
+    if (!thead) return;
+
+    var rect = tblWrap.getBoundingClientRect();
+    var thEls = thead.querySelectorAll('th');
+    var cloneThs = cloneEl.querySelectorAll('th');
+    thEls.forEach(function(th, i) {
+      if (cloneThs[i]) cloneThs[i].style.width = th.offsetWidth + 'px';
+    });
+    cloneEl.style.left = rect.left + 'px';
+    cloneEl.style.width = rect.width + 'px';
+
+    var theadTop = thead.getBoundingClientRect().top;
+    if (theadTop < TOPBAR_H && rect.bottom > TOPBAR_H + 40) {
+      cloneEl.style.display = 'block';
+      cloneEl.querySelector('table').style.marginLeft = -tblWrap.scrollLeft + 'px';
+    } else {
+      cloneEl.style.display = 'none';
+    }
+  }
+
+  window.addEventListener('scroll', syncClone);
+  window.addEventListener('resize', function() { initStickyHeader(); });
+  document.addEventListener('scroll', function() {
+    var tblWrap = document.querySelector('#tbl-body')?.closest('.tbl-wrap');
+    if (tblWrap && cloneEl) {
+      cloneEl.querySelector('table').style.marginLeft = -tblWrap.scrollLeft + 'px';
+    }
+  }, true);
+
+  window.addEventListener('DOMContentLoaded', function() {
+    setTimeout(initStickyHeader, 800);
+  });
+
+  // renderTbl chaqirilganda clone yangilash
+  window._initStickyHeader = initStickyHeader;
+})();
 </script>
 </body>
 </html>
