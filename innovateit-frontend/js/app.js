@@ -265,6 +265,7 @@ async function addStudent() {
       username: actingUser, parol: actingParol,
       ism, familiya: fam, maktab, sinf,
       telefon: tel, telefon2: tel2, manzil, tug, boshlagan,
+      maktabInfo: maktab ? String(maktab) + '-maktab' : '',
       date: new Date().toLocaleDateString('uz-UZ')
     });
     if (r.ok) { clearF(); await loadStudents(); toast("✅ O'quvchi qo'shildi!", 'success'); }
@@ -365,23 +366,28 @@ function renderTbl(d) {
     </td></tr>`;
     return;
   }
-  tb.innerHTML = d.map((s, i) => `<tr>
+  tb.innerHTML = d.map((s, i) => {
+    const maktabKo = (U && U.isSuper)
+      ? (s.maktab || '—')
+      : (s.maktabInfo || s.maktab || '—');
+    return `<tr>
     <td class="mono">${i + 1}</td>
     <td><strong>${s.familiya}</strong> ${s.ism}</td>
-    <td><span class="maktab-badge">${s.maktab || '—'}</span></td>
+    <td><span class="maktab-badge">${maktabKo}</span></td>
     <td><span class="sinf-badge">${s.sinf || '—'}</span></td>
     <td class="mono">${s.telefon || '—'}</td>
     <td class="mono">${s.telefon2 || '—'}</td>
     <td class="mono">${fTug(s.tug)}</td>
     <td>${s.manzil || '—'}</td>
-    ${sup ? `<td class="mono" style="font-size:11px;">${s.admin || '—'}</td>` : ''}
+    ${(U && U.isSuper) ? `<td class="mono" style="font-size:11px;">${s.admin || '—'}</td>` : ''}
     <td class="mono">${fDate(s.boshlagan)}</td>
     <td class="mono">${fDate(s.date)}</td>
-    ${!sup ? `<td><div style="display:flex;gap:6px;">
+    ${!(U && U.isSuper) ? `<td><div style="display:flex;gap:6px;">
       <button class="btn-action" onclick="openES(${s.ri})">✏️</button>
       <button class="btn-action btn-action-del" onclick="openNofaolModal(${s.ri})">🗑️</button>
     </div></td>` : ''}
-  </tr>`).join('');
+  </tr>`;
+  }).join('');
 }
 
 function renderMob(d) {
@@ -398,7 +404,7 @@ function renderMob(d) {
           <div class="sc-name">${s.familiya} ${s.ism}</div>
           <div class="sc-num">#${i + 1}</div>
           <div class="sc-tags">
-            <span class="maktab-badge">${s.maktab || '—'}-maktab</span>
+            <span class="maktab-badge">${(sup ? (s.maktab || '—') : (s.maktabInfo || s.maktab || '—'))}</span>
             <span class="sinf-badge">${s.sinf || '—'}</span>
           </div>
         </div>
@@ -433,7 +439,9 @@ function openES(idx) {
   const s = S[idx]; if (!s) return; eIdx = idx;
   g('e-ism').value      = s.ism      || '';
   g('e-familiya').value = s.familiya || '';
-  g('e-maktab').value   = s.maktab   || '';
+  // Maktab raqamini maktabInfo dan ham olish mumkin (masalan "15-maktab" → 15)
+  const maktabRaqam = s.maktab || (s.maktabInfo ? parseInt(s.maktabInfo) || '' : '');
+  g('e-maktab').value   = maktabRaqam;
   g('e-sinf').value     = s.sinf     || '';
   g('e-tel').value      = s.telefon  ? fmtTel(s.telefon)  : '';
   g('e-tel2').value     = s.telefon2 ? fmtTel(s.telefon2) : '';
@@ -503,7 +511,8 @@ async function saveES() {
       username: U.username, parol: U.parol,
       oldIsm: s.ism, oldFamiliya: s.familiya,
       ism, familiya: fam, maktab, sinf,
-      telefon: tel, telefon2: tel2, manzil, tug, boshlagan
+      telefon: tel, telefon2: tel2, manzil, tug, boshlagan,
+      maktabInfo: maktab ? String(maktab) + '-maktab' : ''
     });
     if (r.ok) { closeES(); await loadStudents(); toast("✅ O'quvchi yangilandi!", 'success'); }
     else toast('❌ ' + r.error, 'error');
@@ -1620,18 +1629,29 @@ async function loadTeachersTab() {
   try {
     g('loading-oq') && (g('loading-oq').style.display = 'block');
     const token = localStorage.getItem('innovateit_token');
-    const res = await fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '')
-      ? 'http://127.0.0.1:3001/api/teachers'
-      : '/api/teachers', {
-      headers: { 'Authorization': 'Bearer ' + token }
-    });
+    const [res, maktabRes] = await Promise.all([
+      fetch((window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '')
+        ? 'http://127.0.0.1:3001/api/teachers'
+        : '/api/teachers', {
+        headers: { 'Authorization': 'Bearer ' + token }
+      }),
+      U.isSuper ? api.getMaktablar() : Promise.resolve({ ok: false })
+    ]);
     const d = await res.json();
+    if (maktabRes.ok) MAKTABLAR = maktabRes.maktablar || [];
     if (d.ok) {
       TEACHERS_TAB = d.teachers || [];
       renderTeachersTab(TEACHERS_TAB);
       TEACHERS_TAB_LOADED = true;
     } else {
       toast('❌ ' + (d.error || 'Xatolik'), 'error');
+    }
+
+    // Superadmin: "Yangi o'qituvchi qo'shish" tugmasini ko'rsatish + modal inject
+    if (U.isSuper) {
+      const bar = g('super-add-bar');
+      if (bar) bar.style.display = 'block';
+      if (typeof injectSuperModals === 'function') injectSuperModals();
     }
   } catch(e) {
     toast('❌ Server bilan aloqa yo\'q', 'error');
@@ -1656,43 +1676,272 @@ function renderTeachersTab(list) {
     );
   })();
 
+  const isSup = U && U.isSuper;
+
   tbody.innerHTML = filtered.map((t, i) => {
-    const maktablar = (t.maktablar || []).map(m => m.nomi || m).join(', ') || '<i style="color:#9ca3af">Biriktirilmagan</i>';
+    const maktablarRaw = t.maktablar || [];
+
+    // Superadmin: maktab biriktirish UI
+    if (isSup) {
+      const maktabBadges = maktablarRaw.length
+        ? maktablarRaw.map(m => `
+            <span style="display:inline-flex;align-items:center;gap:4px;padding:2px 9px;border-radius:6px;font-size:11px;font-weight:600;background:#eff4ff;color:#2563eb;border:1px solid #bfdbfe;">
+              ${esc(m.nomi || m)}
+              <span onclick="teacherAjratMaktab(${t.id}, ${m.id}, '${esc(m.nomi || '')}')"
+                style="cursor:pointer;font-size:14px;line-height:1;color:#93c5fd;margin-left:2px;" title="Ajratish">×</span>
+            </span>`).join('')
+        : `<i style="color:#9ca3af;font-size:12px;">Biriktirilmagan</i>`;
+
+      const maktabOptions = (MAKTABLAR || []).map(m =>
+        `<option value="${m.id}">${esc(m.nomi)}</option>`
+      ).join('');
+
+      return `<tr>
+        <td>${i + 1}</td>
+        <td><strong>${esc(t.familiya || '')}</strong> ${esc(t.ism || '')}</td>
+        <td><span class="sinf-badge">${esc(t.fan || '—')}</span></td>
+        <td style="min-width:260px;">
+          <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">${maktabBadges}</div>
+          <div style="display:flex;gap:6px;align-items:center;">
+            <select id="maktab-sel-${t.id}" style="flex:1;padding:5px 8px;border:1px solid #d1d5db;border-radius:8px;font-size:12px;background:#fff;">
+              <option value="">+ Maktab biriktirish...</option>
+              ${maktabOptions}
+            </select>
+            <button onclick="teacherBiriktirMaktab(${t.id})"
+              style="padding:5px 12px;background:#eff4ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:8px;font-size:12px;cursor:pointer;white-space:nowrap;font-weight:600;">
+              Biriktirish
+            </button>
+          </div>
+        </td>
+        <td>${esc(t.telefon || '—')}</td>
+        <td>${esc(t.telefon2 || '—')}</td>
+        <td style="display:flex;gap:4px;">
+          <button class="btn-action" onclick="openTeacherEditFromTab(${t.id})" title="Tahrirlash">✏️</button>
+          <button class="btn-action" onclick="openTeacherMergeFromTab(${t.id})" title="Birlashtirish" style="font-size:14px;">⇄</button>
+          <button class="btn-action btn-action-del" onclick="deleteTeacherSuper(${t.id}, '${esc(t.familiya)} ${esc(t.ism)}')" title="O'chirish">🗑️</button>
+        </td>
+      </tr>`;
+    }
+
+    // Oddiy admin: faqat ko'rish
+    const maktabText = maktablarRaw.map(m => m.nomi || m).join(', ') || '<i style="color:#9ca3af">Biriktirilmagan</i>';
     return `<tr>
       <td>${i + 1}</td>
       <td><strong>${esc(t.familiya || '')}</strong> ${esc(t.ism || '')}</td>
-      <td><span class="maktab-badge" style="background:#ede9fe;color:#6c63ff;">${esc(t.fan || '—')}</span></td>
-      <td style="font-size:12px;color:#6b7280;">${maktablar}</td>
+      <td><span class="sinf-badge">${esc(t.fan || '—')}</span></td>
+      <td style="font-size:12px;color:#6b7280;">${maktabText}</td>
       <td>${esc(t.telefon || '—')}</td>
       <td>${esc(t.telefon2 || '—')}</td>
       <td>
-        <button class="btn-action" onclick="openTeachersPage()" title="Batafsil">✏️</button>
+        <button class="btn-action" onclick="openTeacherEditFromTab(${t.id})" title="Tahrirlash">✏️</button>
       </td>
     </tr>`;
   }).join('');
+}
+
+// ─── Superadmin: o'qituvchiga maktab biriktirish ─────────────────────────────
+// loadTeachers — oqituvchilar.js ichidagi saveSuperAdd/saveSuperEdit chaqiradi,
+// index.html da esa loadTeachersTab bilan bir xil vazifa bajaradi
+async function loadTeachers() {
+  if (typeof loadTeachersTab === 'function') await loadTeachersTab();
+}
+async function teacherBiriktirMaktab(teacherId) {
+  const sel = g('maktab-sel-' + teacherId);
+  if (!sel || !sel.value) { toast('⚠️ Maktab tanlang', 'error'); return; }
+  const maktabId = parseInt(sel.value);
+  try {
+    const r = await api.biriktirTeacher({ teacherId, maktabId });
+    if (r.ok) { toast('✅ Maktab biriktirildi!', 'success'); await loadTeachersTab(); }
+    else toast('❌ ' + (r.error || 'Xatolik'), 'error');
+  } catch(e) { toast('❌ Xatolik', 'error'); }
+}
+
+// ─── Superadmin: o'qituvchidan maktab ajratish ───────────────────────────────
+async function teacherAjratMaktab(teacherId, maktabId, maktabNomi) {
+  if (!confirm(`"${maktabNomi}" maktabdan ajratilsinmi?`)) return;
+  try {
+    const r = await api.ajratTeacher({ teacherId, maktabId });
+    if (r.ok) { toast('✅ Ajratildi!', 'success'); await loadTeachersTab(); }
+    else toast('❌ ' + (r.error || 'Xatolik'), 'error');
+  } catch(e) { toast('❌ Xatolik', 'error'); }
+}
+
+// ─── Superadmin: o'qituvchini o'chirish ──────────────────────────────────────
+async function deleteTeacherSuper(delId, fullIsm) {
+  if (!confirm(`"${fullIsm}" o'qituvchini o'chirishni tasdiqlaysizmi?`)) return;
+  try {
+    const r = await api.deleteTeacher({ delId });
+    if (r.ok) { toast('✅ O\'qituvchi o\'chirildi!', 'success'); await loadTeachersTab(); }
+    else toast('❌ ' + (r.error || 'Xatolik'), 'error');
+  } catch(e) { toast('❌ Xatolik', 'error'); }
 }
 
 function applyTeacherFilter() {
   renderTeachersTab(TEACHERS_TAB);
 }
 
-// O'qituvchilar sahifasiga o'tish (to'liq funksional)
-function openTeachersPage() {
-  openTeachers();
+// O'qituvchilar tabidagi ✏️ tugmasi — oqituvchilar.html ga o'tib tahrirlash modalini ochish
+function openTeacherEditFromTab(teacherId) {
+  const teacherUser = {
+    username: U.username, parol: U.parol, ism: U.ism,
+    isSuper: U.isSuper,
+    adminsMap: JSON.stringify((ADMINS || []).map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))),
+    openEditId: teacherId,   // ← oqituvchilar.html bu ID ni ko'rib modalni ochadi
+    fromPortfolioTab: false
+  };
+  sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
+  window.location.href = 'oqituvchilar.html';
+}
+
+// ⇄ Birlashtirish tugmasi
+function openTeacherMergeFromTab(teacherId) {
+  const teacherUser = {
+    username: U.username, parol: U.parol, ism: U.ism,
+    isSuper: U.isSuper,
+    adminsMap: JSON.stringify((ADMINS || []).map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))),
+    openMergeId: teacherId,  // ← oqituvchilar.html bu ID ni ko'rib merge modalini ochadi
+    fromPortfolioTab: false
+  };
+  sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
+  window.location.href = 'oqituvchilar.html';
 }
 
 // ═══════════════════════════════════════════════════════
 //  📂 PORTFOLIO TAB (index.html ichida)
 // ═══════════════════════════════════════════════════════
 function loadPortfolioTab() {
-  // Portfolio tabi — oqituvchilar.js dagi initPortfolioTab logikasini chaqiradi
-  // Lekin bu sahifada oqituvchilar.js yuklangan emas, shuning uchun
-  // to'liq portfolio sahifasiga yo'naltiramiz
-  const teacherUser = {
-    username: U.username, parol: U.parol, ism: U.ism, isSuper: U.isSuper,
-    adminsMap: JSON.stringify((ADMINS || []).map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))),
-    fromPortfolioTab: true
-  };
-  sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
-  window.location.href = 'oqituvchilar.html';
+  // portfolio-tab.js dagi loadOqPortfolio funksiyasini chaqiramiz
+  if (typeof loadOqPortfolio === 'function') {
+    loadOqPortfolio();
+  } else {
+    // portfolio-tab.js yuklanmagan — sahifaga o'tkazamiz
+    const teacherUser = {
+      username: U.username, parol: U.parol, ism: U.ism, isSuper: U.isSuper,
+      adminsMap: JSON.stringify((ADMINS || []).map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))),
+      fromPortfolioTab: true
+    };
+    sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
+    window.location.href = 'oqituvchilar.html';
+  }
+}
+// ═══════════════════════════════════════════════════════
+//  SUPERADMIN: YANGI O'QITUVCHI QO'SHISH MODALI
+//  (oqituvchilar.js funksiyalari index.html uchun ko'chirilgan)
+// ═══════════════════════════════════════════════════════
+
+// setBtnLoading — oqituvchilar.js bilan mos
+function setBtnLoading(btnId, spId, txtId, loading, txt) {
+  const btn = g(btnId), sp = g(spId), tx = g(txtId);
+  if (!btn) return;
+  btn.disabled = loading;
+  if (sp) sp.style.display = loading ? 'inline-block' : 'none';
+  if (tx) tx.textContent = txt;
+}
+
+// T massivi — loadTeachersQuiet uchun (index.html da TEACHERS_TAB ishlatiladi)
+if (typeof T === 'undefined') var T = [];
+
+function injectSuperModals() {
+  if (document.getElementById('super-add-modal')) return;
+
+  const fanOptions = `
+    <option value="">— Tanlang —</option>
+    <option value="Matematika">Matematika</option>
+    <option value="Ingliz tili">Ingliz tili</option>
+    <option value="IT">IT</option>`;
+
+  const addHtml = `
+<div class="modal-overlay" id="super-add-modal" style="display:none;" onclick="if(event.target===this)closeSuperAdd()">
+  <div class="modal" style="max-width:660px;max-height:90vh;overflow-y:auto;">
+    <div class="modal-drag"></div>
+    <div class="modal-title">➕ Yangi o'qituvchi qo'shish</div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">📋 Asosiy ma'lumotlar</div>
+    <div class="form-grid" style="margin-bottom:16px;">
+      <div class="field-group"><label class="field-label">Familiya *</label><input class="field-input" id="sa-familiya" placeholder="Yusupova" autocomplete="off"></div>
+      <div class="field-group"><label class="field-label">Ism *</label><input class="field-input" id="sa-ism" placeholder="Nodira" autocomplete="off"></div>
+      <div class="field-group"><label class="field-label">Fan *</label><select class="field-input" id="sa-fan">${fanOptions}</select></div>
+      <div class="field-group"><label class="field-label">Telefon *</label><div class="tel-wrap"><input class="field-input tel-input" id="sa-tel" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel"><div class="tel-hint" id="sa-tel-hint"></div></div></div>
+      <div class="field-group"><label class="field-label">Qo'sh. telefon <span style="font-weight:400;font-size:10px;">(ixtiyoriy)</span></label><div class="tel-wrap"><input class="field-input tel-input" id="sa-tel2" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel"><div class="tel-hint" id="sa-tel2-hint"></div></div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">📂 Portfolio ma'lumotlari <span style="font-weight:400;text-transform:none;font-size:10px;">(ixtiyoriy)</span></div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+      <div class="field-group"><label class="field-label">F.I.SH. (To'liq ism)</label><input class="field-input" id="sa-fish" placeholder="Yusupova Nodira Karimovna"></div>
+      <div class="field-group"><label class="field-label">O'qiyotgan yoki bitirgan universiteti(lari)</label><input class="field-input" id="sa-univ" placeholder="Toshkent Davlat Pedagogika Universiteti"></div>
+      <div class="field-group"><label class="field-label">Olgan sertifikatlari (matn)</label><textarea class="field-input" id="sa-sert" rows="3" style="resize:vertical;font-family:inherit;" placeholder="IELTS 7.0, Cambridge B2..."></textarea></div>
+      <div class="field-group"><label class="field-label">Ish joylari va Ish tajribasi</label><textarea class="field-input" id="sa-tajriba" rows="3" style="resize:vertical;font-family:inherit;" placeholder="2018-2020: 45-maktab&#10;2020-hozir: InnovateIT School"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSuperAdd()">Bekor</button>
+      <button class="btn-submit" id="sa-save-btn" onclick="saveSuperAdd()"><span class="spinner" id="sa-spinner"></span><span id="sa-btn-txt">Saqlash</span></button>
+    </div>
+  </div>
+</div>`;
+
+  document.body.insertAdjacentHTML('beforeend', addHtml);
+  if (typeof setupTel === 'function') {
+    setupTel('sa-tel',  'sa-tel-hint');
+    setupTel('sa-tel2', 'sa-tel2-hint');
+  }
+}
+
+function openSuperAdd() {
+  if (!U || !U.isSuper) return;
+  injectSuperModals();
+  ['sa-ism','sa-familiya','sa-tel','sa-tel2','sa-fish','sa-univ'].forEach(id => { const el=g(id); if(el) el.value=''; });
+  ['sa-sert','sa-tajriba'].forEach(id => { const el=g(id); if(el) el.value=''; });
+  const fan = g('sa-fan'); if(fan) fan.value='';
+  ['sa-tel-hint','sa-tel2-hint'].forEach(id => { const el=g(id); if(el) { el.textContent=''; el.className='tel-hint'; } });
+  const m = g('super-add-modal'); if(m) m.style.display='flex';
+}
+
+function closeSuperAdd() {
+  const m = g('super-add-modal'); if(m) m.style.display='none';
+}
+
+async function saveSuperAdd() {
+  const ism  = (g('sa-ism')?.value||'').trim();
+  const fam  = (g('sa-familiya')?.value||'').trim();
+  const fan  = g('sa-fan')?.value||'';
+  const tel  = (g('sa-tel')?.value||'').trim();
+  const tel2 = (g('sa-tel2')?.value||'').trim();
+
+  if (!ism||!fam)    { toast('⚠️ Ism va familiya kiriting','error'); return; }
+  if (!fan)          { toast('⚠️ Fan tanlang','error'); return; }
+  if (!tel)          { toast('⚠️ Telefon kiriting','error'); return; }
+  if (typeof isTelOk==='function' && !isTelOk(tel)) { toast("⚠️ Telefon formati noto'g'ri (+998 XX XXX XX XX)",'error'); return; }
+  if (tel2 && typeof isTelOk==='function' && !isTelOk(tel2)) { toast("⚠️ Qo'sh. telefon formati noto'g'ri",'error'); return; }
+
+  const fish     = (g('sa-fish')?.value||'').trim();
+  const univ     = (g('sa-univ')?.value||'').trim();
+  const sertMatn = (g('sa-sert')?.value||'').trim();
+  const tajriba  = (g('sa-tajriba')?.value||'').trim();
+
+  setBtnLoading('sa-save-btn','sa-spinner','sa-btn-txt',true,'Saqlanmoqda…');
+  try {
+    const r = await api.addTeacher({
+      username: U.username, parol: U.parol,
+      ism, familiya: fam, fan,
+      telefon: tel, telefon2: tel2||'',
+      kunlar:'', sinflar:'', boshlanish:'', tugash:'',
+      date: new Date().toLocaleDateString('ru-RU')
+    });
+    if (!r.ok) { toast('❌ ' + r.error,'error'); return; }
+
+    // Portfolio ma'lumotlari bor bo'lsa saqlash
+    if (fish||univ||sertMatn||tajriba) {
+      await loadTeachersTab();
+      const added = (TEACHERS_TAB||[]).find(t => t.ism===ism && t.familiya===fam);
+      if (added) {
+        await api.savePortfolioTeacher({
+          username: U.username, parol: U.parol,
+          fish, universitet: univ, sertifikatlar: sertMatn, ish_tajribasi: tajriba
+        }, added.id);
+      }
+    }
+
+    toast("✅ O'qituvchi qo'shildi!",'success');
+    closeSuperAdd();
+    await loadTeachersTab();
+  } catch(e) { toast('❌ Server bilan ulanishda xatolik','error'); }
+  setBtnLoading('sa-save-btn','sa-spinner','sa-btn-txt',false,'Saqlash');
 }

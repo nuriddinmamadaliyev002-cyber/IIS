@@ -75,6 +75,16 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   await loadTeachers();
   initPortfolioTab();
+
+  // index.html dan ✏️ yoki ⇄ bosilganda — sessionStorage dan ID olish
+  if (U.openEditId) {
+    const t = T.find(x => x.id === U.openEditId);
+    if (t && typeof openSuperEdit === 'function') openSuperEdit(t.ri ?? T.indexOf(t));
+  }
+  if (U.openMergeId) {
+    const t = T.find(x => x.id === U.openMergeId);
+    if (t && typeof openMergeModal === 'function') openMergeModal(t.ri ?? T.indexOf(t));
+  }
 });
 
 // ─────────────────────────────────────────────
