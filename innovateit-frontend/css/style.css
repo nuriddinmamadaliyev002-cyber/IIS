@@ -288,7 +288,8 @@ body {
 
 /* Yordamchi classlar */
 .fg-full  { grid-column: 1 / -1 !important; }
-.fg-half  { grid-column: span 2 !important; }
+.fg-half  { grid-column: span 1; }
+@media (min-width: 900px) { .fg-half { grid-column: span 2 !important; } }
 
 /* Mobil: telefon inputlari kattaroq */
 @media (max-width: 599px) {
