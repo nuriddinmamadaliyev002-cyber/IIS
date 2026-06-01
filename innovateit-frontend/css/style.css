@@ -289,6 +289,12 @@ body {
 .tel-full-col { width: 100%; box-sizing: border-box; }
 @media (max-width: 599px) {
   .tel-full-col { grid-column: 1 / -1 !important; }
+  .tel-full-col .field-input,
+  .tel-full-col .tel-input {
+    font-size: 16px !important;
+    padding: 14px 16px !important;
+    min-height: 52px !important;
+  }
 }
 .tel-wrap { width: 100%; display: block; }
 .tel-full-col .tel-wrap,
@@ -297,14 +303,8 @@ body {
   width: 100% !important;
   box-sizing: border-box !important;
 }
-@media (max-width: 768px) {
-  .tel-full-col .field-input,
-  .tel-full-col .tel-input {
-    font-size: 16px !important;
-    padding: 14px 16px !important;
-    min-height: 52px !important;
-  }
-}
+/* Yashash manzili: har doim to'liq kenglik */
+.fg-full { grid-column: 1 / -1 !important; }
 
 .dob-row { display: grid; grid-template-columns: 68px 1fr 86px; gap: 6px; }
 @media (min-width: 480px) { .dob-row { grid-template-columns: 80px 1fr 100px; } }

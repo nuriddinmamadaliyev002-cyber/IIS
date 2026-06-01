@@ -119,6 +119,7 @@
               <option>7-sinf</option><option>8-sinf</option><option>9-sinf</option>
             </select>
           </div>
+          <!-- Telefon: mobileda to'liq, desktopda 2 ustun -->
           <div class="field-group tel-full-col">
             <label class="field-label">Telefon</label>
             <input class="field-input tel-input" type="tel" id="f-tel" inputmode="tel" placeholder="+998 90 123 45 67">
@@ -129,6 +130,12 @@
             <input class="field-input tel-input" type="tel" id="f-tel2" inputmode="tel" placeholder="+998 90 123 45 67">
             <div class="tel-hint" id="f-tel2-hint"></div>
           </div>
+          <!-- Yashash manzili: har doim to'liq kenglik -->
+          <div class="field-group fg-full">
+            <label class="field-label">Yashash manzili</label>
+            <input class="field-input" id="f-manzil" placeholder="Baliqchi shahri">
+          </div>
+          <!-- Tug'ilgan sana va Boshlagan sana: 2 ustun -->
           <div class="field-group">
             <label class="field-label">Tug'ilgan sana</label>
             <div class="dob-row">
@@ -148,11 +155,6 @@
             </div>
             <input type="hidden" id="f-tug">
           </div>
-          <div class="field-group">
-            <label class="field-label">Yashash manzili</label>
-            <input class="field-input" id="f-manzil" placeholder="Baliqchi shahri">
-          </div>
-          <!-- ✅ YANGI: O'qishni boshlagan sana -->
           <div class="field-group">
             <label class="field-label">O'qishni boshlagan sana</label>
             <input class="field-input" type="date" id="f-boshlagan" max="">
