@@ -119,51 +119,48 @@
               <option>7-sinf</option><option>8-sinf</option><option>9-sinf</option>
             </select>
           </div>
-          <!-- Telefon: bitta qatorda 2 ustun -->
-          <div class="fg-full" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div class="field-group" style="margin:0;">
-              <label class="field-label">Telefon</label>
-              <input class="field-input tel-input" type="tel" id="f-tel" inputmode="tel" placeholder="+998 90 123 45 67">
-              <div class="tel-hint" id="f-tel-hint"></div>
-            </div>
-            <div class="field-group" style="margin:0;">
-              <label class="field-label">Qo'shimcha telefon</label>
-              <input class="field-input tel-input" type="tel" id="f-tel2" inputmode="tel" placeholder="+998 90 123 45 67">
-              <div class="tel-hint" id="f-tel2-hint"></div>
-            </div>
+          <!-- Telefon: mobileda to'liq, desktopda 2 ustun -->
+          <div class="field-group fg-half">
+            <label class="field-label">Telefon</label>
+            <input class="field-input tel-input tel-mobile-big" type="tel" id="f-tel" inputmode="tel" placeholder="+998 90 123 45 67">
+            <div class="tel-hint" id="f-tel-hint"></div>
+          </div>
+          <div class="field-group fg-half">
+            <label class="field-label">Qo'shimcha telefon</label>
+            <input class="field-input tel-input tel-mobile-big" type="tel" id="f-tel2" inputmode="tel" placeholder="+998 90 123 45 67">
+            <div class="tel-hint" id="f-tel2-hint"></div>
           </div>
           <!-- Yashash manzili: to'liq kenglik -->
           <div class="field-group fg-full">
             <label class="field-label">Yashash manzili</label>
             <input class="field-input" id="f-manzil" placeholder="Baliqchi shahri">
           </div>
-          <!-- Tug'ilgan sana va Boshlagan sana: 2 ustun -->
-          <div class="fg-full" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div class="field-group" style="margin:0;">
-              <label class="field-label">Tug'ilgan sana</label>
-              <div class="dob-row">
-                <input class="field-input" id="f-kun" type="number" inputmode="numeric"
-                  placeholder="Kun" min="1" max="31" style="text-align:center;padding-left:4px;padding-right:4px;">
-                <select class="field-input" id="f-oy" required>
-                  <option value="">Oy</option>
-                  <option value="01">Yanvar</option>  <option value="02">Fevral</option>
-                  <option value="03">Mart</option>    <option value="04">Aprel</option>
-                  <option value="05">May</option>     <option value="06">Iyun</option>
-                  <option value="07">Iyul</option>    <option value="08">Avgust</option>
-                  <option value="09">Sentabr</option> <option value="10">Oktabr</option>
-                  <option value="11">Noyabr</option>  <option value="12">Dekabr</option>
-                </select>
-                <input class="field-input" id="f-yil" type="number" inputmode="numeric"
-                  placeholder="Yil" min="2009" max="2019" style="text-align:center;padding-left:4px;padding-right:4px;">
-              </div>
-              <input type="hidden" id="f-tug">
+          <!-- Tug'ilgan sana: 2 ustun -->
+          <div class="field-group fg-half">
+            <label class="field-label">Tug'ilgan sana</label>
+            <div class="dob-row">
+              <input class="field-input" id="f-kun" type="number" inputmode="numeric"
+                placeholder="Kun" min="1" max="31" style="text-align:center;padding-left:4px;padding-right:4px;">
+              <select class="field-input" id="f-oy" required>
+                <option value="">Oy</option>
+                <option value="01">Yanvar</option>  <option value="02">Fevral</option>
+                <option value="03">Mart</option>    <option value="04">Aprel</option>
+                <option value="05">May</option>     <option value="06">Iyun</option>
+                <option value="07">Iyul</option>    <option value="08">Avgust</option>
+                <option value="09">Sentabr</option> <option value="10">Oktabr</option>
+                <option value="11">Noyabr</option>  <option value="12">Dekabr</option>
+              </select>
+              <input class="field-input" id="f-yil" type="number" inputmode="numeric"
+                placeholder="Yil" min="2009" max="2019" style="text-align:center;padding-left:4px;padding-right:4px;">
             </div>
-            <div class="field-group" style="margin:0;">
-              <label class="field-label">O'qishni boshlagan sana</label>
-              <input class="field-input" type="date" id="f-boshlagan" max="">
-              <p class="field-hint">Bugungi sanadan kech bo'lmasligi kerak</p>
-            </div>
-          </div><!-- /2-col tug+boshlagan -->
+            <input type="hidden" id="f-tug">
+          </div>
+          <!-- Boshlagan sana: 2 ustun -->
+          <div class="field-group fg-half">
+            <label class="field-label">O'qishni boshlagan sana</label>
+            <input class="field-input" type="date" id="f-boshlagan" max="">
+            <p class="field-hint">Bugungi sanadan kech bo'lmasligi kerak</p>
+          </div>
         </div>
         <button class="btn-submit" id="submit-btn" onclick="addStudent()">
           <span class="spinner" id="spinner"></span>
@@ -602,7 +599,7 @@
       <div class="field-group"><label class="field-label">Familiya</label><input class="field-input" id="e-familiya"></div>
       <div class="field-group"><label class="field-label">Ism</label><input class="field-input" id="e-ism"></div>
       <div class="field-group">
-        <label class="field-label">Maktab raqami <span style="font-size:11px;color:#888;font-weight:400;">(o'quvchi kelgan)</span></label>
+        <label class="field-label">Maktab raqami</label>
         <input class="field-input" id="e-maktab" type="number" inputmode="numeric" min="1" max="99" oninput="valM(this)"
           style="font-family:'DM Mono',monospace;font-size:20px;font-weight:400;text-align:center;letter-spacing:3px;padding:10px;">
         <p class="field-hint">1–99 oralig'idagi raqam</p>
@@ -914,89 +911,47 @@
          width:44px;height:44px;border-radius:50%;border:none;cursor:pointer;
          background:#2563eb;color:#fff;font-size:20px;
          box-shadow:0 4px 16px rgba(37,99,235,.35);
-         align-items:center;justify-content:center;
-         transition:opacity .2s,transform .2s;">
+         align-items:center;justify-content:center;">
   ↑
 </button>
 <script>
-  (function() {
-    var btn = document.getElementById('scroll-top-btn');
-    window.addEventListener('scroll', function() {
-      btn.style.display = window.scrollY > 300 ? 'flex' : 'none';
-    });
-  })();
+(function(){
+  var btn=document.getElementById('scroll-top-btn');
+  window.addEventListener('scroll',function(){ btn.style.display=window.scrollY>300?'flex':'none'; });
+})();
 </script>
-<!-- Sticky jadval header -->
 <script>
-(function() {
-  var cloneEl = null;
-
-  function getTopbarH() {
-    var topbar = document.querySelector('.topbar');
-    return topbar ? topbar.offsetHeight : 52;
+(function(){
+  var cloneEl=null;
+  function getTopbarH(){ var t=document.querySelector('.topbar'); return t?t.offsetHeight:52; }
+  function initStickyHeader(){
+    var thead=document.querySelector('#tbl-body')?.closest('table')?.querySelector('thead');
+    if(!thead) return;
+    var wrap=thead.closest('.tbl-wrap'); if(!wrap) return;
+    if(cloneEl){cloneEl.remove();cloneEl=null;}
+    cloneEl=document.createElement('div');
+    cloneEl.style.cssText='position:fixed;z-index:150;background:#fff;border-bottom:1px solid #e5e7eb;overflow:hidden;display:none;box-shadow:0 2px 8px rgba(0,0,0,.06);';
+    var t=document.createElement('table'); t.style.cssText='border-collapse:collapse;';
+    t.appendChild(thead.cloneNode(true)); cloneEl.appendChild(t);
+    document.body.appendChild(cloneEl); syncClone();
   }
-
-  function initStickyHeader() {
-    var thead = document.querySelector('#tbl-body')?.closest('table')?.querySelector('thead');
-    if (!thead) return;
-    var tblWrap = thead.closest('.tbl-wrap');
-    if (!tblWrap) return;
-
-    if (cloneEl) { cloneEl.remove(); cloneEl = null; }
-
-    cloneEl = document.createElement('div');
-    cloneEl.style.cssText = 'position:fixed;z-index:150;background:#fff;border-bottom:1px solid #e5e7eb;overflow:hidden;display:none;box-shadow:0 2px 8px rgba(0,0,0,.06);';
-
-    var cloneTable = document.createElement('table');
-    cloneTable.style.cssText = 'border-collapse:collapse;';
-    cloneTable.appendChild(thead.cloneNode(true));
-    cloneEl.appendChild(cloneTable);
-    document.body.appendChild(cloneEl);
-    syncClone();
+  function syncClone(){
+    if(!cloneEl) return;
+    var thead=document.querySelector('#tbl-body')?.closest('table')?.querySelector('thead');
+    if(!thead) return;
+    var wrap=thead.closest('.tbl-wrap'); if(!wrap) return;
+    var topH=getTopbarH(), theadTop=thead.getBoundingClientRect().top, rect=wrap.getBoundingClientRect();
+    var ths=thead.querySelectorAll('th'), cths=cloneEl.querySelectorAll('th');
+    ths.forEach(function(th,i){ if(cths[i]) cths[i].style.width=th.getBoundingClientRect().width+'px'; });
+    cloneEl.style.top=topH+'px'; cloneEl.style.left=rect.left+'px'; cloneEl.style.width=rect.width+'px';
+    if(theadTop<topH && rect.bottom>topH+40){ cloneEl.style.display='block'; cloneEl.querySelector('table').style.marginLeft=-wrap.scrollLeft+'px'; }
+    else cloneEl.style.display='none';
   }
-
-  function syncClone() {
-    if (!cloneEl) return;
-    var thead = document.querySelector('#tbl-body')?.closest('table')?.querySelector('thead');
-    if (!thead) return;
-    var tblWrap = thead.closest('.tbl-wrap');
-    if (!tblWrap) return;
-
-    var topH = getTopbarH();
-    var theadTop = thead.getBoundingClientRect().top;
-    var wrapRect = tblWrap.getBoundingClientRect();
-
-    // th kengliklarini sinxronlash
-    var ths = thead.querySelectorAll('th');
-    var cloneThs = cloneEl.querySelectorAll('th');
-    ths.forEach(function(th, i) {
-      if (cloneThs[i]) cloneThs[i].style.width = th.getBoundingClientRect().width + 'px';
-    });
-
-    cloneEl.style.top  = topH + 'px';
-    cloneEl.style.left = wrapRect.left + 'px';
-    cloneEl.style.width = wrapRect.width + 'px';
-
-    if (theadTop < topH && wrapRect.bottom > topH + 40) {
-      cloneEl.style.display = 'block';
-      cloneEl.querySelector('table').style.marginLeft = -tblWrap.scrollLeft + 'px';
-    } else {
-      cloneEl.style.display = 'none';
-    }
-  }
-
-  window.addEventListener('scroll', syncClone);
-  window.addEventListener('resize', function() { initStickyHeader(); });
-  document.addEventListener('scroll', function() {
-    if (!cloneEl) return;
-    var tblWrap = document.querySelector('#tbl-body')?.closest('.tbl-wrap');
-    if (tblWrap) cloneEl.querySelector('table').style.marginLeft = -tblWrap.scrollLeft + 'px';
-  }, true);
-
-  window.addEventListener('DOMContentLoaded', function() {
-    setTimeout(initStickyHeader, 800);
-  });
-  window._initStickyHeader = initStickyHeader;
+  window.addEventListener('scroll',syncClone);
+  window.addEventListener('resize',function(){ initStickyHeader(); });
+  document.addEventListener('scroll',function(){ if(!cloneEl) return; var w=document.querySelector('#tbl-body')?.closest('.tbl-wrap'); if(w) cloneEl.querySelector('table').style.marginLeft=-w.scrollLeft+'px'; },true);
+  window.addEventListener('DOMContentLoaded',function(){ setTimeout(initStickyHeader,800); });
+  window._initStickyHeader=initStickyHeader;
 })();
 </script>
 </body>

@@ -118,7 +118,7 @@ body {
   background: #fff;
 }
 .field-input.err { border-color: var(--danger); }
-.field-group { margin-bottom: 14px; width: 100%; box-sizing: border-box; }
+.field-group { margin-bottom: 14px; }
 .field-hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
 
 /* ── Parol toggle ── */
@@ -284,42 +284,15 @@ body {
 /* ══ FORMA GRID ══ */
 .form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 600px) { .form-grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
-@media (min-width: 900px) { .form-grid { grid-template-columns: 1fr 1fr 1fr; gap: 14px; } }
-/* Telefon fieldlari */
-.tel-full-col { width: 100%; box-sizing: border-box; }
+@media (min-width: 900px) { .form-grid { grid-template-columns: 1fr 1fr 1fr 1fr; gap: 14px; } }
 
-/* Mobil: to'liq kenglik, katta input */
+/* Yordamchi classlar */
+.fg-full  { grid-column: 1 / -1 !important; }
+.fg-half  { grid-column: span 2 !important; }
+
+/* Mobil: telefon inputlari kattaroq */
 @media (max-width: 599px) {
-  .tel-full-col { grid-column: 1 / -1 !important; }
-  .tel-full-col .field-input,
-  .tel-full-col .tel-input {
-    font-size: 16px !important;
-    padding: 14px 16px !important;
-    min-height: 52px !important;
-  }
-}
-
-/* Desktop (900px+): telefon 2 ustundan biri bo'lsin */
-@media (min-width: 900px) {
-  .tel-full-col { grid-column: auto !important; }
-}
-
-.tel-wrap { width: 100%; display: block; }
-.tel-full-col .tel-wrap,
-.tel-full-col .field-input,
-.tel-full-col .tel-input {
-  width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-/* Yashash manzili: har doim to'liq kenglik */
-.fg-full { grid-column: 1 / -1 !important; }
-
-/* Ichki 2-ustun gridlar mobileda 1 ustun */
-@media (max-width: 599px) {
-  .fg-full > [style*="grid-template-columns:1fr 1fr"] {
-    grid-template-columns: 1fr !important;
-  }
+  .tel-mobile-big { font-size: 16px !important; padding: 14px 16px !important; min-height: 52px !important; }
 }
 
 .dob-row { display: grid; grid-template-columns: 68px 1fr 86px; gap: 6px; }
@@ -406,7 +379,6 @@ select.field-input option:not([value=""]) {
 /* ══ DESKTOP JADVAL ══ */
 .tbl-wrap { overflow-x: auto; display: none; }
 @media (min-width: 768px) { .tbl-wrap { display: block; } }
-/* Sticky thead - JS tomonidan boshqariladi */
 .sticky-thead-clone {
   position: fixed;
   top: var(--topbar-h);
