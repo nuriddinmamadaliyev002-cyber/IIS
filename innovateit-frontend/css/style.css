@@ -433,7 +433,7 @@ thead th.th-sort.sort-desc .sort-icon::after {
 tbody tr { border-bottom: 1px solid var(--border); transition: background .1s; }
 tbody tr:last-child { border-bottom: none; }
 tbody tr:hover { background: var(--bg); }
-tbody td { padding: 10px 14px; font-size: 13px; white-space: nowrap; }
+tbody td { padding: 10px 14px; font-size: 13px; white-space: nowrap !important; }
 
 .mono { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
 .sinf-badge {
