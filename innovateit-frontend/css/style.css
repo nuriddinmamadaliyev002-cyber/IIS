@@ -285,8 +285,10 @@ body {
 .form-grid { display: grid; grid-template-columns: 1fr; gap: 10px; }
 @media (min-width: 600px) { .form-grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
 @media (min-width: 900px) { .form-grid { grid-template-columns: 1fr 1fr 1fr; gap: 14px; } }
-/* Telefon fieldlari: mobileda to'liq kenglik, desktopda oddiy */
+/* Telefon fieldlari */
 .tel-full-col { width: 100%; box-sizing: border-box; }
+
+/* Mobil: to'liq kenglik, katta input */
 @media (max-width: 599px) {
   .tel-full-col { grid-column: 1 / -1 !important; }
   .tel-full-col .field-input,
@@ -296,6 +298,12 @@ body {
     min-height: 52px !important;
   }
 }
+
+/* Desktop (900px+): telefon 2 ustundan biri bo'lsin */
+@media (min-width: 900px) {
+  .tel-full-col { grid-column: auto !important; }
+}
+
 .tel-wrap { width: 100%; display: block; }
 .tel-full-col .tel-wrap,
 .tel-full-col .field-input,
@@ -303,8 +311,16 @@ body {
   width: 100% !important;
   box-sizing: border-box !important;
 }
+
 /* Yashash manzili: har doim to'liq kenglik */
 .fg-full { grid-column: 1 / -1 !important; }
+
+/* Ichki 2-ustun gridlar mobileda 1 ustun */
+@media (max-width: 599px) {
+  .fg-full > [style*="grid-template-columns:1fr 1fr"] {
+    grid-template-columns: 1fr !important;
+  }
+}
 
 .dob-row { display: grid; grid-template-columns: 68px 1fr 86px; gap: 6px; }
 @media (min-width: 480px) { .dob-row { grid-template-columns: 80px 1fr 100px; } }
