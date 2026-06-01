@@ -375,13 +375,13 @@ function renderTbl(d) {
     <td><strong>${s.familiya}</strong> ${s.ism}</td>
     <td><span class="maktab-badge">${maktabKo}</span></td>
     <td><span class="sinf-badge">${s.sinf || '—'}</span></td>
-    <td class="mono">${s.telefon || '—'}</td>
-    <td class="mono">${s.telefon2 || '—'}</td>
-    <td class="mono">${fTug(s.tug)}</td>
-    <td>${s.manzil || '—'}</td>
-    ${(U && U.isSuper) ? `<td class="mono" style="font-size:11px;">${s.admin || '—'}</td>` : ''}
-    <td class="mono">${fDate(s.boshlagan)}</td>
-    <td class="mono">${fDate(s.date)}</td>
+    <td class="mono" style="white-space:nowrap;">${s.telefon || '—'}</td>
+    <td class="mono" style="white-space:nowrap;">${s.telefon2 || '—'}</td>
+    <td class="mono" style="white-space:nowrap;">${fTug(s.tug)}</td>
+    <td style="white-space:nowrap;">${s.manzil || '—'}</td>
+    ${(U && U.isSuper) ? `<td class="mono" style="font-size:11px;white-space:nowrap;">${s.admin || '—'}</td>` : ''}
+    <td class="mono" style="white-space:nowrap;">${fDate(s.boshlagan)}</td>
+    <td class="mono" style="white-space:nowrap;">${fDate(s.date)}</td>
     ${!(U && U.isSuper) ? `<td><div style="display:flex;gap:6px;">
       <button class="btn-action" onclick="openES(${s.ri})">✏️</button>
       <button class="btn-action btn-action-del" onclick="openNofaolModal(${s.ri})">🗑️</button>
