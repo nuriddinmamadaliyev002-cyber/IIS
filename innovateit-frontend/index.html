@@ -94,23 +94,23 @@
     <div id="tab-s">
       <div class="form-card" id="add-student-form" style="margin-top:14px;display:none;">
         <div class="card-title">➕ Yangi o'quvchi qo'shish</div>
-        <div class="form-grid">
-          <div class="field-group">
+        <div class="add-student-grid">
+          <div class="field-group asg-col-1">
             <label class="field-label">Familiya</label>
             <input class="field-input" id="f-familiya" placeholder="Karimov" autocomplete="off">
           </div>
-          <div class="field-group">
+          <div class="field-group asg-col-1">
             <label class="field-label">Ism</label>
             <input class="field-input" id="f-ism" placeholder="Sardor" autocomplete="off">
           </div>
-          <div class="field-group">
+          <div class="field-group asg-col-1">
             <label class="field-label">Maktab raqami <span style="font-size:11px;color:#888;font-weight:400;">(o'quvchi kelgan)</span></label>
             <input class="field-input" id="f-maktab" type="number" inputmode="numeric"
               placeholder="5" min="1" max="99" oninput="valM(this)"
               style="font-family:'DM Mono',monospace;font-size:20px;font-weight:400;text-align:center;letter-spacing:3px;padding:10px;">
             <p class="field-hint">Faqat 1–99 oralig'idagi raqam</p>
           </div>
-          <div class="field-group">
+          <div class="field-group asg-col-1">
             <label class="field-label">Sinfi</label>
             <select class="field-input" id="f-sinf">
               <option value="">— Tanlang —</option>
@@ -119,48 +119,46 @@
               <option>7-sinf</option><option>8-sinf</option><option>9-sinf</option>
             </select>
           </div>
-          <!-- Telefon: mobileda to'liq, desktopda 2 ustun -->
-          <div class="field-group fg-half">
+          <!-- Qator 2: Telefon | Qo'shimcha telefon -->
+          <div class="field-group asg-col-2">
             <label class="field-label">Telefon</label>
             <input class="field-input tel-input tel-mobile-big" type="tel" id="f-tel" inputmode="tel" placeholder="+998 90 123 45 67">
             <div class="tel-hint" id="f-tel-hint"></div>
           </div>
-          <div class="field-group fg-half">
+          <div class="field-group asg-col-2">
             <label class="field-label">Qo'shimcha telefon</label>
             <input class="field-input tel-input tel-mobile-big" type="tel" id="f-tel2" inputmode="tel" placeholder="+998 90 123 45 67">
             <div class="tel-hint" id="f-tel2-hint"></div>
           </div>
-          <!-- Yashash manzili: to'liq kenglik -->
-          <div class="field-group fg-full">
+          <!-- Qator 3: Yashash manzili -->
+          <div class="field-group asg-col-full">
             <label class="field-label">Yashash manzili</label>
             <input class="field-input" id="f-manzil" placeholder="Baliqchi shahri">
           </div>
-          <!-- Tug'ilgan + Boshlagan sana: bir qatorda, 2 ta teng ustun -->
-          <div class="field-group fg-full" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
-            <div class="field-group" style="margin:0;">
-              <label class="field-label">Tug'ilgan sana</label>
-              <div class="dob-row">
-                <input class="field-input" id="f-kun" type="number" inputmode="numeric"
-                  placeholder="Kun" min="1" max="31" style="text-align:center;padding-left:4px;padding-right:4px;">
-                <select class="field-input" id="f-oy" required>
-                  <option value="">Oy</option>
-                  <option value="01">Yanvar</option>  <option value="02">Fevral</option>
-                  <option value="03">Mart</option>    <option value="04">Aprel</option>
-                  <option value="05">May</option>     <option value="06">Iyun</option>
-                  <option value="07">Iyul</option>    <option value="08">Avgust</option>
-                  <option value="09">Sentabr</option> <option value="10">Oktabr</option>
-                  <option value="11">Noyabr</option>  <option value="12">Dekabr</option>
-                </select>
-                <input class="field-input" id="f-yil" type="number" inputmode="numeric"
-                  placeholder="Yil" min="2009" max="2019" style="text-align:center;padding-left:4px;padding-right:4px;">
-              </div>
-              <input type="hidden" id="f-tug">
+          <!-- Qator 4: Tug'ilgan sana | Boshlagan sana -->
+          <div class="field-group asg-col-2">
+            <label class="field-label">Tug'ilgan sana</label>
+            <div class="dob-row">
+              <input class="field-input" id="f-kun" type="number" inputmode="numeric"
+                placeholder="Kun" min="1" max="31" style="text-align:center;padding-left:4px;padding-right:4px;">
+              <select class="field-input" id="f-oy" required>
+                <option value="">Oy</option>
+                <option value="01">Yanvar</option>  <option value="02">Fevral</option>
+                <option value="03">Mart</option>    <option value="04">Aprel</option>
+                <option value="05">May</option>     <option value="06">Iyun</option>
+                <option value="07">Iyul</option>    <option value="08">Avgust</option>
+                <option value="09">Sentabr</option> <option value="10">Oktabr</option>
+                <option value="11">Noyabr</option>  <option value="12">Dekabr</option>
+              </select>
+              <input class="field-input" id="f-yil" type="number" inputmode="numeric"
+                placeholder="Yil" min="2009" max="2019" style="text-align:center;padding-left:4px;padding-right:4px;">
             </div>
-            <div class="field-group" style="margin:0;">
-              <label class="field-label">O'qishni boshlagan sana</label>
-              <input class="field-input" type="date" id="f-boshlagan" max="">
-              <p class="field-hint">Bugungi sanadan kech bo'lmasligi kerak</p>
-            </div>
+            <input type="hidden" id="f-tug">
+          </div>
+          <div class="field-group asg-col-2">
+            <label class="field-label">O'qishni boshlagan sana</label>
+            <input class="field-input" type="date" id="f-boshlagan" max="">
+            <p class="field-hint">Bugungi sanadan kech bo'lmasligi kerak</p>
           </div>
         </div>
         <button class="btn-submit" id="submit-btn" onclick="addStudent()">
