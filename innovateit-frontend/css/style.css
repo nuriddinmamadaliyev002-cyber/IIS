@@ -118,7 +118,7 @@ body {
   background: #fff;
 }
 .field-input.err { border-color: var(--danger); }
-.field-group { margin-bottom: 14px; }
+.field-group { margin-bottom: 14px; width: 100%; box-sizing: border-box; }
 .field-hint { font-size: 11px; color: var(--muted); margin-top: 5px; line-height: 1.4; }
 
 /* ── Parol toggle ── */
@@ -286,19 +286,20 @@ body {
 @media (min-width: 600px) { .form-grid { grid-template-columns: 1fr 1fr; gap: 12px; } }
 @media (min-width: 900px) { .form-grid { grid-template-columns: 1fr 1fr 1fr; gap: 14px; } }
 /* Telefon fieldlari: har doim to'liq kenglik, ustma-ust */
-.tel-full-col { grid-column: 1 / -1; }
-.tel-full-col .field-input,
+.tel-full-col { grid-column: 1 / -1 !important; width: 100% !important; box-sizing: border-box; }
+.tel-wrap { width: 100%; display: block; }
 .tel-full-col .tel-wrap,
+.tel-full-col .field-input,
 .tel-full-col .tel-input {
-  width: 100%;
-  box-sizing: border-box;
+  width: 100% !important;
+  box-sizing: border-box !important;
 }
-@media (max-width: 600px) {
+@media (max-width: 768px) {
   .tel-full-col .field-input,
   .tel-full-col .tel-input {
-    font-size: 16px;
-    padding: 14px 16px;
-    min-height: 52px;
+    font-size: 16px !important;
+    padding: 14px 16px !important;
+    min-height: 52px !important;
   }
 }
 
