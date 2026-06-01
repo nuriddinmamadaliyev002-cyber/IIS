@@ -135,31 +135,32 @@
             <label class="field-label">Yashash manzili</label>
             <input class="field-input" id="f-manzil" placeholder="Baliqchi shahri">
           </div>
-          <!-- Tug'ilgan sana: 2 ustun -->
-          <div class="field-group fg-half">
-            <label class="field-label">Tug'ilgan sana</label>
-            <div class="dob-row">
-              <input class="field-input" id="f-kun" type="number" inputmode="numeric"
-                placeholder="Kun" min="1" max="31" style="text-align:center;padding-left:4px;padding-right:4px;">
-              <select class="field-input" id="f-oy" required>
-                <option value="">Oy</option>
-                <option value="01">Yanvar</option>  <option value="02">Fevral</option>
-                <option value="03">Mart</option>    <option value="04">Aprel</option>
-                <option value="05">May</option>     <option value="06">Iyun</option>
-                <option value="07">Iyul</option>    <option value="08">Avgust</option>
-                <option value="09">Sentabr</option> <option value="10">Oktabr</option>
-                <option value="11">Noyabr</option>  <option value="12">Dekabr</option>
-              </select>
-              <input class="field-input" id="f-yil" type="number" inputmode="numeric"
-                placeholder="Yil" min="2009" max="2019" style="text-align:center;padding-left:4px;padding-right:4px;">
+          <!-- Tug'ilgan + Boshlagan sana: bir qatorda, 2 ta teng ustun -->
+          <div class="field-group fg-full" style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+            <div class="field-group" style="margin:0;">
+              <label class="field-label">Tug'ilgan sana</label>
+              <div class="dob-row">
+                <input class="field-input" id="f-kun" type="number" inputmode="numeric"
+                  placeholder="Kun" min="1" max="31" style="text-align:center;padding-left:4px;padding-right:4px;">
+                <select class="field-input" id="f-oy" required>
+                  <option value="">Oy</option>
+                  <option value="01">Yanvar</option>  <option value="02">Fevral</option>
+                  <option value="03">Mart</option>    <option value="04">Aprel</option>
+                  <option value="05">May</option>     <option value="06">Iyun</option>
+                  <option value="07">Iyul</option>    <option value="08">Avgust</option>
+                  <option value="09">Sentabr</option> <option value="10">Oktabr</option>
+                  <option value="11">Noyabr</option>  <option value="12">Dekabr</option>
+                </select>
+                <input class="field-input" id="f-yil" type="number" inputmode="numeric"
+                  placeholder="Yil" min="2009" max="2019" style="text-align:center;padding-left:4px;padding-right:4px;">
+              </div>
+              <input type="hidden" id="f-tug">
             </div>
-            <input type="hidden" id="f-tug">
-          </div>
-          <!-- Boshlagan sana: 2 ustun -->
-          <div class="field-group fg-half">
-            <label class="field-label">O'qishni boshlagan sana</label>
-            <input class="field-input" type="date" id="f-boshlagan" max="">
-            <p class="field-hint">Bugungi sanadan kech bo'lmasligi kerak</p>
+            <div class="field-group" style="margin:0;">
+              <label class="field-label">O'qishni boshlagan sana</label>
+              <input class="field-input" type="date" id="f-boshlagan" max="">
+              <p class="field-hint">Bugungi sanadan kech bo'lmasligi kerak</p>
+            </div>
           </div>
         </div>
         <button class="btn-submit" id="submit-btn" onclick="addStudent()">
