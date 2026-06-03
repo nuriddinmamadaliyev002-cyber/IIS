@@ -11,9 +11,40 @@ const { requireAuth } = require('../middleware/jwt');
 
 const router = Router();
 
-// ─── GET /api/davomat/mening-davomatim — O'qituvchi o'z davomatini ko'radi ───
-// ⚠️  router.use(requireAuth(['admin'])) DAN OLDIN — oqituvchi roli uchun!
-router.get('/mening-davomatim', requireAuth(['oqituvchi']), async (req, res) => {
+// ─── GET /api/davomat/mening-davomatim — O'qituvchi yoki O'quvchi o'z davomatini ko'radi ───
+// ⚠️  router.use(requireAuth(['admin'])) DAN OLDIN — oqituvchi/oquvchi roli uchun!
+router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (req, res) => {
+  // O'quvchi uchun alohida logika
+  if (req.user.rol === 'oquvchi') {
+    const { ism, maktabId, sinf, entityId } = req.user;
+    if (!maktabId) return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
+    try {
+      const result = await pool.query(
+        `SELECT sana, status, izoh
+         FROM davomat
+         WHERE oquvchi_ism = $1
+           AND maktab_id   = $2
+           AND sinf        = $3
+         ORDER BY
+           SPLIT_PART(sana,'.',3)::int DESC,
+           SPLIT_PART(sana,'.',2)::int DESC,
+           SPLIT_PART(sana,'.',1)::int DESC
+         LIMIT 90`,
+        [ism, maktabId, sinf]
+      );
+      return res.json({
+        ok:      true,
+        records: result.rows,
+        kunlar:  '',
+        fan:     '',
+        ism,
+        sinf,
+      });
+    } catch (err) {
+      console.error('GET /mening-davomatim (oquvchi) xatolik:', err.message);
+      return res.status(500).json({ ok: false, error: 'Server xatoligi' });
+    }
+  }
   const { ism, maktabId, entityId } = req.user;
   // ism = "Familiya Ism" (token da shunday saqlanadi)
   // maktabId = o'qituvchining asosiy maktabi
