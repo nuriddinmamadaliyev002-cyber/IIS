@@ -59,8 +59,19 @@
         <input class="field-input" id="a-maktab-boshqa" placeholder="Yoki maktab nomini yozing..." type="text" style="margin-top:10px;display:none">
       </div>
       <div class="field-group" id="sinf-wrap" style="display:none">
-        <div class="field-label">Sinf (o'quvchilar uchun)</div>
-        <input class="field-input" id="a-sinf" placeholder="Masalan: 9-A" type="text" autocomplete="off">
+        <div class="field-label">O'qiyotgan sinfi <span class="req">*</span></div>
+        <select class="field-input" id="a-sinf">
+          <option value="">— Sinfni tanlang —</option>
+          <option value="1-sinf">1-sinf</option>
+          <option value="2-sinf">2-sinf</option>
+          <option value="3-sinf">3-sinf</option>
+          <option value="4-sinf">4-sinf</option>
+          <option value="5-sinf">5-sinf</option>
+          <option value="6-sinf">6-sinf</option>
+          <option value="7-sinf">7-sinf</option>
+          <option value="8-sinf">8-sinf</option>
+          <option value="9-sinf">9-sinf</option>
+        </select>
       </div>
       <button class="btn-primary" onclick="step2Next()">Davom etish →</button>
       <button class="btn-secondary" onclick="goStep(1)">← Orqaga</button>
