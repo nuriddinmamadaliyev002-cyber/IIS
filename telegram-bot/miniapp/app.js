@@ -452,6 +452,7 @@ function buildCards() {
     ],
     oquvchi: [
       { icon:'📋', label:'Davomatim', sub:'tarix', color:'#10b981', action:'openMyDavomat()' },
+      { icon:'📅', label:'Dars jadvali', sub:'haftalik', color:'#6c63ff', action:'openMyJadval()' },
     ],
   };
   const defs = cardDefs[ROL] || [];
@@ -924,6 +925,118 @@ function showSinfOquvchilar(sinf) {
       <span class="sinf-oquv-num-badge">${idx + 1}</span>
     </div>`;
   }).join('');
+}
+
+// ═══════════════════════════════════════════
+//  DARS JADVALI (O'QUVCHI)
+// ═══════════════════════════════════════════
+const KUN_NOMLARI = {
+  '1': 'Dushanba', '2': 'Seshanba', '3': 'Chorshanba',
+  '4': 'Payshanba', '5': 'Juma', '6': 'Shanba', '0': 'Yakshanba'
+};
+const KUN_TARTIB = ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'];
+
+async function openMyJadval() {
+  showPage('myJadvalPage');
+  if (tg) tg.BackButton.show();
+
+  const wrap = document.getElementById('myJadvalContent');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
+
+  try {
+    const data = await apiGet('/jadval/mening-jadvalim');
+
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+
+    const jadvallar = data.jadvallar || [];
+    const oqituvchilar = data.oqituvchilar || [];
+
+    if (jadvallar.length === 0) {
+      wrap.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">📅</div>
+          <div>${data.xabar || "Dars jadvali hali kiritilmagan"}</div>
+          ${oqituvchilar.length > 0
+            ? `<div style="margin-top:8px;font-size:13px;color:var(--hint);">O'qituvchilar: ${oqituvchilar.map(t=>t.familiya+' '+t.ism).join(', ')}</div>`
+            : ''}
+        </div>`;
+      return;
+    }
+
+    // Kunlar bo'yicha guruhlash
+    // Har bir jadval yozuvi uchun kunlar (vergul bilan ajratilgan raqamlar yoki nomlar)
+    const byKun = {};
+    KUN_TARTIB.forEach(k => { byKun[k] = []; });
+
+    jadvallar.forEach(j => {
+      const kunStr = (j.kunlar || '').trim();
+      if (!kunStr) return;
+
+      // Kunlarni ajratish: "1,3,5" yoki "Dushanba,Chorshanba" formatida bo'lishi mumkin
+      const kunParts = kunStr.split(',').map(k => k.trim()).filter(Boolean);
+      kunParts.forEach(k => {
+        // Raqam yoki nom — ikkalasini ham qabul qilish
+        const kunNom = KUN_NOMLARI[k] || k;
+        if (byKun[kunNom] !== undefined) {
+          // Bir xil o'qituvchining bir xil fanini bir marta ko'rsatamiz
+          const exists = byKun[kunNom].find(x =>
+            x.teacher_ism === j.teacher_ism &&
+            x.teacher_familiya === j.teacher_familiya &&
+            x.fan === j.fan
+          );
+          if (!exists) byKun[kunNom].push(j);
+        }
+      });
+    });
+
+    // Bugungi kunni aniqlash
+    const today = new Date();
+    const todayIdx = today.getDay(); // 0=Yakshanba
+    const todayNom = KUN_NOMLARI[String(todayIdx)] || '';
+
+    let html = '';
+
+    KUN_TARTIB.forEach(kun => {
+      const darslar = byKun[kun];
+      if (darslar.length === 0) return;
+
+      const isToday = kun === todayNom;
+      html += `
+        <div class="jadval-kun-blok ${isToday ? 'jadval-bugun' : ''}">
+          <div class="jadval-kun-sarlavha">
+            ${isToday ? '🟢 ' : ''}${kun}${isToday ? ' <span class="jadval-bugun-badge">bugun</span>' : ''}
+          </div>
+          ${darslar.map(d => `
+            <div class="jadval-dars-karta">
+              <div class="jadval-dars-ustun jadval-dars-vaqt">
+                <div class="jadval-vaqt-icon">🕐</div>
+                <div>
+                  <div class="jadval-vaqt-text">${d.boshlanish || '—'}</div>
+                  ${d.tugash ? `<div class="jadval-vaqt-end">${d.tugash}</div>` : ''}
+                </div>
+              </div>
+              <div class="jadval-dars-ustun jadval-dars-info">
+                <div class="jadval-fan">${d.fan || 'Fan ko\'rsatilmagan'}</div>
+                <div class="jadval-teacher">👩‍🏫 ${d.teacher_familiya || ''} ${d.teacher_ism || ''}</div>
+                ${d.sinflar ? `<div class="jadval-sinf">📚 ${d.sinflar}</div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    });
+
+    if (!html) {
+      html = '<div class="empty"><div class="empty-icon">📅</div>Jadval ma\'lumotlari mavjud emas</div>';
+    }
+
+    wrap.innerHTML = html;
+  } catch (e) {
+    console.error('openMyJadval:', e);
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
+  }
 }
 
 // ═══════════════════════════════════════════

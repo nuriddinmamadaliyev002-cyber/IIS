@@ -731,3 +731,93 @@
   opacity: 0.25;
   cursor: not-allowed;
 }
+/* ═══════════════════════════════════════════
+   DARS JADVALI (O'QUVCHI)
+   ═══════════════════════════════════════════ */
+.jadval-kun-blok {
+  background: var(--second, #1e1e2e);
+  border-radius: 14px;
+  margin-bottom: 12px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.jadval-kun-blok.jadval-bugun {
+  border-color: rgba(108, 99, 255, 0.45);
+  box-shadow: 0 0 0 1px rgba(108, 99, 255, 0.2);
+}
+.jadval-kun-sarlavha {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hint, #888);
+  padding: 10px 14px 8px;
+  border-bottom: 1px solid rgba(255,255,255,0.06);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.jadval-bugun .jadval-kun-sarlavha {
+  color: #a5b4fc;
+}
+.jadval-bugun-badge {
+  font-size: 10px;
+  font-weight: 600;
+  background: rgba(108,99,255,0.25);
+  color: #a5b4fc;
+  padding: 2px 8px;
+  border-radius: 20px;
+  text-transform: lowercase;
+  letter-spacing: 0;
+}
+.jadval-dars-karta {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.jadval-dars-karta:last-child {
+  border-bottom: none;
+}
+.jadval-dars-ustun { display: flex; }
+.jadval-dars-vaqt {
+  align-items: center;
+  gap: 8px;
+  min-width: 72px;
+  flex-shrink: 0;
+}
+.jadval-vaqt-icon {
+  font-size: 16px;
+  flex-shrink: 0;
+}
+.jadval-vaqt-text {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text, #f0f0f5);
+  line-height: 1.2;
+}
+.jadval-vaqt-end {
+  font-size: 11px;
+  color: var(--hint, #888);
+  margin-top: 2px;
+}
+.jadval-dars-info {
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+}
+.jadval-fan {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text, #f0f0f5);
+  line-height: 1.3;
+}
+.jadval-teacher {
+  font-size: 12px;
+  color: var(--hint, #888);
+}
+.jadval-sinf {
+  font-size: 12px;
+  color: var(--hint, #888);
+}
