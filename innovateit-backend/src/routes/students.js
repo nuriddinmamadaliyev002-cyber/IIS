@@ -360,6 +360,21 @@ router.post('/activate', async (req, res) => {
        s.tug, s.manzil, s.qoshilgan, s.boshlagan, s.maktab_id]
     );
     await client.query('DELETE FROM nofaol_oquvchilar WHERE id=$1', [s.id]);
+
+    // Yangi ID ni olish
+    const newStudent = await client.query(
+      'SELECT id FROM oquvchilar WHERE ism=$1 AND familiya=$2 AND maktab_id=$3 ORDER BY id DESC LIMIT 1',
+      [s.ism, s.familiya, s.maktab_id]
+    );
+    if (newStudent.rows.length > 0) {
+      const newId = newStudent.rows[0].id;
+      // telegram_users da entity_id ni yangilash
+      await client.query(
+        'UPDATE telegram_users SET entity_id=$1 WHERE entity_id=$2 AND entity_table=$3',
+        [newId, s.id, 'oquvchilar']
+      );
+    }
+
     await client.query('COMMIT');
     res.json({ ok: true });
   } catch (err) {
