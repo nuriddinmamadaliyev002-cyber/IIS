@@ -372,7 +372,7 @@ function openAdminPanel() {
 // ═══════════════════════════════════════════
 function showDashboard(data) {
   showPage('dashPage');
-  document.getElementById('bottomNav').style.display = 'flex';
+  document.getElementById('bottomNav').style.display = (ROL === 'oquvchi') ? 'none' : 'flex';
   if (tg) tg.BackButton.hide();
 
   const rolLabels = {
