@@ -260,33 +260,9 @@ function renderSorovlar(list) {
     const isOqituvchi = poz === 'oqituvchi';
     const needBirikma = s.holat === 'kutilmoqda' && (isOquvchi || isOqituvchi);
 
-    // Entity ro'yxati — maktab va sinf bo'yicha filter
+    // Entity options — bo'sh, onfocus da dinamik to'ldiriladi
     let entityOptions = '<option value="">— Tanlang —</option>';
-    if (isOquvchi) {
-      // Anketa maktabi va sinfiga qarab filter
-      const anketaMaktab = (s.maktablar || '').toLowerCase().trim();
-      // sinf normalizatsiya: "8-sinf" va "8" ikkalasini ham qo'llab-quvvatlash
-      const anketaSinfRaw = (s.sinf || '').toLowerCase().trim();
-      const anketaSinfNum = parseInt(anketaSinfRaw) || 0;
-
-      const filtered = SR_ENTITIES.oquvchi.filter(e => {
-        const eMaktab  = (e.maktab || '').toLowerCase().trim();
-        const eSinfRaw = (e.sinf   || '').toLowerCase().trim();
-        const eSinfNum = parseInt(eSinfRaw) || 0;
-        const maktabMatch = anketaMaktab ? eMaktab.includes(anketaMaktab) || anketaMaktab.includes(eMaktab) : true;
-        // ham raqam, ham string sifatida taqqoslash
-        const sinfMatch = anketaSinfNum ? eSinfNum === anketaSinfNum : (anketaSinfRaw ? eSinfRaw === anketaSinfRaw : true);
-        return maktabMatch && sinfMatch;
-      });
-
-      const source = filtered.length ? filtered : SR_ENTITIES.oquvchi;
-      if (filtered.length === 0 && anketaMaktab) {
-        entityOptions += `<option disabled>⚠️ ${esc(s.maktablar)} - ${esc(s.sinf)} da mos o'quvchi topilmadi</option>`;
-      }
-      source.forEach(e => {
-        entityOptions += `<option value="${e.id}">${esc(e.familiya + ' ' + e.ism)} (${esc(e.maktab || '')} ${esc(e.sinf || '')})</option>`;
-      });
-    } else if (isOqituvchi) {
+    if (isOqituvchi) {
       SR_ENTITIES.oqituvchi.forEach(e => {
         entityOptions += `<option value="${e.id}">${esc(e.familiya + ' ' + e.ism)} (${esc((e.maktablar||[]).map(m=>m.nomi).join(', '))})</option>`;
       });
@@ -295,8 +271,13 @@ function renderSorovlar(list) {
     const birikmaSection = needBirikma ? `
       <div class="sr-birikma-wrap" id="sbw-${s.id}">
         <div class="sr-birikma-label">Mavjud ${isOquvchi ? "o'quvchi" : "o'qituvchi"}ga biriktirish:</div>
-        <select class="sr-entity-sel" id="sr-ent-${s.id}" onchange="srEntityChange(${s.id}, '${poz}', this.value)">
-          ${entityOptions}
+        <select class="sr-entity-sel" id="sr-ent-${s.id}"
+          data-maktab="${esc(s.maktablar||'')}"
+          data-sinf="${esc(s.sinf||'')}"
+          data-poz="${poz}"
+          onfocus="srFillDropdown(this)"
+          onchange="srEntityChange(${s.id}, '${poz}', this.value)">
+          ${isOquvchi ? '<option value="">— Tanlang —</option>' : entityOptions}
         </select>
         <div class="sr-birikma-hint" id="sr-hint-${s.id}"></div>
       </div>` : '';
@@ -341,6 +322,40 @@ function renderSorovlar(list) {
 }
 
 // Select o'zgarganda — biriktirish holatini saqlash va Tasdiqlash ni aktiv qilish
+function srFillDropdown(sel) {
+  // Allaqachon to'ldirilgan bo'lsa qayta to'ldirmaslik
+  if (sel.dataset.filled === '1') return;
+  sel.dataset.filled = '1';
+
+  const anketaMaktab = (sel.dataset.maktab || '').toLowerCase().trim();
+  const anketaSinfRaw = (sel.dataset.sinf || '').toLowerCase().trim();
+  const anketaSinfNum = parseInt(anketaSinfRaw) || 0;
+
+  const filtered = SR_ENTITIES.oquvchi.filter(e => {
+    const eMaktab  = (e.maktab || '').toLowerCase().trim();
+    const eSinfRaw = (e.sinf   || '').toLowerCase().trim();
+    const eSinfNum = parseInt(eSinfRaw) || 0;
+    const maktabMatch = anketaMaktab ? eMaktab.includes(anketaMaktab) || anketaMaktab.includes(eMaktab) : true;
+    const sinfMatch   = anketaSinfNum ? eSinfNum === anketaSinfNum : (anketaSinfRaw ? eSinfRaw === anketaSinfRaw : true);
+    return maktabMatch && sinfMatch;
+  });
+
+  const source = filtered.length ? filtered : SR_ENTITIES.oquvchi;
+  sel.innerHTML = '<option value="">— Tanlang —</option>';
+  if (filtered.length === 0 && anketaMaktab) {
+    const warn = document.createElement('option');
+    warn.disabled = true;
+    warn.textContent = `⚠️ ${sel.dataset.maktab} - ${sel.dataset.sinf} da mos o'quvchi topilmadi`;
+    sel.appendChild(warn);
+  }
+  source.forEach(e => {
+    const opt = document.createElement('option');
+    opt.value = e.id;
+    opt.textContent = `${e.familiya} ${e.ism} (${e.maktab || ''} ${e.sinf || ''})`;
+    sel.appendChild(opt);
+  });
+}
+
 function srEntityChange(sorovId, pozitsiya, entityId) {
   const okBtn  = document.getElementById('sr-ok-'   + sorovId);
   const hintEl = document.getElementById('sr-hint-' + sorovId);
