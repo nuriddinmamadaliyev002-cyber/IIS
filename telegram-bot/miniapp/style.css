@@ -374,6 +374,7 @@
 
     /* ── List Page ── */
     #listPage { padding-bottom: 80px; }
+    #myDavomatPage .list-items { padding-bottom: 80px; }
     .list-header {
       background: var(--second);
       padding: 14px 20px;

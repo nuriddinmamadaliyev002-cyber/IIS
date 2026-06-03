@@ -424,7 +424,7 @@ function buildNavBar() {
     admin:     ['students','teachers','davomat'],
     buxgalter: ['tolov'],
     oqituvchi: ['students','davomat'],
-    oquvchi:   ['davomat'],
+    oquvchi:   [],
   };
   const show = navMap[ROL] || [];
   ['students','teachers','davomat','tolov'].forEach(id => {
@@ -451,7 +451,7 @@ function buildCards() {
       { icon:'📋', label:'Davomatim', sub:'dars kunlari', color:'#10b981', action:"openMyDavomat()" },
     ],
     oquvchi: [
-      { icon:'📋', label:'Davomatim', sub:'tarix', color:'#10b981', action:'openOqituvchiDavomat()' },
+      { icon:'📋', label:'Davomatim', sub:'tarix', color:'#10b981', action:'openMyDavomat()' },
     ],
   };
   const defs = cardDefs[ROL] || [];
