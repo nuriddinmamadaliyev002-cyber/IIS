@@ -148,6 +148,7 @@ function step1Next() {
     anketaPoz === 'oquvchi' ? 'block' : 'none';
 
   goStep(2);
+  loadMaktablarAnketa();
 }
 
 // Maktab tanlash
