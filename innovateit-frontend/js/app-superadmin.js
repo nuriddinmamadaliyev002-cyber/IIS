@@ -260,10 +260,26 @@ function renderSorovlar(list) {
     const isOqituvchi = poz === 'oqituvchi';
     const needBirikma = s.holat === 'kutilmoqda' && (isOquvchi || isOqituvchi);
 
-    // Entity ro'yxati
+    // Entity ro'yxati — maktab va sinf bo'yicha filter
     let entityOptions = '<option value="">— Tanlang —</option>';
     if (isOquvchi) {
-      SR_ENTITIES.oquvchi.forEach(e => {
+      // Anketa maktabi va sinfiga qarab filter
+      const anketaMaktab = (s.maktablar || '').toLowerCase().trim();
+      const anketaSinf   = (s.sinf || '').toLowerCase().trim();
+
+      const filtered = SR_ENTITIES.oquvchi.filter(e => {
+        const eMaktab = (e.maktab || '').toLowerCase().trim();
+        const eSinf   = (e.sinf   || '').toLowerCase().trim();
+        const maktabMatch = anketaMaktab ? eMaktab.includes(anketaMaktab) || anketaMaktab.includes(eMaktab) : true;
+        const sinfMatch   = anketaSinf   ? eSinf === anketaSinf : true;
+        return maktabMatch && sinfMatch;
+      });
+
+      const source = filtered.length ? filtered : SR_ENTITIES.oquvchi;
+      if (filtered.length === 0 && anketaMaktab) {
+        entityOptions += `<option disabled>⚠️ ${esc(s.maktablar)} - ${esc(s.sinf)} da mos o'quvchi topilmadi</option>`;
+      }
+      source.forEach(e => {
         entityOptions += `<option value="${e.id}">${esc(e.familiya + ' ' + e.ism)} (${esc(e.maktab || '')} ${esc(e.sinf || '')})</option>`;
       });
     } else if (isOqituvchi) {
