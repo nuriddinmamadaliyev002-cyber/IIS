@@ -265,13 +265,17 @@ function renderSorovlar(list) {
     if (isOquvchi) {
       // Anketa maktabi va sinfiga qarab filter
       const anketaMaktab = (s.maktablar || '').toLowerCase().trim();
-      const anketaSinf   = (s.sinf || '').toLowerCase().trim();
+      // sinf normalizatsiya: "8-sinf" va "8" ikkalasini ham qo'llab-quvvatlash
+      const anketaSinfRaw = (s.sinf || '').toLowerCase().trim();
+      const anketaSinfNum = parseInt(anketaSinfRaw) || 0;
 
       const filtered = SR_ENTITIES.oquvchi.filter(e => {
-        const eMaktab = (e.maktab || '').toLowerCase().trim();
-        const eSinf   = (e.sinf   || '').toLowerCase().trim();
+        const eMaktab  = (e.maktab || '').toLowerCase().trim();
+        const eSinfRaw = (e.sinf   || '').toLowerCase().trim();
+        const eSinfNum = parseInt(eSinfRaw) || 0;
         const maktabMatch = anketaMaktab ? eMaktab.includes(anketaMaktab) || anketaMaktab.includes(eMaktab) : true;
-        const sinfMatch   = anketaSinf   ? eSinf === anketaSinf : true;
+        // ham raqam, ham string sifatida taqqoslash
+        const sinfMatch = anketaSinfNum ? eSinfNum === anketaSinfNum : (anketaSinfRaw ? eSinfRaw === anketaSinfRaw : true);
         return maktabMatch && sinfMatch;
       });
 
