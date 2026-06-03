@@ -13,7 +13,7 @@ const router = Router();
 // ─── GET /api/jadval/mening-jadvalim — O'quvchi uchun (o'z o'qituvchilari jadvali) ──
 // ⚠️  Bu router.use(requireAuth(['admin'])) DAN OLDIN turishi SHART!
 router.get('/mening-jadvalim', requireAuth(['oquvchi']), async (req, res) => {
-  const { entityId, maktabId } = req.user;
+  const { entityId, maktabId, sinf } = req.user;
 
   if (!entityId) {
     return res.status(400).json({ ok: false, error: "O'quvchi ID topilmadi" });
@@ -33,28 +33,40 @@ router.get('/mening-jadvalim', requireAuth(['oquvchi']), async (req, res) => {
       return res.json({ ok: true, jadvallar: [], xabar: "Hali birorta o'qituvchi biriktirilmagan" });
     }
 
-    const teacherIds = teachersRes.rows.map(t => t.id);
-
     // 2) O'sha o'qituvchilarning jadvallarini topamiz
     //    teacher_ism + teacher_familiya bo'yicha mos keladigan yozuvlarni olamiz
-    //    (dars_jadvali jadvalida teacher_id yo'q, shuning uchun ism+familiya bo'yicha)
     const namePairs = teachersRes.rows.map(t =>
       `(LOWER(TRIM(teacher_familiya)) = LOWER('${t.familiya.replace(/'/g,"''")}') AND LOWER(TRIM(teacher_ism)) = LOWER('${t.ism.replace(/'/g,"''")}'))`
     ).join(' OR ');
+
+    // 3) O'quvchining sinfi bo'yicha filtrlash
+    //    sinflar maydoni: "4-sinf" yoki "4-sinf, 8-sinf" ko'rinishida bo'lishi mumkin
+    let sinfFilter = '';
+    const sinfParams = [maktabId || null];
+
+    if (sinf) {
+      // "8-sinf" → "8-sinf" yoki "8" ikkalasini ham qidirish
+      const sinfClean = sinf.replace(/-sinf$/i, '').trim();
+      sinfParams.push(`%${sinf}%`);
+      sinfParams.push(`%${sinfClean}%`);
+      sinfFilter = `AND (LOWER(sinflar) LIKE LOWER($2) OR LOWER(sinflar) LIKE LOWER($3))`;
+    }
 
     const jadvalRes = await pool.query(
       `SELECT id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash, maktab_id
        FROM dars_jadvali
        WHERE (${namePairs})
          AND (maktab_id = $1 OR $1 IS NULL)
+         ${sinfFilter}
        ORDER BY boshlanish`,
-      [maktabId || null]
+      sinfParams
     );
 
     res.json({
       ok: true,
       jadvallar: jadvalRes.rows,
-      oqituvchilar: teachersRes.rows
+      oqituvchilar: teachersRes.rows,
+      sinf: sinf || null
     });
   } catch (err) {
     console.error('jadval/mening-jadvalim xatolik:', err.message);
