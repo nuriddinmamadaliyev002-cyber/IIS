@@ -19,18 +19,24 @@ router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (re
     const { ism, maktabId, sinf, entityId } = req.user;
     if (!maktabId) return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
     try {
+      // DB da oquvchi_ism "Ism Familiya" yoki "Familiya Ism" bo'lishi mumkin
+      // Token da ism = "Familiya Ism" formatida saqlanadi
+      // Shuning uchun ikkala variantni ham tekshiramiz
+      const ismParts = ism.trim().split(' ');
+      const teskari = ismParts.length >= 2
+        ? ismParts.slice(1).join(' ') + ' ' + ismParts[0]
+        : ism;
+
       const result = await pool.query(
         `SELECT sana, status, izoh
          FROM davomat
-         WHERE oquvchi_ism = $1
+         WHERE (oquvchi_ism = $1 OR oquvchi_ism = $4)
            AND maktab_id   = $2
            AND sinf        = $3
          ORDER BY
-           SPLIT_PART(sana,'.',3)::int DESC,
-           SPLIT_PART(sana,'.',2)::int DESC,
-           SPLIT_PART(sana,'.',1)::int DESC
+           to_date(NULLIF(sana,''), 'YYYY-MM-DD') DESC NULLS LAST
          LIMIT 90`,
-        [ism, maktabId, sinf]
+        [ism, maktabId, sinf, teskari]
       );
       return res.json({
         ok:      true,
