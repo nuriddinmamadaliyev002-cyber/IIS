@@ -930,7 +930,7 @@ function showSinfOquvchilar(sinf) {
 // ═══════════════════════════════════════════
 //  DARS JADVALI (O'QUVCHI)
 // ═══════════════════════════════════════════
-const KUN_NOMLARI = {
+const KUN_RAQAM_MAP = {
   '1': 'Dushanba', '2': 'Seshanba', '3': 'Chorshanba',
   '4': 'Payshanba', '5': 'Juma', '6': 'Shanba', '0': 'Yakshanba'
 };
@@ -979,7 +979,7 @@ async function openMyJadval() {
       const kunParts = kunStr.split(',').map(k => k.trim()).filter(Boolean);
       kunParts.forEach(k => {
         // Raqam yoki nom — ikkalasini ham qabul qilish
-        const kunNom = KUN_NOMLARI[k] || k;
+        const kunNom = KUN_RAQAM_MAP[k] || k;
         if (byKun[kunNom] !== undefined) {
           // Bir xil o'qituvchining bir xil fanini bir marta ko'rsatamiz
           const exists = byKun[kunNom].find(x =>
@@ -995,7 +995,7 @@ async function openMyJadval() {
     // Bugungi kunni aniqlash
     const today = new Date();
     const todayIdx = today.getDay(); // 0=Yakshanba
-    const todayNom = KUN_NOMLARI[String(todayIdx)] || '';
+    const todayNom = KUN_RAQAM_MAP[String(todayIdx)] || '';
 
     let html = '';
 
