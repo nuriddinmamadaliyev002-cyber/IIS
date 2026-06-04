@@ -153,8 +153,8 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
          COUNT(*)         AS dars_soni
        FROM oqituvchilar_davomat
        WHERE oqituvchi_ism = $1 AND maktab_id = $2
-       GROUP BY oy, yil
-       ORDER BY yil DESC, oy::int DESC
+       GROUP BY SPLIT_PART(sana,'-',2), SPLIT_PART(sana,'-',1)
+       ORDER BY SPLIT_PART(sana,'-',1) DESC, SPLIT_PART(sana,'-',2)::int DESC
        LIMIT 4`,
       [ism, maktabId]
     );
