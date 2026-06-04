@@ -146,8 +146,8 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
     // 3) Oylik statistika (so'nggi 4 oy)
     const oylikRes = await pool.query(
       `SELECT
-         SPLIT_PART(sana,'.',2) AS oy,
-         SPLIT_PART(sana,'.',3) AS yil,
+         SPLIT_PART(sana,'-',2) AS oy,
+         SPLIT_PART(sana,'-',1) AS yil,
          SUM(dars_soat)   AS soat,
          SUM(dars_daqiqa) AS daqiqa,
          COUNT(*)         AS dars_soni
