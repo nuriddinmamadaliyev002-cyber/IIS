@@ -327,10 +327,37 @@ function srFillDropdown(sel) {
   if (sel.dataset.filled === '1') return;
   sel.dataset.filled = '1';
 
-  const anketaMaktab = (sel.dataset.maktab || '').toLowerCase().trim();
+  const poz           = (sel.dataset.poz || '').toLowerCase().trim();
+  const anketaMaktab  = (sel.dataset.maktab || '').toLowerCase().trim();
   const anketaSinfRaw = (sel.dataset.sinf || '').toLowerCase().trim();
   const anketaSinfNum = parseInt(anketaSinfRaw) || 0;
 
+  // ── O'QITUVCHI ──
+  if (poz === 'oqituvchi') {
+    const filtered = SR_ENTITIES.oqituvchi.filter(e => {
+      if (!anketaMaktab) return true;
+      const eMaktablar = ((e.maktablar || []).map(m => (m.nomi||'').toLowerCase())).join(', ');
+      const anketaM1   = anketaMaktab.split(',')[0].trim();
+      return eMaktablar.includes(anketaM1) || anketaMaktab.includes(eMaktablar.split(',')[0]?.trim() || '');
+    });
+    const source = filtered.length ? filtered : SR_ENTITIES.oqituvchi;
+    sel.innerHTML = '<option value="">— Tanlang —</option>';
+    if (filtered.length === 0 && anketaMaktab) {
+      const warn = document.createElement('option');
+      warn.disabled = true;
+      warn.textContent = `⚠️ ${sel.dataset.maktab} – da mos o'qituvchi topilmadi`;
+      sel.appendChild(warn);
+    }
+    source.forEach(e => {
+      const opt = document.createElement('option');
+      opt.value = e.id;
+      opt.textContent = `${e.familiya} ${e.ism} (${(e.maktablar||[]).map(m=>m.nomi).join(', ')})`;
+      sel.appendChild(opt);
+    });
+    return;
+  }
+
+  // ── O'QUVCHI ──
   const filtered = SR_ENTITIES.oquvchi.filter(e => {
     const eMaktab  = (e.maktab || '').toLowerCase().trim();
     const eSinfRaw = (e.sinf   || '').toLowerCase().trim();
