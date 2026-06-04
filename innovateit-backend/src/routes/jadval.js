@@ -83,35 +83,47 @@ router.get('/mening-jadvalim-oqituvchi', requireAuth(['oqituvchi']), async (req,
   }
 
   try {
-    // O'qituvchining ismi bo'yicha dars_jadvali dan qidirish
-    // ism = "Familiya Ism" formatida
     const ismParts = (ism || '').trim().split(' ');
     const familiya = ismParts[0] || '';
     const ismOnly  = ismParts.slice(1).join(' ') || '';
 
-    // Maktablar bo'yicha filtrlash
-    const maktabIds = maktabIdlar || [];
+    // Query param dan tanlangan maktab ID (miniapp dan)
+    const queryMaktabId = req.query.maktabId ? parseInt(req.query.maktabId) : null;
 
+    // Faqat tanlangan maktab bo'yicha filter
     let jadvalRes;
-    if (maktabIds.length > 0) {
+    if (queryMaktabId) {
       jadvalRes = await pool.query(
         `SELECT id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash, maktab_id
          FROM dars_jadvali
          WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
            AND LOWER(TRIM(teacher_ism))      = LOWER($2)
-           AND maktab_id = ANY($3)
+           AND maktab_id = $3
          ORDER BY boshlanish`,
-        [familiya, ismOnly, maktabIds]
+        [familiya, ismOnly, queryMaktabId]
       );
     } else {
-      jadvalRes = await pool.query(
-        `SELECT id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash, maktab_id
-         FROM dars_jadvali
-         WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
-           AND LOWER(TRIM(teacher_ism))      = LOWER($2)
-         ORDER BY boshlanish`,
-        [familiya, ismOnly]
-      );
+      const maktabIds = maktabIdlar || [];
+      if (maktabIds.length > 0) {
+        jadvalRes = await pool.query(
+          `SELECT id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash, maktab_id
+           FROM dars_jadvali
+           WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
+             AND LOWER(TRIM(teacher_ism))      = LOWER($2)
+             AND maktab_id = ANY($3)
+           ORDER BY boshlanish`,
+          [familiya, ismOnly, maktabIds]
+        );
+      } else {
+        jadvalRes = await pool.query(
+          `SELECT id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash, maktab_id
+           FROM dars_jadvali
+           WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
+             AND LOWER(TRIM(teacher_ism))      = LOWER($2)
+           ORDER BY boshlanish`,
+          [familiya, ismOnly]
+        );
+      }
     }
 
     // O'qituvchi ma'lumotlari (rejalangan soatlar uchun)

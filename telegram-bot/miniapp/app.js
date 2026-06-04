@@ -449,7 +449,7 @@ function buildNavBar() {
   const navMap = {
     admin:     ['students','teachers','davomat'],
     buxgalter: ['tolov'],
-    oqituvchi: ['students','davomat'],
+    oqituvchi: [],
     oquvchi:   [],
   };
   const show = navMap[ROL] || [];
@@ -1082,7 +1082,11 @@ async function openTeacherJadval() {
   wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
 
   try {
-    const data = await apiGet('/jadval/mening-jadvalim-oqituvchi');
+    const maktabId = MAKTAB_ID_MAP[TANLANGAN_M] || null;
+    const jadvalUrl = maktabId
+      ? `/jadval/mening-jadvalim-oqituvchi?maktabId=${maktabId}`
+      : '/jadval/mening-jadvalim-oqituvchi';
+    const data = await apiGet(jadvalUrl);
 
     if (!data || !data.ok) {
       wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
