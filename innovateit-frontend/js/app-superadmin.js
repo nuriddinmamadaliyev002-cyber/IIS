@@ -261,23 +261,18 @@ function renderSorovlar(list) {
     const needBirikma = s.holat === 'kutilmoqda' && (isOquvchi || isOqituvchi);
 
     // Entity options — bo'sh, onfocus da dinamik to'ldiriladi
-    let entityOptions = '<option value="">— Tanlang —</option>';
-    if (isOqituvchi) {
-      SR_ENTITIES.oqituvchi.forEach(e => {
-        entityOptions += `<option value="${e.id}">${esc(e.familiya + ' ' + e.ism)} (${esc((e.maktablar||[]).map(m=>m.nomi).join(', '))})</option>`;
-      });
-    }
-
     const birikmaSection = needBirikma ? `
       <div class="sr-birikma-wrap" id="sbw-${s.id}">
         <div class="sr-birikma-label">Mavjud ${isOquvchi ? "o'quvchi" : "o'qituvchi"}ga biriktirish:</div>
+        ${isOqituvchi && s.fan ? `<div style="font-size:12px;color:#6c63ff;font-weight:600;margin-bottom:6px;">📚 Fan: ${esc(s.fan)}</div>` : ''}
         <select class="sr-entity-sel" id="sr-ent-${s.id}"
           data-maktab="${esc(s.maktablar||'')}"
           data-sinf="${esc(s.sinf||'')}"
           data-poz="${poz}"
+          data-fan="${esc(s.fan||'')}"
           onfocus="srFillDropdown(this)"
           onchange="srEntityChange(${s.id}, '${poz}', this.value)">
-          ${isOquvchi ? '<option value="">— Tanlang —</option>' : entityOptions}
+          <option value="">— Tanlang —</option>
         </select>
         <div class="sr-birikma-hint" id="sr-hint-${s.id}"></div>
       </div>` : '';
@@ -334,18 +329,25 @@ function srFillDropdown(sel) {
 
   // ── O'QITUVCHI ──
   if (poz === 'oqituvchi') {
+    const anketaFanRaw = (sel.dataset.fan || '').toLowerCase().trim();
     const filtered = SR_ENTITIES.oqituvchi.filter(e => {
-      if (!anketaMaktab) return true;
-      const eMaktablar = ((e.maktablar || []).map(m => (m.nomi||'').toLowerCase())).join(', ');
-      const anketaM1   = anketaMaktab.split(',')[0].trim();
-      return eMaktablar.includes(anketaM1) || anketaMaktab.includes(eMaktablar.split(',')[0]?.trim() || '');
+      const maktabOk = (() => {
+        if (!anketaMaktab) return true;
+        const eMaktablar = ((e.maktablar || []).map(m => (m.nomi||'').toLowerCase())).join(', ');
+        const anketaM1   = anketaMaktab.split(',')[0].trim();
+        return eMaktablar.includes(anketaM1) || anketaMaktab.includes(eMaktablar.split(',')[0]?.trim() || '');
+      })();
+      const fanOk = anketaFanRaw
+        ? (e.fan || '').toLowerCase().includes(anketaFanRaw) || anketaFanRaw.includes((e.fan || '').toLowerCase())
+        : true;
+      return maktabOk && fanOk;
     });
     const source = filtered.length ? filtered : SR_ENTITIES.oqituvchi;
     sel.innerHTML = '<option value="">— Tanlang —</option>';
-    if (filtered.length === 0 && anketaMaktab) {
+    if (filtered.length === 0 && (anketaMaktab || anketaFanRaw)) {
       const warn = document.createElement('option');
       warn.disabled = true;
-      warn.textContent = `⚠️ ${sel.dataset.maktab} – da mos o'qituvchi topilmadi`;
+      warn.textContent = `⚠️ ${sel.dataset.fan ? sel.dataset.fan + ' fani bo\'yicha' : ''} ${sel.dataset.maktab} – da mos o'qituvchi topilmadi`;
       sel.appendChild(warn);
     }
     source.forEach(e => {

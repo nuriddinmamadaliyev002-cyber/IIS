@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>InnovateIT School</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=3">
+  <link rel="stylesheet" href="style.css?v=4">
 </head>
 <body>
 
@@ -39,6 +39,24 @@
             <div class="poz-label">O'quvchi</div>
           </div>
 
+        </div>
+      </div>
+      <!-- Fan tanlash (faqat o'qituvchi uchun) -->
+      <div class="field-group" id="fan-wrap" style="display:none">
+        <div class="field-label">Qaysi fandan dars berasiz? <span class="req">*</span></div>
+        <div class="fan-grid" id="fan-grid">
+          <div class="fan-card" onclick="selectFan('Matematika')" id="fan-Matematika">
+            <div class="fan-icon">📐</div>
+            <div class="fan-label">Matematika</div>
+          </div>
+          <div class="fan-card" onclick="selectFan('IT')" id="fan-IT">
+            <div class="fan-icon">💻</div>
+            <div class="fan-label">IT</div>
+          </div>
+          <div class="fan-card" onclick="selectFan('Ingliz tili')" id="fan-Ingliz-tili">
+            <div class="fan-icon">🌍</div>
+            <div class="fan-label">Ingliz tili</div>
+          </div>
         </div>
       </div>
       <div class="field-group">
@@ -288,6 +306,6 @@
   </button>
 </div>
 
-  <script src="app.js?v=3"></script>
+  <script src="app.js?v=4"></script>
 </body>
 </html>

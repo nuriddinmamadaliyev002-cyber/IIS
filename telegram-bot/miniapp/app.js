@@ -39,6 +39,7 @@ let currentList  = null;
 
 // Anketa holati
 let anketaPoz      = null;
+let anketaFan      = null; // o'qituvchi uchun fan
 let anketaMaktablar = []; // tanlangan maktablar
 let STEP           = 1;
 
@@ -132,6 +133,25 @@ function selectPoz(val) {
   anketaPoz = val;
   document.querySelectorAll('.poz-card').forEach(c => c.classList.remove('selected'));
   document.getElementById('poz-' + val)?.classList.add('selected');
+
+  // Fan tanlash maydonini faqat o'qituvchi uchun ko'rsatish
+  const fanWrap = document.getElementById('fan-wrap');
+  if (fanWrap) fanWrap.style.display = val === 'oqituvchi' ? 'block' : 'none';
+
+  // O'quvchi tanlaganda fan reset
+  if (val !== 'oqituvchi') {
+    anketaFan = null;
+    document.querySelectorAll('.fan-card').forEach(c => c.classList.remove('selected'));
+  }
+}
+
+// Fan tanlash (o'qituvchi uchun)
+function selectFan(fan) {
+  anketaFan = fan;
+  document.querySelectorAll('.fan-card').forEach(c => c.classList.remove('selected'));
+  // ID da bo'sh joy o'rniga '-' ishlatilgan
+  const fanId = 'fan-' + fan.replace(/ /g, '-');
+  document.getElementById(fanId)?.classList.add('selected');
 }
 
 // Qadam 1 → 2
@@ -141,7 +161,12 @@ function step1Next() {
   err.classList.remove('show');
 
   if (!anketaPoz) { err.textContent = '❌ Pozitsiyani tanlang'; err.classList.add('show'); return; }
-  if (!fish)       { err.textContent = '❌ Familiya va ismni kiriting'; err.classList.add('show'); return; }
+  if (anketaPoz === 'oqituvchi' && !anketaFan) {
+    err.textContent = '❌ Qaysi fandan dars berishingizni tanlang';
+    err.classList.add('show');
+    return;
+  }
+  if (!fish) { err.textContent = '❌ Familiya va ismni kiriting'; err.classList.add('show'); return; }
 
   // Sinf maydonini pozitsiyaga qarab ko'rsatish
   document.getElementById('sinf-wrap').style.display =
@@ -217,6 +242,7 @@ async function submitAnketa() {
         telegramId:  tgUser?.id,
         telegramIsm: tgUser ? `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() : '',
         pozitsiya:   anketaPoz,
+        fan:         anketaFan || '',
         fish:        document.getElementById('a-fish').value.trim(),
         maktablar:   maktabStr,
         sinf:        document.getElementById('a-sinf').value.trim() || '-',
@@ -305,7 +331,7 @@ function showKutish(tgId, holat) {
     btnEl.textContent    = 'Qaytadan ariza berish';
     btnEl.style.display  = 'block';
     btnEl.onclick        = async () => {
-      anketaPoz = null; anketaMaktablar = []; STEP = 1;
+      anketaPoz = null; anketaFan = null; anketaMaktablar = []; STEP = 1;
       // Maktablar ro'yxatini spinner holatiga qaytarish
       const container = document.getElementById('maktablar-list');
       if (container) container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';

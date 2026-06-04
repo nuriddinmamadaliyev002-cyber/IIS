@@ -149,7 +149,7 @@ router.get('/check/:telegramId', async (req, res) => {
 // ─── POST /api/telegram/anketa ───────────────────────────────────────────────
 // Miniapp dan kelgan anketa ma'lumotlari saqlanadi
 router.post('/anketa', async (req, res) => {
-  const { telegramId, telegramIsm, pozitsiya, fish, maktablar, sinf, telefon } = req.body;
+  const { telegramId, telegramIsm, pozitsiya, fan, fish, maktablar, sinf, telefon } = req.body;
 
   if (!telegramId || !fish?.trim() || !telefon?.trim() || !pozitsiya?.trim()) {
     return res.status(400).json({ ok: false, error: "Barcha majburiy maydonlar to'ldirilmagan" });
@@ -164,13 +164,19 @@ router.post('/anketa', async (req, res) => {
       return res.status(409).json({ ok: false, error: "Bu Telegram ID allaqachon tizimda ro'yxatdan o'tgan" });
     }
 
+    // fan ustuni yo'q bo'lsa ham xatolik chiqmasligi uchun ALTER TABLE (birinchi marta)
+    await pool.query(`
+      ALTER TABLE anketa_sorovlar ADD COLUMN IF NOT EXISTS fan TEXT DEFAULT ''
+    `).catch(() => {});
+
     // Anketa saqlash (mavjud bo'lsa yangilash) — id ni qaytarish
     const sorovRes = await pool.query(
-      `INSERT INTO anketa_sorovlar (telegram_id, telegram_ism, pozitsiya, fish, maktablar, sinf, telefon, holat)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,'kutilmoqda')
+      `INSERT INTO anketa_sorovlar (telegram_id, telegram_ism, pozitsiya, fan, fish, maktablar, sinf, telefon, holat)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'kutilmoqda')
        ON CONFLICT (telegram_id) DO UPDATE SET
          telegram_ism = EXCLUDED.telegram_ism,
          pozitsiya    = EXCLUDED.pozitsiya,
+         fan          = EXCLUDED.fan,
          fish         = EXCLUDED.fish,
          maktablar    = EXCLUDED.maktablar,
          sinf         = EXCLUDED.sinf,
@@ -178,13 +184,13 @@ router.post('/anketa', async (req, res) => {
          holat        = 'kutilmoqda',
          yuborilgan   = TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI')
        RETURNING id`,
-      [telegramId, telegramIsm || '', pozitsiya.trim(), fish.trim(),
-       maktablar || '', sinf || '-', telefon.trim()]
+      [telegramId, telegramIsm || '', pozitsiya.trim(), fan || '',
+       fish.trim(), maktablar || '', sinf || '-', telefon.trim()]
     );
     const sorovId = sorovRes.rows[0].id;
 
     // Bot orqali superadminga xabar yuborish (inline tugmalar bilan)
-    await notifySuperAdmin({ sorovId, telegramId, telegramIsm, pozitsiya, fish, maktablar, sinf, telefon });
+    await notifySuperAdmin({ sorovId, telegramId, telegramIsm, pozitsiya, fan, fish, maktablar, sinf, telefon });
 
     res.json({ ok: true });
   } catch (err) {
