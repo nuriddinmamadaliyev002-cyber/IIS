@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>InnovateIT School</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=3">
 </head>
 <body>
 
@@ -179,6 +179,71 @@
   </div>
 </div>
 
+<!-- ════════ DARS SOATLARI STATISTIKA PAGE (O'QITUVCHI) ════════ -->
+<div id="soatStatPage" class="page">
+  <div class="list-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="list-title">📊 Dars soatlari</div>
+  </div>
+  <div id="soatStatContent" class="list-items" style="padding:12px;">
+    <div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>
+  </div>
+</div>
+
+<!-- ════════ DARS BELGILASH PAGE (O'QITUVCHI) ════════ -->
+<div id="darsBelgilashPage" class="page">
+  <div class="list-header">
+    <button class="back-btn" onclick="goBack()">←</button>
+    <div class="list-title">✏️ Darsni belgilash</div>
+  </div>
+  <div class="list-items" style="padding:16px;">
+
+    <!-- Sana -->
+    <div class="dars-form-group">
+      <label class="dars-label">📅 Sana</label>
+      <input id="darsDate" class="dars-input" type="text" placeholder="DD.MM.YYYY">
+    </div>
+
+    <!-- Status -->
+    <div class="dars-form-group">
+      <label class="dars-label">📌 Holat</label>
+      <div class="dars-status-row">
+        <button id="darsStatusKeldi"  class="dars-status-btn active" onclick="selectDarsStatus('keldi')"   style="--sc:#10b981">✅ Keldi</button>
+        <button id="darsStatusKelmadi" class="dars-status-btn"       onclick="selectDarsStatus('kelmadi')" style="--sc:#ef4444">❌ Kelmadi</button>
+        <button id="darsStatusKech"   class="dars-status-btn"        onclick="selectDarsStatus('kech')"    style="--sc:#8b5cf6">⏰ Kech</button>
+      </div>
+    </div>
+
+    <!-- Dars soati -->
+    <div class="dars-form-group">
+      <label class="dars-label">⏱️ O'tilgan dars vaqti</label>
+      <div style="display:flex;gap:10px;">
+        <div style="flex:1">
+          <input id="darsSoat"   class="dars-input" type="number" min="0" max="12" placeholder="Soat">
+        </div>
+        <div style="flex:1">
+          <input id="darsDaqiqa" class="dars-input" type="number" min="0" max="59" placeholder="Daqiqa">
+        </div>
+      </div>
+    </div>
+
+    <!-- Kech minut (faqat kech uchun) -->
+    <div id="kechWrap" class="dars-form-group" style="display:none;">
+      <label class="dars-label">⏰ Kechikish (daqiqa)</label>
+      <input id="kechMinut" class="dars-input" type="number" min="0" placeholder="Necha daqiqa kech">
+    </div>
+
+    <!-- Izoh -->
+    <div class="dars-form-group">
+      <label class="dars-label">💬 Izoh (ixtiyoriy)</label>
+      <textarea id="darsIzoh" class="dars-input dars-textarea" placeholder="Qo'shimcha izoh..."></textarea>
+    </div>
+
+    <div id="darsSaveMsg" style="text-align:center;font-size:14px;margin-bottom:8px;min-height:20px;"></div>
+    <button id="darsSaveBtn" class="soat-dars-btn" onclick="saveDarsBelgilash()">💾 Saqlash</button>
+  </div>
+</div>
+
 <!-- ════════ DARS JADVALI PAGE (O'QUVCHI) ════════ -->
 <div id="myJadvalPage" class="page">
   <div class="list-header">
@@ -223,6 +288,6 @@
   </button>
 </div>
 
-  <script src="app.js?v=2"></script>
+  <script src="app.js?v=3"></script>
 </body>
 </html>

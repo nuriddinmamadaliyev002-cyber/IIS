@@ -449,6 +449,8 @@ function buildCards() {
     oqituvchi: [
       { icon:'🎓', label:'Sinflar', sub:"o'quvchilar", color:'#6c63ff', action:"openSinflar()" },
       { icon:'📋', label:'Davomatim', sub:'dars kunlari', color:'#10b981', action:"openMyDavomat()" },
+      { icon:'📅', label:'Dars jadvali', sub:'haftalik', color:'#8b5cf6', action:"openTeacherJadval()" },
+      { icon:'📊', label:'Dars soatlari', sub:'statistika', color:'#f59e0b', action:"openSoatStatistika()" },
     ],
     oquvchi: [
       { icon:'📋', label:'Davomatim', sub:'tarix', color:'#10b981', action:'openMyDavomat()' },
@@ -474,14 +476,15 @@ function showDash() {
 
 function goBack() {
   // Agar sinf ichidagi o'quvchilar ko'rinayotgan bo'lsa → sinflar sahifasiga
-  if (document.getElementById('sinf-oquv-page')?.classList.contains('active')) {
+  if (document.getElementById('sinf-okuv-page')?.classList.contains('active') ||
+      document.getElementById('sinf-oquv-page')?.classList.contains('active')) {
     showPage('sinflarPage');
     if (tg) tg.BackButton.show();
     return;
   }
-  // Agar sinflar sahifasida bo'lsa → dashga
-  if (document.getElementById('sinflarPage')?.classList.contains('active')) {
-    showDash();
+  // Dars belgilash → soat statistika
+  if (document.getElementById('darsBelgilashPage')?.classList.contains('active')) {
+    openSoatStatistika();
     return;
   }
   showDash();
@@ -1036,6 +1039,291 @@ async function openMyJadval() {
   } catch (e) {
     console.error('openMyJadval:', e);
     wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  DARS JADVALI (O'QITUVCHI)
+// ═══════════════════════════════════════════
+async function openTeacherJadval() {
+  showPage('myJadvalPage');
+  if (tg) tg.BackButton.show();
+
+  const titleEl = document.querySelector('#myJadvalPage .list-title');
+  if (titleEl) titleEl.textContent = '📅 Dars jadvali';
+
+  const wrap = document.getElementById('myJadvalContent');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
+
+  try {
+    const data = await apiGet('/jadval/mening-jadvalim-oqituvchi');
+
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+
+    const jadvallar = data.jadvallar || [];
+
+    if (jadvallar.length === 0) {
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>Dars jadvali hali kiritilmagan</div>';
+      return;
+    }
+
+    // Kunlar bo'yicha guruhlash
+    const byKun = {};
+    KUN_TARTIB.forEach(k => { byKun[k] = []; });
+
+    jadvallar.forEach(j => {
+      const kunStr = (j.kunlar || '').trim();
+      if (!kunStr) return;
+      const kunParts = kunStr.split(',').map(k => k.trim()).filter(Boolean);
+      kunParts.forEach(k => {
+        const kunNom = KUN_RAQAM_MAP[k] || k;
+        if (byKun[kunNom] !== undefined) {
+          const exists = byKun[kunNom].find(x => x.fan === j.fan && x.sinflar === j.sinflar);
+          if (!exists) byKun[kunNom].push(j);
+        }
+      });
+    });
+
+    const today = new Date();
+    const todayNom = KUN_RAQAM_MAP[String(today.getDay())] || '';
+
+    let html = '';
+    KUN_TARTIB.forEach(kun => {
+      const darslar = byKun[kun];
+      if (!darslar.length) return;
+
+      const isToday = kun === todayNom;
+      html += `
+        <div class="jadval-kun-blok ${isToday ? 'jadval-bugun' : ''}">
+          <div class="jadval-kun-sarlavha">
+            ${isToday ? '🟢 ' : ''}${kun}${isToday ? ' <span class="jadval-bugun-badge">bugun</span>' : ''}
+          </div>
+          ${darslar.map(d => `
+            <div class="jadval-dars-karta">
+              <div class="jadval-dars-ustun jadval-dars-vaqt">
+                <div class="jadval-vaqt-icon">🕐</div>
+                <div>
+                  <div class="jadval-vaqt-text">${d.boshlanish || '—'}</div>
+                  ${d.tugash ? `<div class="jadval-vaqt-end">${d.tugash}</div>` : ''}
+                </div>
+              </div>
+              <div class="jadval-dars-ustun jadval-dars-info">
+                <div class="jadval-fan">${d.fan || '—'}</div>
+                ${d.sinflar ? `<div class="jadval-teacher">📚 ${d.sinflar}</div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    });
+
+    wrap.innerHTML = html || '<div class="empty"><div class="empty-icon">📅</div>Jadval ma\'lumotlari mavjud emas</div>';
+  } catch (e) {
+    console.error('openTeacherJadval:', e);
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  DARS SOATLARI STATISTIKASI (O'QITUVCHI)
+// ═══════════════════════════════════════════
+const OY_NOMLARI = ['','Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+
+async function openSoatStatistika() {
+  showPage('soatStatPage');
+  if (tg) tg.BackButton.show();
+
+  const wrap = document.getElementById('soatStatContent');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
+
+  try {
+    const data = await apiGet('/davomat/soat-statistika');
+
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+
+    const t  = data.teacher    || {};
+    const st = data.statistika || {};
+    const oy = data.oylik      || [];
+
+    const KUN_TARTIB_LOCAL = ['1','2','3','4','5','6','0'];
+    const kunNomlar = (t.kunlar || '').split(',').map(k => KUN_RAQAM_MAP[k.trim()] || k.trim()).filter(Boolean).join(', ') || '—';
+
+    // Rejalangan haftalik soat
+    const rejaStr = t.rejaSoat || t.rejaDaqiqa
+      ? `${t.rejaSoat}h ${t.rejaDaqiqa}min`
+      : '—';
+
+    // Haqiqiy soat
+    const haqStr = `${st.haqSoat}h ${st.haqDaq}min`;
+
+    // Davomat foizi
+    const foiz = st.jamiDars > 0
+      ? Math.round((st.keldi + st.kech) / st.jamiDars * 100)
+      : 0;
+
+    let html = `
+      <!-- Info karta -->
+      <div class="soat-info-karta">
+        <div class="soat-info-row"><span>📚 Fan</span><strong>${t.fan}</strong></div>
+        <div class="soat-info-row"><span>📅 Dars kunlari</span><strong>${kunNomlar}</strong></div>
+        <div class="soat-info-row"><span>🕐 Dars vaqti</span><strong>${t.boshlanish || '—'} – ${t.tugash || '—'}</strong></div>
+        <div class="soat-info-row"><span>📚 Sinflar</span><strong>${t.sinflar || '—'}</strong></div>
+        <div class="soat-divider"></div>
+        <div class="soat-info-row"><span>⏱️ Kunlik reja</span><strong>${rejaStr}</strong></div>
+        <div class="soat-info-row"><span>📆 Dars kunlari soni</span><strong>${t.kunSoni} kun/hafta</strong></div>
+      </div>
+
+      <!-- Umumiy statistika -->
+      <div class="soat-section-title">📊 Umumiy statistika</div>
+      <div class="soat-stats-grid">
+        <div class="soat-stat-karta">
+          <div class="soat-stat-num" style="color:#10b981">${st.haqSoat}<span class="soat-unit">h</span></div>
+          <div class="soat-stat-lbl">O'tilgan soat</div>
+        </div>
+        <div class="soat-stat-karta">
+          <div class="soat-stat-num" style="color:#6c63ff">${st.jamiDars}</div>
+          <div class="soat-stat-lbl">Jami dars</div>
+        </div>
+        <div class="soat-stat-karta">
+          <div class="soat-stat-num" style="color:#10b981">${st.keldi}</div>
+          <div class="soat-stat-lbl">Keldi</div>
+        </div>
+        <div class="soat-stat-karta">
+          <div class="soat-stat-num" style="color:#ef4444">${st.kelmadi}</div>
+          <div class="soat-stat-lbl">Kelmadi</div>
+        </div>
+      </div>
+
+      <!-- Davomat foizi -->
+      <div class="soat-foiz-wrap">
+        <div class="soat-foiz-label">Davomat: ${foiz}%</div>
+        <div class="davomat-progress-wrap">
+          <div class="davomat-progress-bar" style="width:${foiz}%"></div>
+        </div>
+      </div>`;
+
+    // Oylik statistika
+    if (oy.length > 0) {
+      html += `<div class="soat-section-title">📆 Oylik ko'rsatkich</div>`;
+      oy.forEach(o => {
+        const oyNom = OY_NOMLARI[parseInt(o.oy)] || o.oy;
+        const soatJami = parseInt(o.soat || 0) + Math.floor(parseInt(o.daqiqa || 0) / 60);
+        const daqJami  = parseInt(o.daqiqa || 0) % 60;
+        html += `
+          <div class="soat-oylik-karta">
+            <div class="soat-oylik-oy">${oyNom} ${o.yil || ''}</div>
+            <div class="soat-oylik-right">
+              <div class="soat-oylik-soat">${soatJami}h ${daqJami}min</div>
+              <div class="soat-oylik-dars">${o.dars_soni} dars</div>
+            </div>
+          </div>`;
+      });
+    }
+
+    // Davomat belgilash tugmasi
+    html += `
+      <button class="soat-dars-btn" onclick="openDarsBelgilash()">
+        ✏️ Bugungi darsni belgilash
+      </button>`;
+
+    wrap.innerHTML = html;
+  } catch (e) {
+    console.error('openSoatStatistika:', e);
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  DARS BELGILASH (O'QITUVCHI O'ZI)
+// ═══════════════════════════════════════════
+function openDarsBelgilash() {
+  showPage('darsBelgilashPage');
+  if (tg) tg.BackButton.show();
+
+  // Bugungi sanani o'rnatish
+  const today = new Date();
+  const dd  = String(today.getDate()).padStart(2,'0');
+  const mm  = String(today.getMonth()+1).padStart(2,'0');
+  const yyyy = today.getFullYear();
+  document.getElementById('darsDate').value = `${dd}.${mm}.${yyyy}`;
+
+  // Soat maydonlarini boshlang'ich qiymat
+  document.getElementById('darsSoat').value    = '';
+  document.getElementById('darsDaqiqa').value  = '';
+  document.getElementById('kechMinut').value   = '';
+  document.getElementById('darsIzoh').value    = '';
+  document.getElementById('darsSaveMsg').textContent = '';
+
+  // Status tugmalarini reset
+  document.querySelectorAll('.dars-status-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('darsStatusKeldi')?.classList.add('active');
+  window._darsStatus = 'keldi';
+
+  // Kech soat maydonini yashirish
+  toggleKechMaydoni('keldi');
+}
+
+function selectDarsStatus(status) {
+  window._darsStatus = status;
+  document.querySelectorAll('.dars-status-btn').forEach(b => b.classList.remove('active'));
+  document.getElementById('darsStatus' + status.charAt(0).toUpperCase() + status.slice(1))?.classList.add('active');
+  toggleKechMaydoni(status);
+}
+
+function toggleKechMaydoni(status) {
+  const kechWrap = document.getElementById('kechWrap');
+  if (kechWrap) kechWrap.style.display = status === 'kech' ? 'block' : 'none';
+}
+
+async function saveDarsBelgilash() {
+  const btn   = document.getElementById('darsSaveBtn');
+  const msgEl = document.getElementById('darsSaveMsg');
+  msgEl.textContent = '';
+
+  const sana      = document.getElementById('darsDate').value.trim();
+  const status    = window._darsStatus || 'keldi';
+  const dars_soat = parseInt(document.getElementById('darsSoat').value)   || 0;
+  const dars_daqiqa = parseInt(document.getElementById('darsDaqiqa').value) || 0;
+  const kech_minut  = parseInt(document.getElementById('kechMinut').value)  || 0;
+  const izoh        = document.getElementById('darsIzoh').value.trim();
+
+  if (!sana) { msgEl.textContent = '❌ Sanani kiriting'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Saqlanmoqda...';
+
+  try {
+    const res = await fetch(`${API_BASE}/davomat/mening-darsim`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${TOKEN}`
+      },
+      body: JSON.stringify({ sana, status, dars_soat, dars_daqiqa, kech_minut, izoh })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      msgEl.style.color = '#10b981';
+      msgEl.textContent = '✅ Muvaffaqiyatli saqlandi!';
+      setTimeout(() => {
+        openSoatStatistika();
+      }, 1200);
+    } else {
+      msgEl.style.color = '#ef4444';
+      msgEl.textContent = '❌ ' + (data.error || 'Xatolik');
+    }
+  } catch(e) {
+    msgEl.style.color = '#ef4444';
+    msgEl.textContent = '❌ Server bilan ulanib bo\'lmadi';
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '💾 Saqlash';
   }
 }
 

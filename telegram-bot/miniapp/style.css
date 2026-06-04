@@ -821,3 +821,176 @@
   font-size: 12px;
   color: var(--hint, #888);
 }
+/* ═══════════════════════════════════════════
+   DARS SOATLARI STATISTIKA
+   ═══════════════════════════════════════════ */
+.soat-info-karta {
+  background: var(--second, #1e1e2e);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.soat-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 14px;
+  color: var(--hint, #888);
+}
+.soat-info-row strong {
+  color: var(--text, #f0f0f5);
+  font-weight: 600;
+  text-align: right;
+  max-width: 60%;
+}
+.soat-divider {
+  height: 1px;
+  background: rgba(255,255,255,0.07);
+  margin: 10px 0;
+}
+.soat-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--hint, #888);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin: 16px 0 10px;
+}
+.soat-stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+.soat-stat-karta {
+  background: var(--second, #1e1e2e);
+  border-radius: 12px;
+  padding: 14px 12px;
+  text-align: center;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.soat-stat-num {
+  font-size: 28px;
+  font-weight: 800;
+  line-height: 1.1;
+}
+.soat-unit {
+  font-size: 16px;
+  font-weight: 600;
+}
+.soat-stat-lbl {
+  font-size: 12px;
+  color: var(--hint, #888);
+  margin-top: 4px;
+}
+.soat-foiz-wrap {
+  background: var(--second, #1e1e2e);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.soat-foiz-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text, #f0f0f5);
+  margin-bottom: 8px;
+}
+.soat-oylik-karta {
+  background: var(--second, #1e1e2e);
+  border-radius: 12px;
+  padding: 12px 14px;
+  margin-bottom: 8px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+.soat-oylik-oy {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text, #f0f0f5);
+}
+.soat-oylik-right { text-align: right; }
+.soat-oylik-soat {
+  font-size: 15px;
+  font-weight: 700;
+  color: #10b981;
+}
+.soat-oylik-dars {
+  font-size: 12px;
+  color: var(--hint, #888);
+  margin-top: 2px;
+}
+.soat-dars-btn {
+  width: 100%;
+  padding: 16px;
+  background: linear-gradient(135deg, #6c63ff, #a78bfa);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 20px rgba(108,99,255,0.3);
+}
+.soat-dars-btn:active { opacity: 0.85; }
+
+/* ═══════════════════════════════════════════
+   DARS BELGILASH FORMA
+   ═══════════════════════════════════════════ */
+.dars-form-group {
+  margin-bottom: 16px;
+}
+.dars-label {
+  display: block;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--hint, #888);
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.4px;
+}
+.dars-input {
+  width: 100%;
+  padding: 12px 14px;
+  background: var(--second, #1e1e2e);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  color: var(--text, #f0f0f5);
+  font-size: 15px;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.2s;
+}
+.dars-input:focus { border-color: #6c63ff; }
+.dars-textarea {
+  min-height: 80px;
+  resize: none;
+  font-family: inherit;
+}
+.dars-status-row {
+  display: flex;
+  gap: 8px;
+}
+.dars-status-btn {
+  flex: 1;
+  padding: 10px 6px;
+  background: rgba(255,255,255,0.06);
+  border: 1.5px solid rgba(255,255,255,0.1);
+  border-radius: 10px;
+  color: var(--hint, #888);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.dars-status-btn.active {
+  background: rgba(var(--sc, 16,185,129), 0.15);
+  border-color: var(--sc, #10b981);
+  color: var(--sc, #10b981);
+}

@@ -97,6 +97,143 @@ router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (re
   }
 });
 
+// ─── GET /api/davomat/soat-statistika — O'qituvchi dars soatlari statistikasi ─
+router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, entityId, maktabId } = req.user;
+
+  if (!maktabId) return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
+
+  try {
+    // 1) O'qituvchi ma'lumotlari (rejalangan soatlar)
+    const teacherRes = await pool.query(
+      `SELECT kunlar, fan, boshlanish, tugash, sinflar
+       FROM oqituvchilar WHERE id = $1`,
+      [entityId]
+    );
+    const teacher = teacherRes.rows[0] || {};
+
+    // Rejalangan haftalik soatni hisoblash (boshlanish-tugash vaqtidan)
+    let rejaSoat = 0, rejaDaqiqa = 0;
+    if (teacher.boshlanish && teacher.tugash) {
+      const [bH, bM] = (teacher.boshlanish).split(':').map(Number);
+      const [tH, tM] = (teacher.tugash).split(':').map(Number);
+      const totalMin = (tH * 60 + tM) - (bH * 60 + (bM || 0));
+      if (totalMin > 0) {
+        rejaSoat   = Math.floor(totalMin / 60);
+        rejaDaqiqa = totalMin % 60;
+      }
+    }
+
+    // Necha kun dars o'tilishi rejalangan (kunlar maydoni)
+    const kunlar = (teacher.kunlar || '').split(',').map(k => k.trim()).filter(Boolean);
+    const kunSoni = kunlar.length;
+
+    // 2) Haqiqatda o'tilgan dars soatlari (oxirgi 30 kun)
+    const statsRes = await pool.query(
+      `SELECT
+         SUM(dars_soat)    AS jami_soat,
+         SUM(dars_daqiqa)  AS jami_daqiqa,
+         COUNT(*)          AS jami_dars,
+         COUNT(CASE WHEN status='keldi' THEN 1 END)   AS keldi,
+         COUNT(CASE WHEN status='kelmadi' THEN 1 END) AS kelmadi,
+         COUNT(CASE WHEN status='kech' THEN 1 END)    AS kech
+       FROM oqituvchilar_davomat
+       WHERE oqituvchi_ism = $1 AND maktab_id = $2`,
+      [ism, maktabId]
+    );
+    const st = statsRes.rows[0] || {};
+
+    // 3) Oylik statistika (so'nggi 4 oy)
+    const oylikRes = await pool.query(
+      `SELECT
+         SPLIT_PART(sana,'.',2) AS oy,
+         SPLIT_PART(sana,'.',3) AS yil,
+         SUM(dars_soat)   AS soat,
+         SUM(dars_daqiqa) AS daqiqa,
+         COUNT(*)         AS dars_soni
+       FROM oqituvchilar_davomat
+       WHERE oqituvchi_ism = $1 AND maktab_id = $2
+       GROUP BY oy, yil
+       ORDER BY yil DESC, oy::int DESC
+       LIMIT 4`,
+      [ism, maktabId]
+    );
+
+    // Jami haqiqiy soatni hisoblash
+    let haqSoat = parseInt(st.jami_soat || 0);
+    let haqDaq  = parseInt(st.jami_daqiqa || 0);
+    haqSoat += Math.floor(haqDaq / 60);
+    haqDaq   = haqDaq % 60;
+
+    res.json({
+      ok: true,
+      teacher: {
+        fan:       teacher.fan || '—',
+        kunlar:    teacher.kunlar || '',
+        kunSoni,
+        sinflar:   teacher.sinflar || '—',
+        boshlanish: teacher.boshlanish || '',
+        tugash:    teacher.tugash || '',
+        rejaSoat,
+        rejaDaqiqa,
+      },
+      statistika: {
+        jamiDars:   parseInt(st.jami_dars   || 0),
+        keldi:      parseInt(st.keldi       || 0),
+        kelmadi:    parseInt(st.kelmadi     || 0),
+        kech:       parseInt(st.kech        || 0),
+        haqSoat,
+        haqDaq,
+      },
+      oylik: oylikRes.rows
+    });
+  } catch (err) {
+    console.error('soat-statistika xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── POST /api/davomat/mening-darsim — O'qituvchi o'z davomatini belgilaydi ──
+router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, maktabId, entityId } = req.user;
+  const { sana, status, dars_soat, dars_daqiqa, kech_minut, izoh } = req.body;
+
+  if (!sana || !status) {
+    return res.status(400).json({ ok: false, error: 'Sana va status kerak' });
+  }
+
+  try {
+    // O'qituvchi fan ma'lumotini olish
+    const teacherRes = await pool.query(
+      'SELECT fan FROM oqituvchilar WHERE id = $1', [entityId]
+    );
+    const fan = teacherRes.rows[0]?.fan || '';
+
+    const now = new Date().toLocaleTimeString('uz-UZ');
+
+    // Avvalgi yozuvni o'chirish (bir kun — bir yozuv)
+    await pool.query(
+      'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3',
+      [sana, maktabId, ism]
+    );
+
+    // Yangi yozuv kiritish
+    await pool.query(
+      `INSERT INTO oqituvchilar_davomat
+         (sana, maktab_id, oqituvchi_ism, fan, status, izoh,
+          vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [sana, maktabId, ism, fan, status, izoh || '', now,
+       dars_soat || 0, dars_daqiqa || 0, kech_minut || 0]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('mening-darsim POST xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 router.use(requireAuth(['admin']));
 
 // ─── POST /api/davomat — o'quvchilar davomati saqlash ────────────────────────

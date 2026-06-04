@@ -74,6 +74,65 @@ router.get('/mening-jadvalim', requireAuth(['oquvchi']), async (req, res) => {
   }
 });
 
+// ─── GET /api/jadval/mening-jadvalim-oqituvchi — O'qituvchi uchun o'z jadvali ──
+router.get('/mening-jadvalim-oqituvchi', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, entityId, maktabIdlar } = req.user;
+
+  if (!entityId) {
+    return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
+  }
+
+  try {
+    // O'qituvchining ismi bo'yicha dars_jadvali dan qidirish
+    // ism = "Familiya Ism" formatida
+    const ismParts = (ism || '').trim().split(' ');
+    const familiya = ismParts[0] || '';
+    const ismOnly  = ismParts.slice(1).join(' ') || '';
+
+    // Maktablar bo'yicha filtrlash
+    const maktabIds = maktabIdlar || [];
+
+    let jadvalRes;
+    if (maktabIds.length > 0) {
+      jadvalRes = await pool.query(
+        `SELECT id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash, maktab_id
+         FROM dars_jadvali
+         WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
+           AND LOWER(TRIM(teacher_ism))      = LOWER($2)
+           AND maktab_id = ANY($3)
+         ORDER BY boshlanish`,
+        [familiya, ismOnly, maktabIds]
+      );
+    } else {
+      jadvalRes = await pool.query(
+        `SELECT id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash, maktab_id
+         FROM dars_jadvali
+         WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
+           AND LOWER(TRIM(teacher_ism))      = LOWER($2)
+         ORDER BY boshlanish`,
+        [familiya, ismOnly]
+      );
+    }
+
+    // O'qituvchi ma'lumotlari (rejalangan soatlar uchun)
+    const teacherRes = await pool.query(
+      `SELECT kunlar, fan, boshlanish, tugash, sinflar
+       FROM oqituvchilar WHERE id = $1`,
+      [entityId]
+    );
+    const teacherInfo = teacherRes.rows[0] || {};
+
+    res.json({
+      ok: true,
+      jadvallar: jadvalRes.rows,
+      teacherInfo
+    });
+  } catch (err) {
+    console.error('jadval/mening-jadvalim-oqituvchi xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 router.use(requireAuth(['admin']));
 
 // ─── GET /api/jadval ──────────────────────────────────────────────────────────
