@@ -398,7 +398,7 @@ function openAdminPanel() {
 // ═══════════════════════════════════════════
 function showDashboard(data) {
   showPage('dashPage');
-  document.getElementById('bottomNav').style.display = (ROL === 'oquvchi') ? 'none' : 'flex';
+  document.getElementById('bottomNav').style.display = (ROL === 'oquvchi' || ROL === 'oqituvchi') ? 'none' : 'flex';
   if (tg) tg.BackButton.hide();
 
   const rolLabels = {
@@ -474,7 +474,6 @@ function buildCards() {
     ],
     oqituvchi: [
       { icon:'🎓', label:'Sinflar', sub:"o'quvchilar", color:'#6c63ff', action:"openSinflar()" },
-      { icon:'📋', label:'Davomatim', sub:'dars kunlari', color:'#10b981', action:"openMyDavomat()" },
       { icon:'📅', label:'Dars jadvali', sub:'haftalik', color:'#8b5cf6', action:"openTeacherJadval()" },
       { icon:'📊', label:'Dars soatlari', sub:'statistika', color:'#f59e0b', action:"openSoatStatistika()" },
     ],
