@@ -99,44 +99,36 @@ router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (re
 
 // ─── GET /api/davomat/soat-statistika — O'qituvchi dars soatlari statistikasi ─
 router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
-  const { ism, entityId, maktabIdlar } = req.user;
-
-  const queryMaktabId = req.query.maktabId ? parseInt(req.query.maktabId) : null;
-  const maktabId = queryMaktabId || (maktabIdlar && maktabIdlar[0]) || null;
+  const { ism, entityId, maktabId } = req.user;
 
   if (!maktabId) return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
 
   try {
-    const ismParts = (ism || '').trim().split(' ');
-    const familiya = ismParts[0] || '';
-    const ismOnly  = ismParts.slice(1).join(' ') || '';
-
-    // 1) Dars jadvali dan ma'lumot olish
-    const jadvalRes = await pool.query(
-      `SELECT fan, kunlar, boshlanish, tugash, sinflar
-       FROM dars_jadvali
-       WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
-         AND LOWER(TRIM(teacher_ism))      = LOWER($2)
-         AND maktab_id = $3
-       LIMIT 1`,
-      [familiya, ismOnly, maktabId]
+    // 1) O'qituvchi ma'lumotlari (rejalangan soatlar)
+    const teacherRes = await pool.query(
+      `SELECT kunlar, fan, boshlanish, tugash, sinflar
+       FROM oqituvchilar WHERE id = $1`,
+      [entityId]
     );
-    const jadval = jadvalRes.rows[0] || {};
+    const teacher = teacherRes.rows[0] || {};
 
+    // Rejalangan haftalik soatni hisoblash (boshlanish-tugash vaqtidan)
     let rejaSoat = 0, rejaDaqiqa = 0;
-    if (jadval.boshlanish && jadval.tugash) {
-      const [bH, bM] = jadval.boshlanish.split(':').map(Number);
-      const [tH, tM] = jadval.tugash.split(':').map(Number);
+    if (teacher.boshlanish && teacher.tugash) {
+      const [bH, bM] = (teacher.boshlanish).split(':').map(Number);
+      const [tH, tM] = (teacher.tugash).split(':').map(Number);
       const totalMin = (tH * 60 + tM) - (bH * 60 + (bM || 0));
       if (totalMin > 0) {
         rejaSoat   = Math.floor(totalMin / 60);
         rejaDaqiqa = totalMin % 60;
       }
     }
-    const kunlar  = (jadval.kunlar || '').split(',').map(k => k.trim()).filter(Boolean);
+
+    // Necha kun dars o'tilishi rejalangan (kunlar maydoni)
+    const kunlar = (teacher.kunlar || '').split(',').map(k => k.trim()).filter(Boolean);
     const kunSoni = kunlar.length;
 
-    // 2) Umumiy statistika
+    // 2) Haqiqatda o'tilgan dars soatlari (oxirgi 30 kun)
     const statsRes = await pool.query(
       `SELECT
          SUM(dars_soat)    AS jami_soat,
@@ -146,22 +138,12 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
          COUNT(CASE WHEN status='kelmadi' THEN 1 END) AS kelmadi,
          COUNT(CASE WHEN status='kech' THEN 1 END)    AS kech
        FROM oqituvchilar_davomat
-       WHERE oqituvchi_ism LIKE $1 || '%' AND maktab_id = $2`,
+       WHERE oqituvchi_ism = $1 AND maktab_id = $2`,
       [ism, maktabId]
     );
     const st = statsRes.rows[0] || {};
 
-    // 3) Sanalar bo'yicha tarix
-    const tarixRes = await pool.query(
-      `SELECT sana, status, dars_soat, dars_daqiqa, izoh, oqituvchi_ism
-       FROM oqituvchilar_davomat
-       WHERE oqituvchi_ism LIKE $1 || '%' AND maktab_id = $2
-       ORDER BY sana DESC
-       LIMIT 60`,
-      [ism, maktabId]
-    );
-
-    // 4) Oylik statistika
+    // 3) Oylik statistika (so'nggi 4 oy)
     const oylikRes = await pool.query(
       `SELECT
          SPLIT_PART(sana,'-',2) AS oy,
@@ -170,45 +152,40 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
          SUM(dars_daqiqa) AS daqiqa,
          COUNT(*)         AS dars_soni
        FROM oqituvchilar_davomat
-       WHERE oqituvchi_ism LIKE $1 || '%' AND maktab_id = $2
-       GROUP BY SPLIT_PART(sana,'-',2), SPLIT_PART(sana,'-',1)
-       ORDER BY SPLIT_PART(sana,'-',1) DESC, SPLIT_PART(sana,'-',2)::int DESC
+       WHERE oqituvchi_ism = $1 AND maktab_id = $2
+       GROUP BY oy, yil
+       ORDER BY yil DESC, oy::int DESC
        LIMIT 4`,
       [ism, maktabId]
     );
 
+    // Jami haqiqiy soatni hisoblash
     let haqSoat = parseInt(st.jami_soat || 0);
     let haqDaq  = parseInt(st.jami_daqiqa || 0);
     haqSoat += Math.floor(haqDaq / 60);
     haqDaq   = haqDaq % 60;
 
-    const foiz = parseInt(st.jami_dars || 0) > 0
-      ? Math.round((parseInt(st.keldi || 0) + parseInt(st.kech || 0)) / parseInt(st.jami_dars) * 100)
-      : 0;
-
     res.json({
       ok: true,
       teacher: {
-        fan:        jadval.fan        || '—',
-        kunlar:     jadval.kunlar     || '',
+        fan:       teacher.fan || '—',
+        kunlar:    teacher.kunlar || '',
         kunSoni,
-        sinflar:    jadval.sinflar    || '—',
-        boshlanish: jadval.boshlanish || '',
-        tugash:     jadval.tugash     || '',
+        sinflar:   teacher.sinflar || '—',
+        boshlanish: teacher.boshlanish || '',
+        tugash:    teacher.tugash || '',
         rejaSoat,
         rejaDaqiqa,
       },
       statistika: {
-        jamiDars: parseInt(st.jami_dars  || 0),
-        keldi:    parseInt(st.keldi      || 0),
-        kelmadi:  parseInt(st.kelmadi    || 0),
-        kech:     parseInt(st.kech       || 0),
+        jamiDars:   parseInt(st.jami_dars   || 0),
+        keldi:      parseInt(st.keldi       || 0),
+        kelmadi:    parseInt(st.kelmadi     || 0),
+        kech:       parseInt(st.kech        || 0),
         haqSoat,
         haqDaq,
-        foiz,
       },
-      tarix: tarixRes.rows,
-      oylik: oylikRes.rows,
+      oylik: oylikRes.rows
     });
   } catch (err) {
     console.error('soat-statistika xatolik:', err.message);
@@ -254,6 +231,72 @@ router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   } catch (err) {
     console.error('mening-darsim POST xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/davomat/sinf-davomat — O'qituvchi sinf davomatini ko'radi ────────
+router.get('/sinf-davomat', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, maktabIdlar } = req.user;
+  const { maktabId, sinf, sana } = req.query;
+
+  const mid = maktabId ? parseInt(maktabId) : (maktabIdlar && maktabIdlar[0]);
+  if (!mid || !sinf || !sana) {
+    return res.status(400).json({ ok: false, error: 'maktabId, sinf va sana kerak' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT oquvchi_ism, status, izoh, vaqt_belgilangan
+       FROM davomat
+       WHERE maktab_id = $1 AND sinf = $2 AND sana = $3
+       ORDER BY oquvchi_ism`,
+      [mid, sinf, sana]
+    );
+    res.json({ ok: true, records: result.rows });
+  } catch (err) {
+    console.error('sinf-davomat GET xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── POST /api/davomat/sinf-davomat — O'qituvchi sinf davomatini belgilaydi ──
+router.post('/sinf-davomat', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, maktabIdlar } = req.user;
+  const { maktabId, sinf, sana, records } = req.body;
+
+  const mid = maktabId ? parseInt(maktabId) : (maktabIdlar && maktabIdlar[0]);
+  if (!mid || !sinf || !sana || !Array.isArray(records)) {
+    return res.status(400).json({ ok: false, error: 'maktabId, sinf, sana va records kerak' });
+  }
+
+  const now = new Date().toLocaleTimeString('uz-UZ');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Faqat shu sinf va sana uchun o'chirish (boshqa sinflarni o'chirmaslik)
+    await client.query(
+      'DELETE FROM davomat WHERE maktab_id=$1 AND sinf=$2 AND sana=$3',
+      [mid, sinf, sana]
+    );
+
+    for (const rec of records) {
+      if (!rec.ism || !rec.status) continue;
+      await client.query(
+        `INSERT INTO davomat (sana, maktab_id, sinf, oquvchi_ism, status, izoh, vaqt_belgilangan)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [sana, mid, sinf, rec.ism, rec.status, rec.izoh || '', now + ' (oq: ' + ism + ')']
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, saved: records.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('sinf-davomat POST xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
   }
 });
 
