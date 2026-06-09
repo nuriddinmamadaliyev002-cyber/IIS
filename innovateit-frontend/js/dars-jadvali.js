@@ -697,6 +697,11 @@ function buildImgBySinf(wrap, filterS) {
     ['#fefce8','#fde68a','#b45309'],
   ];
 
+  // Har bir fan o'z doimiy rangiga ega bo'lishi uchun fan→indeks xaritasi
+  const allFans = [...new Set(JADVALLAR.map(j => j.fan).filter(Boolean))].sort();
+  const fanColorIdx = {};
+  allFans.forEach((fan, i) => { fanColorIdx[fan] = i % COLORS.length; });
+
   const TH = `background:#1e1b4b;color:#ffffff;font-size:11px;font-weight:800;
     letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
     padding:13px 16px;text-align:left;`;
@@ -715,12 +720,14 @@ function buildImgBySinf(wrap, filterS) {
             font-size:11px;font-weight:700;white-space:nowrap;">${sinf}</span>
       </td>`;
 
-    KUNLAR_IDX.forEach((kun, ci) => {
+    KUNLAR_IDX.forEach((kun) => {
       const lessons = JADVALLAR.filter(j => j.sinflar.includes(sinf) && j.kunlar.includes(kun));
-      const [cbg, cbdr, ctxt] = COLORS[ci % COLORS.length];
       if (lessons.length) {
         html += `<td style="padding:8px 10px;vertical-align:top;">`;
         lessons.forEach(j => {
+          // Rang fan nomiga qarab aniqlanadi, kun indeksiga emas
+          const colorI = fanColorIdx[j.fan] ?? 0;
+          const [cbg, cbdr, ctxt] = COLORS[colorI];
           html += `<div style="background:${cbg};border:1px solid ${cbdr};border-radius:8px;
               padding:6px 9px;margin-bottom:4px;">
             <div style="font-weight:700;color:${ctxt};font-size:12px;">${j.fan||'—'}</div>
@@ -755,6 +762,12 @@ function buildImgByTeacher(wrap, filterT) {
     ['#f0fdfa','#99f6e4','#0f766e'],
   ];
 
+  // O'qituvchi bo'yicha ko'rinishda: har bir o'qituvchi bitta fanga ega,
+  // shuning uchun rang o'qituvchi faniga qarab beriladi (barqaror)
+  const allFans = [...new Set(JADVALLAR.map(j => j.fan).filter(Boolean))].sort();
+  const fanColorIdx = {};
+  allFans.forEach((fan, i) => { fanColorIdx[fan] = i % COLORS.length; });
+
   const TH = `background:#1e1b4b;color:#ffffff;font-size:11px;font-weight:800;
     letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
     padding:13px 16px;text-align:left;`;
@@ -769,6 +782,9 @@ function buildImgByTeacher(wrap, filterT) {
     const tName = tRef.teacher_familiya + ' ' + tRef.teacher_ism;
     const tJad  = jadvallar.filter(j => j.teacher_familiya+' '+j.teacher_ism === tName);
     const bg    = ti % 2 === 0 ? '#fafafa' : '#ffffff';
+    // O'qituvchi rangi uning faniga qarab (barcha kunlarda bir xil)
+    const tColorI = fanColorIdx[tRef.fan] ?? 0;
+    const [cbg, cbdr, ctxt] = COLORS[tColorI];
 
     html += `<tr style="background:${bg};border-bottom:1px solid #e5e7eb;">
       <td style="padding:10px 14px;vertical-align:middle;">
@@ -776,9 +792,8 @@ function buildImgByTeacher(wrap, filterT) {
         <div style="font-size:10px;color:#6b7280;margin-top:2px;">${tRef.fan||'—'}</div>
       </td>`;
 
-    KUNLAR_IDX.forEach((kun, ci) => {
+    KUNLAR_IDX.forEach((kun) => {
       const lessons = tJad.filter(j => j.kunlar.includes(kun));
-      const [cbg, cbdr, ctxt] = COLORS[ci % COLORS.length];
       if (lessons.length) {
         // Bir xil vaqtdagi sinflarni birlashtirish
         const grouped = [];
