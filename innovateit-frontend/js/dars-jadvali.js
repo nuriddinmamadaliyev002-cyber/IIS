@@ -1,7 +1,7 @@
-// ═══════════════════════════════════════════════════
+js// ═══════════════════════════════════════════════════
 //  InnovateIT School — Dars jadvali (dars-jadvali.js)
+//  v2.1 — fan ranglari o'qituvchi nomiga qarab
 // ═══════════════════════════════════════════════════
-
 
 const KUN_NAMES  = ['', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
 const KUN_SHORT  = ['', 'Du', 'Se', 'Cho', 'Pay', 'Ju', 'Sha'];
