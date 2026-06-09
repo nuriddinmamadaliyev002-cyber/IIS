@@ -698,7 +698,8 @@ function buildImgBySinf(wrap, filterS) {
   ];
 
   // Har bir fan o'z doimiy rangiga ega bo'lishi uchun fan→indeks xaritasi
-  const allFans = [...new Set(JADVALLAR.map(j => j.fan).filter(Boolean))].sort();
+  // trim() — DB da 'Matematika ' (bo'sh joy bilan) kabi nomlarni bir xil ko'rish uchun
+  const allFans = [...new Set(JADVALLAR.map(j => (j.fan||'').trim()).filter(Boolean))].sort();
   const fanColorIdx = {};
   allFans.forEach((fan, i) => { fanColorIdx[fan] = i % COLORS.length; });
 
@@ -726,7 +727,7 @@ function buildImgBySinf(wrap, filterS) {
         html += `<td style="padding:8px 10px;vertical-align:top;">`;
         lessons.forEach(j => {
           // Rang fan nomiga qarab aniqlanadi, kun indeksiga emas
-          const colorI = fanColorIdx[j.fan] ?? 0;
+          const colorI = fanColorIdx[(j.fan||'').trim()] ?? 0;
           const [cbg, cbdr, ctxt] = COLORS[colorI];
           html += `<div style="background:${cbg};border:1px solid ${cbdr};border-radius:8px;
               padding:6px 9px;margin-bottom:4px;">
@@ -764,7 +765,8 @@ function buildImgByTeacher(wrap, filterT) {
 
   // O'qituvchi bo'yicha ko'rinishda: har bir o'qituvchi bitta fanga ega,
   // shuning uchun rang o'qituvchi faniga qarab beriladi (barqaror)
-  const allFans = [...new Set(JADVALLAR.map(j => j.fan).filter(Boolean))].sort();
+  // trim() — DB da 'Matematika ' (bo'sh joy bilan) kabi nomlarni bir xil ko'rish uchun
+  const allFans = [...new Set(JADVALLAR.map(j => (j.fan||'').trim()).filter(Boolean))].sort();
   const fanColorIdx = {};
   allFans.forEach((fan, i) => { fanColorIdx[fan] = i % COLORS.length; });
 
@@ -783,7 +785,7 @@ function buildImgByTeacher(wrap, filterT) {
     const tJad  = jadvallar.filter(j => j.teacher_familiya+' '+j.teacher_ism === tName);
     const bg    = ti % 2 === 0 ? '#fafafa' : '#ffffff';
     // O'qituvchi rangi uning faniga qarab (barcha kunlarda bir xil)
-    const tColorI = fanColorIdx[tRef.fan] ?? 0;
+    const tColorI = fanColorIdx[(tRef.fan||'').trim()] ?? 0;
     const [cbg, cbdr, ctxt] = COLORS[tColorI];
 
     html += `<tr style="background:${bg};border-bottom:1px solid #e5e7eb;">
