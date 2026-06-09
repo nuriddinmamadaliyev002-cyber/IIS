@@ -697,11 +697,13 @@ function buildImgBySinf(wrap, filterS) {
     ['#fefce8','#fde68a','#b45309'],
   ];
 
-  // Har bir fan o'z doimiy rangiga ega bo'lishi uchun fan→indeks xaritasi
-  // trim() — DB da 'Matematika ' (bo'sh joy bilan) kabi nomlarni bir xil ko'rish uchun
-  const allFans = [...new Set(JADVALLAR.map(j => (j.fan||'').trim()).filter(Boolean))].sort();
-  const fanColorIdx = {};
-  allFans.forEach((fan, i) => { fanColorIdx[fan] = i % COLORS.length; });
+  // Rang xaritasi: o'qituvchi to'liq ismi → rang indeksi
+  // O'qituvchi nomiga qarab rang beriladi — bu eng barqaror yondashuv,
+  // chunki bir o'qituvchi bitta fandan dars beradi va fan nomi DB da bo'sh joy
+  // yoki boshqa formatda kelishi mumkin
+  const allTeachers = [...new Set(JADVALLAR.map(j => (j.teacher_familiya+' '+j.teacher_ism).trim()).filter(Boolean))].sort();
+  const teacherColorIdx = {};
+  allTeachers.forEach((t, i) => { teacherColorIdx[t] = i % COLORS.length; });
 
   const TH = `background:#1e1b4b;color:#ffffff;font-size:11px;font-weight:800;
     letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
@@ -726,8 +728,8 @@ function buildImgBySinf(wrap, filterS) {
       if (lessons.length) {
         html += `<td style="padding:8px 10px;vertical-align:top;">`;
         lessons.forEach(j => {
-          // Rang fan nomiga qarab aniqlanadi, kun indeksiga emas
-          const colorI = fanColorIdx[(j.fan||'').trim()] ?? 0;
+          // Rang o'qituvchi nomiga qarab aniqlanadi (barqaror, fan nomi formati ta'sir qilmaydi)
+          const colorI = teacherColorIdx[(j.teacher_familiya+' '+j.teacher_ism).trim()] ?? 0;
           const [cbg, cbdr, ctxt] = COLORS[colorI];
           html += `<div style="background:${cbg};border:1px solid ${cbdr};border-radius:8px;
               padding:6px 9px;margin-bottom:4px;">
@@ -765,10 +767,10 @@ function buildImgByTeacher(wrap, filterT) {
 
   // O'qituvchi bo'yicha ko'rinishda: har bir o'qituvchi bitta fanga ega,
   // shuning uchun rang o'qituvchi faniga qarab beriladi (barqaror)
-  // trim() — DB da 'Matematika ' (bo'sh joy bilan) kabi nomlarni bir xil ko'rish uchun
-  const allFans = [...new Set(JADVALLAR.map(j => (j.fan||'').trim()).filter(Boolean))].sort();
-  const fanColorIdx = {};
-  allFans.forEach((fan, i) => { fanColorIdx[fan] = i % COLORS.length; });
+  // Rang xaritasi: o'qituvchi to'liq ismi → rang indeksi
+  const allTeachers = [...new Set(JADVALLAR.map(j => (j.teacher_familiya+' '+j.teacher_ism).trim()).filter(Boolean))].sort();
+  const teacherColorIdx = {};
+  allTeachers.forEach((t, i) => { teacherColorIdx[t] = i % COLORS.length; });
 
   const TH = `background:#1e1b4b;color:#ffffff;font-size:11px;font-weight:800;
     letter-spacing:.1em;text-transform:uppercase;white-space:nowrap;
@@ -785,7 +787,7 @@ function buildImgByTeacher(wrap, filterT) {
     const tJad  = jadvallar.filter(j => j.teacher_familiya+' '+j.teacher_ism === tName);
     const bg    = ti % 2 === 0 ? '#fafafa' : '#ffffff';
     // O'qituvchi rangi uning faniga qarab (barcha kunlarda bir xil)
-    const tColorI = fanColorIdx[(tRef.fan||'').trim()] ?? 0;
+    const tColorI = teacherColorIdx[(tRef.teacher_familiya+' '+tRef.teacher_ism).trim()] ?? 0;
     const [cbg, cbdr, ctxt] = COLORS[tColorI];
 
     html += `<tr style="background:${bg};border-bottom:1px solid #e5e7eb;">
