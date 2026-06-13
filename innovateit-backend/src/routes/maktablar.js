@@ -80,12 +80,7 @@ router.put('/:id', requireAuth(['admin']), async (req, res) => {
       await client.query('BEGIN');
       await client.query('UPDATE maktablar SET nomi=$1 WHERE id=$2', [nomi, id]);
 
-      // oquvchilar.maktab TEXT maydonini sinxronlash
-      if (oldNomi !== nomi) {
-        await client.query('UPDATE oquvchilar        SET maktab=$1 WHERE maktab=$2', [nomi, oldNomi]);
-        await client.query('UPDATE nofaol_oquvchilar SET maktab=$1 WHERE maktab=$2', [nomi, oldNomi]);
-        await client.query('UPDATE tolovlar          SET maktab=$1 WHERE maktab=$2', [nomi, oldNomi]);
-      }
+      // maktab_id FK orqali bog'langan — qo'shimcha sinxronlash shart emas
 
       await client.query('COMMIT');
       res.json({ ok: true });
