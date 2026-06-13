@@ -59,7 +59,7 @@ router.post('/', async (req, res) => {
 
 // ─── PUT /api/admins — tahrirlash ───
 router.put('/', async (req, res) => {
-  const { oldUsername, newIsm, newUsername: nu, newParol: np } = req.body;
+  const { oldUsername, newIsm, newFamiliya, newUsername: nu, newParol: np } = req.body;
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
   const oldU = oldUsername?.trim();
@@ -76,11 +76,11 @@ router.put('/', async (req, res) => {
       if (np.trim().length < 6)
         return res.status(400).json({ ok: false, error: "Parol kamida 6 ta belgi bo'lishi kerak" });
       const hashed = await hashPassword(np.trim());
-      q      = 'UPDATE adminlar SET ism=$1, username=$2, parol=$3 WHERE username=$4';
-      params = [newI, newU, hashed, oldU];
+      q      = 'UPDATE adminlar SET ism=$1, familiya=$2, username=$3, parol=$4 WHERE username=$5';
+      params = [newI, (newFamiliya||'').trim(), newU, hashed, oldU];
     } else {
-      q      = 'UPDATE adminlar SET ism=$1, username=$2 WHERE username=$3';
-      params = [newI, newU, oldU];
+      q      = 'UPDATE adminlar SET ism=$1, familiya=$2, username=$3 WHERE username=$4';
+      params = [newI, (newFamiliya||'').trim(), newU, oldU];
     }
 
     const result = await client.query(q, params);

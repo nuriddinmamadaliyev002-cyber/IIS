@@ -680,7 +680,7 @@ function renderAdmins(admins) {
         <span class="admin-ptag">🔑 ${a.parol || '—'}</span>
       </div>
       <div class="admin-acts">
-        <button class="btn-action" onclick="openAE('${esc(a.username)}','${esc(a.ism)}','${esc(a.parol || '')}')">✏️</button>
+        <button class="btn-action" onclick="openAE('${esc(a.username)}','${esc(a.ism)}','${esc(a.parol || '')}','${esc(a.familiya || '')}')">✏️</button>
         <button class="btn-small"  onclick="delA('${esc(a.username)}','${esc(a.familiya ? a.familiya + ' ' + a.ism : a.ism)}')">O'chirish</button>
       </div>
     </div>`).join('');
@@ -727,8 +727,9 @@ async function delA(username, ism) {
 
 let aeOld = null;
 
-function openAE(username, ism, parol) {
+function openAE(username, ism, parol, familiya) {
   aeOld = username;
+  if (g('ae-familiya')) g('ae-familiya').value = familiya || '';
   g('ae-ism').value      = ism;
   g('ae-username').value = username;
   g('ae-parol').value    = '';
@@ -737,6 +738,7 @@ function openAE(username, ism, parol) {
 function closeAE() { g('ae-modal').style.display = 'none'; aeOld = null; }
 
 async function saveAE() {
+  const familiya = (g('ae-familiya')?.value || '').trim();
   const ism      = g('ae-ism').value.trim();
   const username = g('ae-username').value.trim();
   const parol    = g('ae-parol').value.trim();
@@ -746,7 +748,7 @@ async function saveAE() {
   try {
     const r = await api.editAdmin({
       username: U.username, parol: U.parol,
-      oldUsername: aeOld, newIsm: ism, newUsername: username, newParol: parol
+      oldUsername: aeOld, newIsm: ism, newFamiliya: familiya, newUsername: username, newParol: parol
     });
     if (r.ok) {
       closeAE();
