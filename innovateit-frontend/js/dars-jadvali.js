@@ -24,8 +24,18 @@ let expFormat    = 'excel';  // 'excel' | 'image'
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     const saved = sessionStorage.getItem('iit_jadval_user');
-    if (!saved) { window.location.href = 'index.html'; return; }
-    U = JSON.parse(saved);
+    if (saved) {
+      U = JSON.parse(saved);
+    } else {
+      const token = localStorage.getItem('innovateit_token');
+      if (!token) { window.location.href = 'index.html'; return; }
+      try {
+        const payload = JSON.parse(atob(token.split('.')[1]));
+        if (payload.exp * 1000 < Date.now()) { window.location.href = 'index.html'; return; }
+        U = { username: payload.username, parol: '', ism: payload.ism || payload.username, maktabId: payload.maktabId || null };
+        sessionStorage.setItem('iit_jadval_user', JSON.stringify(U));
+      } catch { window.location.href = 'index.html'; return; }
+    }
   } catch { window.location.href = 'index.html'; return; }
 
   const badge = g('jad-badge');
