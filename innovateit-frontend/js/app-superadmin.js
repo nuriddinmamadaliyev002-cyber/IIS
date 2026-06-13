@@ -79,7 +79,7 @@ async function saveMaktab(id) {
 
   try {
     const r = await api.editMaktab({ id, nomi });
-    if (r.ok) { toast('✅ Yangilandi', 'success'); await loadMaktablar(); }
+    if (r.ok) { toast('✅ Yangilandi', 'success'); await loadMaktablar(); if (typeof loadAdmins === 'function') await loadAdmins(); }
     else toast('❌ ' + r.error, 'error');
   } catch(e) { toast('❌ Xatolik', 'error'); }
 }
