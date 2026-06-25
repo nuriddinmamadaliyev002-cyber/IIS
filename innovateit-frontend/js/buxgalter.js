@@ -589,7 +589,7 @@ function editCell(idx, field, ev) {
   } else {
     inputEl = document.createElement('input');
     inputEl.type = 'text';
-    inputEl.inputMode = 'numeric';
+    inputEl.inputMode = isNum ? 'numeric' : 'text';
     inputEl.className = 'cell-input cell-input-overlay';
     inputEl.id = `cedit-${field}-${idx}`;
     inputEl.value = isNum ? (parseInt(curVal)||0) : curVal;
