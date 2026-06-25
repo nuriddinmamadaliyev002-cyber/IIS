@@ -377,9 +377,10 @@
   border: 2px solid var(--accent);
   border-radius: 0;
   z-index: 10;
-  background: #fff;
+  background: rgba(239, 246, 255, 0.92);
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;
+  color: var(--text);
 }
 .cell-input-overlay:focus {
   outline: none;

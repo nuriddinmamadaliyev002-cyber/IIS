@@ -572,8 +572,8 @@ function editCell(idx, field, ev) {
   td.style.position = 'relative';
   const tdRect = td.getBoundingClientRect();
 
-  // Display elementini yashiramiz (td kengligi o'zgarmaydi)
-  if (dispEl) dispEl.style.visibility = 'hidden';
+  // Display elementini yashirmaymiz — input orqasida ko'rinib turadi
+  // if (dispEl) dispEl.style.visibility = 'hidden';
 
   // Input ni td ustiga absolut joylashtiramiz
   let inputEl;
