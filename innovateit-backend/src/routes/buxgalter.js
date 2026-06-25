@@ -60,7 +60,7 @@ router.get('/students', requireAuth(['admin', 'buxgalter']), async (req, res) =>
     }
 
     const activeRes = await pool.query(
-      `SELECT o.ism, o.familiya, o.maktab_id, m.nomi AS maktab_nomi,
+      `SELECT o.id, o.ism, o.familiya, o.maktab_id, m.nomi AS maktab_nomi,
               o.sinf, o.telefon, o.telefon2, o.boshlagan
        FROM oquvchilar o
        LEFT JOIN maktablar m ON m.id = o.maktab_id
@@ -71,7 +71,7 @@ router.get('/students', requireAuth(['admin', 'buxgalter']), async (req, res) =>
     );
 
     const nofaolRes = await pool.query(
-      `SELECT n.ism, n.familiya, n.maktab_id, m.nomi AS maktab_nomi,
+      `SELECT n.id, n.ism, n.familiya, n.maktab_id, m.nomi AS maktab_nomi,
               n.sinf, n.telefon, n.telefon2, n.boshlagan, n.chiqgan
        FROM nofaol_oquvchilar n
        LEFT JOIN maktablar m ON m.id = n.maktab_id
