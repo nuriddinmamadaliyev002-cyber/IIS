@@ -993,10 +993,15 @@ function renderBuxgalterList() {
       </span>`
     ).join('');
 
-    // Hali biriktirilmagan maktablar dropdown uchun
+    // Hali biriktirilmagan maktablar checkbox uchun
     const freeMaktablar = maktablar.filter(m => !myIds.has(m.id));
-    const dropdownOpts = freeMaktablar.map(m =>
-      `<option value="${m.id}">${esc(m.nomi)}</option>`
+    const checkboxItems = freeMaktablar.map(m =>
+      `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;background:#f8fafc;border:1px solid #e2e8f0;transition:background .15s;"
+        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+        <input type="checkbox" value="${m.id}" class="bux-maktab-chk-${b.id}"
+          style="width:14px;height:14px;accent-color:#2563eb;cursor:pointer;">
+        ${esc(m.nomi)}
+      </label>`
     ).join('');
 
     return `<div style="padding:14px 16px;border-bottom:1px solid var(--border);">
@@ -1028,23 +1033,20 @@ function renderBuxgalterList() {
       </div>
 
       <!-- Maktab biriktirish -->
-      <div style="margin-top:8px;display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
-        <select id="add-maktab-sel-${b.id}"
-          style="padding:5px 8px;border-radius:7px;border:1.5px solid var(--border);
-                 font-family:inherit;font-size:12px;background:var(--bg);flex:1;min-width:180px;">
-          <option value="">+ Maktab biriktirish…</option>
-          ${dropdownOpts}
-        </select>
+      <div style="margin-top:8px;">
+        ${freeMaktablar.length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+          ${checkboxItems}
+        </div>
         <button class="bux-biriktiruv-btn" onclick="biriktirBuxMaktab(${b.id})">
           Biriktirish
-        </button>
+        </button>` : '<span style="font-size:11px;color:#9ca3af;">Barcha maktablar biriktirilgan</span>'}
       </div>
     </div>`;
   }).join('');
 }
 
 async function createBuxgalter() {
-  const familiya = (g('bux-familiya')?.value || '').trim();
   const ism      = (g('bux-ism')?.value      || '').trim();
   const username = (g('bux-username')?.value || '').trim();
   const parol    = (g('bux-parol')?.value    || '');
@@ -1064,12 +1066,12 @@ async function createBuxgalter() {
 
   try {
     const r = await api.createBuxgalter({
-      ism, familiya, username, parol
+      username: U.username, parol: U.parol,
+      newIsm: ism, newUsername: username, newParol: parol
     });
 
     if (r.ok) {
       toast('✅ Buxgalter yaratildi', 'success');
-      g('bux-familiya').value = '';
       g('bux-ism').value      = '';
       g('bux-username').value = '';
       g('bux-parol').value    = '';
@@ -1120,16 +1122,23 @@ function openBuxgalterPanel() {
 
 // ─── Buxgalter maktab biriktirish / ajratish ───────
 async function biriktirBuxMaktab(buxId) {
-  const sel = g(`add-maktab-sel-${buxId}`);
-  const maktabId = sel?.value;
-  if (!maktabId) { toast('⚠️ Maktab tanlang', 'error'); return; }
+  const checkboxes = document.querySelectorAll(`.bux-maktab-chk-${buxId}:checked`);
+  if (checkboxes.length === 0) { toast('⚠️ Kamida bitta maktab tanlang', 'error'); return; }
 
-  const r = await api.biriktirAdmin({
-    username: U.username, parol: U.parol,
-    buxId, maktabId: parseInt(maktabId, 10)
-  });
-  if (r.ok) { toast('✅ Maktab biriktirildi', 'success'); loadBuxgalterlar(); }
-  else       toast('❌ ' + r.error, 'error');
+  const maktabIds = [...checkboxes].map(c => parseInt(c.value, 10));
+  let xato = 0;
+
+  for (const maktabId of maktabIds) {
+    const r = await api.biriktirAdmin({
+      username: U.username, parol: U.parol,
+      buxId, maktabId
+    });
+    if (!r.ok) xato++;
+  }
+
+  if (xato === 0) toast(`✅ ${maktabIds.length} ta maktab biriktirildi`, 'success');
+  else toast(`⚠️ ${xato} ta maktabda xatolik`, 'error');
+  loadBuxgalterlar();
 }
 
 async function ajratBuxMaktab(buxId, maktabId) {
@@ -1148,10 +1157,15 @@ async function ajratAdmin(adminUsername, buxUsername) { toast('⚠️ Eski API. 
 
 // ─── Buxgalter tahrirlash modal ───────────────────
 let _editBuxOldUsername = '';
+let _editBuxId = null;
 
 function openEditBux(username, ism) {
   _editBuxOldUsername = username;
-  g('edit-bux-ism').value      = ism;
+  // id ni BUX_DATA dan topamiz
+  const bux = BUX_DATA.buxgalterlar.find(b => b.username === username);
+  _editBuxId = bux ? bux.id : null;
+  g('edit-bux-familiya').value = bux?.familiya || '';
+  g('edit-bux-ism').value      = bux?.ism || ism;
   g('edit-bux-username').value = username;
   g('edit-bux-parol').value    = '';
   g('edit-bux-err').style.display = 'none';
@@ -1162,6 +1176,7 @@ function closeEditBux() {
 }
 
 async function saveEditBux() {
+  const newFamiliya = g('edit-bux-familiya').value.trim();
   const newIsm      = g('edit-bux-ism').value.trim();
   const newUsername = g('edit-bux-username').value.trim();
   const newParol    = g('edit-bux-parol').value.trim();
@@ -1171,11 +1186,14 @@ async function saveEditBux() {
   if (!newIsm)      { errEl.textContent = '❌ Ism kerak'; errEl.style.display='block'; return; }
   if (!newUsername) { errEl.textContent = '❌ Username kerak'; errEl.style.display='block'; return; }
   if (newParol && newParol.length < 6) { errEl.textContent = '❌ Parol kamida 6 ta belgi'; errEl.style.display='block'; return; }
+  if (!_editBuxId) { errEl.textContent = '❌ Buxgalter ID topilmadi'; errEl.style.display='block'; return; }
 
   const r = await api.editBuxgalter({
-    username: U.username, parol: U.parol,
-    oldUsername: _editBuxOldUsername,
-    newIsm, newUsername, newParol
+    id: _editBuxId,
+    ism: newIsm,
+    familiya: newFamiliya,
+    username: newUsername,
+    parol: newParol || undefined,
   });
   if (r.ok) {
     closeEditBux();

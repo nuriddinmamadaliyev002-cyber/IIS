@@ -255,7 +255,7 @@ const api = {
   // ─── Buxgalter ───
   getBiriktirmalar: (d) => api.get('/api/buxgalter', d),
   createBuxgalter:  (d) => api.post('/api/buxgalter', d),
-  editBuxgalter:    (d) => api.put('/api/buxgalter', d),
+  editBuxgalter:    (d) => api.put(`/api/buxgalter/${d.id}`, d),
   deleteBuxgalter:  (d) => api.del('/api/buxgalter', d),
   biriktirAdmin:    (d) => api.post('/api/buxgalter/biriktiruv', d),
   ajratAdmin:       (d) => api.del('/api/buxgalter/biriktiruv', d),
