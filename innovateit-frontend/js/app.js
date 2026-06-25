@@ -1020,7 +1020,7 @@ function renderBuxgalterList() {
           <button class="bux-edit-btn" onclick="openEditBux('${esc(b.username)}','${esc(b.ism)}')">
             ✏️ Tahrirlash
           </button>
-          <button class="bux-del-btn" onclick="deleteBuxgalter('${esc(b.username)}','${esc(b.ism)}')">
+          <button class="bux-del-btn" onclick="deleteBuxgalter(${b.id},'${esc(b.username)}','${esc(b.ism)}')">
             O'chirish
           </button>
         </div>
@@ -1089,14 +1089,11 @@ async function createBuxgalter() {
   if (spinner) spinner.style.display = 'none';
 }
 
-async function deleteBuxgalter(username, ism) {
+async function deleteBuxgalter(id, username, ism) {
   if (!confirm(`"${ism}" buxgalterni o'chirmoqchimisiz?\n\nU buxgalter paneliga kira olmaydi.`)) return;
 
   try {
-    const r = await api.deleteBuxgalter({
-      username: U.username, parol: U.parol,
-      deleteUsername: username
-    });
+    const r = await api.deleteBuxgalter({ id });
     if (r.ok) {
       toast('✅ Buxgalter o\'chirildi');
       loadBuxgalterlar();
