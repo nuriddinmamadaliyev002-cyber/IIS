@@ -55,6 +55,8 @@ CREATE TABLE IF NOT EXISTS buxgalterlar (
     id          SERIAL PRIMARY KEY,
     ism         TEXT   NOT NULL,
     familiya    TEXT   NOT NULL DEFAULT '',
+    username    TEXT   UNIQUE,
+    parol       TEXT,
     telegram_id BIGINT UNIQUE,
     yaratilgan  TEXT   DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY')
 );

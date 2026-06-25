@@ -1044,6 +1044,7 @@ function renderBuxgalterList() {
 }
 
 async function createBuxgalter() {
+  const familiya = (g('bux-familiya')?.value || '').trim();
   const ism      = (g('bux-ism')?.value      || '').trim();
   const username = (g('bux-username')?.value || '').trim();
   const parol    = (g('bux-parol')?.value    || '');
@@ -1063,12 +1064,12 @@ async function createBuxgalter() {
 
   try {
     const r = await api.createBuxgalter({
-      username: U.username, parol: U.parol,
-      newIsm: ism, newUsername: username, newParol: parol
+      ism, familiya, username, parol
     });
 
     if (r.ok) {
       toast('✅ Buxgalter yaratildi', 'success');
+      g('bux-familiya').value = '';
       g('bux-ism').value      = '';
       g('bux-username').value = '';
       g('bux-parol').value    = '';
