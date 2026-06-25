@@ -221,6 +221,13 @@ const api = {
   changeAdminParol: (d) => api.put('/api/admins', d),
   deleteAdmin:      (d) => api.del('/api/admins', d),
 
+  // ─── Maslahatchilar ───
+  getMaslahatchilar:    ()       => api.get('/api/maslahatchilar'),
+  createMaslahatchi:    (d)      => api.post('/api/maslahatchilar', d),
+  editMaslahatchi:      (id, d)  => api.put(`/api/maslahatchilar/${id}`, d),
+  deleteMaslahatchi:    (id)     => api.del(`/api/maslahatchilar/${id}`),
+  getMaslahatchiStat:   (id)     => api.get(`/api/maslahatchilar/${id}/stat`),
+
   // ─── Davomat ───
   saveDavomat:        (d) => api.post('/api/davomat', d),
   getDavomat:         (d) => api.get('/api/davomat', d),

@@ -19,7 +19,8 @@ const teachersRouter  = require('./routes/teachers');
 const buxgalterRouter = require('./routes/buxgalter');
 const portfolioRouter = require('./routes/portfolio');
 const maktablarRouter = require('./routes/maktablar');
-const telegramRouter = require('./routes/telegram');
+const telegramRouter       = require('./routes/telegram');
+const maslahatchilarRouter = require('./routes/maslahatchilar');
 
 
 
@@ -99,7 +100,8 @@ app.use('/api/teachers',  teachersRouter);
 app.use('/api/buxgalter', buxgalterRouter);
 app.use('/api/portfolio', portfolioRouter);
 app.use('/api/maktablar', maktablarRouter);
-app.use('/api/telegram', telegramRouter);
+app.use('/api/telegram',        telegramRouter);
+app.use('/api/maslahatchilar', maslahatchilarRouter);
 app.use('/miniapp', express.static(path.join(__dirname, '../../telegram-bot/miniapp')));
 
 

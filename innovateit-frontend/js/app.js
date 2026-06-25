@@ -155,7 +155,7 @@ async function showApp() {
 }
 
 function switchTab(t) {
-  const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf'];
+  const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf', 'msl'];
   allTabs.forEach(id => {
     const el = g('tab-' + id);
     if (el) el.style.display = (t === id) ? 'block' : 'none';
@@ -168,6 +168,7 @@ function switchTab(t) {
   if (t === 'sr' && typeof loadSorovlar === 'function') loadSorovlar();
   if (t === 'oq') loadTeachersTab();
   if (t === 'pf') loadPortfolioTab();
+  if (t === 'msl') loadMaslahatchilar();
 }
 
 // ─────────────────────────────────────────────
@@ -1948,4 +1949,99 @@ async function saveSuperAdd() {
     await loadTeachersTab();
   } catch(e) { toast('❌ Server bilan ulanishda xatolik','error'); }
   setBtnLoading('sa-save-btn','sa-spinner','sa-btn-txt',false,'Saqlash');
+}
+
+// ─────────────────────────────────────────────
+//  MASLAHATCHILAR
+// ─────────────────────────────────────────────
+
+async function loadMaslahatchilar() {
+  try {
+    const [dm, d] = await Promise.all([
+      api.getMaktablar(),
+      api.getMaslahatchilar()
+    ]);
+
+    if (d.ok) renderMaslahatchilar(d.maslahatchilar);
+
+    // Maktab select ni to'ldirish
+    const sel = g('msl-maktab-id');
+    if (sel && dm.ok) {
+      sel.innerHTML = '<option value="">— Tanlang —</option>' +
+        (dm.maktablar || []).map(m =>
+          `<option value="${m.id}">${esc(m.nomi)}</option>`
+        ).join('');
+    }
+  } catch (e) { console.error('loadMaslahatchilar:', e); }
+}
+
+function renderMaslahatchilar(list) {
+  const el = g('msl-list');
+  if (!list || !list.length) {
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">🤝</div><p>Maslahatchi yo\'q</p></div>';
+    return;
+  }
+  el.innerHTML = list.map(m => `
+    <div class="admin-item">
+      <div class="admin-info">
+        <span class="admin-name">${m.familiya ? esc(m.familiya) + ' ' : ''}${esc(m.ism)}</span>
+        <span class="admin-email">📞 ${esc(m.telefon || '—')}  |  🏫 ${esc(m.maktab_nomi || '—')}  |  💼 ${esc(m.lavozim || '—')}</span>
+        <span class="admin-ptag">💰 ${m.komiss_summa ? Number(m.komiss_summa).toLocaleString() + ' so\'m' : '—'}  |  🔑 ${esc(m.username || '—')}  |  📊 Lead: ${m.lead_soni || 0}, Yozildi: ${m.yozildi_soni || 0}</span>
+      </div>
+      <div class="admin-acts">
+        <button class="btn-action" onclick="openMslEdit(${m.id})">✏️</button>
+        <button class="btn-small"  onclick="delMaslahatchi(${m.id},'${esc((m.familiya ? m.familiya + ' ' : '') + m.ism)}')">O'chirish</button>
+      </div>
+    </div>`).join('');
+}
+
+async function createMaslahatchi() {
+  const familiya  = (g('msl-familiya')?.value || '').trim();
+  const ism       = (g('msl-ism')?.value || '').trim();
+  const telefon   = (g('msl-telefon')?.value || '').trim();
+  const maktabId  = g('msl-maktab-id')?.value || '';
+  const lavozim   = (g('msl-lavozim')?.value || '').trim();
+  const komissiya = parseInt(g('msl-komissiya')?.value || '0') || 0;
+  const username  = (g('msl-username')?.value || '').trim();
+  const parol     = (g('msl-parol')?.value || '').trim();
+
+  if (!ism)      { toast("⚠️ Ism majburiy", 'error'); return; }
+  if (!username) { toast("⚠️ Username majburiy", 'error'); return; }
+  if (!parol)    { toast("⚠️ Parol majburiy", 'error'); return; }
+
+  bl(null, 'msl-spinner', 'msl-btn-txt', true, 'Saqlanmoqda…');
+  try {
+    const r = await api.createMaslahatchi({
+      ism, familiya, telefon,
+      maktab_id: maktabId || null,
+      lavozim, komiss_summa: komissiya,
+      new_username: username, new_parol: parol
+    });
+    if (r.ok) {
+      ['msl-ism','msl-familiya','msl-telefon','msl-lavozim',
+       'msl-komissiya','msl-username','msl-parol'].forEach(id => {
+        if (g(id)) g(id).value = '';
+      });
+      if (g('msl-maktab-id')) g('msl-maktab-id').value = '';
+      toast("✅ Maslahatchi qo'shildi!", 'success');
+      await loadMaslahatchilar();
+    } else toast('❌ ' + r.error, 'error');
+  } catch (e) { toast('❌ Xatolik', 'error'); }
+  bl(null, 'msl-spinner', 'msl-btn-txt', false, "Qo'shish");
+}
+
+async function delMaslahatchi(id, ism) {
+  if (!confirm(`"${ism}" o'chirilsinmi?\nUning leadlari ham o'chirilishi mumkin!`)) return;
+  try {
+    const r = await api.deleteMaslahatchi(id);
+    if (r.ok) {
+      toast("✅ Maslahatchi o'chirildi", 'success');
+      await loadMaslahatchilar();
+    } else toast('❌ ' + r.error, 'error');
+  } catch (e) { toast('❌ Xatolik', 'error'); }
+}
+
+// Tahrirlash — keyingi bosqichda modal
+function openMslEdit(id) {
+  toast('✏️ Tahrirlash modali tez orada qo\'shiladi', 'info');
 }
