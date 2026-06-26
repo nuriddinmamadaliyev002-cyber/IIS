@@ -377,14 +377,26 @@
   border: 2px solid var(--accent);
   border-radius: 0;
   z-index: 10;
-  background: rgba(239, 246, 255, 0.92);
+  background: #eff6ff;
   font-family: 'DM Sans', sans-serif;
   font-size: 13px;
   color: var(--text);
+  overflow: hidden;
+  text-overflow: clip;
+  white-space: nowrap;
 }
 .cell-input-overlay:focus {
   outline: none;
   box-shadow: 0 0 0 3px rgba(37,99,235,.2);
+}
+
+/* Textarea overlay — matn maydonlari uchun */
+.cell-textarea {
+  line-height: 1.4;
+  padding: 4px 8px;
+  overflow-y: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
 }
 
 /* Barcha amount/sana/holat/kvit ustun kengliklarini JS boshqaradi */

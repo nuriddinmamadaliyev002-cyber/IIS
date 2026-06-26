@@ -572,8 +572,8 @@ function editCell(idx, field, ev) {
   td.style.position = 'relative';
   const tdRect = td.getBoundingClientRect();
 
-  // Display elementini yashirmaymiz — input orqasida ko'rinib turadi
-  // if (dispEl) dispEl.style.visibility = 'hidden';
+  // Display elementini yashiramiz (td kengligi o'zgarmaydi)
+  if (dispEl) dispEl.style.visibility = 'hidden';
 
   // Input ni td ustiga absolut joylashtiramiz
   let inputEl;
@@ -586,14 +586,23 @@ function editCell(idx, field, ev) {
     inputEl.value = isoVal;
     inputEl.max = todayISO();
     inputEl.style.cssText = 'cursor:pointer;';
+  } else if (!isNum) {
+    // Matn maydonlari uchun textarea — uzun matn to'liq ko'rinadi
+    inputEl = document.createElement('textarea');
+    inputEl.className = 'cell-input cell-input-overlay cell-textarea';
+    inputEl.id = `cedit-${field}-${idx}`;
+    inputEl.value = curVal;
+    inputEl.rows = 2;
+    inputEl.inputMode = 'text';
+    inputEl.style.cssText = 'resize:none;overflow-y:auto;white-space:pre-wrap;word-break:break-word;height:auto;min-height:100%;';
   } else {
     inputEl = document.createElement('input');
     inputEl.type = 'text';
-    inputEl.inputMode = isNum ? 'numeric' : 'text';
+    inputEl.inputMode = 'numeric';
     inputEl.className = 'cell-input cell-input-overlay';
     inputEl.id = `cedit-${field}-${idx}`;
-    inputEl.value = isNum ? (parseInt(curVal)||0) : curVal;
-    if (isNum) inputEl.autocomplete = 'off';
+    inputEl.value = parseInt(curVal) || 0;
+    inputEl.autocomplete = 'off';
   }
   td.appendChild(inputEl);
   const inp = inputEl;
@@ -637,7 +646,10 @@ function editCell(idx, field, ev) {
       commitEdit(idx, field);
     });
     inp.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === 'Tab') {
+      // textarea uchun: Enter yangi qator, Tab yoki Ctrl+Enter saqlaydi
+      const isTextarea = inp.tagName === 'TEXTAREA';
+      if (e.key === 'Tab' || (e.key === 'Enter' && (e.ctrlKey || e.metaKey || !isTextarea))) {
+        e.preventDefault();
         document.removeEventListener('mousedown', onDocMouseDown, true);
         commitEdit(idx, field);
       }
