@@ -341,14 +341,21 @@ async function loadData() {
     const students = studRes.students || [];
     const tolovMap = {};
     (tolovRes.tolovlar || []).forEach(t => {
-      const key = `${t.oquvchi_ism}|${t.oquvchi_familiya}|${t.admin_username}`;
-      tolovMap[key] = t;
+      // Asosiy key: oquvchi_id (eng ishonchli)
+      if (t.oquvchi_id) {
+        tolovMap[`id:${t.oquvchi_id}`] = t;
+      }
+      // Zaxira key: ism|familiya|maktab_id (oquvchi_id null bo'lsa)
+      const fallback = `${t.oquvchi_ism}|${t.oquvchi_familiya}|${t.maktab_id || ''}`;
+      if (!tolovMap[fallback]) tolovMap[fallback] = t;
     });
 
     // Merge
     ALL_DATA = students.map(s => {
-      const key = `${s.ism}|${s.familiya}|${s.admin}`;
-      return { student: s, tolov: tolovMap[key] || null };
+      // Avval ID bilan qidir, topilmasa ism+familiya+maktab bilan
+      const byId       = s.id ? tolovMap[`id:${s.id}`] : null;
+      const byFallback = tolovMap[`${s.ism}|${s.familiya}|${s.maktab_id || ''}`];
+      return { student: s, tolov: byId || byFallback || null };
     });
 
     applyFilters();
