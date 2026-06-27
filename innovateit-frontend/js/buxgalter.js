@@ -618,8 +618,7 @@ function editCell(idx, field, ev) {
   // inp o'zi bo'lmagan joyga mousedown kelsa — blur ni to'samiz,
   // lekin inp ni fokusda tutamiz va kursor pozitsiyasini o'rnatamiz.
   function onDocMouseDown(e) {
-    if (e.target === inp) return; // inp ichiga bosish — to'smoymiz
-    e.preventDefault();           // blur bo'lmasin
+    if (inp.contains(e.target)) return; // inp ichiga bosish — to'smoymiz    e.preventDefault();           // blur bo'lmasin
     // Agar inp tashqarisiga bosilsa — commitEdit
     if (!td.contains(e.target)) {
       document.removeEventListener('mousedown', onDocMouseDown, true);
