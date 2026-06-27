@@ -478,7 +478,7 @@ function renderTable() {
       <td class="col-sinf">${s.sinf || '—'}</td>
       <td class="col-tel">${s.telefon || '—'}${s.telefon2 ? `<br><span class="tel2">${s.telefon2}</span>` : ''}</td>
       <td class="col-qayd editable" data-field="qaydnoma" onclick="cellClick(${i},'qaydnoma',event)">
-        <span id="disp-qaydnoma-${i}">${t?.qaydnoma || '<span class="amount-0">—</span>'}</span>
+        <span id="disp-qaydnoma-${i}">${t?.qaydnoma ? t.qaydnoma.replace(/\n/g,'<br>') : '<span class="amount-0">—</span>'}</span>
       </td>
       <td class="col-gap editable" data-field="gaplashilgan_vaqt" onclick="cellClick(${i},'gaplashilgan_vaqt',event)">
         <span id="disp-gaplashilgan_vaqt-${i}">${t?.gaplashilgan_vaqt ? tolovSanasi(t.gaplashilgan_vaqt) : '<span class="amount-0">—</span>'}</span>
