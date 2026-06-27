@@ -330,6 +330,7 @@
 .col-maktab { text-align: center; color: #6b7280; font-size: 12px; }
 .col-sinf   { text-align: center; color: #6b7280; font-size: 12px; font-weight: 600; min-width: 80px; }
 .col-tel    { font-family: inherit; font-size: 13px; color: #374151; min-width: 160px; white-space: nowrap; }
+.col-tel .tel2 { display: block; font-size: 12px; color: #6b7280; margin-top: 2px; }
 .col-tarif  { text-align: right; }
 
 /* Editable cells */

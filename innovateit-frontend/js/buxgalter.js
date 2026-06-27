@@ -386,7 +386,7 @@ function applyFilters() {
     if (maktab && s.maktab !== maktab) return false;
     if (sinf   && s.sinf   !== sinf)   return false;
     if (search) {
-      const full = `${s.ism} ${s.familiya} ${s.telefon}`.toLowerCase();
+      const full = `${s.ism} ${s.familiya} ${s.telefon} ${s.telefon2 || ''}`.toLowerCase();
       if (!full.includes(search)) return false;
     }
     // Stat card filtri
@@ -476,7 +476,7 @@ function renderTable() {
       <td class="col-name">${nofaolBadge}<span class="name-familiya">${s.familiya}</span><span class="name-ism">${s.ism}</span></td>
       <td class="col-maktab">${s.maktab || '—'}</td>
       <td class="col-sinf">${s.sinf || '—'}</td>
-      <td class="col-tel">${s.telefon || '—'}</td>
+      <td class="col-tel">${s.telefon || '—'}${s.telefon2 ? `<br><span class="tel2">${s.telefon2}</span>` : ''}</td>
       <td class="col-qayd editable" data-field="qaydnoma" onclick="cellClick(${i},'qaydnoma',event)">
         <span id="disp-qaydnoma-${i}">${t?.qaydnoma || '<span class="amount-0">—</span>'}</span>
       </td>
