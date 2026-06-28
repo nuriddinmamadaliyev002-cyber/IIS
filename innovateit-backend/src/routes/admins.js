@@ -58,7 +58,7 @@ router.post('/', async (req, res) => {
 });
 
 // ─── PUT /api/admins — tahrirlash ───
-router.put('/', async (req, res) => {
+router.put('/', requireAuth(['admin']), async (req, res) => {
   const { oldUsername, newIsm, newFamiliya, newUsername: nu, newParol: np } = req.body;
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
