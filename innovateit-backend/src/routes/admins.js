@@ -91,10 +91,7 @@ router.put('/', requireAuth(['admin']), async (req, res) => {
 
     // Username o'zgargan bo'lsa — bog'liq jadvallarda ham yangilash
     if (oldU !== newU) {
-      await client.query('UPDATE oquvchilar           SET admin=$1 WHERE admin=$2',                     [newU, oldU]);
-      await client.query('UPDATE nofaol_oquvchilar    SET admin=$1 WHERE admin=$2',                     [newU, oldU]);
       await client.query('UPDATE davomat              SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
-      await client.query('UPDATE oqituvchilar         SET admin=$1 WHERE admin=$2',                     [newU, oldU]);
       await client.query('UPDATE oqituvchilar_davomat SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
       await client.query('UPDATE dars_jadvali         SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
       await client.query('UPDATE tolovlar             SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
