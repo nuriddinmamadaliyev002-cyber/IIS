@@ -593,7 +593,11 @@ function editCell(idx, field, ev) {
     inputEl.className = 'cell-input cell-input-overlay date-input';
     inputEl.id = `cedit-${field}-${idx}`;
     inputEl.value = isoVal;
-    inputEl.max = todayISO();
+    if (field === 'ehtimoliy_tolov_sanasi') {
+      inputEl.min = todayISO();   // faqat bugun va kelajakdagi sanalar
+    } else {
+      inputEl.max = todayISO();   // faqat bugun va o'tmishdagi sanalar
+    }
     inputEl.style.cssText = 'cursor:pointer;';
   } else if (!isNum) {
     // Matn maydonlari uchun textarea — uzun matn to'liq ko'rinadi
