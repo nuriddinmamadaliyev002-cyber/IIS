@@ -143,12 +143,13 @@ router.post('/tolovlar', requireAuth(['admin', 'buxgalter']), async (req, res) =
     await pool.query(
       `INSERT INTO tolovlar
          (oy, oquvchi_id, oquvchi_ism, oquvchi_familiya, maktab_id, sinf, telefon,
-          tarif, qaydnoma, gaplashilgan_vaqt, tolov_kerak, tolov_qildi,
+          tarif, qaydnoma, ehtimoliy_tolov_sanasi, gaplashilgan_vaqt, tolov_kerak, tolov_qildi,
           tolov_sanasi, kvitansiya_fayl, yangilangan)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
        ON CONFLICT (oy, oquvchi_id) DO UPDATE SET
          tarif             = EXCLUDED.tarif,
          qaydnoma          = EXCLUDED.qaydnoma,
+         ehtimoliy_tolov_sanasi = EXCLUDED.ehtimoliy_tolov_sanasi,
          gaplashilgan_vaqt = EXCLUDED.gaplashilgan_vaqt,
          tolov_kerak       = EXCLUDED.tolov_kerak,
          tolov_qildi       = EXCLUDED.tolov_qildi,
@@ -157,7 +158,7 @@ router.post('/tolovlar', requireAuth(['admin', 'buxgalter']), async (req, res) =
          yangilangan       = EXCLUDED.yangilangan`,
       [oy, oquvchiId, ism, familiya, maktabId,
        p.sinf||'', p.telefon||'',
-       parseInt(p.tarif)||0, p.qaydnoma||'', p.gaplashilgan_vaqt||'',
+       parseInt(p.tarif)||0, p.qaydnoma||'', p.ehtimoliy_tolov_sanasi||'', p.gaplashilgan_vaqt||'',
        parseInt(p.tolov_kerak)||0, parseInt(p.tolov_qildi)||0,
        p.tolov_sanasi||'', kvFiles, todayUZ()]
     );

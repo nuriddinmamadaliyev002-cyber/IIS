@@ -325,7 +325,7 @@ function changeOy(dir) {
 
 // ─── Ma'lumot yuklash ────────────────────────────
 async function loadData() {
-  g('bux-tbody').innerHTML = `<tr><td colspan="12" class="bux-loading">⏳ Yuklanmoqda…</td></tr>`;
+  g('bux-tbody').innerHTML = `<tr><td colspan="13" class="bux-loading">⏳ Yuklanmoqda…</td></tr>`;
   clearStats();
   setTimeout(fixMainMargin, 100);
 
@@ -437,7 +437,7 @@ function buildFilterOptions() {
 function renderTable() {
   const tbody = g('bux-tbody');
   if (FILTERED.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="12" class="bux-empty">
+    tbody.innerHTML = `<tr><td colspan="13" class="bux-empty">
       <span class="emoji">💼</span>
       Hozircha ma'lumot yo'q. "Oyni boshlash" tugmasini bosing.
     </td></tr>`;
@@ -478,6 +478,9 @@ function renderTable() {
       <td class="col-sinf">${s.sinf || '—'}</td>
       <td class="col-tel">${s.telefon || '—'}${s.telefon2 ? `<br><span class="tel2">${s.telefon2}</span>` : ''}</td>
       <td class="col-qayd editable" data-field="qaydnoma" onclick="cellClick(${i},'qaydnoma',event)" title="${t?.qaydnoma ? t.qaydnoma.replace(/"/g,'&quot;') : ''}">        <span id="disp-qaydnoma-${i}">${t?.qaydnoma ? t.qaydnoma.replace(/\n/g,'<br>') : '<span class="amount-0">—</span>'}</span>
+      </td>
+      <td class="col-ehtimoliy editable" data-field="ehtimoliy_tolov_sanasi" onclick="cellClick(${i},'ehtimoliy_tolov_sanasi',event)" style="cursor:pointer;">
+        <span id="disp-ehtimoliy_tolov_sanasi-${i}">${t?.ehtimoliy_tolov_sanasi ? tolovSanasi(t.ehtimoliy_tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
       </td>
       <td class="col-gap editable" data-field="gaplashilgan_vaqt" onclick="cellClick(${i},'gaplashilgan_vaqt',event)">
         <span id="disp-gaplashilgan_vaqt-${i}">${t?.gaplashilgan_vaqt ? tolovSanasi(t.gaplashilgan_vaqt) : '<span class="amount-0">—</span>'}</span>
@@ -572,7 +575,7 @@ function editCell(idx, field, ev) {
 
   const curVal = tolov[field] !== undefined ? String(tolov[field] || '') : '';
   const isNum  = ['tarif','tolov_kerak','tolov_qildi'].includes(field);
-  const isDate = field === 'tolov_sanasi' || field === 'gaplashilgan_vaqt';
+  const isDate = field === 'tolov_sanasi' || field === 'gaplashilgan_vaqt' || field === 'ehtimoliy_tolov_sanasi';
 
   // TD o'lchamlarini saqlash (input kengaytirmasin)
   td.style.position = 'relative';
@@ -678,7 +681,7 @@ async function commitEdit(idx, field) {
 
   let val = inp.value.trim();
   const isNum  = ['tarif','tolov_kerak','tolov_qildi'].includes(field);
-  const isDate = field === 'tolov_sanasi' || field === 'gaplashilgan_vaqt';
+  const isDate = field === 'tolov_sanasi' || field === 'gaplashilgan_vaqt' || field === 'ehtimoliy_tolov_sanasi';
 
   if (isNum)  val = parseInt(val) || 0;
   if (isDate) val = val ? dateISOtoUZ(val) : '';
@@ -776,6 +779,7 @@ async function saveRow(idx) {
       admin_username:   s.admin  || '',
       tarif:            t.tarif             || 0,
       qaydnoma:         t.qaydnoma          || '',
+      ehtimoliy_tolov_sanasi: t.ehtimoliy_tolov_sanasi || '',
       gaplashilgan_vaqt: t.gaplashilgan_vaqt || '',
       tolov_kerak:      t.tolov_kerak       || 0,
       tolov_qildi:      t.tolov_qildi       || 0,
@@ -853,7 +857,7 @@ function clearStats() {
 function exportExcel() {
   const rows = [
     ['№','Familiya Ismi','Maktab','Sinf','Telefon',
-     'Qaydnoma','Gaplashilgan vaqt',"To'lov kerak","To'lov qildi",
+     'Qaydnoma',"Ehtimoliy to'lov sanasi",'Gaplashilgan vaqt',"To'lov kerak","To'lov qildi",
      "To'lov sanasi","To'lov holati",'Kvitansiya']
   ];
   FILTERED.forEach(({student: s, tolov: t}, i) => {
@@ -873,6 +877,7 @@ function exportExcel() {
       s.sinf    || '',
       s.telefon || '',
       t?.qaydnoma          || '',
+      t?.ehtimoliy_tolov_sanasi || '',
       t?.gaplashilgan_vaqt || '',
       kerak,
       qildi,
