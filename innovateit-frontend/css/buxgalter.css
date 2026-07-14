@@ -1188,6 +1188,142 @@
   margin: 4px 0;
 }
 
+/* ══════════════════════════════════════════════════
+   COLUMN FILTER PANEL — qiymatlar bo'yicha filter
+══════════════════════════════════════════════════ */
+#col-filter-panel {
+  position: fixed;
+  z-index: 100000;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0,0,0,.16), 0 2px 8px rgba(0,0,0,.08);
+  width: 260px;
+  max-height: 380px;
+  display: none;
+  flex-direction: column;
+  font-family: 'DM Sans', sans-serif;
+  font-size: 13px;
+  animation: menuFadeIn .12s ease;
+  overflow: hidden;
+}
+#col-filter-panel .cfp-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .06em;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+#col-filter-panel .cfp-close {
+  background: none;
+  border: none;
+  font-size: 18px;
+  line-height: 1;
+  color: #9ca3af;
+  cursor: pointer;
+  padding: 0 2px;
+}
+#col-filter-panel .cfp-close:hover { color: #374151; }
+#col-filter-panel .cfp-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  border-bottom: 1px solid #f3f4f6;
+  font-size: 12px;
+}
+#col-filter-panel .cfp-link {
+  background: none;
+  border: none;
+  color: #1a7a6a;
+  cursor: pointer;
+  padding: 2px 0;
+  font-size: 12px;
+}
+#col-filter-panel .cfp-link:hover { text-decoration: underline; }
+#col-filter-panel .cfp-dot { color: #d1d5db; }
+#col-filter-panel .cfp-list {
+  overflow-y: auto;
+  max-height: 220px;
+  padding: 4px 0;
+}
+#col-filter-panel .cfp-check-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  user-select: none;
+}
+#col-filter-panel .cfp-check-row:hover { background: #f9fafb; }
+#col-filter-panel .cfp-check-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: #1a7a6a;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+#col-filter-panel .cfp-check-label {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: #374151;
+}
+#col-filter-panel .cfp-check-count {
+  font-size: 11px;
+  color: #9ca3af;
+  flex-shrink: 0;
+}
+#col-filter-panel .cfp-empty {
+  padding: 16px 12px;
+  color: #9ca3af;
+  text-align: center;
+  font-size: 12px;
+}
+#col-filter-panel .cfp-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 12px;
+  border-top: 1px solid #f3f4f6;
+}
+#col-filter-panel .cfp-footer-right {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+#col-filter-panel .cfp-btn {
+  border: none;
+  border-radius: 6px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+#col-filter-panel .cfp-btn-ghost {
+  background: none;
+  color: #dc2626;
+  padding-left: 0;
+}
+#col-filter-panel .cfp-btn-ghost:hover { text-decoration: underline; }
+#col-filter-panel .cfp-btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+}
+#col-filter-panel .cfp-btn-cancel:hover { background: #e5e7eb; }
+#col-filter-panel .cfp-btn-apply {
+  background: #1a7a6a;
+  color: #fff;
+}
+#col-filter-panel .cfp-btn-apply:hover { background: #146157; }
+
 /* Sort indicator */
 .bux-table thead th.sorted-asc::before,
 .bux-table thead th.sorted-desc::before {

@@ -30,6 +30,14 @@ const ColContextMenu = (() => {
   let onSort   = null; // (col, dir) => void — agar null bo'lsa, ichki sort ishlatiladi
   let getRows  = null; // () => FILTERED array
   let setRows  = null; // (sorted) => void + renderTable()
+  let onFilter   = null; // (col, Set|null) => void — Set berilsa filter qo'llanadi, null bo'lsa tozalanadi
+  let getAllRows = null; // () => barcha qatorlar (filtersiz), unique qiymatlarni chiqarish uchun
+  let getFilter  = null; // (col) => Set|null — hozirgi ustun uchun faol filter
+
+  // Filter panel holati
+  let filterPanel   = null;
+  let filterCol     = null;
+  let filterOptions = []; // [{ value, label, count, checked }]
 
   /* ─────────────────────────────────────
      init
@@ -37,10 +45,13 @@ const ColContextMenu = (() => {
   function init(id, labels, options = {}) {
     tableId   = id;
     colLabels = labels || {};
-    onHide    = options.onHide  || null;
-    onSort    = options.onSort  || null;
-    getRows   = options.getRows || null;
-    setRows   = options.setRows || null;
+    onHide    = options.onHide     || null;
+    onSort    = options.onSort     || null;
+    getRows   = options.getRows    || null;
+    setRows   = options.setRows    || null;
+    onFilter  = options.onFilter   || null;
+    getAllRows= options.getAllRows || null;
+    getFilter = options.getFilter  || null;
 
     _buildMenu();
     _attachListeners();
@@ -67,7 +78,14 @@ const ColContextMenu = (() => {
       <div class="ctx-item" id="ctx-sort-clear" onclick="ColContextMenu._doSort(null)" style="display:none;">
         <span class="ctx-icon">↕</span> Tartibni bekor qilish
       </div>
-      <div class="ctx-sep"></div>
+      <div class="ctx-sep" id="ctx-sep-1"></div>
+      <div class="ctx-item" id="ctx-filter" onclick="ColContextMenu._openFilterPanel()">
+        <span class="ctx-icon">🔎</span> Qiymatlar bo'yicha filter
+      </div>
+      <div class="ctx-item" id="ctx-filter-clear" onclick="ColContextMenu._clearFilterFromMenu()" style="display:none;">
+        <span class="ctx-icon">✕</span> Filterni tozalash
+      </div>
+      <div class="ctx-sep" id="ctx-sep-2"></div>
       <div class="ctx-item danger" id="ctx-hide" onclick="ColContextMenu._doHide()">
         <span class="ctx-icon">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -138,14 +156,35 @@ const ColContextMenu = (() => {
     document.getElementById('ctx-sort-desc').style.fontWeight
       = (isSorted && sortState.dir === 'desc') ? '700' : '';
 
-    // "num" ustuniga yashirishni o'chirish
-    const hideBtn = document.getElementById('ctx-hide');
-    if (currentCol === 'num' || currentCol === 'name') {
+    // Filter faollik holati
+    const hasFilter = getFilter ? !!getFilter(currentCol) : false;
+
+    const hideBtn        = document.getElementById('ctx-hide');
+    const sep2            = document.getElementById('ctx-sep-2');
+    const filterBtn       = document.getElementById('ctx-filter');
+    const filterClearBtn  = document.getElementById('ctx-filter-clear');
+    const sep1            = document.getElementById('ctx-sep-1');
+
+    if (currentCol === 'num') {
+      // № ustuni — na filter, na yashirish mantiqiy emas
+      filterBtn.style.display = 'none';
+      filterClearBtn.style.display = 'none';
+      sep1.style.display = 'none';
       hideBtn.style.display = 'none';
-      document.querySelector('#col-context-menu .ctx-sep').style.display = 'none';
+      sep2.style.display = 'none';
+    } else if (currentCol === 'name') {
+      // Ism — filter mumkin, lekin yashirish mumkin emas
+      filterBtn.style.display = '';
+      filterClearBtn.style.display = hasFilter ? '' : 'none';
+      sep1.style.display = '';
+      hideBtn.style.display = 'none';
+      sep2.style.display = 'none';
     } else {
+      filterBtn.style.display = '';
+      filterClearBtn.style.display = hasFilter ? '' : 'none';
+      sep1.style.display = '';
       hideBtn.style.display = '';
-      document.querySelector('#col-context-menu .ctx-sep').style.display = '';
+      sep2.style.display = '';
     }
 
     // Pozitsiya — ekrandan tashqariga chiqmasin
@@ -181,7 +220,7 @@ const ColContextMenu = (() => {
   }
 
   function _onKeyDown(e) {
-    if (e.key === 'Escape') _closeMenu();
+    if (e.key === 'Escape') { _closeMenu(); _closeFilterPanel(); }
   }
 
   /* ─────────────────────────────────────
@@ -256,6 +295,7 @@ const ColContextMenu = (() => {
       sinf:   s.sinf    || '',
       tel:    s.telefon || '',
       qayd:   t.qaydnoma          || '',
+      ehtimoliy: t.ehtimoliy_tolov_sanasi || '',
       gap:    t.gaplashilgan_vaqt || '',
       kerak:  parseInt(t.tolov_kerak  || 0),
       qildi:  parseInt(t.tolov_qildi  || 0),
@@ -270,6 +310,186 @@ const ColContextMenu = (() => {
   function _compare(a, b) {
     if (typeof a === 'number' && typeof b === 'number') return a - b;
     return String(a).localeCompare(String(b), 'uz', { numeric: true });
+  }
+
+  /* ─────────────────────────────────────
+     Filter panel — qurish
+  ───────────────────────────────────── */
+  function _buildFilterPanel() {
+    filterPanel = document.getElementById('col-filter-panel');
+    if (filterPanel) return;
+
+    filterPanel = document.createElement('div');
+    filterPanel.id = 'col-filter-panel';
+    filterPanel.innerHTML = `
+      <div class="cfp-header">
+        <span id="cfp-title">—</span>
+        <button type="button" class="cfp-close" onclick="ColContextMenu._closeFilterPanel()">×</button>
+      </div>
+      <div class="cfp-toolbar">
+        <button type="button" class="cfp-link" onclick="ColContextMenu._filterSelectAll(true)">Barchasini belgilash</button>
+        <span class="cfp-dot">·</span>
+        <button type="button" class="cfp-link" onclick="ColContextMenu._filterSelectAll(false)">Hech birini belgilamaslik</button>
+      </div>
+      <div class="cfp-list" id="cfp-list"></div>
+      <div class="cfp-footer">
+        <button type="button" class="cfp-btn cfp-btn-ghost" id="cfp-clear-btn" onclick="ColContextMenu._clearFilter()" style="display:none;">Filterni tozalash</button>
+        <div class="cfp-footer-right">
+          <button type="button" class="cfp-btn cfp-btn-cancel" onclick="ColContextMenu._closeFilterPanel()">Bekor qilish</button>
+          <button type="button" class="cfp-btn cfp-btn-apply" onclick="ColContextMenu._applyFilter()">Qo'llash</button>
+        </div>
+      </div>
+    `;
+    document.body.appendChild(filterPanel);
+  }
+
+  /* ─────────────────────────────────────
+     Filter panelni ochish
+  ───────────────────────────────────── */
+  function _openFilterPanel() {
+    const col = currentCol;
+    const th  = currentTh;
+    _closeMenu(); // asosiy menyuni yopamiz (currentCol/currentTh ni tozalaydi — shuning uchun oldin saqlab oldik)
+    if (!col) return;
+
+    _buildFilterPanel();
+    filterCol = col;
+
+    const label = colLabels[col] || col;
+    document.getElementById('cfp-title').textContent = label.toUpperCase();
+
+    // Unique qiymatlarni yig'ish (butun oy bo'yicha, hozirgi filterlardan qat'i nazar)
+    const rows = getAllRows ? (getAllRows() || []) : [];
+    const isDateCol = ['ehtimoliy', 'gap', 'sana'].includes(col);
+    const counts = new Map();
+    rows.forEach(r => {
+      const raw = _getVal(r, col);
+      const key = (raw === null || raw === undefined) ? '' : String(raw).trim();
+      counts.set(key, (counts.get(key) || 0) + 1);
+    });
+
+    let entries = [...counts.entries()];
+    entries.sort((a, b) => {
+      if (a[0] === '' && b[0] === '') return 0;
+      if (a[0] === '') return -1;
+      if (b[0] === '') return 1;
+      if (isDateCol) return _dateSortKey(a[0]) - _dateSortKey(b[0]);
+      return String(a[0]).localeCompare(String(b[0]), 'uz', { numeric: true });
+    });
+
+    const activeSet = getFilter ? getFilter(col) : null; // null = filter yo'q = hammasi belgilangan
+
+    filterOptions = entries.map(([value, count]) => ({
+      value,
+      count,
+      label: value === '' ? "(Bo'sh)" : (isDateCol ? _dateLabel(value) : value),
+      checked: activeSet ? activeSet.has(value) : true,
+    }));
+
+    _renderFilterList();
+    document.getElementById('cfp-clear-btn').style.display = activeSet ? '' : 'none';
+
+    _positionFilterPanel(th);
+    filterPanel.style.display = 'block';
+
+    setTimeout(() => {
+      document.addEventListener('mousedown', _onFilterOutsideClick, true);
+    }, 0);
+  }
+
+  function _dateSortKey(v) {
+    const p = String(v).split('.');
+    if (p.length === 3) return new Date(+p[2], +p[1] - 1, +p[0]).getTime();
+    return 0;
+  }
+
+  function _dateLabel(v) {
+    // "13.07.2026" → "Iyul 13" (global tolovSanasi() funksiyasi mavjud bo'lsa undan foydalanamiz)
+    if (typeof window.tolovSanasi === 'function') return window.tolovSanasi(v);
+    return v;
+  }
+
+  function _renderFilterList() {
+    const list = document.getElementById('cfp-list');
+    if (!list) return;
+    if (filterOptions.length === 0) {
+      list.innerHTML = `<div class="cfp-empty">Qiymatlar topilmadi</div>`;
+      return;
+    }
+    list.innerHTML = filterOptions.map((o, i) => `
+      <label class="cfp-check-row">
+        <input type="checkbox" ${o.checked ? 'checked' : ''} onchange="ColContextMenu._toggleFilterItem(${i}, this.checked)">
+        <span class="cfp-check-label">${o.label}</span>
+        <span class="cfp-check-count">${o.count}</span>
+      </label>
+    `).join('');
+  }
+
+  function _toggleFilterItem(idx, checked) {
+    if (filterOptions[idx]) filterOptions[idx].checked = checked;
+  }
+
+  function _filterSelectAll(checked) {
+    filterOptions.forEach(o => o.checked = checked);
+    _renderFilterList();
+  }
+
+  function _positionFilterPanel(th) {
+    filterPanel.style.display = 'block';
+    const rect = th ? th.getBoundingClientRect() : { left: 100, bottom: 100 };
+    const pw = filterPanel.offsetWidth  || 260;
+    const ph = filterPanel.offsetHeight || 320;
+    const vw = window.innerWidth;
+    const vh = window.innerHeight;
+
+    let left = rect.left;
+    let top  = rect.bottom + 4;
+    if (left + pw > vw) left = vw - pw - 8;
+    if (left < 8) left = 8;
+    if (top + ph > vh) top = Math.max(8, rect.top - ph - 4);
+
+    filterPanel.style.left = left + 'px';
+    filterPanel.style.top  = top  + 'px';
+  }
+
+  function _onFilterOutsideClick(e) {
+    if (filterPanel && !filterPanel.contains(e.target)) {
+      _closeFilterPanel();
+    }
+  }
+
+  function _closeFilterPanel() {
+    if (filterPanel) filterPanel.style.display = 'none';
+    document.removeEventListener('mousedown', _onFilterOutsideClick, true);
+    filterCol = null;
+    filterOptions = [];
+  }
+
+  function _applyFilter() {
+    const col = filterCol;
+    if (!col) return;
+    const total   = filterOptions.length;
+    const checked = filterOptions.filter(o => o.checked);
+    _closeFilterPanel();
+    if (!onFilter) return;
+
+    if (checked.length === total) {
+      onFilter(col, null); // hammasi belgilangan — filter shart emas
+    } else {
+      onFilter(col, new Set(checked.map(o => o.value))); // 0 ta belgilansa — hech narsa mos kelmaydi (bo'sh natija)
+    }
+  }
+
+  function _clearFilter() {
+    const col = filterCol;
+    _closeFilterPanel();
+    if (col && onFilter) onFilter(col, null);
+  }
+
+  function _clearFilterFromMenu() {
+    const col = currentCol;
+    _closeMenu();
+    if (col && onFilter) onFilter(col, null);
   }
 
   /* ─────────────────────────────────────
@@ -290,6 +510,10 @@ const ColContextMenu = (() => {
   }
 
   /* Public API */
-  return { init, refresh, _doSort, _doHide };
+  return {
+    init, refresh, _doSort, _doHide,
+    _openFilterPanel, _closeFilterPanel, _applyFilter, _clearFilter, _clearFilterFromMenu,
+    _toggleFilterItem, _filterSelectAll,
+  };
 
 })();

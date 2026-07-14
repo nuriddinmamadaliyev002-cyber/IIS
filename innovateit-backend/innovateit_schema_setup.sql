@@ -191,21 +191,22 @@ CREATE TABLE IF NOT EXISTS buxgalter_maktablar (
 --  O'quvchilarning oylik to'lov tarixi
 CREATE TABLE IF NOT EXISTS tolovlar (
     id                SERIAL PRIMARY KEY,
-    oy                TEXT    NOT NULL,               -- masalan: '2026-05'
-    oquvchi_id        INTEGER REFERENCES oquvchilar(id) ON DELETE SET NULL,
-    oquvchi_ism       TEXT    NOT NULL,
-    oquvchi_familiya  TEXT    NOT NULL,
-    maktab_id         INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
-    sinf              TEXT    DEFAULT '',
-    telefon           TEXT    DEFAULT '',
-    tarif             INTEGER DEFAULT 0,              -- oylik to'lov summasi
-    qaydnoma          TEXT    DEFAULT '',
-    gaplashilgan_vaqt TEXT    DEFAULT '',
-    tolov_kerak       INTEGER DEFAULT 0,              -- to'lanishi kerak bo'lgan summa
-    tolov_qildi       INTEGER DEFAULT 0,              -- haqiqatda to'langan summa
-    tolov_sanasi      TEXT    DEFAULT '',
-    kvitansiya_fayl   TEXT    DEFAULT '',             -- yuklangan kvitansiya fayli
-    yangilangan       TEXT    DEFAULT '',
+    oy                     TEXT    NOT NULL,               -- masalan: '2026-05'
+    oquvchi_id             INTEGER,                        -- ⚠️ FK yo'q (tolovlar_oquvchi_id_fkey DROP qilingan) — nofaol/o'chirilgan o'quvchilar tarixini saqlab qolish uchun
+    oquvchi_ism            TEXT    NOT NULL,
+    oquvchi_familiya       TEXT    NOT NULL,
+    maktab_id              INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
+    sinf                   TEXT    DEFAULT '',
+    telefon                TEXT    DEFAULT '',
+    tarif                  INTEGER DEFAULT 0,              -- oylik to'lov summasi
+    qaydnoma               TEXT    DEFAULT '',
+    gaplashilgan_vaqt      TEXT    DEFAULT '',
+    tolov_kerak            INTEGER DEFAULT 0,              -- to'lanishi kerak bo'lgan summa
+    tolov_qildi            INTEGER DEFAULT 0,              -- haqiqatda to'langan summa
+    tolov_sanasi           TEXT    DEFAULT '',
+    ehtimoliy_tolov_sanasi TEXT    DEFAULT '',             -- kelgusida to'lov qilinishi kutilayotgan sana
+    kvitansiya_fayl        TEXT    DEFAULT '',             -- yuklangan kvitansiya fayli
+    yangilangan            TEXT    DEFAULT '',
     UNIQUE(oy, oquvchi_id)
 );
 
@@ -303,7 +304,7 @@ CREATE TABLE IF NOT EXISTS oqituvchi_oquvchilar (
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
 -- ════════════════════════════════════════════════════════════════════════════
-GRANT ALL PRIVILEGES ON ALL TABLES    IN SCHEMA public TO iis_user;
+GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO iis_user;
 GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO iis_user;
 GRANT USAGE ON SCHEMA public TO iis_user;
 

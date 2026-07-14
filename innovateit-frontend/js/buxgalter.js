@@ -7,6 +7,7 @@
 let U         = null;   // { username, parol, ism }
 let ALL_DATA  = [];     // { student, tolov } merged array
 let FILTERED  = [];     // after filter
+let COL_FILTERS = {};   // { colKey: Set<string> | null } — ColContextMenu qiymatlar filtri
 let CURRENT_OY = '';   // '2025-03'
 let STAT_FILTER = '';  // 'all' | 'toliq' | 'qarzdor' | 'nofaol' | 'empty'
 
@@ -117,7 +118,7 @@ async function doLogin() {
 }
 
 function doLogout() {
-  U = null; ALL_DATA = []; FILTERED = [];
+  U = null; ALL_DATA = []; FILTERED = []; COL_FILTERS = {};
   localStorage.removeItem('iit_bux_u');
   window.location.href = 'index.html';
 }
@@ -129,9 +130,12 @@ function showApp() {
   initFixedHeader();
   applyColVisibility();
   ColContextMenu.init('bux-table-main', COL_LABELS, {
-    onHide:   (col) => toggleCol(col),
-    getRows:  ()    => FILTERED,
-    setRows:  (sorted) => { FILTERED = sorted; renderTable(); },
+    onHide:    (col) => toggleCol(col),
+    getRows:   ()    => FILTERED,
+    setRows:   (sorted) => { FILTERED = sorted; renderTable(); },
+    onFilter:  (col, set) => { COL_FILTERS[col] = set; applyFilters(); },
+    getAllRows:()    => ALL_DATA,
+    getFilter: (col) => COL_FILTERS[col] || null,
   });
   window.addEventListener('resize', fixMainMargin, { passive: true });
   setTimeout(fixMainMargin, 200);
@@ -256,6 +260,7 @@ const COL_LABELS = {
   sinf:   'Sinf',
   tel:    'Telefon',
   qayd:   'Qaydnoma',
+  ehtimoliy: "Ehtimoliy to'lov sanasi",
   gap:    'Gaplashilgan',
   kerak:  "To'lov kerak",
   qildi:  "To'lov qildi",
@@ -377,6 +382,29 @@ function updateSearchClear() {
   btn.classList.toggle('visible', inp.value.length > 0);
 }
 
+// ColContextMenu bilan bir xil qiymat xaritasi — filter mos kelishi uchun
+function getColFilterValue(row, col) {
+  const s = row.student || row;
+  const t = row.tolov   || {};
+  const map = {
+    name:   `${s.familiya || ''} ${s.ism || ''}`.trim(),
+    maktab: s.maktab  || '',
+    sinf:   s.sinf    || '',
+    tel:    s.telefon || '',
+    qayd:   t.qaydnoma          || '',
+    ehtimoliy: t.ehtimoliy_tolov_sanasi || '',
+    gap:    t.gaplashilgan_vaqt || '',
+    kerak:  parseInt(t.tolov_kerak  || 0),
+    qildi:  parseInt(t.tolov_qildi  || 0),
+    sana:   t.tolov_sanasi      || '',
+    holat:  (parseInt(t.tolov_kerak||0) - parseInt(t.tolov_qildi||0)),
+    kvit:   t.kvitansiya_fayl   || '',
+    num:    s.id || 0,
+  };
+  const raw = map[col] !== undefined ? map[col] : '';
+  return (raw === null || raw === undefined) ? '' : String(raw).trim();
+}
+
 function applyFilters() {
   const maktab     = g('filter-maktab').value;
   const sinf       = g('filter-sinf').value;
@@ -398,6 +426,13 @@ function applyFilters() {
       if (STAT_FILTER === 'qarzdor' && !(kerak > 0 && qildi < kerak))              return false;
       if (STAT_FILTER === 'nofaol'  && !isNofaol)                                   return false;
       if (STAT_FILTER === 'empty'   && !(kerak <= 0 && !isNofaol))                  return false;
+    }
+    // Ustun bo'yicha qiymatlar filtri (ColContextMenu orqali o'rnatiladi)
+    for (const col in COL_FILTERS) {
+      const set = COL_FILTERS[col];
+      if (!set) continue; // filter yo'q
+      const val = getColFilterValue({ student: s, tolov: t }, col);
+      if (!set.has(val)) return false;
     }
     return true;
   });
