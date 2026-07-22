@@ -17,6 +17,17 @@ cd /var/www/IIS
 git pull origin main
 echo "✅ Kod yangilandi"
 
+# ─── 1.5. Cache-busting: CSS/JS havolalariga vaqt belgisi qo'yish ───
+echo ""
+echo "🕒 1.5. Statik fayllar (CSS/JS) versiyalanmoqda..."
+V=$(date +%s)
+find /var/www/IIS -name "*.html" -exec sed -i -E \
+  -e "s#(href=\"css/[^\"]+\.css)(\?v=[0-9]+)?\"#\1?v=${V}\"#g" \
+  -e "s#(src=\"js/[^\"]+\.js)(\?v=[0-9]+)?\"#\1?v=${V}\"#g" \
+  {} +
+echo "✅ CSS/JS versiyasi yangilandi: v=${V}"
+echo "   (Brauzer keshi endi eski CSS/JS'ni ko'rsatmaydi)"
+
 # ─── 2. Backend dependencies ───
 echo ""
 echo "📦 2. Backend dependencies tekshirilmoqda..."
