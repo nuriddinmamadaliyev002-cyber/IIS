@@ -49,3 +49,31 @@ function stampCode(catName) {
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
+
+// ─── Mobil hamburger menyu ──────────────────────────────────────────────────
+(function initMobileNav() {
+  const toggle   = document.getElementById('menu-toggle');
+  const nav      = document.getElementById('mobile-nav');
+  const backdrop = document.getElementById('mobile-nav-backdrop');
+  if (!toggle || !nav || !backdrop) return;
+
+  function openNav() {
+    nav.classList.add('open');
+    backdrop.classList.add('open');
+    toggle.setAttribute('aria-expanded', 'true');
+    document.body.classList.add('nav-open');
+  }
+  function closeNav() {
+    nav.classList.remove('open');
+    backdrop.classList.remove('open');
+    toggle.setAttribute('aria-expanded', 'false');
+    document.body.classList.remove('nav-open');
+  }
+
+  toggle.addEventListener('click', () => {
+    nav.classList.contains('open') ? closeNav() : openNav();
+  });
+  backdrop.addEventListener('click', closeNav);
+  nav.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav));
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNav(); });
+})();

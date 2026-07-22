@@ -101,8 +101,60 @@ img { max-width: 100%; display: block; }
 }
 .header-cta:hover { background: var(--indigo-deep); }
 
+/* ─── Mobile menu toggle (hamburger) ────────────────────────────────────── */
+.menu-toggle {
+  display: none;
+  flex-direction: column; justify-content: center; gap: 5px;
+  width: 40px; height: 40px; padding: 0; margin-left: 6px;
+  border: 1px solid var(--line); border-radius: var(--radius-sm);
+  background: var(--card); cursor: pointer;
+}
+.menu-toggle span {
+  display: block; width: 18px; height: 2px; margin: 0 auto;
+  background: var(--ink); border-radius: 2px;
+  transition: transform .2s ease, opacity .2s ease;
+}
+.menu-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+.menu-toggle[aria-expanded="true"] span:nth-child(2) { opacity: 0; }
+.menu-toggle[aria-expanded="true"] span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+.mobile-nav {
+  position: fixed; top: 0; right: 0; z-index: 101;
+  width: min(78vw, 320px); height: 100%;
+  background: var(--card); border-left: 1px solid var(--line);
+  box-shadow: -8px 0 30px rgba(20,22,31,0.12);
+  display: flex; flex-direction: column; gap: 4px;
+  padding: 84px 26px 26px;
+  transform: translateX(100%);
+  transition: transform .25s ease;
+}
+.mobile-nav.open { transform: translateX(0); }
+.mobile-nav a {
+  font-family: var(--font-mono); font-size: 15px; font-weight: 500;
+  color: var(--ink); padding: 14px 4px; border-bottom: 1px solid var(--line);
+}
+.mobile-nav a:hover { color: var(--indigo); }
+.mobile-nav .mobile-cta {
+  margin-top: 18px; text-align: center; border: none; border-radius: 100px;
+  padding: 12px 16px; background: var(--ink); color: #fff;
+}
+
+.mobile-nav-backdrop {
+  position: fixed; inset: 0; z-index: 100;
+  background: rgba(20,22,31,0.35);
+  opacity: 0; visibility: hidden;
+  transition: opacity .25s ease, visibility .25s ease;
+}
+.mobile-nav-backdrop.open { opacity: 1; visibility: visible; }
+
+body.nav-open { overflow: hidden; }
+
 @media (max-width: 720px) {
   .header-nav { display: none; }
+  .menu-toggle { display: flex; }
+}
+@media (max-width: 400px) {
+  .header-cta { display: none; }
 }
 
 /* ─── Hero ───────────────────────────────────────────────────────────────── */
