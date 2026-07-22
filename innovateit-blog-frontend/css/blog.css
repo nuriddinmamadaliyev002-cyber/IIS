@@ -153,9 +153,6 @@ body.nav-open { overflow: hidden; }
   .header-nav { display: none; }
   .menu-toggle { display: flex; }
 }
-@media (max-width: 400px) {
-  .header-cta { display: none; }
-}
 
 /* ─── Hero ───────────────────────────────────────────────────────────────── */
 .hero {
