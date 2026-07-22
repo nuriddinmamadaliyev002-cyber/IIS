@@ -6,6 +6,7 @@
 <title id="page-title">Post — Innovate IT School Blog</title>
 <meta name="description" id="page-desc" content="Innovate IT School blogi">
 <link rel="stylesheet" href="css/blog.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 </head>
 <body>
 
@@ -99,8 +100,13 @@ async function loadPost() {
     cover.innerHTML = `<img src="${resolveUpload(p.muqova_rasm)}" alt="">`;
   }
 
-  // Kontent HTML sifatida saqlanadi (admin panelidan kiritiladi)
-  document.getElementById('post-content').innerHTML = p.kontent;
+  // Kontent HTML sifatida saqlanadi (admin panelidan kiritiladi).
+  // Kelajakda superadmindan boshqa rollar ham post yoza olishi mumkinligini
+  // hisobga olib, XSS'dan himoya sifatida DOMPurify bilan tozalanadi.
+  const cleanHtml = (typeof DOMPurify !== 'undefined')
+    ? DOMPurify.sanitize(p.kontent, { ADD_ATTR: ['target'] })
+    : p.kontent;
+  document.getElementById('post-content').innerHTML = cleanHtml;
 }
 
 function showNotFound() {

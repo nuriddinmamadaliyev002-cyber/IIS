@@ -63,6 +63,7 @@ app.use(cors({
         origin.includes('ngrok') ||          // ← shu qator qo'shildi
         origin.includes('ngrok-free.app') || // ← shu qator qo'shildi
         origin === 'https://innovateitschool.uz' ||
+        origin === 'https://www.innovateitschool.uz' ||
         origin === 'http://new.innovateitschool.uz' ||
         origin === 'https://new.innovateitschool.uz' ||
         origin === 'https://web.telegram.org')
