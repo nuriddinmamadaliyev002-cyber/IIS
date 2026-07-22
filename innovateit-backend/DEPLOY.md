@@ -1,64 +1,88 @@
-# 🚀 InnovateIT School — Digital Ocean Deploy Guide
+# 🚀 InnovateIT School — Deploy Guide
 
-## Arxitektura
+> ✅ Bu hujjat 2026-07-22'da serverda tasdiqlangan haqiqiy sozlamalarga
+> asoslanib yozilgan (`pm2 status`, `.env`, mavjud nginx configlari orqali
+> tekshirilgan). Eski versiyada bir nechta noto'g'ri taxmin bor edi
+> (port 3001 o'rniga 3002, `innovateit-backend` process nomi o'rniga
+> `innovateit-crm`) — bularning barchasi shu yerda tuzatilgan.
+
+## Arxitektura (ikki domen, bitta backend)
+
 ```
-innovateitschool.uz
-    ├── /          → /var/www/innovateit-frontend  (static HTML/CSS/JS)
-    └── /api       → Node.js :3001  (Express backend)
-                          ↓
-                     PostgreSQL (innovateit DB)
+                          ┌──────────────────────────────┐
+ new.innovateitschool.uz  │  innovateit-frontend          │  CRM / Superadmin panel
+     ├── /                │  (static HTML/CSS/JS)         │
+     └── /api, /upload ───┤  └────────────────────────────┘
+                          │
+                          ▼
+                  Node.js :3002  (Express, PM2 process: innovateit-crm)
+                          │
+                          ▼
+                  PostgreSQL (innovateit DB)
+                          ▲
+                          │
+                          ┌──────────────────────────────┐
+ innovateitschool.uz      │  innovateit-blog-frontend      │  Ochiq blog sayti
+     ├── /                │  (static HTML/CSS/JS)          │
+     └── /api ────────────┘  └────────────────────────────┘
 ```
+
+- **Bitta Node.js backend** (`innovateit-backend`, PM2 nomi **`innovateit-crm`**,
+  port **3002**) ikkala domenga ham xizmat qiladi.
+- Blogni boshqarish faqat `new.innovateitschool.uz` CRM panelidagi
+  **"📝 Blog"** tabi orqali (faqat superadmin — `requireSuperAdmin`
+  middleware bilan backendda ham tasdiqlanadi).
+- `innovateitschool.uz` — faqat o'qish uchun ochiq (public, login shart emas).
+- Repo joylashuvi: **`/var/www/IIS`** (GitHub Actions shu yerga `git pull`
+  qiladi — `.github/workflows/deploy.yml`).
+- Uploads (rasm/sertifikat fayllari) nginx orqali `alias` bilan
+  to'g'ridan-to'g'ri diskdan (`/var/www/IIS/innovateit-backend/uploads/`)
+  beriladi — Node backendga proxy qilinmaydi.
 
 ---
 
-## 1️⃣ Dropletga kirish
+## Kundalik ishlatish: yangilanishlarni deploy qilish
+
+Kodga o'zgartirish kiritib, `git push` qilgandan so'ng, serverda:
 
 ```bash
-ssh root@YOUR_DROPLET_IP
+cd /var/www/IIS
+bash deploy.sh
 ```
+
+`deploy.sh` avtomatik quyidagilarni bajaradi:
+1. `git pull origin main`
+2. Backend dependencies (`npm install --production`)
+3. `innovateit_schema_setup.sql` orqali database jadvallarini yangilaydi
+4. `pm2 restart innovateit-crm`
+5. `http://127.0.0.1:3002/health` orqali tekshiradi
+
+> ⚠️ Blog frontend (`innovateit-blog-frontend`) va CRM frontend
+> (`innovateit-frontend`) alohida `scp` qilinmaydi — ular `git pull` bilan
+> birga `/var/www/IIS` ichida yangilanadi, chunki nginx to'g'ridan-to'g'ri
+> shu papkalarni `root` sifatida ko'rsatadi (pastga qarang).
 
 ---
 
-## 2️⃣ Node.js o'rnatish (agar yo'q bo'lsa)
+## Yangi server / dastlabki o'rnatish (agar noldan sozlansa)
+
+### 1) Talab qilinadigan dasturlar
 
 ```bash
 # Node.js 20 LTS
 curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
 sudo apt-get install -y nodejs
-
-# Tekshirish
-node -v   # v20.x.x bo'lishi kerak
-npm -v
-```
-
----
-
-## 3️⃣ PM2 o'rnatish (global)
-
-```bash
 sudo npm install -g pm2
+
+# Nginx
+sudo apt update && sudo apt install -y nginx
+sudo systemctl enable nginx && sudo systemctl start nginx
 ```
 
----
-
-## 4️⃣ Nginx o'rnatish (agar yo'q bo'lsa)
+### 2) PostgreSQL: baza va foydalanuvchi
 
 ```bash
-sudo apt update
-sudo apt install -y nginx
-sudo systemctl enable nginx
-sudo systemctl start nginx
-```
-
----
-
-## 5️⃣ PostgreSQL: Database va User yaratish
-
-```bash
-# PostgreSQL ga kirish
 sudo -u postgres psql
-
-# Quyidagilarni psql ichida yozing:
 CREATE DATABASE innovateit;
 CREATE USER innovateit_user WITH PASSWORD 'KUCHLI_PAROL_YOZ';
 GRANT ALL PRIVILEGES ON DATABASE innovateit TO innovateit_user;
@@ -67,226 +91,135 @@ GRANT ALL ON SCHEMA public TO innovateit_user;
 \q
 ```
 
----
-
-## 6️⃣ Backend fayllarini serverga yuklash
-
-Lokal kompyuteringizda `innovateit-backend` papkasi tayyor.
-Uni serverga ko'chirish:
+### 3) Repo'ni serverga klonlash
 
 ```bash
-# Lokal terminalda (droplet IP ni almashtiring):
-scp -r ./innovateit-backend root@YOUR_DROPLET_IP:/var/www/
-
-# Yoki GitHub orqali:
-# 1) GitHub'ga push qiling
-# 2) Dropletda:
-cd /var/www
-git clone https://github.com/SIZNING_REPO/innovateit-backend.git
+sudo mkdir -p /var/www/IIS
+sudo chown $USER:$USER /var/www/IIS
+cd /var/www/IIS
+git clone https://github.com/SIZNING_REPO/IIS.git .
 ```
 
----
-
-## 7️⃣ Backend sozlash
+### 4) Backend `.env` sozlash
 
 ```bash
-cd /var/www/innovateit-backend
-
-# Dependencies o'rnatish
+cd /var/www/IIS/innovateit-backend
 npm install --production
-
-# .env fayl yaratish
 cp .env.example .env
 nano .env
 ```
 
-`.env` ichida quyidagilarni to'ldiring:
+`.env` (haqiqiy production qiymatlariga mos):
 ```env
-PORT=3001
+PORT=3002
 DB_HOST=localhost
 DB_PORT=5432
 DB_NAME=innovateit
 DB_USER=innovateit_user
-DB_PASSWORD=KUCHLI_PAROL_YOZ     # 5-qadamdagi parol
+DB_PASSWORD=KUCHLI_PAROL_YOZ
 SUPER_ADMIN_USERNAME=superadmin
 SUPER_ADMIN_PAROL=25145771
 SUPER_ADMIN_ISM=InnovateIT School Manager
+JWT_SECRET=kamida_32_belgi_uzunlikda_maxfiy_kalit
+JWT_EXPIRES=8h
 ```
 
----
-
-## 8️⃣ Database jadvallarini yaratish
+### 5) Database jadvallarini yaratish
 
 ```bash
-# Schema yuklash
-sudo -u postgres psql -d innovateit < /var/www/innovateit-backend/schema.sql
+sudo -u postgres psql -d innovateit -f /var/www/IIS/innovateit-backend/innovateit_schema_setup.sql
 
-# Tekshirish
+# Blog moduli (agar hali ishga tushirilmagan bo'lsa):
+sudo -u postgres psql -d innovateit -f /var/www/IIS/innovateit-backend/migrations/002_blog_module.sql
+
+# Tekshirish:
 sudo -u postgres psql -d innovateit -c "\dt"
-# Chiqishi: adminlar, oquvchilar, nofaol_oquvchilar, davomat, oqituvchilar, oqituvchilar_davomat
+sudo -u postgres psql -d innovateit -c "\dt blog_*"
 ```
 
----
-
-## 9️⃣ PM2 bilan ishga tushirish
+### 6) PM2 bilan ishga tushirish
 
 ```bash
-cd /var/www/innovateit-backend
-
-# Log papkasini yaratish
 sudo mkdir -p /var/log/innovateit
 sudo chown $USER:$USER /var/log/innovateit
 
-# PM2 bilan ishga tushirish
-pm2 start ecosystem.config.js
+cd /var/www/IIS/innovateit-backend
+pm2 start ecosystem.config.js   # process nomi: innovateit-crm
 
-# Tekshirish
 pm2 status
-pm2 logs innovateit-backend --lines 20
+pm2 logs innovateit-crm --lines 20
 
-# Server rebootda ham avtomatik ishlasin
-pm2 startup
-# (chiqgan buyruqni nusxalab ishlatting)
+pm2 startup   # chiqqan buyruqni nusxalab ishga tushiring
 pm2 save
 ```
 
-Konsolda ko'rinishi kerak:
-```
-✅ InnovateIT Backend ishga tushdi: http://127.0.0.1:3001
-✅ PostgreSQL ulanish muvaffaqiyatli
-```
+### 7) Nginx: ikkala domen
 
----
+**CRM** (`new.innovateitschool.uz`) — mavjud, tayyor fayl:
+`/etc/nginx/sites-available/new.innovateitschool.uz`. Bunga tegilmaydi.
 
-## 🔟 Nginx sozlash
+**Blog** (`innovateitschool.uz`) — repo bilan birga keladigan
+`nginx-innovateitschool-blog.conf` faylini ishlatamiz:
 
 ```bash
-# Yangi config yaratish
-sudo nano /etc/nginx/sites-available/innovateitschool
-```
-
-Quyidagi konfiguratsiyani yozing:
-
-```nginx
-server {
-    listen 80;
-    server_name innovateitschool.uz www.innovateitschool.uz;
-
-    # ─── Frontend (static fayllar) ───
-    root /var/www/innovateit-frontend;
-    index index.html;
-
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
-
-    # ─── Backend API ───
-    location /api {
-        proxy_pass         http://127.0.0.1:3001;
-        proxy_http_version 1.1;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-        proxy_read_timeout 30s;
-        proxy_connect_timeout 5s;
-
-        # CORS (Nginx darajasida)
-        add_header Access-Control-Allow-Origin  "https://innovateitschool.uz" always;
-        add_header Access-Control-Allow-Methods "GET, POST, OPTIONS" always;
-        add_header Access-Control-Allow-Headers "Content-Type" always;
-
-        if ($request_method = OPTIONS) {
-            return 204;
-        }
-    }
-
-    # ─── Kesh (statik fayllar) ───
-    location ~* \.(css|js|png|ico|woff2?)$ {
-        expires 7d;
-        add_header Cache-Control "public, immutable";
-    }
-}
-```
-
-Config ni yoqish:
-```bash
-sudo ln -s /etc/nginx/sites-available/innovateitschool /etc/nginx/sites-enabled/
-sudo nginx -t          # xatolarni tekshirish
+sudo cp /var/www/IIS/nginx-innovateitschool-blog.conf /etc/nginx/sites-available/innovateitschool.uz
+sudo ln -s /etc/nginx/sites-available/innovateitschool.uz /etc/nginx/sites-enabled/
+sudo nginx -t
 sudo systemctl reload nginx
 ```
 
----
+> ⚠️ Eski/stub `sites-available/innovateit` fayli (`return 404;`) bo'lsa,
+> uni `sites-enabled`dan olib tashlang, aks holda ikkala fayl bir xil
+> `server_name` bilan konflikt qilishi mumkin:
+> ```bash
+> sudo rm -f /etc/nginx/sites-enabled/innovateit
+> ```
 
-## 1️⃣1️⃣ Frontend fayllarni yuklash
-
-```bash
-# Frontend papkasini yaratish
-sudo mkdir -p /var/www/innovateit-frontend
-sudo chown $USER:$USER /var/www/innovateit-frontend
-
-# Lokal kompyuterdan yuklash:
-scp -r ./Admin_panel/* root@YOUR_DROPLET_IP:/var/www/innovateit-frontend/
-```
-
----
-
-## 1️⃣2️⃣ Frontend JS fayllarida API URL ni o'zgartirish ⚠️
-
-**Bu eng muhim qadam!** Har bir JS faylda API manzilini yangilang:
-
-```bash
-# Serverda:
-cd /var/www/innovateit-frontend/js
-
-# Eski GAS URL ni yangi URL ga almashtirish (barcha JS fayllarda)
-OLD="https://script.google.com/macros/s/AKfycbzPxt1L57qhkwgwHz8qDXgqRg8qFV81dHH1QPMkFezQENr6S33bn07dLpK_l7fOw1pmHg/exec"
-NEW="/api"
-
-sed -i "s|$OLD|$NEW|g" app.js
-sed -i "s|$OLD|$NEW|g" davomat.js
-sed -i "s|$OLD|$NEW|g" nofaol.js
-sed -i "s|$OLD|$NEW|g" oqituvchilar.js
-sed -i "s|$OLD|$NEW|g" oqituvchilar-davomat.js
-
-# Tekshirish (hech narsa chiqmasligi kerak):
-grep -r "script.google.com" .
-```
-
----
-
-## 1️⃣3️⃣ SSL (HTTPS) — Certbot bilan
+### 8) SSL (Certbot)
 
 ```bash
 sudo apt install -y certbot python3-certbot-nginx
 sudo certbot --nginx -d innovateitschool.uz -d www.innovateitschool.uz
-
-# Avtomatik yangilanish tekshirish
 sudo certbot renew --dry-run
 ```
 
+`new.innovateitschool.uz` hozircha self-signed sertifikat bilan ishlayapti —
+bu CRM (faqat xodimlar kiradigan) bo'lgani uchun unchalik muhim emas, lekin
+`innovateitschool.uz` ochiq/public sayt bo'lgani uchun **real sertifikat
+shart** (aks holda brauzer "Not secure" ko'rsatadi va SEO'ga salbiy ta'sir
+qiladi).
+
 ---
 
-## 1️⃣4️⃣ Tekshirish
+## Tekshirish
 
 ```bash
-# API health check
-curl https://innovateitschool.uz/api?action=login\&username=superadmin\&parol=25145771
+# Backend to'g'ridan-to'g'ri
+curl http://127.0.0.1:3002/health
 
-# Javob bo'lishi kerak:
-# {"ok":true,"ism":"InnovateIT School Manager","isSuper":true}
+# Blog API (public)
+curl https://innovateitschool.uz/api/blog/posts
+
+# CRM orqali kirish
+curl -X POST https://new.innovateitschool.uz/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"username":"superadmin","parol":"..."}'
 ```
+
+CRM panelida superadmin bilan kiring → **📝 Blog** tabini oching →
+"➕ Yangi post" → holatni **✅ Chop etilgan** qilib saqlang →
+`https://innovateitschool.uz` da darhol ko'rinadi.
 
 ---
 
 ## 🔧 Foydali PM2 buyruqlari
 
 ```bash
-pm2 status                           # holatini ko'rish
-pm2 logs innovateit-backend          # real-time loglar
-pm2 logs innovateit-backend --lines 50  # oxirgi 50 qator
-pm2 restart innovateit-backend       # qayta ishga tushirish
-pm2 stop innovateit-backend          # to'xtatish
+pm2 status
+pm2 logs innovateit-crm
+pm2 logs innovateit-crm --lines 50
+pm2 restart innovateit-crm
+pm2 stop innovateit-crm
 ```
 
 ---
@@ -295,7 +228,7 @@ pm2 stop innovateit-backend          # to'xtatish
 
 **Backend ishlamayapti:**
 ```bash
-pm2 logs innovateit-backend --err --lines 30
+pm2 logs innovateit-crm --err --lines 30
 ```
 
 **DB ga ulanmayapti:**
@@ -309,7 +242,13 @@ sudo nginx -t
 sudo journalctl -u nginx --since "5 minutes ago"
 ```
 
-**Port band:**
+**Port band yoki backend qaysi portda ekanini tekshirish:**
 ```bash
-sudo ss -tlnp | grep 3001
+cat /var/www/IIS/innovateit-backend/.env | grep -i port
+sudo ss -tlnp | grep node
 ```
+
+**CORS xatosi (browser konsolida "CORS: ruxsat yoq"):**
+`innovateit-backend/src/index.js` dagi CORS whitelist'ni tekshiring —
+`https://innovateitschool.uz`, `https://www.innovateitschool.uz` va
+`https://new.innovateitschool.uz` ro'yxatda bo'lishi shart.
