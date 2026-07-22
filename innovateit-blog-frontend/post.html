@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title id="page-title">Post — Innovate IT School Blog</title>
+<meta name="description" id="page-desc" content="Innovate IT School blogi">
+<link rel="stylesheet" href="css/blog.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand">
+      <span class="mark">IIS</span>
+      Innovate IT&nbsp;School
+    </a>
+    <nav class="header-nav">
+      <a href="/">Bosh sahifa</a>
+      <a href="/#yangiliklar">Yangiliklar</a>
+      <a href="/#yutuqlar">Yutuqlar</a>
+      <a href="/#darslar">IT darslar</a>
+    </nav>
+    <a class="header-cta" href="https://new.innovateitschool.uz" target="_blank" rel="noopener">CRM kirish →</a>
+  </div>
+</header>
+
+<div class="wrap article-head">
+  <a href="/" class="back-link">← Barcha postlar</a>
+  <div id="cat-slot"></div>
+  <h1 id="post-title">Yuklanmoqda...</h1>
+  <div class="article-meta">
+    <span id="post-author"></span>
+    <span id="post-date"></span>
+    <span id="post-views"></span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="article-cover" id="post-cover" style="display:none;"></div>
+</div>
+
+<article class="article-body" id="post-content">
+  <p>Yuklanmoqda...</p>
+</article>
+
+<div class="wrap" id="not-found" style="display:none;text-align:center;padding:80px 20px;">
+  <div class="eyebrow">404</div>
+  <h1 style="font-family:var(--font-display);font-size:32px;">Post topilmadi</h1>
+  <p style="color:var(--ink-soft);margin-bottom:24px;">Bu post o'chirilgan yoki hali chop etilmagan bo'lishi mumkin.</p>
+  <a href="/" class="header-cta" style="display:inline-flex;">Bosh sahifaga qaytish</a>
+</div>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:10px;">
+          <span class="mark">IIS</span> Innovate IT&nbsp;School
+        </div>
+        <p class="footer-note">Buyuk Britaniya va Singapur milliy maktab ta'lim dasturi asosida — maktab hududida, xavfsiz va sifatli IT ta'lim.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://new.innovateitschool.uz" target="_blank" rel="noopener">CRM panel</a>
+        <a href="https://t.me/innovateitschool" target="_blank" rel="noopener">Telegram</a>
+        <a href="mailto:info@innovateitschool.uz">Aloqa</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© <span id="year"></span> Innovate IT School. Barcha huquqlar himoyalangan.</div>
+  </div>
+</footer>
+
+<script src="js/blog.js"></script>
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+async function loadPost() {
+  const slug = getQueryParam('slug');
+  if (!slug) { showNotFound(); return; }
+
+  const res = await apiGet(`/api/blog/posts/${encodeURIComponent(slug)}`);
+  if (!res.ok) { showNotFound(); return; }
+
+  const p = res.post;
+  document.getElementById('page-title').textContent = `${p.sarlavha} — Innovate IT School Blog`;
+  document.getElementById('page-desc').setAttribute('content', p.seo_tavsif || p.qisqacha || '');
+  document.getElementById('post-title').textContent = p.sarlavha;
+  document.getElementById('post-author').textContent = p.muallif;
+  document.getElementById('post-date').textContent = fmtDate(p.chop_vaqti);
+  document.getElementById('post-views').textContent = `${p.korishlar || 0} ko'rishlar`;
+
+  if (p.kategoriya_nomi) {
+    document.getElementById('cat-slot').innerHTML = `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>`;
+  }
+
+  if (p.muqova_rasm) {
+    const cover = document.getElementById('post-cover');
+    cover.style.display = 'block';
+    cover.innerHTML = `<img src="${resolveUpload(p.muqova_rasm)}" alt="">`;
+  }
+
+  // Kontent HTML sifatida saqlanadi (admin panelidan kiritiladi)
+  document.getElementById('post-content').innerHTML = p.kontent;
+}
+
+function showNotFound() {
+  document.querySelector('.article-head').style.display = 'none';
+  document.getElementById('post-cover').style.display = 'none';
+  document.getElementById('post-content').style.display = 'none';
+  document.getElementById('not-found').style.display = 'block';
+}
+
+loadPost();
+</script>
+</body>
+</html>

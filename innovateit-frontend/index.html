@@ -85,6 +85,7 @@
     <button class="tab-btn"        onclick="switchTab('sr')">📨 So'rovlar</button>
     <button class="tab-btn"        onclick="switchTab('oq')">👩‍🏫 O'qituvchilar</button>
     <button class="tab-btn"        onclick="switchTab('pf')">📂 Portfolio</button>
+    <button class="tab-btn"        onclick="switchTab('bl')">📝 Blog</button>
 
   </div>
 
@@ -546,6 +547,35 @@
       </div>
     </div><!-- /tab-pf -->
 
+    <!-- ─── BLOG TABI ─── -->
+    <div id="tab-bl" style="display:none;">
+      <div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:16px;padding:24px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#111827;">📝 Blog postlari</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:2px;">innovateitschool.uz saytida chop etiladi</div>
+          </div>
+          <div style="display:flex;gap:8px;">
+            <button onclick="blOpenCategoryManager()" style="padding:9px 16px;background:#f3f4f6;color:#374151;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">🏷️ Kategoriyalar</button>
+            <button onclick="blOpenPostModal()" style="padding:9px 18px;background:#6c63ff;color:#fff;border:none;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">➕ Yangi post</button>
+          </div>
+        </div>
+        <table class="data-table" id="bl-posts-table">
+          <thead><tr>
+            <th>Sarlavha</th>
+            <th>Kategoriya</th>
+            <th>Holat</th>
+            <th>Ko'rishlar</th>
+            <th>Chop vaqti</th>
+            <th>Amal</th>
+          </tr></thead>
+          <tbody id="bl-posts-tbody"></tbody>
+        </table>
+        <div id="bl-posts-empty" style="display:none;text-align:center;padding:32px;color:#9ca3af;">Hali postlar yo'q</div>
+        <div id="bl-posts-loading" style="text-align:center;padding:24px;"><div class="loading-spinner"></div></div>
+      </div>
+    </div><!-- /tab-bl -->
+
 
   </div><!-- /main -->
 
@@ -897,10 +927,82 @@
   </div>
 </div>
 
+<!-- MODAL: Blog post yaratish/tahrirlash -->
+<div id="bl-post-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" onclick="if(event.target===this)blClosePostModal()">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:720px;max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="padding:20px 22px 16px;border-bottom:1px solid #e5e7eb;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+      <div id="bl-modal-title" style="font-weight:700;font-size:16px;color:#111827;">➕ Yangi post</div>
+      <button onclick="blClosePostModal()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:20px 22px;">
+      <input type="hidden" id="bl-p-id">
+      <div class="field-group">
+        <label class="field-label">Sarlavha</label>
+        <input class="field-input" id="bl-p-sarlavha" placeholder="Masalan: 34-maktabda yangi o'quv yili boshlandi" autocomplete="off">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;">
+        <div class="field-group">
+          <label class="field-label">Kategoriya</label>
+          <select class="field-input" id="bl-p-kategoriya"></select>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Muallif</label>
+          <input class="field-input" id="bl-p-muallif" placeholder="Innovate IT School" autocomplete="off">
+        </div>
+      </div>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="field-label">Qisqacha tavsif (kartochkada ko'rinadi)</label>
+        <textarea class="field-input" id="bl-p-qisqacha" rows="2" style="resize:vertical;font-family:inherit;" placeholder="1-2 gapda qisqacha mazmuni"></textarea>
+      </div>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="field-label">Muqova rasm</label>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <input type="file" id="bl-p-cover-file" accept="image/*" onchange="blUploadCover(event)" style="font-size:13px;">
+          <span id="bl-p-cover-status" style="font-size:12px;color:#9ca3af;"></span>
+        </div>
+        <input type="hidden" id="bl-p-muqova">
+        <img id="bl-p-cover-preview" style="display:none;margin-top:10px;max-height:140px;border-radius:10px;border:1px solid #e5e7eb;">
+      </div>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="field-label">Kontent (HTML ruxsat etiladi)</label>
+        <textarea class="field-input" id="bl-p-kontent" rows="10" style="resize:vertical;font-family:inherit;line-height:1.5;" placeholder="Postning to'liq matni..."></textarea>
+      </div>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="field-label">Holat</label>
+        <select class="field-input" id="bl-p-holat">
+          <option value="qoralama">📝 Qoralama</option>
+          <option value="chop_etilgan">✅ Chop etilgan (saytda ko'rinadi)</option>
+        </select>
+      </div>
+      <p class="err-msg" id="bl-p-err" style="display:none;"></p>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #e5e7eb;flex-shrink:0;display:flex;justify-content:flex-end;gap:8px;">
+      <button onclick="blClosePostModal()" style="padding:10px 20px;background:#f3f4f6;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#374151;">Bekor qilish</button>
+      <button onclick="blSavePost()" id="bl-p-save-btn" style="padding:10px 24px;background:#6c63ff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;color:#fff;">Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Blog kategoriyalari -->
+<div id="bl-cat-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" onclick="if(event.target===this)blCloseCategoryManager()">
+  <div style="background:#fff;border-radius:18px;width:100%;max-width:480px;max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);">
+    <div style="padding:20px 22px 16px;border-bottom:1px solid #e5e7eb;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;">
+      <div style="font-weight:700;font-size:16px;color:#111827;">🏷️ Kategoriyalar</div>
+      <button onclick="blCloseCategoryManager()" style="background:none;border:none;font-size:20px;cursor:pointer;color:#9ca3af;line-height:1;">✕</button>
+    </div>
+    <div style="padding:16px 22px;border-bottom:1px solid #f0f0f0;display:flex;gap:8px;">
+      <input id="bl-cat-nomi" class="field-input" placeholder="Yangi kategoriya nomi" style="flex:1;">
+      <button onclick="blCreateCategory()" style="padding:0 16px;background:#6c63ff;color:#fff;border:none;border-radius:10px;font-weight:600;cursor:pointer;">➕</button>
+    </div>
+    <div id="bl-cat-list" style="flex:1;overflow-y:auto;padding:12px 22px 20px;"></div>
+  </div>
+</div>
+
 <script src="js/api.js"></script>
 <script src="js/app.js"></script>
 <script src="js/app-superadmin.js"></script>
 <script src="js/portfolio-tab.js"></script>
+<script src="js/blog-admin.js"></script>
 <script src="js/mobile-nav.js"></script>
 
 

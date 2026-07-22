@@ -155,7 +155,7 @@ async function showApp() {
 }
 
 function switchTab(t) {
-  const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf'];
+  const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf', 'bl'];
   allTabs.forEach(id => {
     const el = g('tab-' + id);
     if (el) el.style.display = (t === id) ? 'block' : 'none';
@@ -168,6 +168,7 @@ function switchTab(t) {
   if (t === 'sr' && typeof loadSorovlar === 'function') loadSorovlar();
   if (t === 'oq') loadTeachersTab();
   if (t === 'pf') loadPortfolioTab();
+  if (t === 'bl' && typeof loadBlogTab === 'function') loadBlogTab();
 }
 
 // ─────────────────────────────────────────────

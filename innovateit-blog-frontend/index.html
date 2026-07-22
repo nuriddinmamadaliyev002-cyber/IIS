@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Blog — Innovate IT School</title>
+<meta name="description" content="Innovate IT School blogi: maktab yangiliklari, o'quvchilar yutuqlari, IT darslar va ota-onalar uchun foydali maqolalar.">
+<link rel="stylesheet" href="css/blog.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand">
+      <span class="mark">IIS</span>
+      Innovate IT&nbsp;School
+    </a>
+    <nav class="header-nav">
+      <a href="/">Bosh sahifa</a>
+      <a href="/#yangiliklar">Yangiliklar</a>
+      <a href="/#yutuqlar">Yutuqlar</a>
+      <a href="/#darslar">IT darslar</a>
+    </nav>
+    <a class="header-cta" href="https://new.innovateitschool.uz" target="_blank" rel="noopener">CRM kirish →</a>
+  </div>
+</header>
+
+<section class="hero dot-texture">
+  <div class="wrap">
+    <div class="eyebrow">Innovate IT School Blog</div>
+    <h1>IT ta'lim dunyosidagi yangiliklar va yutuqlar</h1>
+    <p class="hero-sub">Maktablarimizdagi yangiliklar, o'quvchilarimizning xalqaro yutuqlari, IT darslar va ota-onalar uchun foydali maslahatlar — bir joyda.</p>
+
+    <div id="featured-slot"></div>
+  </div>
+</section>
+
+<div class="wrap">
+  <div class="cat-bar" id="cat-bar">
+    <button class="chip active" data-slug="">Barchasi</button>
+  </div>
+</div>
+
+<section class="grid-section">
+  <div class="wrap">
+    <div class="grid" id="posts-grid">
+      <!-- Skeleton loading -->
+      <div class="card"><div class="card-media skel"></div><div class="card-body"><div class="skel" style="height:18px;width:80%;border-radius:6px;"></div><div class="skel" style="height:14px;width:100%;border-radius:6px;margin-top:8px;"></div></div></div>
+      <div class="card"><div class="card-media skel"></div><div class="card-body"><div class="skel" style="height:18px;width:80%;border-radius:6px;"></div><div class="skel" style="height:14px;width:100%;border-radius:6px;margin-top:8px;"></div></div></div>
+      <div class="card"><div class="card-media skel"></div><div class="card-body"><div class="skel" style="height:18px;width:80%;border-radius:6px;"></div><div class="skel" style="height:14px;width:100%;border-radius:6px;margin-top:8px;"></div></div></div>
+    </div>
+    <div class="pagination" id="pagination"></div>
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:10px;">
+          <span class="mark">IIS</span> Innovate IT&nbsp;School
+        </div>
+        <p class="footer-note">Buyuk Britaniya va Singapur milliy maktab ta'lim dasturi asosida — maktab hududida, xavfsiz va sifatli IT ta'lim.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://new.innovateitschool.uz" target="_blank" rel="noopener">CRM panel</a>
+        <a href="https://t.me/innovateitschool" target="_blank" rel="noopener">Telegram</a>
+        <a href="mailto:info@innovateitschool.uz">Aloqa</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© <span id="year"></span> Innovate IT School. Barcha huquqlar himoyalangan.</div>
+  </div>
+</footer>
+
+<script src="js/blog.js"></script>
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+let CURRENT_CATEGORY = '';
+let CURRENT_PAGE = 1;
+const PAGE_LIMIT = 9;
+
+async function initHome() {
+  await loadCategories();
+  await loadFeatured();
+  await loadPosts();
+}
+
+async function loadCategories() {
+  const res = await apiGet('/api/blog/categories');
+  if (!res.ok) return;
+  const bar = document.getElementById('cat-bar');
+  res.categories.forEach(c => {
+    if (!c.postlar_soni) return; // bo'sh kategoriyani ko'rsatmaymiz
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.dataset.slug = c.slug;
+    btn.textContent = `${c.nomi} (${c.postlar_soni})`;
+    btn.onclick = () => selectCategory(c.slug, btn);
+    bar.appendChild(btn);
+  });
+  bar.querySelector('.chip[data-slug=""]').onclick = () => selectCategory('', bar.querySelector('.chip[data-slug=""]'));
+}
+
+function selectCategory(slug, btnEl) {
+  CURRENT_CATEGORY = slug;
+  CURRENT_PAGE = 1;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btnEl.classList.add('active');
+  loadPosts();
+}
+
+async function loadFeatured() {
+  const res = await apiGet('/api/blog/posts?limit=1');
+  const slot = document.getElementById('featured-slot');
+  if (!res.ok || !res.posts.length) { slot.innerHTML = ''; return; }
+  const p = res.posts[0];
+  slot.innerHTML = `
+    <a class="featured" href="post.html?slug=${encodeURIComponent(p.slug)}">
+      <div class="featured-media">
+        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" alt="">` : ''}
+        <div class="stamp">${esc(stampCode(p.kategoriya_nomi))}<br>№${String(p.id).padStart(3,'0')}</div>
+      </div>
+      <div class="featured-body">
+        ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
+        <h2>${esc(p.sarlavha)}</h2>
+        <p>${esc(p.qisqacha || '')}</p>
+        <div class="featured-meta">${esc(p.muallif)} · ${fmtDate(p.chop_vaqti)}</div>
+      </div>
+    </a>`;
+}
+
+async function loadPosts() {
+  const grid = document.getElementById('posts-grid');
+  const qs = new URLSearchParams({ page: CURRENT_PAGE, limit: PAGE_LIMIT });
+  if (CURRENT_CATEGORY) qs.set('kategoriya', CURRENT_CATEGORY);
+
+  const res = await apiGet(`/api/blog/posts?${qs}`);
+  if (!res.ok) { grid.innerHTML = '<div class="empty-state">Postlarni yuklab bo\'lmadi</div>'; return; }
+
+  if (!res.posts.length) {
+    grid.innerHTML = '<div class="empty-state">Bu bo\'limda hali postlar yo\'q</div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  grid.innerHTML = res.posts.map(p => `
+    <a class="card" href="post.html?slug=${encodeURIComponent(p.slug)}">
+      <div class="card-media">
+        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" alt="">` : ''}
+        <div class="stamp on-card">${esc(stampCode(p.kategoriya_nomi))}</div>
+      </div>
+      <div class="card-body">
+        ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
+        <h3>${esc(p.sarlavha)}</h3>
+        <p>${esc(p.qisqacha || '')}</p>
+        <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span><span>${p.korishlar || 0} ko'rishlar</span></div>
+      </div>
+    </a>`).join('');
+
+  renderPagination(res.totalPages, res.page);
+}
+
+function renderPagination(totalPages, page) {
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+  let html = `<button ${page===1?'disabled':''} onclick="gotoPage(${page-1})">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button class="${i===page?'active':''}" onclick="gotoPage(${i})">${i}</button>`;
+  }
+  html += `<button ${page===totalPages?'disabled':''} onclick="gotoPage(${page+1})">›</button>`;
+  el.innerHTML = html;
+}
+
+function gotoPage(p) {
+  CURRENT_PAGE = p;
+  loadPosts();
+  document.getElementById('posts-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+initHome();
+</script>
+</body>
+</html>

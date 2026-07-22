@@ -316,6 +316,17 @@ const api = {
   getSorovlar:      (d) => api.get('/api/telegram/anketa', d),
   sorovTasdiqlash:  (id, d) => api.put(`/api/telegram/anketa/${id}`, d),
 
+  // ─── Blog (faqat superadmin) ───
+  getBlogPosts:        ()     => api.get('/api/blog/admin/posts'),
+  getBlogPost:         (id)   => api.get(`/api/blog/admin/posts/${id}`),
+  createBlogPost:      (d)    => api.post('/api/blog/admin/posts', d),
+  editBlogPost:        (id,d) => api.put(`/api/blog/admin/posts/${id}`, d),
+  deleteBlogPost:      (id)   => api.del(`/api/blog/admin/posts/${id}`),
+  getBlogCategories:   ()     => api.get('/api/blog/categories'),
+  createBlogCategory:  (d)    => api.post('/api/blog/admin/categories', d),
+  editBlogCategory:    (id,d) => api.put(`/api/blog/admin/categories/${id}`, d),
+  deleteBlogCategory:  (id)   => api.del(`/api/blog/admin/categories/${id}`),
+
   // ─── Fayl upload (kvitansiya) — token bilan ───
   uploadFile: async (formData) => {
     const token = tokenStore.get();
