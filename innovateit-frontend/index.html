@@ -85,7 +85,6 @@
     <button class="tab-btn"        onclick="switchTab('sr')">📨 So'rovlar</button>
     <button class="tab-btn"        onclick="switchTab('oq')">👩‍🏫 O'qituvchilar</button>
     <button class="tab-btn"        onclick="switchTab('pf')">📂 Portfolio</button>
-    <button class="tab-btn"        onclick="switchTab('msl')">🤝 Maslahatchilar</button>
 
   </div>
 
@@ -547,72 +546,6 @@
       </div>
     </div><!-- /tab-pf -->
 
-    <!-- ─── MASLAHATCHILAR TABI ─── -->
-    <div id="tab-msl" style="display:none;">
-      <div class="admin-card" style="margin-top:14px;">
-
-        <div class="card-title">➕ Yangi maslahatchi qo'shish</div>
-        <div class="create-grid">
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Familiya</label>
-            <input class="field-input" id="msl-familiya" placeholder="Karimov" autocomplete="off">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Ism</label>
-            <input class="field-input" id="msl-ism" placeholder="Nodira" autocomplete="off">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Telefon</label>
-            <input class="field-input" id="msl-telefon" placeholder="+998901234567" autocomplete="off">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Maktab</label>
-            <select class="field-input" id="msl-maktab-id">
-              <option value="">— Tanlang —</option>
-            </select>
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Lavozim</label>
-            <input class="field-input" id="msl-lavozim" placeholder="Sinf rahbari" autocomplete="off">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Komissiya (so'm)</label>
-            <input class="field-input" id="msl-komissiya" type="number" placeholder="150000" autocomplete="off">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Username</label>
-            <input class="field-input" id="msl-username" placeholder="nodira_karimova" autocomplete="new-password" spellcheck="false">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Parol</label>
-            <div style="position:relative;display:flex;align-items:center;">
-              <input class="field-input" id="msl-parol" type="password" placeholder="Kamida 6 belgi" autocomplete="new-password" style="padding-right:40px;width:100%;box-sizing:border-box;">
-              <button type="button" onclick="togglePw('msl-parol')" tabindex="-1"
-                style="position:absolute;right:10px;background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;color:#888;">
-                <svg id="eye-msl-parol" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-          </div>
-          <div style="display:flex;align-items:flex-end;">
-            <button class="btn-submit" onclick="createMaslahatchi()" style="margin:0;width:100%;">
-              <span class="spinner" id="msl-spinner"></span>
-              <span id="msl-btn-txt">Qo'shish</span>
-            </button>
-          </div>
-        </div>
-        <p id="msl-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;"></p>
-
-        <div class="divider"></div>
-
-        <div class="card-title">🤝 Maslahatchilar ro'yxati</div>
-        <div class="admin-list" id="msl-list">
-          <div class="empty-state"><div class="empty-state-icon">🤝</div><p>Maslahatchilar yo'q</p></div>
-        </div>
-
-      </div>
-    </div><!-- /tab-msl -->
 
   </div><!-- /main -->
 

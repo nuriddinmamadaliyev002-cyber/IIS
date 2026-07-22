@@ -118,63 +118,10 @@ router.post('/login-viewer', async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh — tokenni yangilash ──────────────────────────────
-router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi', 'maslahatchi']), (req, res) => {
+router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi']), (req, res) => {
   // Barcha JWT maydonlarini saqlab yangi token berish
   const token = generateToken(req.user);
   res.json({ ok: true, token });
-});
-
-// ─── POST /api/auth/login-maslahatchi — maslahatchi login ────────────────────
-router.post('/login-maslahatchi', async (req, res) => {
-  const { username, parol } = req.body;
-
-  if (!username || !parol)
-    return res.status(400).json({ ok: false, error: 'Username va parol kerak' });
-
-  try {
-    const result = await pool.query(
-      `SELECT ms.id, ms.ism, ms.familiya, ms.parol, ms.maktab_id, m.nomi AS maktab_nomi
-       FROM maslahatchilar ms
-       LEFT JOIN maktablar m ON m.id = ms.maktab_id
-       WHERE ms.username = $1 AND ms.aktiv = TRUE`,
-      [username.trim().toLowerCase()]
-    );
-
-    if (result.rowCount === 0)
-      return res.status(401).json({ ok: false, error: "Username yoki parol noto'g'ri" });
-
-    const ms = result.rows[0];
-
-    if (!ms.parol)
-      return res.status(401).json({ ok: false, error: "Parol belgilanmagan. Superadmin bilan bog'laning." });
-
-    const ok = await bcrypt.compare(parol, ms.parol);
-    if (!ok)
-      return res.status(401).json({ ok: false, error: "Username yoki parol noto'g'ri" });
-
-    const token = generateToken({
-      id:           ms.id,
-      username:     username.trim().toLowerCase(),
-      ism:          `${ms.familiya} ${ms.ism}`.trim(),
-      isSuper:      false,
-      role:         'maslahatchi',
-      maktabId:     ms.maktab_id,
-      maktabNomi:   ms.maktab_nomi || '',
-    });
-
-    res.json({
-      ok:         true,
-      token,
-      id:         ms.id,
-      ism:        `${ms.familiya} ${ms.ism}`.trim(),
-      maktabId:   ms.maktab_id,
-      maktabNomi: ms.maktab_nomi || '',
-      role:       'maslahatchi',
-    });
-  } catch (err) {
-    console.error('login-maslahatchi xatolik:', err.message);
-    res.status(500).json({ ok: false, error: 'Server xatoligi' });
-  }
 });
 
 // ─── POST /api/auth/login-buxgalter — buxgalter login ────────────────────────

@@ -386,72 +386,8 @@ CREATE INDEX IF NOT EXISTS idx_oqit_oquv_student       ON oqituvchi_oquvchilar(o
 
 
 -- ════════════════════════════════════════════════════════════════════════════
---  SALES MODULE — Maslahatchilar, Leadlar, Lead tarix
--- ════════════════════════════════════════════════════════════════════════════
-
--- ─── MASLAHATCHILAR ──────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS maslahatchilar (
-    id            SERIAL PRIMARY KEY,
-    ism           TEXT NOT NULL,
-    familiya      TEXT NOT NULL DEFAULT '',
-    telefon       TEXT DEFAULT '',
-    maktab_id     INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
-    lavozim       TEXT DEFAULT '',
-    username      TEXT UNIQUE,
-    parol         TEXT,
-    telegram_id   BIGINT UNIQUE,
-    komiss_summa  INTEGER DEFAULT 0,
-    aktiv         BOOLEAN DEFAULT TRUE,
-    yaratilgan    TEXT DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY')
-);
-
--- ─── LEADLAR ─────────────────────────────────────────────────────────────────
--- holat qiymatlari: yangi | muloqotda | taklif | yozildi | tolov | rad | muzlatilgan
--- komissiya_holati: kutilmoqda | hisoblandi | tolandi
-CREATE TABLE IF NOT EXISTS leadlar (
-    id                SERIAL PRIMARY KEY,
-    ism               TEXT NOT NULL,
-    familiya          TEXT NOT NULL DEFAULT '',
-    telefon           TEXT NOT NULL,
-    telefon2          TEXT DEFAULT '',
-    maktab_id         INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
-    sinf              TEXT DEFAULT '',
-    maslahatchi_id    INTEGER REFERENCES maslahatchilar(id) ON DELETE SET NULL,
-    holat             TEXT DEFAULT 'yangi',
-    rad_sabab         TEXT DEFAULT '',
-    izoh              TEXT DEFAULT '',
-    masul_admin_id    INTEGER REFERENCES adminlar(id) ON DELETE SET NULL,
-    oquvchi_id        INTEGER REFERENCES oquvchilar(id) ON DELETE SET NULL,
-    komissiya_holati  TEXT DEFAULT 'kutilmoqda',
-    komissiya_summa   INTEGER DEFAULT 0,
-    komissiya_sana    TEXT DEFAULT '',
-    yaratilgan        TEXT DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI'),
-    yangilangan       TEXT DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI')
-);
-
--- ─── LEAD_TARIX ──────────────────────────────────────────────────────────────
-CREATE TABLE IF NOT EXISTS lead_tarix (
-    id           SERIAL PRIMARY KEY,
-    lead_id      INTEGER NOT NULL REFERENCES leadlar(id) ON DELETE CASCADE,
-    holat_eski   TEXT,
-    holat_yangi  TEXT NOT NULL,
-    izoh         TEXT DEFAULT '',
-    kim_id       INTEGER,
-    kim_nomi     TEXT,
-    kim_roli     TEXT,
-    vaqt         TEXT DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI')
-);
-
--- Indekslar
-CREATE INDEX IF NOT EXISTS idx_maslahatchilar_maktab  ON maslahatchilar(maktab_id);
-CREATE INDEX IF NOT EXISTS idx_leadlar_holat          ON leadlar(holat);
-CREATE INDEX IF NOT EXISTS idx_leadlar_maktab         ON leadlar(maktab_id);
-CREATE INDEX IF NOT EXISTS idx_leadlar_maslahatchi    ON leadlar(maslahatchi_id);
-CREATE INDEX IF NOT EXISTS idx_lead_tarix_lead        ON lead_tarix(lead_id);
-
--- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
---  Barcha 22 ta jadval yaratildi (19 ta eski + 3 ta yangi: maslahatchilar, leadlar, lead_tarix)
+--  Barcha 19 ta jadval yaratildi
 -- ════════════════════════════════════════════════════════════════════════════
 \echo '✅ IIS schema muvaffaqiyatli yaratildi!'
 \echo '   Jadvallar: maktablar, adminlar, buxgalterlar, oquvchilar,'
@@ -460,5 +396,4 @@ CREATE INDEX IF NOT EXISTS idx_lead_tarix_lead        ON lead_tarix(lead_id);
 \echo '              dars_jadvali, buxgalter_maktablar, tolovlar,'
 \echo '              portfolio_viewers, oqituvchi_portfolio,'
 \echo '              oqituvchi_sertifikat_fayllar, viewer_teachers,'
-\echo '              telegram_users, anketa_sorovlar, oqituvchi_oquvchilar,'
-\echo '              maslahatchilar, leadlar, lead_tarix'
+\echo '              telegram_users, anketa_sorovlar, oqituvchi_oquvchilar'
