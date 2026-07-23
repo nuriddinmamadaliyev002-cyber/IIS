@@ -961,7 +961,23 @@
           <span id="bl-p-cover-status" style="font-size:12px;color:#9ca3af;"></span>
         </div>
         <input type="hidden" id="bl-p-muqova">
-        <img id="bl-p-cover-preview" style="display:none;margin-top:10px;max-height:140px;border-radius:10px;border:1px solid #e5e7eb;">
+        <input type="hidden" id="bl-p-pozitsiya" value="50">
+        <div id="bl-p-cover-preview-wrap" style="display:none;margin-top:10px;">
+          <div style="width:100%;max-width:360px;height:140px;border-radius:10px;border:1px solid #e5e7eb;overflow:hidden;background:#f3f4f6;">
+            <img id="bl-p-cover-preview" style="width:100%;height:100%;object-fit:cover;object-position:center 50%;display:block;">
+          </div>
+          <div style="margin-top:8px;max-width:360px;">
+            <label class="field-label" style="display:flex;justify-content:space-between;">
+              <span>Rasm pozitsiyasi (kesish joyi)</span>
+              <span id="bl-p-pozitsiya-val" style="color:#6366f1;font-weight:600;">O'rtada</span>
+            </label>
+            <input type="range" id="bl-p-pozitsiya-range" min="0" max="100" value="50"
+                   oninput="blUpdateCoverPosition(this.value)" style="width:100%;">
+            <div style="display:flex;justify-content:space-between;font-size:11px;color:#9ca3af;">
+              <span>Yuqori qism</span><span>Past qism</span>
+            </div>
+          </div>
+        </div>
       </div>
       <div class="field-group" style="margin-top:12px;">
         <label class="field-label">Kontent (HTML ruxsat etiladi)</label>

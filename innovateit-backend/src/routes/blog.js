@@ -85,7 +85,7 @@ router.get('/posts', async (req, res) => {
 
     params.push(limit, offset);
     const postsQ = await pool.query(
-      `SELECT p.id, p.sarlavha, p.slug, p.qisqacha, p.muqova_rasm, p.muallif,
+      `SELECT p.id, p.sarlavha, p.slug, p.qisqacha, p.muqova_rasm, p.muqova_pozitsiya, p.muallif,
               p.korishlar, p.chop_vaqti,
               c.nomi AS kategoriya_nomi, c.slug AS kategoriya_slug
        FROM blog_posts p
@@ -184,7 +184,7 @@ router.get('/admin/posts/:id', async (req, res) => {
 // POST /api/blog/admin/posts
 router.post('/admin/posts', async (req, res) => {
   try {
-    const { sarlavha, qisqacha = '', kontent, muqova_rasm = '', kategoriya_id = null,
+    const { sarlavha, qisqacha = '', kontent, muqova_rasm = '', muqova_pozitsiya = 50, kategoriya_id = null,
             muallif = 'Innovate IT School', holat = 'qoralama', seo_tavsif = '' } = req.body;
 
     if (!sarlavha || !kontent)
@@ -195,10 +195,10 @@ router.post('/admin/posts', async (req, res) => {
 
     const q = await pool.query(
       `INSERT INTO blog_posts
-         (sarlavha, slug, qisqacha, kontent, muqova_rasm, kategoriya_id, muallif, holat, seo_tavsif, chop_vaqti)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
+         (sarlavha, slug, qisqacha, kontent, muqova_rasm, muqova_pozitsiya, kategoriya_id, muallif, holat, seo_tavsif, chop_vaqti)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
        RETURNING *`,
-      [sarlavha, slug, qisqacha, kontent, muqova_rasm, kategoriya_id, muallif, holat, seo_tavsif, chopVaqti]
+      [sarlavha, slug, qisqacha, kontent, muqova_rasm, muqova_pozitsiya, kategoriya_id, muallif, holat, seo_tavsif, chopVaqti]
     );
     res.json({ ok: true, post: q.rows[0] });
   } catch (err) {
@@ -217,7 +217,7 @@ router.put('/admin/posts/:id', async (req, res) => {
 
     const {
       sarlavha = old.sarlavha, qisqacha = old.qisqacha, kontent = old.kontent,
-      muqova_rasm = old.muqova_rasm, kategoriya_id = old.kategoriya_id,
+      muqova_rasm = old.muqova_rasm, muqova_pozitsiya = old.muqova_pozitsiya, kategoriya_id = old.kategoriya_id,
       muallif = old.muallif, holat = old.holat, seo_tavsif = old.seo_tavsif
     } = req.body;
 
@@ -231,11 +231,11 @@ router.put('/admin/posts/:id', async (req, res) => {
 
     const q = await pool.query(
       `UPDATE blog_posts SET
-         sarlavha=$1, slug=$2, qisqacha=$3, kontent=$4, muqova_rasm=$5,
-         kategoriya_id=$6, muallif=$7, holat=$8, seo_tavsif=$9,
-         chop_vaqti=$10, yangilangan=NOW()
-       WHERE id=$11 RETURNING *`,
-      [sarlavha, slug, qisqacha, kontent, muqova_rasm, kategoriya_id, muallif, holat, seo_tavsif, chopVaqti, id]
+         sarlavha=$1, slug=$2, qisqacha=$3, kontent=$4, muqova_rasm=$5, muqova_pozitsiya=$6,
+         kategoriya_id=$7, muallif=$8, holat=$9, seo_tavsif=$10,
+         chop_vaqti=$11, yangilangan=NOW()
+       WHERE id=$12 RETURNING *`,
+      [sarlavha, slug, qisqacha, kontent, muqova_rasm, muqova_pozitsiya, kategoriya_id, muallif, holat, seo_tavsif, chopVaqti, id]
     );
     res.json({ ok: true, post: q.rows[0] });
   } catch (err) {

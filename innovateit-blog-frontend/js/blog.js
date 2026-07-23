@@ -10,6 +10,14 @@ const BASE = (_host === 'localhost' || _host === '127.0.0.1' || _host === '')
   ? 'http://127.0.0.1:3001'
   : '';
 
+// Admin panelda tanlangan "muqova pozitsiyasi" (0-100, default 50) asosida
+// object-position CSS qiymatini hosil qiladi — rasmning muhim qismi
+// (masalan yuqoridagi matn) kesilib qolmasligi uchun.
+function coverPosStyle(pos) {
+  const v = Math.max(0, Math.min(100, parseInt(pos, 10) || 50));
+  return `object-position:center ${v}%;`;
+}
+
 function resolveUpload(filename) {
   if (!filename) return '';
   if (filename.startsWith('http')) return filename;

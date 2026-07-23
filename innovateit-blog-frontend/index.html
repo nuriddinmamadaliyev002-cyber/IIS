@@ -127,7 +127,7 @@ async function loadFeatured() {
   slot.innerHTML = `
     <a class="featured" href="post.html?slug=${encodeURIComponent(p.slug)}">
       <div class="featured-media">
-        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" alt="">` : ''}
+        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya)}" alt="">` : ''}
         <div class="stamp">${esc(stampCode(p.kategoriya_nomi))}<br>№${String(p.id).padStart(3,'0')}</div>
       </div>
       <div class="featured-body">
@@ -156,7 +156,7 @@ async function loadPosts() {
   grid.innerHTML = res.posts.map(p => `
     <a class="card" href="post.html?slug=${encodeURIComponent(p.slug)}">
       <div class="card-media">
-        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" alt="">` : ''}
+        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya)}" alt="">` : ''}
         <div class="stamp on-card">${esc(stampCode(p.kategoriya_nomi))}</div>
       </div>
       <div class="card-body">
