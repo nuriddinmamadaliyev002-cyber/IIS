@@ -22,16 +22,17 @@ git checkout -- .
 git pull origin main
 echo "✅ Kod yangilandi"
 
-# ─── 1.5. Cache-busting: CSS/JS havolalariga vaqt belgisi qo'yish ───
+# ─── 1.5. Cache-busting: CSS/JS/rasm havolalariga vaqt belgisi qo'yish ───
 echo ""
-echo "🕒 1.5. Statik fayllar (CSS/JS) versiyalanmoqda..."
+echo "🕒 1.5. Statik fayllar (CSS/JS/rasmlar) versiyalanmoqda..."
 V=$(date +%s)
 find /var/www/IIS -name "*.html" -exec sed -i -E \
   -e "s#(href=\"css/[^\"]+\.css)(\?v=[0-9]+)?\"#\1?v=${V}\"#g" \
   -e "s#(src=\"js/[^\"]+\.js)(\?v=[0-9]+)?\"#\1?v=${V}\"#g" \
+  -e "s#(src=\"img/[^\"]+\.(png|jpe?g|webp|svg|gif))(\?v=[0-9]+)?\"#\1?v=${V}\"#g" \
   {} +
-echo "✅ CSS/JS versiyasi yangilandi: v=${V}"
-echo "   (Brauzer keshi endi eski CSS/JS'ni ko'rsatmaydi)"
+echo "✅ CSS/JS/rasm versiyasi yangilandi: v=${V}"
+echo "   (Brauzer keshi endi eski CSS/JS/rasmlarni ko'rsatmaydi)"
 
 # ─── 2. Backend dependencies ───
 echo ""
