@@ -10,12 +10,14 @@ const BASE = (_host === 'localhost' || _host === '127.0.0.1' || _host === '')
   ? 'http://127.0.0.1:3001'
   : '';
 
-// Admin panelda tanlangan "muqova pozitsiyasi" (0-100, default 50) asosida
-// object-position CSS qiymatini hosil qiladi — rasmning muhim qismi
-// (masalan yuqoridagi matn) kesilib qolmasligi uchun.
-function coverPosStyle(pos) {
-  const v = Math.max(0, Math.min(100, parseInt(pos, 10) || 50));
-  return `object-position:center ${v}%;`;
+// Admin panelda tanlangan "muqova pozitsiyasi" (0-100, default 50) va
+// "masshtab/zoom" (100-250, default 100) asosida rasmga qo'llanadigan CSS
+// hosil qiladi — rasmning muhim qismi kesilib qolmasligi va kerak bo'lsa
+// yaqinlashtirib ko'rsatilishi uchun.
+function coverPosStyle(pos, zoom) {
+  const p = Math.max(0, Math.min(100, parseInt(pos, 10) || 50));
+  const z = Math.max(100, Math.min(250, parseInt(zoom, 10) || 100));
+  return `object-position:center ${p}%;transform:scale(${z / 100});transform-origin:center ${p}%;`;
 }
 
 function resolveUpload(filename) {

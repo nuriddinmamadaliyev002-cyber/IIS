@@ -106,7 +106,7 @@ async function loadPost() {
   if (p.muqova_rasm) {
     const cover = document.getElementById('post-cover');
     cover.style.display = 'block';
-    cover.innerHTML = `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya)}" alt="">`;
+    cover.innerHTML = `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab)}" alt="">`;
   }
 
   // Kontent HTML sifatida saqlanadi (admin panelidan kiritiladi).

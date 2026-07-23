@@ -85,6 +85,7 @@ function blOpenPostModal() {
   g('bl-p-cover-status').textContent = '';
   g('bl-p-cover-preview-wrap').style.display = 'none';
   blSetCoverPosition(50);
+  blSetCoverZoom(100);
   g('bl-p-err').style.display = 'none';
   blFillCategorySelect();
   g('bl-post-modal').style.display = 'flex';
@@ -109,9 +110,11 @@ async function blEditPost(id) {
     g('bl-p-cover-preview').src = blResolveUpload(p.muqova_rasm);
     g('bl-p-cover-preview-wrap').style.display = 'block';
     blSetCoverPosition(p.muqova_pozitsiya ?? 50);
+    blSetCoverZoom(p.muqova_masshtab ?? 100);
   } else {
     g('bl-p-cover-preview-wrap').style.display = 'none';
     blSetCoverPosition(50);
+    blSetCoverZoom(100);
   }
   g('bl-p-cover-status').textContent = '';
   g('bl-post-modal').style.display = 'flex';
@@ -121,18 +124,39 @@ function blClosePostModal() {
   g('bl-post-modal').style.display = 'none';
 }
 
-// ─── Muqova rasm pozitsiyasi (0=yuqori, 50=o'rta, 100=past) ────────────────────
+// ─── Muqova rasm pozitsiyasi (0=yuqori, 50=o'rta, 100=past) va zoom (100-250%) ──
+function blApplyCoverTransform() {
+  const pos  = parseInt(g('bl-p-pozitsiya').value, 10) || 50;
+  const zoom = parseInt(g('bl-p-masshtab').value, 10) || 100;
+  const img = g('bl-p-cover-preview');
+  img.style.objectPosition = `center ${pos}%`;
+  img.style.transformOrigin = `center ${pos}%`;
+  img.style.transform = `scale(${zoom / 100})`;
+}
+
 function blSetCoverPosition(value) {
   const v = Math.max(0, Math.min(100, parseInt(value, 10) || 50));
   g('bl-p-pozitsiya').value = v;
   g('bl-p-pozitsiya-range').value = v;
-  g('bl-p-cover-preview').style.objectPosition = `center ${v}%`;
   const label = v <= 20 ? "Yuqori qism" : v >= 80 ? "Past qism" : "O'rtada";
   g('bl-p-pozitsiya-val').textContent = label;
+  blApplyCoverTransform();
+}
+
+function blSetCoverZoom(value) {
+  const v = Math.max(100, Math.min(250, parseInt(value, 10) || 100));
+  g('bl-p-masshtab').value = v;
+  g('bl-p-masshtab-range').value = v;
+  g('bl-p-masshtab-val').textContent = `${v}%`;
+  blApplyCoverTransform();
 }
 
 function blUpdateCoverPosition(value) {
   blSetCoverPosition(value);
+}
+
+function blUpdateCoverZoom(value) {
+  blSetCoverZoom(value);
 }
 
 function blResolveUpload(filename) {
@@ -154,6 +178,7 @@ async function blUploadCover(ev) {
     g('bl-p-cover-preview').src = blResolveUpload(res.filename);
     g('bl-p-cover-preview-wrap').style.display = 'block';
     blSetCoverPosition(50);
+    blSetCoverZoom(100);
     g('bl-p-cover-status').textContent = '✅ Yuklandi';
   } else {
     g('bl-p-cover-status').textContent = '❌ Yuklanmadi';
@@ -179,6 +204,7 @@ async function blSavePost() {
     qisqacha: g('bl-p-qisqacha').value.trim(),
     muqova_rasm: g('bl-p-muqova').value,
     muqova_pozitsiya: parseInt(g('bl-p-pozitsiya').value, 10) || 50,
+    muqova_masshtab: parseInt(g('bl-p-masshtab').value, 10) || 100,
     kategoriya_id: g('bl-p-kategoriya').value || null,
     muallif: g('bl-p-muallif').value.trim() || 'Innovate IT School',
     holat: g('bl-p-holat').value
