@@ -14,6 +14,11 @@ echo "━━━━━━━━━━━━━━━━━━━━━━━━�
 echo ""
 echo "📥 1. GitHub dan kod yangilanmoqda..."
 cd /var/www/IIS
+
+# Oldingi deploy'da cache-busting (sed) qo'shgan vaqtinchalik
+# o'zgarishlarni bekor qilamiz, aks holda "git pull" konflikt beradi.
+git checkout -- .
+
 git pull origin main
 echo "✅ Kod yangilandi"
 
