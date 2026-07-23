@@ -48,14 +48,6 @@ function esc(s) {
   }[c]));
 }
 
-// Kategoriya nomidan qisqa "stamp" belgisi hosil qilish (masalan "IT darslar" -> "IT")
-function stampCode(catName) {
-  if (!catName) return 'IIS';
-  const words = catName.replace(/'/g, '').split(/\s+/).filter(Boolean);
-  if (words.length === 1) return words[0].slice(0, 3).toUpperCase();
-  return words.map(w => w[0]).join('').slice(0, 3).toUpperCase();
-}
-
 function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
