@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>2026–2027 o'quv yiliga qabul — Innovate IT School</title>
+<meta name="description" content="Innovate IT School 2026–2027 o'quv yiliga qabul boshlandi. Xalqaro IT sertifikatlash bosqichlari, UK Foundation diplomi — hozir ro'yxatdan o'ting.">
+<link rel="stylesheet" href="css/blog.css">
+<link rel="stylesheet" href="css/royxat.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="wrap">
+    <a href="/" class="brand">
+      <img class="mark" src="img/logo-mark.png" alt="Innovate IT School logotipi">
+      Innovate IT&nbsp;School
+    </a>
+    <nav class="header-nav">
+      <a href="/">Bosh sahifa</a>
+      <a href="/#yangiliklar">Yangiliklar</a>
+      <a href="/#yutuqlar">Yutuqlar</a>
+      <a href="royxat.html" class="nav-cta">Ro'yxatdan o'tish</a>
+    </nav>
+    <button class="menu-toggle" id="menu-toggle" aria-label="Menyuni ochish" aria-expanded="false" aria-controls="mobile-nav">
+      <span></span><span></span><span></span>
+    </button>
+  </div>
+</header>
+
+<nav class="mobile-nav" id="mobile-nav">
+  <a href="/">Bosh sahifa</a>
+  <a href="/#yangiliklar">Yangiliklar</a>
+  <a href="/#yutuqlar">Yutuqlar</a>
+  <a href="royxat.html">Ro'yxatdan o'tish</a>
+</nav>
+<div class="mobile-nav-backdrop" id="mobile-nav-backdrop"></div>
+
+<!-- ═══════════════ HERO ═══════════════ -->
+<section class="hero dot-texture rx-hero">
+  <div class="wrap">
+    <div class="eyebrow">2026–2027 o'quv yiliga qabul boshlandi</div>
+    <h1 style="max-width:16ch;">Farzandingiz uchun xalqaro IT ta'lim — o'z maktabida</h1>
+    <p class="hero-sub" style="max-width:56ch;">
+      Buyuk Britaniya va Singapur milliy ta'lim dasturlari asosida, 4 bosqichli xalqaro
+      sertifikatlash tizimi bilan. Joylar soni cheklangan — hoziroq ro'yxatdan o'ting.
+    </p>
+
+    <div class="rx-stats">
+      <div class="rx-stat"><div class="num">25+</div><div class="lbl">hamkor maktab</div></div>
+      <div class="rx-stat"><div class="num">3&nbsp;600</div><div class="lbl">o'quvchi</div></div>
+      <div class="rx-stat"><div class="num">4</div><div class="lbl">sertifikatlash bosqichi</div></div>
+      <div class="rx-stat"><div class="num">UK</div><div class="lbl">xalqaro diplomi</div></div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════ FORM + INFO ═══════════════ -->
+<section class="wrap rx-wrap">
+  <div class="rx-grid">
+
+    <!-- ─── Forma ─── -->
+    <div class="rx-form-card" id="rx-form-card">
+      <div id="rx-form-state">
+        <h2 class="rx-form-title">Ro'yxatdan o'tish</h2>
+        <p class="rx-form-sub">Ma'lumotlaringizni qoldiring — sales bo'limimiz tez orada siz bilan bog'lanadi.</p>
+
+        <form id="rx-form" novalidate>
+          <div class="rx-field">
+            <label for="rx-ism">Ota-ona (yoki qonuniy vakil) ismi *</label>
+            <input type="text" id="rx-ism" name="ism" placeholder="Masalan: Dilshod Rahimov" required>
+          </div>
+
+          <div class="rx-field">
+            <label for="rx-telefon">Telefon raqam *</label>
+            <input type="tel" id="rx-telefon" name="telefon" placeholder="+998 90 123 45 67" required>
+          </div>
+
+          <div class="rx-row">
+            <div class="rx-field">
+              <label for="rx-farzand">Farzandingiz ismi</label>
+              <input type="text" id="rx-farzand" name="farzandIsmi" placeholder="Masalan: Sardor">
+            </div>
+            <div class="rx-field">
+              <label for="rx-sinf">Sinf / bosqich</label>
+              <select id="rx-sinf" name="sinf">
+                <option value="">Tanlang</option>
+                <option value="1-4-sinf (Digi Stars)">1–4-sinf — Digi Stars</option>
+                <option value="5-6-sinf (Junior)">5–6-sinf — Junior</option>
+                <option value="7-9-sinf (Middle)">7–9-sinf — Middle</option>
+                <option value="10-11-sinf (Senior/Foundation)">10–11-sinf — Senior (Foundation)</option>
+                <option value="Hali maktabgacha">Hali maktabgacha</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="rx-field">
+            <label for="rx-maktab">Maktab</label>
+            <select id="rx-maktab" name="maktabId">
+              <option value="">Yuklanmoqda…</option>
+            </select>
+            <div class="rx-hint">Agar ro'yxatda bo'lmasa, pastdagi "Hudud" maydoniga yozing</div>
+          </div>
+
+          <div class="rx-field">
+            <label for="rx-hudud">Hudud / tuman (agar maktab tanlanmagan bo'lsa)</label>
+            <input type="text" id="rx-hudud" name="hudud" placeholder="Masalan: Baliqchi tumani">
+          </div>
+
+          <div class="rx-field">
+            <label for="rx-izoh">Qo'shimcha izoh</label>
+            <textarea id="rx-izoh" name="izoh" rows="3" placeholder="Savol yoki qo'shimcha ma'lumot (ixtiyoriy)"></textarea>
+          </div>
+
+          <p id="rx-err" class="rx-err" style="display:none;"></p>
+
+          <button type="submit" class="rx-submit" id="rx-submit-btn">
+            <span id="rx-submit-txt">Ro'yxatdan o'tish</span>
+          </button>
+
+          <p class="rx-privacy">Ma'lumotlaringiz faqat siz bilan bog'lanish uchun ishlatiladi.</p>
+        </form>
+      </div>
+
+      <!-- Success holati -->
+      <div id="rx-success" style="display:none;text-align:center;padding:20px 0;">
+        <div class="rx-success-icon">✅</div>
+        <h2 class="rx-form-title">Rahmat!</h2>
+        <p class="rx-form-sub">Arizangiz qabul qilindi. Sales bo'limimiz tez orada siz bilan bog'lanadi.</p>
+        <a href="/" class="rx-back-link">← Bosh sahifaga qaytish</a>
+      </div>
+    </div>
+
+    <!-- ─── Yon panel: nima beriladi ─── -->
+    <div class="rx-side">
+      <div class="rx-side-card">
+        <h3>Har bir o'quvchiga nima beriladi</h3>
+        <ul class="rx-check-list">
+          <li>🪪 Xalqaro standartdagi ID karta</li>
+          <li>👕 Innovate IT School brendli forma</li>
+          <li>🎒 Brendli maktab sumkasi</li>
+          <li>📚 Oxford Computing/Mathematics darsliklari — bepul</li>
+        </ul>
+      </div>
+      <div class="rx-side-card">
+        <h3>Qo'shimcha imkoniyatlar</h3>
+        <ul class="rx-check-list">
+          <li>💼 IT kompaniyalarga ishga joylashishda ko'mak</li>
+          <li>🏆 Xalqaro olimpiadalarga tayyorgarlik</li>
+          <li>✈️ Xorijiy universitetlarga tanishuv sayohatlari</li>
+          <li>🎓 Senior bosqich — UK diplomi, 2-kursdan qabul, grantgacha</li>
+        </ul>
+      </div>
+      <div class="rx-side-card rx-side-contact">
+        <h3>Savollaringiz bormi?</h3>
+        <p>Telegram orqali ham murojaat qilishingiz mumkin — tez orada javob beramiz.</p>
+        <a href="https://t.me/innovateitschool" target="_blank" rel="noopener" class="rx-tg-btn">Telegram orqali yozish →</a>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<footer class="site-footer">
+  <div class="wrap">
+    <div class="footer-grid">
+      <div>
+        <div class="brand" style="margin-bottom:10px;">
+          <img class="mark" src="img/logo-mark.png" alt="Innovate IT School logotipi"> Innovate IT&nbsp;School
+        </div>
+        <p class="footer-note">Buyuk Britaniya va Singapur milliy maktab ta'lim dasturi asosida — maktab hududida, xavfsiz va sifatli IT ta'lim.</p>
+      </div>
+      <div class="footer-links">
+        <a href="https://t.me/innovateitschool" target="_blank" rel="noopener">Telegram</a>
+        <a href="mailto:info@innovateitschool.uz">Aloqa</a>
+      </div>
+    </div>
+    <div class="footer-bottom">© <span id="year"></span> Innovate IT School. Barcha huquqlar himoyalangan.</div>
+  </div>
+</footer>
+
+<script src="js/blog.js"></script>
+<script src="js/royxat.js"></script>
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+</script>
+</body>
+</html>

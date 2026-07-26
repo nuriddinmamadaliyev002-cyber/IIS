@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>InnovateIT School — Sales Panel</title>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+  <link rel="stylesheet" href="css/hover.css">
+  <style>
+    .data-table { width:100%; border-collapse:collapse; font-size:13px; }
+    .data-table th {
+      text-align:left; padding:10px 12px; font-size:11px; font-weight:700;
+      text-transform:uppercase; letter-spacing:.04em; color:#9ca3af;
+      border-bottom:1.5px solid var(--border); white-space:nowrap;
+    }
+    .data-table td { padding:10px 12px; border-bottom:1px solid var(--border); vertical-align:middle; }
+    .data-table tbody tr:hover { background:#fafafa; }
+    .sl-stat-cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
+    .sl-stat-card {
+      flex:1; min-width:120px; background:#fff; border:1.5px solid var(--border);
+      border-radius:14px; padding:14px 16px;
+    }
+    .sl-stat-card .num { font-size:22px; font-weight:700; color:#111827; }
+    .sl-stat-card .lbl { font-size:11px; color:#9ca3af; margin-top:2px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════ LOGIN ════════════ -->
+<div id="login-screen">
+  <div class="login-card">
+    <div class="login-logo">InnovateIT School</div>
+    <h1 class="login-title">Sales Panel</h1>
+    <p class="login-sub">Leadlarni boshqarish tizimiga kiring</p>
+
+    <div class="field-group">
+      <label class="field-label">Username</label>
+      <input class="field-input" type="text" id="inp-username"
+        placeholder="sales_login" autocomplete="username">
+    </div>
+
+    <div class="field-group" style="margin-top:14px;">
+      <label class="field-label">Parol</label>
+      <div class="pw-wrap" style="position:relative;">
+        <input class="field-input" type="password" id="inp-parol"
+          placeholder="••••••" autocomplete="current-password"
+          style="padding-right:44px;">
+        <button type="button" onclick="togglePw()"
+          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
+                 background:none;border:none;cursor:pointer;font-size:18px;padding:0;color:#7a7870;"
+          id="pw-eye">👁</button>
+      </div>
+    </div>
+
+    <p id="login-err" style="display:none;color:#dc2626;font-size:13px;margin-top:10px;"></p>
+
+    <button class="btn-primary" id="login-btn" onclick="doLogin()"
+      style="width:100%;margin-top:20px;padding:13px;border-radius:10px;
+             background:#2563eb;color:#fff;border:none;font-size:15px;
+             font-weight:600;cursor:pointer;font-family:inherit;
+             transition:opacity .15s;"
+      onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+      Kirish
+    </button>
+  </div>
+</div>
+
+<!-- ════════════ APP ════════════ -->
+<div id="app" style="display:none;">
+
+  <!-- TOPBAR -->
+  <div class="topbar">
+    <div class="topbar-brand">🎯 InnovateIT — Sales</div>
+    <div class="topbar-right">
+      <span class="admin-badge" id="sales-badge"></span>
+      <button class="btn-logout" onclick="doLogout()">Chiqish</button>
+    </div>
+  </div>
+
+  <div style="padding:20px;max-width:1200px;margin:0 auto;">
+
+    <!-- STAT CARDS -->
+    <div class="sl-stat-cards" id="sl-stats"></div>
+
+    <!-- CONTROLS -->
+    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div style="font-size:16px;font-weight:700;color:#111827;">📨 Leadlar</div>
+      <select id="sl-holat-filter" onchange="loadLeads()"
+        style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;">
+        <option value="">Barcha holatlar</option>
+        <option value="yangi">🆕 Yangi</option>
+        <option value="boglanildi">📞 Bog'lanildi</option>
+        <option value="royxatga_olindi">✅ Ro'yxatga olindi</option>
+        <option value="bekor_qilindi">❌ Bekor qilindi</option>
+      </select>
+    </div>
+
+    <!-- LEADS TABLE -->
+    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:18px;overflow-x:auto;">
+      <table class="data-table" id="sl-leads-table">
+        <thead><tr>
+          <th>Ism</th>
+          <th>Telefon</th>
+          <th>Farzand</th>
+          <th>Hudud</th>
+          <th>Izoh</th>
+          <th>Holat</th>
+          <th>Sana</th>
+        </tr></thead>
+        <tbody id="sl-leads-tbody"></tbody>
+      </table>
+      <div id="sl-leads-empty" style="display:none;text-align:center;padding:32px;color:#9ca3af;">Hali leadlar yo'q</div>
+      <div id="sl-leads-loading" style="text-align:center;padding:24px;"><div class="loading-spinner"></div></div>
+    </div>
+
+  </div>
+</div>
+
+<script src="js/api.js"></script>
+<script src="js/sales.js"></script>
+</body>
+</html>

@@ -117,7 +117,9 @@ async function apiReq(method, path, data = {}) {
                   || path === '/api/admins'
                   || path.startsWith('/api/admins/')
                   || path === '/api/buxgalter'
-                  || path.startsWith('/api/buxgalter/');
+                  || path.startsWith('/api/buxgalter/')
+                  || path === '/api/sales'
+                  || path.startsWith('/api/sales/');
     if (keepAsIs) {
       opts.body = JSON.stringify(data);
     } else {
@@ -164,6 +166,15 @@ const api = {
   },
   loginBuxgalter: async (d) => {
     const res = await fetch(`${BASE}/api/auth/login-buxgalter`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(d)
+    }).then(r => r.json());
+    if (res.ok && res.token) tokenStore.set(res.token);
+    return res;
+  },
+  loginSales: async (d) => {
+    const res = await fetch(`${BASE}/api/auth/login-sales`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(d)
@@ -256,6 +267,17 @@ const api = {
   getTolovlar:      (d) => api.get('/api/buxgalter/tolovlar', d),
   saveTolov:        (d) => api.post('/api/buxgalter/tolovlar', d),
   initOy:           (d) => api.post('/api/buxgalter/init-oy', d),
+
+  // ─── Sales xodimlari ───
+  getSalesXodimlar: (d) => api.get('/api/sales', d),
+  createSales:      (d) => api.post('/api/sales', d),
+  editSales:        (d) => api.put(`/api/sales/${d.id}`, d),
+  deleteSales:      (d) => api.del(`/api/sales/${d.id}`, d),
+
+  // ─── Leadlar ───
+  getLeads:   (d) => api.get('/api/sales/leads', d),
+  updateLead: (d) => api.put(`/api/sales/leads/${d.id}`, d),
+  deleteLead: (d) => api.del(`/api/sales/leads/${d.id}`, d),
 
   // ─── Portfolio Viewers ───
   getPortfolioViewers:   (d) => api.get('/api/portfolio/viewers', d),

@@ -300,6 +300,39 @@ CREATE TABLE IF NOT EXISTS oqituvchi_oquvchilar (
 );
 
 
+-- ─── 20. SALES XODIMLARI ──────────────────────────────────────────────────────
+--  Sales bo'limi xodimlari — buxgalterlar bilan bir xil login patterni
+CREATE TABLE IF NOT EXISTS sales_xodimlar (
+    id          SERIAL PRIMARY KEY,
+    ism         TEXT    NOT NULL,
+    familiya    TEXT    NOT NULL DEFAULT '',
+    username    TEXT    UNIQUE,
+    parol       TEXT,
+    telegram_id BIGINT  UNIQUE,
+    yaratilgan  TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY')
+);
+
+
+-- ─── 21. LEADLAR (ro'yxatdan o'tish murojaatlari) ─────────────────────────────
+--  Ochiq "Ro'yxatdan o'tish" sahifasidan keladigan murojaatlar (public POST)
+CREATE TABLE IF NOT EXISTS leadlar (
+    id             SERIAL PRIMARY KEY,
+    ism            TEXT    NOT NULL,
+    telefon        TEXT    NOT NULL,
+    farzand_ismi   TEXT    DEFAULT '',
+    sinf           TEXT    DEFAULT '',
+    maktab_id      INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
+    hudud          TEXT    DEFAULT '',
+    izoh           TEXT    DEFAULT '',
+    manba          TEXT    DEFAULT 'sayt',
+    holat          TEXT    NOT NULL DEFAULT 'yangi'
+                     CHECK (holat IN ('yangi', 'boglanildi', 'royxatga_olindi', 'bekor_qilindi')),
+    biriktirilgan  INTEGER REFERENCES sales_xodimlar(id) ON DELETE SET NULL,
+    yaratilgan     TIMESTAMP DEFAULT NOW(),
+    yangilangan    TIMESTAMP DEFAULT NOW()
+);
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
@@ -383,6 +416,14 @@ CREATE INDEX IF NOT EXISTS idx_anketa_holat            ON anketa_sorovlar(holat)
 -- oqituvchi_oquvchilar
 CREATE INDEX IF NOT EXISTS idx_oqit_oquv_teacher       ON oqituvchi_oquvchilar(oqituvchi_id);
 CREATE INDEX IF NOT EXISTS idx_oqit_oquv_student       ON oqituvchi_oquvchilar(oquvchi_id);
+
+-- sales_xodimlar
+CREATE INDEX IF NOT EXISTS idx_sales_username          ON sales_xodimlar(username);
+
+-- leadlar
+CREATE INDEX IF NOT EXISTS idx_leadlar_holat           ON leadlar(holat);
+CREATE INDEX IF NOT EXISTS idx_leadlar_yaratilgan      ON leadlar(yaratilgan DESC);
+CREATE INDEX IF NOT EXISTS idx_leadlar_biriktirilgan   ON leadlar(biriktirilgan);
 
 
 -- ════════════════════════════════════════════════════════════════════════════

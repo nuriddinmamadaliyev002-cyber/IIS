@@ -21,6 +21,7 @@ const portfolioRouter = require('./routes/portfolio');
 const maktablarRouter = require('./routes/maktablar');
 const telegramRouter       = require('./routes/telegram');
 const blogRouter       = require('./routes/blog');
+const salesRouter      = require('./routes/sales');
 
 
 
@@ -103,6 +104,7 @@ app.use('/api/portfolio', portfolioRouter);
 app.use('/api/maktablar', maktablarRouter);
 app.use('/api/telegram',        telegramRouter);
 app.use('/api/blog',            blogRouter);
+app.use('/api/sales',           salesRouter);
 app.use('/miniapp', express.static(path.join(__dirname, '../../telegram-bot/miniapp')));
 
 

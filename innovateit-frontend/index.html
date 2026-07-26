@@ -86,6 +86,7 @@
     <button class="tab-btn"        onclick="switchTab('oq')">👩‍🏫 O'qituvchilar</button>
     <button class="tab-btn"        onclick="switchTab('pf')">📂 Portfolio</button>
     <button class="tab-btn"        onclick="switchTab('bl')">📝 Blog</button>
+    <button class="tab-btn"        onclick="switchTab('sl')">🎯 Sales</button>
 
   </div>
 
@@ -576,6 +577,88 @@
       </div>
     </div><!-- /tab-bl -->
 
+    <!-- ─── SALES TABI ─── -->
+    <div id="tab-sl" style="display:none;">
+
+      <!-- Yangi sales xodimi yaratish -->
+      <div class="admin-card" style="margin-top:14px;">
+        <div class="card-title">➕ Yangi sales xodimi yaratish</div>
+        <div class="create-grid">
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Familiya</label>
+            <input class="field-input" id="sl-familiya" placeholder="Karimov" autocomplete="off">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Ism</label>
+            <input class="field-input" id="sl-ism" placeholder="Aziz" autocomplete="off">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Username</label>
+            <input class="field-input" id="sl-username" placeholder="aziz.sales" autocomplete="new-password" spellcheck="false">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Parol</label>
+            <div style="position:relative;display:flex;align-items:center;">
+              <input class="field-input" id="sl-parol" type="password" placeholder="Kamida 6 belgi" autocomplete="new-password" style="padding-right:40px;width:100%;box-sizing:border-box;">
+              <button type="button" onclick="togglePw('sl-parol')" tabindex="-1"
+                style="position:absolute;right:10px;background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;color:#888;">
+                <svg id="eye-sl-parol" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn-submit" onclick="createSalesXodim()" style="margin:0;width:100%;">
+              <span class="spinner" id="sl-spinner"></span>
+              <span id="sl-btn-txt">Yaratish</span>
+            </button>
+          </div>
+        </div>
+        <p id="sl-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;"></p>
+
+        <div class="divider"></div>
+
+        <div class="card-title">🎯 Sales xodimlari ro'yxati</div>
+        <div class="admin-list" id="sl-xodim-list">
+          <div class="empty-state"><div class="empty-state-icon">🎯</div><p>Sales xodimlari yo'q</p></div>
+        </div>
+      </div>
+
+      <!-- Leadlar -->
+      <div style="background:#fff;border:1.5px solid #e5e7eb;border-radius:16px;padding:24px;margin-top:20px;margin-bottom:20px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:16px;">
+          <div>
+            <div style="font-size:16px;font-weight:700;color:#111827;">📨 Leadlar</div>
+            <div style="font-size:12px;color:#9ca3af;margin-top:2px;">Ro'yxatdan o'tish sahifasidan kelgan murojaatlar</div>
+          </div>
+          <select id="sl-holat-filter" onchange="loadLeads()" style="padding:8px 12px;border:1.5px solid #e5e7eb;border-radius:10px;font-size:13px;">
+            <option value="">Barcha holatlar</option>
+            <option value="yangi">🆕 Yangi</option>
+            <option value="boglanildi">📞 Bog'lanildi</option>
+            <option value="royxatga_olindi">✅ Ro'yxatga olindi</option>
+            <option value="bekor_qilindi">❌ Bekor qilindi</option>
+          </select>
+        </div>
+        <table class="data-table" id="sl-leads-table">
+          <thead><tr>
+            <th>Ism</th>
+            <th>Telefon</th>
+            <th>Farzand</th>
+            <th>Hudud</th>
+            <th>Holat</th>
+            <th>Biriktirilgan</th>
+            <th>Sana</th>
+            <th>Amal</th>
+          </tr></thead>
+          <tbody id="sl-leads-tbody"></tbody>
+        </table>
+        <div id="sl-leads-empty" style="display:none;text-align:center;padding:32px;color:#9ca3af;">Hali leadlar yo'q</div>
+        <div id="sl-leads-loading" style="text-align:center;padding:24px;"><div class="loading-spinner"></div></div>
+      </div>
+
+    </div><!-- /tab-sl -->
+
 
   </div><!-- /main -->
 
@@ -1031,6 +1114,7 @@
 <script src="js/app-superadmin.js"></script>
 <script src="js/portfolio-tab.js"></script>
 <script src="js/blog-admin.js"></script>
+<script src="js/sales-admin.js"></script>
 <script src="js/mobile-nav.js"></script>
 
 
