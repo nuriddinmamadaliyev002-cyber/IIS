@@ -89,14 +89,13 @@ router.put('/', requireAuth(['admin']), async (req, res) => {
       return res.status(404).json({ ok: false, error: 'Admin topilmadi' });
     }
 
-    // Username o'zgargan bo'lsa — bog'liq jadvallarda ham yangilash
-    if (oldU !== newU) {
-      await client.query('UPDATE davomat              SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
-      await client.query('UPDATE oqituvchilar_davomat SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
-      await client.query('UPDATE dars_jadvali         SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
-      await client.query('UPDATE tolovlar             SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
-      await client.query('UPDATE buxgalter_adminlar   SET admin_username=$1 WHERE admin_username=$2',   [newU, oldU]);
-    }
+    // ESLATMA: ilgari bu yerda username o'zgarganda davomat/tolovlar/dars_jadvali
+    // kabi jadvallardagi "admin_username" ustunini ham yangilaydigan kod bor edi.
+    // Bu ustun (va "buxgalter_adminlar" jadvali) haqiqatda hech qachon mavjud
+    // bo'lmagan — tizim allaqachon filtrlash uchun admin_username o'rniga
+    // maktab_id'dan foydalanadi (qarang: src/routes/davomat.js). Eski kod har
+    // safar username o'zgartirilganda xatolik berib, butun tranzaksiyani
+    // ROLLBACK qilib yuborar edi — shuning uchun olib tashlandi.
 
     await client.query('COMMIT');
     res.json({ ok: true });
