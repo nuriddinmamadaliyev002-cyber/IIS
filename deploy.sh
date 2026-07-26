@@ -44,9 +44,26 @@ echo "✅ Dependencies tayyor"
 # ─── 3. Database: jadvallar va ruxsatlar ───
 echo ""
 echo "🗄️  3. Database jadvallar va ruxsatlar yangilanmoqda..."
-sudo -u postgres psql -d innovateit \
+
+# DB nomini backendning .env faylidan o'qiymiz — bazaviy nom hardcode
+# qilinmaydi, shunda .env bilan har doim mos keladi va "noto'g'ri baza"
+# muammosi qaytalanmaydi.
+ENV_FILE="/var/www/IIS/innovateit-backend/.env"
+if [ ! -f "$ENV_FILE" ]; then
+  echo "❌ .env fayl topilmadi: $ENV_FILE"
+  exit 1
+fi
+
+DB_NAME=$(grep -E '^DB_NAME=' "$ENV_FILE" | cut -d '=' -f2- | tr -d '\r\n ')
+if [ -z "$DB_NAME" ]; then
+  echo "❌ .env faylida DB_NAME topilmadi"
+  exit 1
+fi
+
+echo "   → Nishon baza: $DB_NAME (.env dan o'qildi)"
+sudo -u postgres psql -d "$DB_NAME" \
   -f /var/www/IIS/innovateit-backend/innovateit_schema_setup.sql
-echo "✅ Database tayyor"
+echo "✅ Database tayyor ($DB_NAME)"
 
 # ─── 4. Backend qayta ishga tushirish ───
 echo ""
