@@ -80,7 +80,7 @@ function doLogout() {
   U = null; LEADS = [];
   api.logout();
   localStorage.removeItem('iit_sales_u');
-  window.location.reload();
+  window.location.href = 'index.html';
 }
 
 function showApp() {
