@@ -69,7 +69,7 @@ img { max-width: 100%; display: block; }
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .site-header {
   position: sticky; top: 0; z-index: 50;
-  background: linear-gradient(120deg, #06C2E6 0%, #0B6FC2 60%, #0B5FA8 100%);
+  background: #01D3EC;
   border-bottom: none;
 }
 .site-header .wrap {
@@ -79,26 +79,27 @@ img { max-width: 100%; display: block; }
 .brand {
   display: flex; align-items: center; gap: 10px;
   font-family: var(--font-display); font-weight: 700; font-size: 19px;
-  color: #fff;
+  color: var(--ink);
 }
 .brand .mark {
   width: 38px; height: 38px; border-radius: 10px;
-  background: rgba(255,255,255,0.22);
+  background: rgba(20,22,31,0.16);
   padding: 4px; box-sizing: border-box;
   object-fit: contain; flex-shrink: 0;
+  filter: drop-shadow(0 1px 1px rgba(20,22,31,0.25));
 }
 .header-nav { display: flex; align-items: center; gap: 28px; }
 .header-nav a {
   font-family: var(--font-mono); font-size: 13px; letter-spacing: .02em;
-  color: rgba(255,255,255,0.82); font-weight: 500;
+  color: rgba(20,22,31,0.75); font-weight: 500;
 }
-.header-nav a:hover { color: #fff; }
+.header-nav a:hover { color: var(--ink); }
 .nav-cta {
-  background: #fff; color: #0B5FA8 !important;
+  background: var(--ink); color: #fff !important;
   padding: 9px 18px; border-radius: 100px; font-family: var(--font-mono);
   font-size: 12.5px; font-weight: 700;
 }
-.nav-cta:hover { background: rgba(255,255,255,0.88); color: #0B5FA8 !important; }
+.nav-cta:hover { background: var(--indigo-deep); color: #fff !important; }
 
 /* ─── Qabul banneri (bosh sahifada) ─── */
 .admission-banner {
@@ -136,12 +137,12 @@ img { max-width: 100%; display: block; }
   display: none;
   flex-direction: column; justify-content: center; gap: 5px;
   width: 40px; height: 40px; padding: 0; margin-left: 6px;
-  border: 1px solid rgba(255,255,255,0.35); border-radius: var(--radius-sm);
-  background: rgba(255,255,255,0.14); cursor: pointer;
+  border: 1px solid rgba(20,22,31,0.25); border-radius: var(--radius-sm);
+  background: rgba(20,22,31,0.1); cursor: pointer;
 }
 .menu-toggle span {
   display: block; width: 18px; height: 2px; margin: 0 auto;
-  background: #fff; border-radius: 2px;
+  background: var(--ink); border-radius: 2px;
   transition: transform .2s ease, opacity .2s ease;
 }
 .menu-toggle[aria-expanded="true"] span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
@@ -345,22 +346,22 @@ body.nav-open { overflow: hidden; }
 
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 .site-footer {
-  border-top: 1px solid var(--line); padding: 48px 0 36px; background: var(--paper-alt);
+  border-top: 1px solid rgba(20,22,31,0.12); padding: 48px 0 36px; background: #01D3EC;
 }
 .footer-grid {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap;
 }
-.footer-note { font-size: 14px; color: var(--ink-soft); max-width: 40ch; }
-.footer-links { display: flex; gap: 20px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink-soft); flex-wrap: wrap; }
+.footer-note { font-size: 14px; color: var(--ink); opacity: .8; max-width: 40ch; }
+.footer-links { display: flex; gap: 20px; font-family: var(--font-mono); font-size: 12.5px; color: var(--ink); flex-wrap: wrap; }
 .footer-links a {
   display: inline-flex; align-items: center; gap: 7px;
-  color: var(--ink-soft); text-decoration: none;
+  color: var(--ink); text-decoration: none;
 }
 .footer-links a svg { width: 16px; height: 16px; flex-shrink: 0; }
-.footer-links a:hover { color: var(--indigo); }
+.footer-links a:hover { color: var(--indigo-deep); }
 .footer-bottom {
-  margin-top: 32px; padding-top: 20px; border-top: 1px solid var(--line);
-  font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint);
+  margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(20,22,31,0.12);
+  font-family: var(--font-mono); font-size: 11.5px; color: var(--ink); opacity: .65;
 }
 
 /* ─── Focus visibility (a11y) ───────────────────────────────────────────── */
