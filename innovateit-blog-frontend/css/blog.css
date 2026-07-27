@@ -72,8 +72,8 @@ img { max-width: 100%; display: block; }
 .site-header {
   position: sticky; top: 0; z-index: 50;
   background:
-    radial-gradient(70% 140% at 8% -30%, rgba(255,255,255,0.30), transparent 60%),
-    linear-gradient(100deg, var(--cyan) 0%, #00A8BC 18%, var(--cyan-deep) 48%, var(--cyan-deep) 100%);
+    radial-gradient(70% 140% at 8% -30%, rgba(255,255,255,0.22), transparent 60%),
+    linear-gradient(100deg, var(--indigo) 0%, #4A6FE0 35%, #2E9BC7 65%, var(--mint) 100%);
   border-bottom: none;
 }
 .site-header .wrap {
@@ -81,29 +81,29 @@ img { max-width: 100%; display: block; }
   padding-top: 16px; padding-bottom: 16px;
 }
 .brand {
-  display: flex; align-items: center; gap: 14px;
+  display: flex; align-items: center; gap: 10px;
   font-family: var(--font-display); font-weight: 700; font-size: 21px;
   color: #fff;
-  text-shadow: 0 1px 8px rgba(0,25,35,0.35);
+  text-shadow: 0 1px 8px rgba(20,20,50,0.35);
 }
 .brand .mark {
-  width: 46px; height: 46px;
+  width: 40px; height: 40px;
   object-fit: contain; flex-shrink: 0;
-  filter: drop-shadow(0 2px 5px rgba(0,30,40,0.45));
+  filter: drop-shadow(0 2px 5px rgba(20,20,50,0.45));
 }
 .header-nav { display: flex; align-items: center; gap: 28px; }
 .header-nav a {
   font-family: var(--font-mono); font-size: 13px; letter-spacing: .02em;
   color: rgba(255,255,255,0.9); font-weight: 500;
-  text-shadow: 0 1px 6px rgba(0,25,35,0.3);
+  text-shadow: 0 1px 6px rgba(20,20,50,0.3);
 }
 .header-nav a:hover { color: #fff; }
 .nav-cta {
-  background: #fff; color: var(--cyan-deep) !important;
+  background: #fff; color: var(--indigo-deep) !important;
   padding: 9px 18px; border-radius: 100px; font-family: var(--font-mono);
   font-size: 12.5px; font-weight: 700;
 }
-.nav-cta:hover { background: rgba(255,255,255,0.88); color: var(--cyan-deep) !important; }
+.nav-cta:hover { background: rgba(255,255,255,0.88); color: var(--indigo-deep) !important; }
 
 /* ─── Qabul banneri (bosh sahifada) ─── */
 .admission-banner {
@@ -352,8 +352,8 @@ body.nav-open { overflow: hidden; }
 .site-footer {
   border-top: none; padding: 48px 0 36px;
   background:
-    radial-gradient(60% 160% at 92% 130%, rgba(255,255,255,0.18), transparent 60%),
-    linear-gradient(100deg, var(--cyan) 0%, #00A8BC 18%, var(--cyan-deep) 48%, var(--cyan-deep) 100%);
+    radial-gradient(60% 160% at 92% 130%, rgba(255,255,255,0.16), transparent 60%),
+    linear-gradient(100deg, var(--indigo) 0%, #4A6FE0 35%, #2E9BC7 65%, var(--mint) 100%);
 }
 .footer-grid {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap;
