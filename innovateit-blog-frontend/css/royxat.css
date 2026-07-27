@@ -2,12 +2,7 @@
    Ro'yxatdan o'tish sahifasi — blog.css'dagi CSS o'zgaruvchilaridan foydalanadi
    ═══════════════════════════════════════════════════════════════════════════ */
 
-.nav-cta {
-  background: var(--indigo); color: #fff !important;
-  padding: 9px 18px; border-radius: 100px; font-family: var(--font-mono);
-  font-size: 12.5px; font-weight: 600;
-}
-.nav-cta:hover { background: var(--indigo-deep); }
+/* .nav-cta stili endi css/blog.css'da — barcha sahifalarda ishlatiladi */
 
 /* ─── Hero + stats ─── */
 .rx-hero { padding-bottom: 40px; }

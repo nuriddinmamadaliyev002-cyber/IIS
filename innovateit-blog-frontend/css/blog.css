@@ -92,6 +92,37 @@ img { max-width: 100%; display: block; }
   color: var(--ink-soft); font-weight: 500;
 }
 .header-nav a:hover { color: var(--indigo); }
+.nav-cta {
+  background: var(--indigo); color: #fff !important;
+  padding: 9px 18px; border-radius: 100px; font-family: var(--font-mono);
+  font-size: 12.5px; font-weight: 600;
+}
+.nav-cta:hover { background: var(--indigo-deep); color: #fff !important; }
+
+/* ─── Qabul banneri (bosh sahifada) ─── */
+.admission-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  background: linear-gradient(120deg, var(--indigo), var(--indigo-deep));
+  border-radius: var(--radius); padding: 18px 26px; margin: 28px 0;
+  text-decoration: none; transition: transform .15s, box-shadow .15s;
+}
+.admission-banner:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(91,79,232,0.28); }
+.admission-banner-text { display: flex; flex-direction: column; gap: 3px; }
+.admission-banner-eyebrow {
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+  color: rgba(255,255,255,0.75); text-transform: uppercase; letter-spacing: .05em;
+}
+.admission-banner-title {
+  font-family: var(--font-display); font-size: 17px; font-weight: 600; color: #fff;
+}
+.admission-banner-btn {
+  flex-shrink: 0; background: #fff; color: var(--indigo);
+  padding: 10px 18px; border-radius: 100px; font-family: var(--font-mono);
+  font-size: 12.5px; font-weight: 700; white-space: nowrap;
+}
+@media (max-width: 560px) {
+  .admission-banner { flex-direction: column; align-items: flex-start; }
+}
 .header-cta {
   font-family: var(--font-mono); font-size: 12.5px; font-weight: 600;
   padding: 9px 16px; border-radius: 100px;
