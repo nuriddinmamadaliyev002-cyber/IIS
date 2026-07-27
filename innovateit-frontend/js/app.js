@@ -79,14 +79,21 @@ async function doLogin() {
           localStorage.setItem('iit_bux_u', JSON.stringify({ username, parol, ism: rb.ism }));
           window.location.href = 'buxgalter.html';
         } else {
-          // 4. Viewer sifatida tekshiramiz
-          const rv = await api.loginViewer({ username, parol });
-          if (rv.ok) {
-            // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
-            localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
-            window.location.href = 'portfolio-viewer.html';
+          // 4. Sales xodimi sifatida tekshiramiz
+          const rs = await api.loginSales({ username, parol });
+          if (rs.ok) {
+            localStorage.setItem('iit_sales_u', JSON.stringify({ username, ism: rs.ism, id: rs.id }));
+            window.location.href = 'sales.html';
           } else {
-            showErr(g('login-err'), "Username yoki parol noto'g'ri");
+            // 5. Viewer sifatida tekshiramiz
+            const rv = await api.loginViewer({ username, parol });
+            if (rv.ok) {
+              // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
+              localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
+              window.location.href = 'portfolio-viewer.html';
+            } else {
+              showErr(g('login-err'), "Username yoki parol noto'g'ri");
+            }
           }
         }
       }
