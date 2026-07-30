@@ -79,10 +79,16 @@ img { max-width: 100%; display: block; }
    uch xil joyda, uch xil kenglikdagi elementlarda ham xuddi bitta katta
    rasmning turli oynalaridek, bir xil x-koordinatada bir xil rang chiqadi. */
 .site-header,
-.site-footer,
-.admission-banner {
+.site-footer {
   background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
   background-attachment: fixed;
+}
+/* .admission-banner alohida: hoverda transform ishlatgani uchun
+   background-attachment:fixed bilan birga ishlatilsa, ba'zi brauzerlarda
+   fon "yassi" ranga aylanib qoladi — shuning uchun o'ziga xos, elementga
+   bog'liq (fixed bo'lmagan) gradient ishlatiladi. */
+.admission-banner {
+  background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
 }
 .site-header {
   position: sticky; top: 0; z-index: 50;
@@ -136,9 +142,10 @@ img { max-width: 100%; display: block; }
 .admission-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
   border-radius: var(--radius); padding: 18px 26px; margin: 28px 0;
-  text-decoration: none; transition: transform .15s, box-shadow .15s;
+  text-decoration: none; transition: transform .12s ease;
 }
-.admission-banner:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(20,110,190,0.3); }
+.admission-banner:hover { transform: translateY(-4px); }
+.admission-banner:active { transform: translateY(-1px); }
 .admission-banner-text { display: flex; flex-direction: column; gap: 3px; }
 .admission-banner-eyebrow {
   font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
