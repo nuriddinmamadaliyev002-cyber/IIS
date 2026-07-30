@@ -201,8 +201,8 @@ async function initHomeMixedCarousel() {
       dots: true,
       loop: mixed.length > 3,
       autoplay: true,
-      autoplayTimeout: 3500,
-      autoplaySpeed: 900,
+      autoplayTimeout: 6000,
+      autoplaySpeed: 1000,
       autoplayHoverPause: true,
       responsive: {
         0:    { items: 1 },
