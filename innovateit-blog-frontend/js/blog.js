@@ -146,55 +146,69 @@ function gotoPage(p) {
   document.getElementById('posts-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ─── Bosh sahifa: har bir kategoriya bo'yicha eng so'ngi 2ta post (Owl Carousel) ──
-// Yangi postlar qo'shilaverganda bosh sahifadagi umumiy postlar soni cheksiz
-// o'sib ketmasligi uchun — har bir kategoriyadan faqat eng so'nggi 2ta post
-// ko'rsatiladi, kategoriya ichida esa Owl Carousel bilan varaqlash mumkin.
-const CATEGORY_PAGES = {
-  'yangiliklar':          'yangiliklar.html',
-  'oquvchilar-yutuqlari': 'yutuqlar.html',
-  'it-darslar':           'it-darslar.html'
-};
+// ─── Bosh sahifa: barcha kategoriyalardan aralash, avtomatik karusel ────────
+// Har bir kategoriyadan eng so'nggi 2ta post olinadi, keyin round-robin
+// tartibida ("aralashib") bitta umumiy ro'yxatga birlashtiriladi — shunda
+// ketma-ket bir xil kategoriyadan post chiqib qolmaydi. Bitta Owl Carousel
+// bularni avtomatik o'ngdan chapga sirg'alib ko'rsatadi: katta ekranda 3ta,
+// planshetda 2ta, telefonda 1ta post bir vaqtda ko'rinadi.
 const HOME_CAROUSEL_LIMIT = 2;
 
-async function initHomeCategoryCarousels() {
+async function initHomeMixedCarousel() {
   const wrap = document.getElementById('cat-sections');
   if (!wrap) return;
 
   const catRes = await apiGet('/api/blog/categories');
   if (!catRes.ok || !catRes.categories.length) { wrap.innerHTML = ''; return; }
 
-  const sections = [];
-  for (const cat of catRes.categories) {
-    const postsRes = await apiGet(`/api/blog/posts?kategoriya=${encodeURIComponent(cat.slug)}&limit=${HOME_CAROUSEL_LIMIT}`);
-    if (!postsRes.ok || !postsRes.posts.length) continue;
-    const pageHref = CATEGORY_PAGES[cat.slug] || 'yangiliklar.html';
-    sections.push(`
-      <section class="cat-section">
-        <div class="wrap">
-          <div class="cat-section-head">
-            <h2>${esc(cat.nomi)}</h2>
-            <a href="${pageHref}">Barchasini ko'rish →</a>
-          </div>
-          <div class="owl-carousel owl-theme cat-carousel">
-            ${postsRes.posts.map(postCardHtml).join('')}
-          </div>
-        </div>
-      </section>`);
+  const perCategory = await Promise.all(
+    catRes.categories.map(cat =>
+      apiGet(`/api/blog/posts?kategoriya=${encodeURIComponent(cat.slug)}&limit=${HOME_CAROUSEL_LIMIT}`)
+        .then(res => (res.ok ? res.posts : []))
+    )
+  );
+
+  // Round-robin aralashtirish: 1-kategoriya 1-post, 2-kategoriya 1-post, ...
+  const mixed = [];
+  const maxLen = Math.max(0, ...perCategory.map(p => p.length));
+  for (let i = 0; i < maxLen; i++) {
+    for (const posts of perCategory) {
+      if (posts[i]) mixed.push(posts[i]);
+    }
   }
 
-  wrap.innerHTML = sections.join('') || '<div class="wrap"><div class="empty-state">Hali postlar yo\'q</div></div>';
+  if (!mixed.length) {
+    wrap.innerHTML = '<div class="wrap"><div class="empty-state">Hali postlar yo\'q</div></div>';
+    return;
+  }
+
+  wrap.innerHTML = `
+    <section class="cat-section">
+      <div class="wrap">
+        <div class="cat-section-head">
+          <h2>So'nggi postlar</h2>
+        </div>
+        <div class="owl-carousel owl-theme cat-carousel" id="home-carousel">
+          ${mixed.map(postCardHtml).join('')}
+        </div>
+      </div>
+    </section>`;
 
   if (typeof $ !== 'undefined' && $.fn && $.fn.owlCarousel) {
-    $('.cat-carousel').each(function () {
-      $(this).owlCarousel({
-        items: 2,
-        margin: 24,
-        nav: true,
-        dots: true,
-        loop: false,
-        responsive: { 0: { items: 1 }, 640: { items: 2 } }
-      });
+    $('#home-carousel').owlCarousel({
+      margin: 24,
+      nav: false,
+      dots: true,
+      loop: mixed.length > 3,
+      autoplay: true,
+      autoplayTimeout: 3500,
+      autoplaySpeed: 900,
+      autoplayHoverPause: true,
+      responsive: {
+        0:    { items: 1 },
+        700:  { items: 2 },
+        1100: { items: 3 }
+      }
     });
   }
 }
