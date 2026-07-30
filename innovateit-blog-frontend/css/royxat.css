@@ -90,7 +90,6 @@
 .rx-submit {
   width: 100%; padding: 15px; border: none; border-radius: 100px;
   background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
-  background-attachment: fixed;
   color: #fff; font-family: var(--font-mono);
   font-size: 14px; font-weight: 600; letter-spacing: .02em; cursor: pointer;
   transition: transform .12s ease;
