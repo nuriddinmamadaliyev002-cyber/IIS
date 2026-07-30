@@ -32,8 +32,10 @@ CREATE TABLE IF NOT EXISTS leadlar (
     id             SERIAL PRIMARY KEY,
     ism            TEXT    NOT NULL,
     telefon        TEXT    NOT NULL,
-    farzand_ismi   TEXT    DEFAULT '',
-    sinf           TEXT    DEFAULT '',              -- farzandning sinfi/yoshi
+    telefon2       TEXT    DEFAULT '',              -- qo'shimcha (ixtiyoriy) telefon
+    oquvchi_familiya TEXT  DEFAULT '',               -- o'quvchining familiyasi
+    oquvchi_ismi   TEXT    DEFAULT '',               -- o'quvchining ismi
+    sinf           TEXT    DEFAULT '',              -- o'quvchining sinfi/yoshi
     maktab_id      INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
     hudud          TEXT    DEFAULT '',               -- agar maktab ro'yxatda bo'lmasa, erkin matn
     izoh           TEXT    DEFAULT '',

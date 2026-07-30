@@ -38,13 +38,15 @@ function isValidPhone(v) {
 async function onSubmit(e) {
   e.preventDefault();
 
-  const ism         = document.getElementById('rx-ism').value.trim();
-  const telefon     = document.getElementById('rx-telefon').value.trim();
-  const farzandIsmi = document.getElementById('rx-farzand').value.trim();
-  const sinf        = document.getElementById('rx-sinf').value;
-  const maktabId    = document.getElementById('rx-maktab').value || null;
-  const hudud       = document.getElementById('rx-hudud').value.trim();
-  const izoh        = document.getElementById('rx-izoh').value.trim();
+  const ism             = document.getElementById('rx-ism').value.trim();
+  const telefon         = document.getElementById('rx-telefon').value.trim();
+  const telefon2        = document.getElementById('rx-telefon2').value.trim();
+  const oquvchiFamiliya = document.getElementById('rx-oquvchi-familiya').value.trim();
+  const oquvchiIsmi     = document.getElementById('rx-oquvchi-ismi').value.trim();
+  const sinf            = document.getElementById('rx-sinf').value;
+  const maktabId        = document.getElementById('rx-maktab').value || null;
+  const hudud           = document.getElementById('rx-hudud').value.trim();
+  const izoh            = document.getElementById('rx-izoh').value.trim();
 
   const errEl = document.getElementById('rx-err');
   errEl.style.display = 'none';
@@ -59,6 +61,11 @@ async function onSubmit(e) {
     document.getElementById('rx-telefon').focus();
     return;
   }
+  if (telefon2 && !isValidPhone(telefon2)) {
+    showErr("Qo'shimcha telefon raqam noto'g'ri kiritildi");
+    document.getElementById('rx-telefon2').focus();
+    return;
+  }
 
   const btn = document.getElementById('rx-submit-btn');
   const btnTxt = document.getElementById('rx-submit-txt');
@@ -70,7 +77,7 @@ async function onSubmit(e) {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        ism, telefon, farzandIsmi, sinf,
+        ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf,
         maktabId: maktabId ? parseInt(maktabId, 10) : null,
         hudud, izoh, manba: 'sayt',
       }),

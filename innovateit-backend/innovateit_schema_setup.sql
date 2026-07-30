@@ -319,7 +319,9 @@ CREATE TABLE IF NOT EXISTS leadlar (
     id             SERIAL PRIMARY KEY,
     ism            TEXT    NOT NULL,
     telefon        TEXT    NOT NULL,
-    farzand_ismi   TEXT    DEFAULT '',
+    telefon2       TEXT    DEFAULT '',
+    oquvchi_familiya TEXT  DEFAULT '',
+    oquvchi_ismi   TEXT    DEFAULT '',
     sinf           TEXT    DEFAULT '',
     maktab_id      INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
     hudud          TEXT    DEFAULT '',
@@ -331,6 +333,25 @@ CREATE TABLE IF NOT EXISTS leadlar (
     yaratilgan     TIMESTAMP DEFAULT NOW(),
     yangilangan    TIMESTAMP DEFAULT NOW()
 );
+
+-- ─── 21.1 Eski (mavjud) bazalar uchun idempotent yangilanish ──────────────────
+--  CREATE TABLE IF NOT EXISTS jadval allaqachon bor bo'lsa, YUQORIDAGI ustunlar
+--  ta'rifiga tegmaydi — shuning uchun mavjud productionlarni ham deploy.sh
+--  orqali avtomatik yangilab turish uchun quyidagi qatorlar qo'shildi.
+--  (Bir marta ishga tushirilgan migrations/007 bilan bir xil ma'noni bajaradi,
+--   lekin bu yerda har bir deployda xavfsiz qayta ishga tushirsa bo'ladi.)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'leadlar' AND column_name = 'farzand_ismi')
+     AND NOT EXISTS (SELECT 1 FROM information_schema.columns
+             WHERE table_name = 'leadlar' AND column_name = 'oquvchi_ismi') THEN
+    ALTER TABLE leadlar RENAME COLUMN farzand_ismi TO oquvchi_ismi;
+  END IF;
+END $$;
+
+ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS oquvchi_familiya TEXT DEFAULT '';
+ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS telefon2         TEXT DEFAULT '';
 
 
 -- ─── 22. SALES XODIMLARIGA MAKTAB BIRIKTIRISH ─────────────────────────────────

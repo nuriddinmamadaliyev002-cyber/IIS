@@ -33,14 +33,16 @@ async function getSalesMaktabIds(salesId) {
 
 // ─── POST /api/sales/leads — PUBLIC: ro'yxatdan o'tish sahifasidan ───────────
 router.post('/leads', async (req, res) => {
-  const ism          = req.body.ism?.trim();
-  const telefon      = req.body.telefon?.trim();
-  const farzandIsmi  = req.body.farzandIsmi?.trim() || '';
-  const sinf         = req.body.sinf?.trim() || '';
-  const maktabId     = req.body.maktabId || null;
-  const hudud        = req.body.hudud?.trim() || '';
-  const izoh         = req.body.izoh?.trim() || '';
-  const manba        = req.body.manba?.trim() || 'sayt';
+  const ism             = req.body.ism?.trim();
+  const telefon         = req.body.telefon?.trim();
+  const telefon2        = req.body.telefon2?.trim() || '';
+  const oquvchiFamiliya = req.body.oquvchiFamiliya?.trim() || '';
+  const oquvchiIsmi     = req.body.oquvchiIsmi?.trim() || '';
+  const sinf            = req.body.sinf?.trim() || '';
+  const maktabId        = req.body.maktabId || null;
+  const hudud           = req.body.hudud?.trim() || '';
+  const izoh            = req.body.izoh?.trim() || '';
+  const manba           = req.body.manba?.trim() || 'sayt';
 
   if (!ism)
     return res.status(400).json({ ok: false, error: 'Ism majburiy' });
@@ -49,9 +51,9 @@ router.post('/leads', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `INSERT INTO leadlar (ism, telefon, farzand_ismi, sinf, maktab_id, hudud, izoh, manba)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`,
-      [ism, telefon, farzandIsmi, sinf, maktabId, hudud, izoh, manba]
+      `INSERT INTO leadlar (ism, telefon, telefon2, oquvchi_familiya, oquvchi_ismi, sinf, maktab_id, hudud, izoh, manba)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+      [ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf, maktabId, hudud, izoh, manba]
     );
     res.json({ ok: true, id: result.rows[0].id });
   } catch (err) {
