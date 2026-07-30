@@ -107,20 +107,39 @@ async function loadPost() {
   renderBottomBackLink(p.kategoriya_slug);
 }
 
-// Kategoriya slugiga qarab to'g'ri ro'yxat sahifasiga qaytish havolasini
-// postning eng pastiga qo'yadi (yagona ko'rinadigan navigatsiya elementi —
-// o'quvchining e'tibori postni o'qishga qaratilishi uchun).
-const CATEGORY_BACK_LINKS = {
-  'yangiliklar':            { href: 'yangiliklar.html', label: 'Yangiliklarga qaytish' },
-  'oquvchilar-yutuqlari':   { href: 'yutuqlar.html',     label: 'Yutuqlarga qaytish' },
-  'it-darslar':             { href: 'it-darslar.html',   label: 'IT darslarga qaytish' }
+// Kategoriya slugiga qarab standart (fallback) ro'yxat sahifasi — agar
+// qaysi sahifadan kelinganini aniqlab bo'lmasa shunga qaytariladi.
+const CATEGORY_FALLBACK = {
+  'yangiliklar':          'yangiliklar.html',
+  'oquvchilar-yutuqlari': 'yutuqlar.html',
+  'it-darslar':           'it-darslar.html'
 };
+const KNOWN_LIST_PAGES = ['', 'index.html', 'yangiliklar.html', 'yutuqlar.html', 'it-darslar.html'];
+
+// O'quvchi qaysi sahifadan (bosh sahifa, yangiliklar, yutuqlar, it-darslar)
+// shu postga o'tgan bo'lsa, "Orqaga qaytish" havolasi aynan o'sha sahifaga
+// olib boradi (query-parametrlari, masalan sahifalash bilan birga saqlanadi).
+// Aniqlab bo'lmasa — postning kategoriyasiga mos ro'yxat sahifasiga tushadi.
+function resolveBackTarget(kategoriyaSlug) {
+  const fallbackHref = CATEGORY_FALLBACK[kategoriyaSlug] || '/';
+  const ref = document.referrer;
+  if (ref) {
+    try {
+      const refUrl = new URL(ref);
+      if (refUrl.hostname === window.location.hostname) {
+        const file = refUrl.pathname.split('/').pop();
+        if (KNOWN_LIST_PAGES.includes(file)) return ref;
+      }
+    } catch (e) { /* noto'g'ri referrer — e'tiborsiz qoldiriladi */ }
+  }
+  return fallbackHref;
+}
 
 function renderBottomBackLink(kategoriyaSlug) {
-  const target = CATEGORY_BACK_LINKS[kategoriyaSlug] || { href: '/', label: 'Barcha postlarga qaytish' };
+  const href = resolveBackTarget(kategoriyaSlug);
   const wrap = document.createElement('div');
   wrap.className = 'article-body';
-  wrap.innerHTML = `<a href="${target.href}" class="back-link back-link-bottom">← ${esc(target.label)}</a>`;
+  wrap.innerHTML = `<a href="${esc(href)}" class="back-link back-link-bottom">← Orqaga qaytish</a>`;
   document.getElementById('post-content').insertAdjacentElement('afterend', wrap);
 }
 
