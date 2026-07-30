@@ -127,9 +127,10 @@ img { max-width: 100%; display: block; }
   background: #fff; color: var(--indigo-deep) !important;
   padding: 9px 18px; border-radius: 100px; font-family: var(--font-mono);
   font-size: 12.5px; font-weight: 700;
-  transition: background .15s ease, color .15s ease;
+  transition: transform .2s ease, box-shadow .2s ease;
 }
-.nav-cta:hover { background: #FFC107; color: #fff !important; }
+.nav-cta:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(21,153,212,0.30); }
+.nav-cta:active { transform: translateY(0); box-shadow: 0 4px 10px rgba(21,153,212,0.20); }
 
 /* ─── Qabul banneri (bosh sahifada) ─── */
 .admission-banner {
