@@ -349,19 +349,17 @@ body.nav-open { overflow: hidden; }
 .cat-carousel .owl-nav button.owl-prev,
 .cat-carousel .owl-nav button.owl-next {
   position: absolute; top: 38%; width: 38px; height: 38px; border-radius: 50%;
+  display: flex !important; align-items: center; justify-content: center;
   background: var(--card) !important; border: 1px solid var(--line);
-  color: var(--ink) !important; font-size: 18px; box-shadow: 0 2px 8px rgba(20,22,31,0.1);
+  color: var(--ink) !important; font-size: 22px; line-height: 1; box-shadow: 0 2px 8px rgba(20,22,31,0.1);
+  transition: background .15s, color .15s, border-color .15s;
 }
 .cat-carousel .owl-nav button.owl-prev { left: -14px; }
 .cat-carousel .owl-nav button.owl-next { right: -14px; }
 .cat-carousel .owl-nav button.owl-prev:hover,
-.cat-carousel .owl-nav button.owl-next:hover { background: var(--indigo) !important; color: #fff !important; }
+.cat-carousel .owl-nav button.owl-next:hover { background: var(--indigo) !important; color: #fff !important; border-color: var(--indigo); }
 .cat-carousel .owl-nav .disabled { display: none; }
-.cat-carousel .owl-dots { margin-top: 14px; text-align: center; }
-.cat-carousel .owl-dots .owl-dot span {
-  width: 7px; height: 7px; margin: 0 4px; background: var(--line);
-}
-.cat-carousel .owl-dots .owl-dot.active span { background: var(--indigo); }
+.cat-carousel .owl-dots { display: none; }
 
 /* ─── Pagination ─────────────────────────────────────────────────────────── */
 .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 44px; }

@@ -198,8 +198,9 @@ async function initHomeMixedCarousel() {
   if (typeof $ !== 'undefined' && $.fn && $.fn.owlCarousel) {
     $('#home-carousel').owlCarousel({
       margin: 24,
-      nav: false,
-      dots: true,
+      nav: true,
+      navText: ['<span aria-hidden="true">&#8249;</span>', '<span aria-hidden="true">&#8250;</span>'],
+      dots: false,
       loop: mixed.length > 3,
       autoplay: true,
       autoplayTimeout: 6000,
