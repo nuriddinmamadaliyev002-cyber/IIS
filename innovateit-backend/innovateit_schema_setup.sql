@@ -333,6 +333,18 @@ CREATE TABLE IF NOT EXISTS leadlar (
 );
 
 
+-- ─── 22. SALES XODIMLARIGA MAKTAB BIRIKTIRISH ─────────────────────────────────
+--  buxgalter_maktablar bilan bir xil patternda — sales xodimi qaysi
+--  maktab(lar)ga biriktirilganini saqlaydi
+CREATE TABLE IF NOT EXISTS sales_maktablar (
+    id            SERIAL PRIMARY KEY,
+    sales_id      INTEGER NOT NULL REFERENCES sales_xodimlar(id) ON DELETE CASCADE,
+    maktab_id     INTEGER NOT NULL REFERENCES maktablar(id)      ON DELETE CASCADE,
+    biriktirilgan TEXT DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY'),
+    UNIQUE(sales_id, maktab_id)
+);
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
@@ -424,6 +436,10 @@ CREATE INDEX IF NOT EXISTS idx_sales_username          ON sales_xodimlar(usernam
 CREATE INDEX IF NOT EXISTS idx_leadlar_holat           ON leadlar(holat);
 CREATE INDEX IF NOT EXISTS idx_leadlar_yaratilgan      ON leadlar(yaratilgan DESC);
 CREATE INDEX IF NOT EXISTS idx_leadlar_biriktirilgan   ON leadlar(biriktirilgan);
+
+-- sales_maktablar
+CREATE INDEX IF NOT EXISTS idx_salesmak_salesid        ON sales_maktablar(sales_id);
+CREATE INDEX IF NOT EXISTS idx_salesmak_maktabid       ON sales_maktablar(maktab_id);
 
 
 -- ════════════════════════════════════════════════════════════════════════════

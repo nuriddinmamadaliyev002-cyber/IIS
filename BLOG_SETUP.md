@@ -88,18 +88,18 @@ Yangi serverda yoki hali ishga tushirilmagan bo'lsa:
 
 ```bash
 cd /var/www/IIS/innovateit-backend
-sudo -u postgres psql -d innovateit -f innovateit_schema_setup.sql   # asosiy sxema (blog+sales jadvallari shu ichida ham bor)
+sudo -u postgres psql -d iis_db -f innovateit_schema_setup.sql   # asosiy sxema (blog+sales jadvallari shu ichida ham bor)
 # yoki alohida migratsiyalar bilan qadam-baqadam:
-sudo -u postgres psql -d innovateit -f migrations/002_blog_module.sql
-sudo -u postgres psql -d innovateit -f migrations/003_blog_cover_position.sql
-sudo -u postgres psql -d innovateit -f migrations/004_blog_cover_zoom.sql
-sudo -u postgres psql -d innovateit -f migrations/005_sales_module.sql
+sudo -u postgres psql -d iis_db -f migrations/002_blog_module.sql
+sudo -u postgres psql -d iis_db -f migrations/003_blog_cover_position.sql
+sudo -u postgres psql -d iis_db -f migrations/004_blog_cover_zoom.sql
+sudo -u postgres psql -d iis_db -f migrations/005_sales_module.sql
 ```
 
 Tekshirish:
 ```bash
-sudo -u postgres psql -d innovateit -c "\dt blog_*"
-sudo -u postgres psql -d innovateit -c "\dt leadlar"
+sudo -u postgres psql -d iis_db -c "\dt blog_*"
+sudo -u postgres psql -d iis_db -c "\dt leadlar"
 ```
 
 > ℹ️ Odatiy holatda bularning barchasi `bash deploy.sh` ichidagi

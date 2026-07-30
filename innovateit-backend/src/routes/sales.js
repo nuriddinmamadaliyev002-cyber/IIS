@@ -4,10 +4,12 @@
 // PUT    /api/sales/leads/:id    — lead holatini/biriktirilganini yangilash (sales, admin)
 // DELETE /api/sales/leads/:id    — lead o'chirish (admin)
 //
-// GET    /api/sales              — sales xodimlari ro'yxati (superadmin)
+// GET    /api/sales              — sales xodimlari ro'yxati + maktab biriktirmalari (superadmin)
 // POST   /api/sales              — yangi sales xodimi yaratish (superadmin)
 // PUT    /api/sales/:id          — sales xodimini tahrirlash (superadmin)
 // DELETE /api/sales/:id          — sales xodimini o'chirish (superadmin)
+// POST   /api/sales/biriktiruv   — maktab biriktirish (superadmin)
+// DELETE /api/sales/biriktiruv   — maktab ajratish (superadmin)
 const { Router }       = require('express');
 const pool              = require('../db');
 const { requireAuth }   = require('../middleware/jwt');
@@ -15,6 +17,15 @@ const { hashPassword }  = require('../middleware/auth');
 
 const router = Router();
 function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
+
+// ─── Sales xodimini maktab id lariga ko'ra olish ──────────────────────────────
+async function getSalesMaktabIds(salesId) {
+  const res = await pool.query(
+    `SELECT maktab_id FROM sales_maktablar WHERE sales_id = $1`,
+    [salesId]
+  );
+  return res.rows.map(r => r.maktab_id);
+}
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  LEADLAR
@@ -137,17 +148,31 @@ router.delete('/leads/:id', requireAuth(['admin']), async (req, res) => {
 //  SALES XODIMLARI (faqat superadmin boshqaradi)
 // ═══════════════════════════════════════════════════════════════════════════
 
-// ─── GET /api/sales — xodimlar ro'yxati ───────────────────────────────────────
+// ─── GET /api/sales — xodimlar ro'yxati + maktab biriktirmalari ──────────────
 router.get('/', requireAuth(['admin']), async (req, res) => {
   if (!req.user.isSuper)
     return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
 
   try {
+    const maktablarRes = await pool.query('SELECT id, nomi FROM maktablar ORDER BY nomi');
+
     const result = await pool.query(
-      `SELECT id, ism, familiya, username, telegram_id, yaratilgan
-       FROM sales_xodimlar ORDER BY yaratilgan DESC`
+      `SELECT
+         s.id, s.ism, s.familiya, s.username, s.telegram_id, s.yaratilgan,
+         COALESCE(
+           JSON_AGG(
+             JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi)
+           ) FILTER (WHERE m.id IS NOT NULL),
+           '[]'
+         ) AS maktablar
+       FROM sales_xodimlar s
+       LEFT JOIN sales_maktablar sm ON sm.sales_id = s.id
+       LEFT JOIN maktablar m        ON m.id = sm.maktab_id
+       GROUP BY s.id
+       ORDER BY s.yaratilgan DESC`
     );
-    res.json({ ok: true, xodimlar: result.rows });
+
+    res.json({ ok: true, xodimlar: result.rows, maktablar: maktablarRes.rows });
   } catch (err) {
     console.error(err);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
@@ -163,6 +188,7 @@ router.post('/', requireAuth(['admin']), async (req, res) => {
   const familiya = req.body.familiya?.trim() || '';
   const username = req.body.username?.trim().toLowerCase();
   const parol    = req.body.parol;
+  const maktablar = req.body.maktablar || [];
 
   if (!ism)
     return res.status(400).json({ ok: false, error: 'Ism majburiy' });
@@ -171,21 +197,40 @@ router.post('/', requireAuth(['admin']), async (req, res) => {
   if (parol.length < 6)
     return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
 
+  const client = await pool.connect();
   try {
-    const uCheck = await pool.query('SELECT id FROM sales_xodimlar WHERE username=$1', [username]);
-    if (uCheck.rowCount > 0)
+    await client.query('BEGIN');
+
+    const uCheck = await client.query('SELECT id FROM sales_xodimlar WHERE username=$1', [username]);
+    if (uCheck.rowCount > 0) {
+      await client.query('ROLLBACK');
       return res.status(400).json({ ok: false, error: 'Bu username allaqachon band' });
+    }
 
     const parolHash = await hashPassword(parol);
-    const result = await pool.query(
+    const result = await client.query(
       `INSERT INTO sales_xodimlar (ism, familiya, username, parol, yaratilgan)
        VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [ism, familiya, username, parolHash, todayUZ()]
     );
-    res.json({ ok: true, id: result.rows[0].id });
+    const salesId = result.rows[0].id;
+
+    for (const maktabId of maktablar) {
+      await client.query(
+        `INSERT INTO sales_maktablar (sales_id, maktab_id)
+         VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+        [salesId, maktabId]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, id: salesId });
   } catch (err) {
+    await client.query('ROLLBACK');
     console.error(err);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
   }
 });
 
@@ -199,10 +244,16 @@ router.put('/:id', requireAuth(['admin']), async (req, res) => {
   const familiya = req.body.familiya?.trim();
   const username = req.body.username?.trim().toLowerCase();
   const parol    = req.body.parol;
+  const maktablar = req.body.maktablar;
 
+  const client = await pool.connect();
   try {
-    if (parol && parol.length < 6)
+    if (parol && parol.length < 6) {
+      client.release();
       return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
+    }
+
+    await client.query('BEGIN');
 
     let q, params;
     if (parol) {
@@ -214,10 +265,70 @@ router.put('/:id', requireAuth(['admin']), async (req, res) => {
       params = [ism, familiya, username, id];
     }
 
-    const result = await pool.query(q, params);
-    if (result.rowCount === 0)
+    const result = await client.query(q, params);
+    if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ ok: false, error: 'Xodim topilmadi' });
+    }
 
+    if (Array.isArray(maktablar)) {
+      await client.query('DELETE FROM sales_maktablar WHERE sales_id=$1', [id]);
+      for (const maktabId of maktablar) {
+        await client.query(
+          `INSERT INTO sales_maktablar (sales_id, maktab_id)
+           VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+          [id, maktabId]
+        );
+      }
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
+  }
+});
+
+// ─── POST /api/sales/biriktiruv — maktab biriktirish ──────────────────────────
+router.post('/biriktiruv', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: "Ruxsat yo'q" });
+
+  const { salesId, maktabId } = req.body;
+  if (!salesId || !maktabId)
+    return res.status(400).json({ ok: false, error: 'salesId va maktabId kerak' });
+
+  try {
+    await pool.query(
+      `INSERT INTO sales_maktablar (sales_id, maktab_id)
+       VALUES ($1, $2) ON CONFLICT DO NOTHING`,
+      [salesId, maktabId]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── DELETE /api/sales/biriktiruv — maktab ajratish ───────────────────────────
+router.delete('/biriktiruv', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: "Ruxsat yo'q" });
+
+  const { salesId, maktabId } = req.body;
+  if (!salesId || !maktabId)
+    return res.status(400).json({ ok: false, error: 'salesId va maktabId kerak' });
+
+  try {
+    await pool.query(
+      'DELETE FROM sales_maktablar WHERE sales_id=$1 AND maktab_id=$2',
+      [salesId, maktabId]
+    );
     res.json({ ok: true });
   } catch (err) {
     console.error(err);

@@ -273,6 +273,8 @@ const api = {
   createSales:      (d) => api.post('/api/sales', d),
   editSales:        (d) => api.put(`/api/sales/${d.id}`, d),
   deleteSales:      (d) => api.del(`/api/sales/${d.id}`, d),
+  biriktirSalesMaktab: (d) => api.post('/api/sales/biriktiruv', d),
+  ajratSalesMaktab:    (d) => api.del('/api/sales/biriktiruv', d),
 
   // ─── Leadlar ───
   getLeads:   (d) => api.get('/api/sales/leads', d),

@@ -11,7 +11,7 @@
 --                     murojaatlar (public POST, auth talab qilinmaydi)
 --
 --  ISHLATISH:
---    sudo -u postgres psql -d innovateit -f migrations/005_sales_module.sql
+--    sudo -u postgres psql -d iis_db -f migrations/005_sales_module.sql
 -- ═══════════════════════════════════════════════════════════════════════════
 
 BEGIN;

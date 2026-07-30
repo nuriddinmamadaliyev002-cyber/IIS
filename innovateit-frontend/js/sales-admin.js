@@ -5,8 +5,8 @@
 //  tekshiriladi).
 // ═══════════════════════════════════════════════════════════════════════════
 
-let SL_XODIMLAR = [];
-let SL_LEADS = [];
+let SL_XODIMLAR  = [];
+let SL_MAKTABLAR = []; // barcha maktablar ro'yxati (biriktirish uchun)
 
 function slEsc(s) {
   return String(s ?? '').replace(/[&<>"']/g, c => ({
@@ -14,23 +14,10 @@ function slEsc(s) {
   }[c]));
 }
 
-function slFormatDate(iso) {
-  if (!iso) return '—';
-  const d = new Date(iso);
-  return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-         ' ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
-}
-
-const SL_HOLAT_LABELS = {
-  yangi:            { text: '🆕 Yangi',             color: '#2563eb', bg: '#eff6ff' },
-  boglanildi:       { text: "📞 Bog'lanildi",        color: '#d97706', bg: '#fffbeb' },
-  royxatga_olindi:  { text: "✅ Ro'yxatga olindi",   color: '#16a34a', bg: '#f0fdf4' },
-  bekor_qilindi:    { text: '❌ Bekor qilindi',      color: '#dc2626', bg: '#fef2f2' },
-};
-
-// ─── Tab yuklanganda: xodimlar + leadlar ─────────────────────────────────────
+// ─── Tab yuklanganda: faqat sales xodimlari (leadlar endi faqat sales.html
+//     panelida ko'rsatiladi — superadmin CRM'da ko'rinmaydi) ─────────────────
 async function loadSalesTab() {
-  await Promise.all([loadSalesXodimlar(), loadLeads()]);
+  await loadSalesXodimlar();
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
@@ -44,7 +31,8 @@ async function loadSalesXodimlar() {
   try {
     const r = await api.getSalesXodimlar();
     if (!r.ok) { listEl.innerHTML = `<div style="color:#dc2626;padding:12px;font-size:13px;">❌ ${r.error}</div>`; return; }
-    SL_XODIMLAR = r.xodimlar || [];
+    SL_XODIMLAR  = r.xodimlar  || [];
+    SL_MAKTABLAR = r.maktablar || [];
     renderSalesXodimlar();
   } catch (e) {
     listEl.innerHTML = `<div style="color:#dc2626;padding:12px;font-size:13px;">❌ Xatolik: ${e.message}</div>`;
@@ -59,21 +47,90 @@ function renderSalesXodimlar() {
     return;
   }
 
-  listEl.innerHTML = SL_XODIMLAR.map(x => `
-    <div style="padding:14px 16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
-      <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:200px;">
-        <div style="width:36px;height:36px;border-radius:50%;background:#fdf0e0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🎯</div>
-        <div>
-          <div style="font-weight:600;font-size:14px;">${slEsc(x.familiya)} ${slEsc(x.ism)}</div>
-          <div style="font-size:12px;color:#7a7870;font-family:'DM Mono',monospace;">@${slEsc(x.username)}</div>
+  listEl.innerHTML = SL_XODIMLAR.map(x => {
+    // x.maktablar = [{id, nomi}, ...] — backenddan keladi
+    const myMaktablar = Array.isArray(x.maktablar) ? x.maktablar : [];
+    const myIds = new Set(myMaktablar.map(m => m.id));
+
+    const maktabTags = myMaktablar.map(m =>
+      `<span style="display:inline-flex;align-items:center;gap:4px;padding:2px 4px 2px 8px;border-radius:10px;background:#eff4ff;color:#2563eb;font-size:11px;font-weight:600;border:1px solid #bfdbfe;">
+        ${slEsc(m.nomi)}
+        <button onclick="ajratSalesMaktab(${x.id},${m.id})"
+          title="Maktabni ajratish"
+          style="width:16px;height:16px;border-radius:50%;border:none;background:#bfdbfe;
+                 color:#1d4ed8;font-size:10px;cursor:pointer;padding:0;line-height:1;flex-shrink:0;">✕</button>
+      </span>`
+    ).join('');
+
+    // Hali biriktirilmagan maktablar checkbox uchun
+    const freeMaktablar = SL_MAKTABLAR.filter(m => !myIds.has(m.id));
+    const checkboxItems = freeMaktablar.map(m =>
+      `<label style="display:flex;align-items:center;gap:6px;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:12px;white-space:nowrap;background:#f8fafc;border:1px solid #e2e8f0;transition:background .15s;"
+        onmouseover="this.style.background='#eff6ff'" onmouseout="this.style.background='#f8fafc'">
+        <input type="checkbox" value="${m.id}" class="sl-maktab-chk-${x.id}"
+          style="width:14px;height:14px;accent-color:#2563eb;cursor:pointer;">
+        ${slEsc(m.nomi)}
+      </label>`
+    ).join('');
+
+    return `<div style="padding:14px 16px;border-bottom:1px solid var(--border);">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;">
+        <div style="display:flex;align-items:center;gap:12px;flex:1;min-width:200px;">
+          <div style="width:36px;height:36px;border-radius:50%;background:#fdf0e0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🎯</div>
+          <div>
+            <div style="font-weight:600;font-size:14px;">${slEsc(x.familiya)} ${slEsc(x.ism)}</div>
+            <div style="font-size:12px;color:#7a7870;font-family:'DM Mono',monospace;">@${slEsc(x.username)}</div>
+          </div>
+        </div>
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+          <button class="bux-edit-btn" onclick="openEditSales(${x.id})">✏️ Tahrirlash</button>
+          <button class="bux-del-btn" onclick="deleteSalesXodim(${x.id},'${slEsc(x.username)}','${slEsc(x.ism)}')">O'chirish</button>
         </div>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-        <button class="bux-edit-btn" onclick="openEditSales(${x.id})">✏️ Tahrirlash</button>
-        <button class="bux-del-btn" onclick="deleteSalesXodim(${x.id},'${slEsc(x.username)}','${slEsc(x.ism)}')">O'chirish</button>
+
+      <!-- Biriktirilgan maktablar -->
+      <div style="margin-top:10px;display:flex;align-items:center;flex-wrap:wrap;gap:6px;">
+        <span style="font-size:11px;color:#7a7870;font-weight:600;margin-right:4px;">Maktablar:</span>
+        ${myMaktablar.length ? maktabTags : '<span style="font-size:11px;color:#9ca3af;">Biriktirilmagan</span>'}
       </div>
-    </div>
-  `).join('');
+
+      <!-- Maktab biriktirish -->
+      <div style="margin-top:8px;">
+        ${freeMaktablar.length ? `
+        <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+          ${checkboxItems}
+        </div>
+        <button class="bux-biriktiruv-btn" onclick="biriktirSalesMaktabUI(${x.id})">
+          Biriktirish
+        </button>` : '<span style="font-size:11px;color:#9ca3af;">Barcha maktablar biriktirilgan</span>'}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ─── Sales maktab biriktirish / ajratish ──────────────────────────────────────
+async function biriktirSalesMaktabUI(salesId) {
+  const checkboxes = document.querySelectorAll(`.sl-maktab-chk-${salesId}:checked`);
+  if (checkboxes.length === 0) { toast('⚠️ Kamida bitta maktab tanlang', 'error'); return; }
+
+  const maktabIds = [...checkboxes].map(c => parseInt(c.value, 10));
+  let xato = 0;
+
+  for (const maktabId of maktabIds) {
+    const r = await api.biriktirSalesMaktab({ salesId, maktabId });
+    if (!r.ok) xato++;
+  }
+
+  if (xato === 0) toast(`✅ ${maktabIds.length} ta maktab biriktirildi`, 'success');
+  else toast(`⚠️ ${xato} ta maktabda xatolik`, 'error');
+  loadSalesXodimlar();
+}
+
+async function ajratSalesMaktab(salesId, maktabId) {
+  if (!confirm('Bu maktabni sales xodimidan ajratasizmi?')) return;
+  const r = await api.ajratSalesMaktab({ salesId, maktabId });
+  if (r.ok) { toast('✅ Ajratildi'); loadSalesXodimlar(); }
+  else       toast('❌ ' + r.error, 'error');
 }
 
 async function createSalesXodim() {
@@ -167,100 +224,5 @@ async function deleteSalesXodim(id, username, ism) {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-//  LEADLAR
-// ═══════════════════════════════════════════════════════════════════════════
-
-async function loadLeads() {
-  const loadingEl = g('sl-leads-loading');
-  const emptyEl   = g('sl-leads-empty');
-  const tbody     = g('sl-leads-tbody');
-  if (!tbody) return; // tab hali render bo'lmagan bo'lishi mumkin (public sahifada)
-
-  loadingEl.style.display = 'block';
-  emptyEl.style.display = 'none';
-
-  try {
-    const holat = g('sl-holat-filter')?.value || '';
-    const r = await api.getLeads(holat ? { holat } : {});
-    if (r.ok) SL_LEADS = r.leadlar || [];
-    renderLeads();
-  } catch (e) {
-    toast("❌ Leadlarni yuklab bo'lmadi", 'error');
-  }
-  loadingEl.style.display = 'none';
-}
-
-function renderLeads() {
-  const tbody   = g('sl-leads-tbody');
-  const emptyEl = g('sl-leads-empty');
-
-  if (!SL_LEADS.length) {
-    tbody.innerHTML = '';
-    emptyEl.style.display = 'block';
-    return;
-  }
-  emptyEl.style.display = 'none';
-
-  tbody.innerHTML = SL_LEADS.map(l => {
-    const holatInfo = SL_HOLAT_LABELS[l.holat] || SL_HOLAT_LABELS.yangi;
-    const biriktirilganNomi = l.sales_ism
-      ? `${slEsc(l.sales_familiya || '')} ${slEsc(l.sales_ism)}`.trim()
-      : '<span style="color:#9ca3af;">—</span>';
-
-    const holatOptions = Object.entries(SL_HOLAT_LABELS).map(([key, info]) =>
-      `<option value="${key}" ${l.holat === key ? 'selected' : ''}>${info.text}</option>`
-    ).join('');
-
-    return `<tr>
-      <td>${slEsc(l.ism)}</td>
-      <td><a href="tel:${slEsc(l.telefon)}" style="color:#2563eb;text-decoration:none;">${slEsc(l.telefon)}</a></td>
-      <td>${slEsc(l.farzand_ismi || '—')}${l.sinf ? ` <span style="color:#9ca3af;">(${slEsc(l.sinf)})</span>` : ''}</td>
-      <td>${slEsc(l.maktab_nomi || l.hudud || '—')}</td>
-      <td>
-        <select onchange="updateLeadHolat(${l.id}, this.value)"
-          style="padding:5px 8px;border-radius:8px;border:1.5px solid ${holatInfo.color}33;background:${holatInfo.bg};color:${holatInfo.color};font-size:12px;font-weight:600;">
-          ${holatOptions}
-        </select>
-      </td>
-      <td>${biriktirilganNomi}</td>
-      <td style="font-size:12px;color:#7a7870;">${slFormatDate(l.yaratilgan)}</td>
-      <td>
-        <button onclick="deleteLeadRow(${l.id},'${slEsc(l.ism)}')"
-          style="padding:6px 10px;background:#fef2f2;color:#dc2626;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">O'chirish</button>
-      </td>
-    </tr>`;
-  }).join('');
-}
-
-async function updateLeadHolat(id, holat) {
-  try {
-    const r = await api.updateLead({ id, holat });
-    if (r.ok) {
-      toast('✅ Holat yangilandi', 'success');
-      const lead = SL_LEADS.find(l => l.id === id);
-      if (lead) lead.holat = holat;
-    } else {
-      toast('❌ ' + r.error, 'error');
-      loadLeads();
-    }
-  } catch (e) {
-    toast('❌ Xatolik: ' + e.message, 'error');
-  }
-}
-
-async function deleteLeadRow(id, ism) {
-  if (!confirm(`"${ism}" leadini o'chirmoqchimisiz?`)) return;
-
-  try {
-    const r = await api.deleteLead({ id });
-    if (r.ok) {
-      toast('✅ Lead o\'chirildi');
-      loadLeads();
-    } else {
-      toast('❌ ' + r.error, 'error');
-    }
-  } catch (e) {
-    toast('❌ Xatolik: ' + e.message, 'error');
-  }
-}
+// Leadlar bo'yicha barcha UI/mantiq endi faqat js/sales.js ichida
+// (dedicated sales.html paneli uchun) — superadmin CRM'da ko'rsatilmaydi.

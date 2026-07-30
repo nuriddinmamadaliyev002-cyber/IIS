@@ -18,7 +18,7 @@
                   Node.js :3002  (Express, PM2 process: innovateit-crm)
                           │
                           ▼
-                  PostgreSQL (innovateit DB)
+                  PostgreSQL (iis_db)
                           ▲
                           │
                           ┌──────────────────────────────┐
@@ -83,11 +83,11 @@ sudo systemctl enable nginx && sudo systemctl start nginx
 
 ```bash
 sudo -u postgres psql
-CREATE DATABASE innovateit;
-CREATE USER innovateit_user WITH PASSWORD 'KUCHLI_PAROL_YOZ';
-GRANT ALL PRIVILEGES ON DATABASE innovateit TO innovateit_user;
-\c innovateit
-GRANT ALL ON SCHEMA public TO innovateit_user;
+CREATE DATABASE iis_db;
+CREATE USER iis_user WITH PASSWORD 'KUCHLI_PAROL_YOZ';
+GRANT ALL PRIVILEGES ON DATABASE iis_db TO iis_user;
+\c iis_db
+GRANT ALL ON SCHEMA public TO iis_user;
 \q
 ```
 
@@ -114,8 +114,8 @@ nano .env
 PORT=3002
 DB_HOST=localhost
 DB_PORT=5432
-DB_NAME=innovateit
-DB_USER=innovateit_user
+DB_NAME=iis_db
+DB_USER=iis_user
 DB_PASSWORD=KUCHLI_PAROL_YOZ
 SUPER_ADMIN_USERNAME=superadmin
 SUPER_ADMIN_PAROL=25145771
@@ -127,14 +127,14 @@ JWT_EXPIRES=8h
 ### 5) Database jadvallarini yaratish
 
 ```bash
-sudo -u postgres psql -d innovateit -f /var/www/IIS/innovateit-backend/innovateit_schema_setup.sql
+sudo -u postgres psql -d iis_db -f /var/www/IIS/innovateit-backend/innovateit_schema_setup.sql
 
 # Blog moduli (agar hali ishga tushirilmagan bo'lsa):
-sudo -u postgres psql -d innovateit -f /var/www/IIS/innovateit-backend/migrations/002_blog_module.sql
+sudo -u postgres psql -d iis_db -f /var/www/IIS/innovateit-backend/migrations/002_blog_module.sql
 
 # Tekshirish:
-sudo -u postgres psql -d innovateit -c "\dt"
-sudo -u postgres psql -d innovateit -c "\dt blog_*"
+sudo -u postgres psql -d iis_db -c "\dt"
+sudo -u postgres psql -d iis_db -c "\dt blog_*"
 ```
 
 ### 6) PM2 bilan ishga tushirish
@@ -233,7 +233,7 @@ pm2 logs innovateit-crm --err --lines 30
 
 **DB ga ulanmayapti:**
 ```bash
-sudo -u postgres psql -d innovateit -c "SELECT current_user;"
+sudo -u postgres psql -d iis_db -c "SELECT current_user;"
 ```
 
 **Nginx xatosi:**
