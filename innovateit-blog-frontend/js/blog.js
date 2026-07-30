@@ -95,7 +95,7 @@ async function loadFeatured() {
 // ko'rinishda qayta ishlatiladi.
 function postCardHtml(p) {
   return `
-    <a class="card" href="post.html?slug=${encodeURIComponent(p.slug)}">
+    <div class="card">
       <div class="card-media">
         ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab)}" alt="">` : ''}
       </div>
@@ -103,10 +103,10 @@ function postCardHtml(p) {
         ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
         <h3>${esc(p.sarlavha)}</h3>
         <p>${esc(p.qisqacha || '')}</p>
-        <span class="card-more">Ko'proq o'qish →</span>
+        <a class="card-more" href="post.html?slug=${encodeURIComponent(p.slug)}">Ko'proq o'qish →</a>
         <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span><span>${p.korishlar || 0} ko'rishlar</span></div>
       </div>
-    </a>`;
+    </div>`;
 }
 
 async function loadPosts() {
@@ -187,7 +187,7 @@ async function initHomeMixedCarousel() {
     <section class="cat-section">
       <div class="wrap">
         <div class="cat-section-head">
-          <h2>So'nggi postlar</h2>
+          <h2>So'nggi maqolalar</h2>
         </div>
         <div class="owl-carousel owl-theme cat-carousel" id="home-carousel">
           ${mixed.map(postCardHtml).join('')}
