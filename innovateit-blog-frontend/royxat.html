@@ -76,11 +76,13 @@
           <div class="rx-row">
             <div class="rx-field">
               <label for="rx-telefon">Telefon raqam *</label>
-              <input type="tel" id="rx-telefon" name="telefon" placeholder="+998 90 123 45 67" required>
+              <input type="tel" id="rx-telefon" name="telefon" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel" required>
+              <div class="rx-tel-hint" id="rx-tel-hint"></div>
             </div>
             <div class="rx-field">
               <label for="rx-telefon2">Qo'shimcha telefon raqam</label>
-              <input type="tel" id="rx-telefon2" name="telefon2" placeholder="+998 90 123 45 67">
+              <input type="tel" id="rx-telefon2" name="telefon2" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel">
+              <div class="rx-tel-hint" id="rx-tel2-hint"></div>
             </div>
           </div>
 

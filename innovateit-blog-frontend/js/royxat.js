@@ -5,6 +5,8 @@
 
 window.addEventListener('DOMContentLoaded', () => {
   loadMaktablar();
+  setupTel('rx-telefon', 'rx-tel-hint');
+  setupTel('rx-telefon2', 'rx-tel2-hint');
 
   const form = document.getElementById('rx-form');
   if (form) form.addEventListener('submit', onSubmit);
@@ -28,10 +30,56 @@ async function loadMaktablar() {
   }
 }
 
-// ─── Telefon raqamni tekshirish (O'zbekiston formati, moslashuvchan) ────────
-function isValidPhone(v) {
-  const digits = v.replace(/\D/g, '');
-  return digits.length >= 9;
+// ─── Telefon mask va validatsiya (CRM admin paneli — js/app.js bilan bir xil) ─
+function fmtTel(val) {
+  const digits = val.replace(/\D/g, '');
+  if (!digits) return '';
+  let d = digits.startsWith('998') ? digits
+        : digits.startsWith('0')   ? '998' + digits.slice(1)
+        : '998' + digits;
+  d = d.slice(0, 12);
+  // Faqat mamlakat kodi qolgan bo'lsa (998 dan ortiq raqam yo'q) — bo'sh qaytaramiz
+  if (d === '998') return '';
+  let out = '';
+  if (d.length > 0)  out = '+' + d.slice(0, 3);
+  if (d.length > 3)  out += ' ' + d.slice(3, 5);
+  if (d.length > 5)  out += ' ' + d.slice(5, 8);
+  if (d.length > 8)  out += ' ' + d.slice(8, 10);
+  if (d.length > 10) out += ' ' + d.slice(10, 12);
+  return out;
+}
+function isTelOk(val) {
+  const d = val.replace(/\D/g, '');
+  return d.length === 12 && d.startsWith('998');
+}
+function validateTel(inp, hintEl) {
+  if (!inp) return;
+  const val = inp.value.trim();
+  if (!val) {
+    inp.className = 'tel-input';
+    if (hintEl) { hintEl.className = 'rx-tel-hint'; hintEl.textContent = ''; }
+    return;
+  }
+  const ok = isTelOk(val);
+  inp.className = 'tel-input ' + (ok ? 'tel-ok' : 'tel-err');
+  if (hintEl) {
+    hintEl.className   = 'rx-tel-hint ' + (ok ? 'ok' : 'err');
+    hintEl.textContent = ok ? "✓ To'g'ri format" : "✗ +998 XX XXX XX XX formatida kiriting";
+  }
+}
+function setupTel(inpId, hintId) {
+  const inp  = document.getElementById(inpId);
+  const hint = document.getElementById(hintId);
+  if (!inp) return;
+  inp.addEventListener('input', function () {
+    const oldLen = this.value.length;
+    const pos    = this.selectionStart;
+    this.value   = fmtTel(this.value);
+    const diff   = this.value.length - oldLen;
+    try { this.setSelectionRange(pos + diff, pos + diff); } catch (e) {}
+    validateTel(this, hint);
+  });
+  inp.addEventListener('blur', () => validateTel(inp, hint));
 }
 
 // ─── Forma yuborish ───────────────────────────────────────────────────────
@@ -56,13 +104,13 @@ async function onSubmit(e) {
     document.getElementById('rx-ism').focus();
     return;
   }
-  if (!telefon || !isValidPhone(telefon)) {
-    showErr("Iltimos, to'g'ri telefon raqam kiriting");
+  if (!telefon || !isTelOk(telefon)) {
+    showErr("Iltimos, telefon raqamni +998 XX XXX XX XX formatida kiriting");
     document.getElementById('rx-telefon').focus();
     return;
   }
-  if (telefon2 && !isValidPhone(telefon2)) {
-    showErr("Qo'shimcha telefon raqam noto'g'ri kiritildi");
+  if (telefon2 && !isTelOk(telefon2)) {
+    showErr("Qo'shimcha telefon raqam formati noto'g'ri");
     document.getElementById('rx-telefon2').focus();
     return;
   }

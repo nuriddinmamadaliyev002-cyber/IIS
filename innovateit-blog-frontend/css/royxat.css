@@ -82,6 +82,16 @@
 
 .rx-hint { font-size: 12px; color: var(--ink-faint); margin-top: 6px; }
 
+/* ─── Telefon validatsiya (CRM admin panelidagi bilan bir xil) ─── */
+.rx-field input.tel-ok  { border-color: #16a34a; }
+.rx-field input.tel-err { border-color: #dc2626; }
+.rx-tel-hint {
+  font-size: 11px; margin-top: 6px; min-height: 16px;
+  display: flex; align-items: center; gap: 4px;
+}
+.rx-tel-hint.ok  { color: #16a34a; }
+.rx-tel-hint.err { color: #dc2626; }
+
 .rx-err {
   background: rgba(217,38,38,0.08); color: #b32020; border-radius: var(--radius-sm);
   padding: 10px 14px; font-size: 13.5px; margin: 0 0 16px;
