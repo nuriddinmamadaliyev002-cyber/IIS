@@ -48,6 +48,12 @@ router.post('/leads', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Ism majburiy' });
   if (!telefon)
     return res.status(400).json({ ok: false, error: 'Telefon raqam majburiy' });
+  if (!oquvchiFamiliya)
+    return res.status(400).json({ ok: false, error: "O'quvchining familiyasi majburiy" });
+  if (!oquvchiIsmi)
+    return res.status(400).json({ ok: false, error: "O'quvchining ismi majburiy" });
+  if (!sinf)
+    return res.status(400).json({ ok: false, error: 'Sinf / bosqich majburiy' });
 
   try {
     const result = await pool.query(

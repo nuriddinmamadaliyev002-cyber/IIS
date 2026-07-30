@@ -149,7 +149,8 @@ function renderLeads() {
       <td style="font-weight:600;">${esc(l.ism)}</td>
       <td><a href="tel:${esc(l.telefon)}" style="color:#2563eb;text-decoration:none;">${esc(l.telefon)}</a></td>
       <td>${l.telefon2 ? `<a href="tel:${esc(l.telefon2)}" style="color:#2563eb;text-decoration:none;">${esc(l.telefon2)}</a>` : '—'}</td>
-      <td>${esc([l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ') || '—')}${l.sinf ? ` <span style="color:#9ca3af;">(${esc(l.sinf)})</span>` : ''}</td>
+      <td>${esc([l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ') || '—')}</td>
+      <td>${esc(l.sinf || '—')}</td>
       <td>${esc(l.maktab_nomi || l.hudud || '—')}</td>
       <td style="max-width:220px;white-space:normal;color:#6b7280;">${esc(l.izoh || '—')}</td>
       <td>

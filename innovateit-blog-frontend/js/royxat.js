@@ -114,6 +114,21 @@ async function onSubmit(e) {
     document.getElementById('rx-telefon2').focus();
     return;
   }
+  if (!oquvchiFamiliya) {
+    showErr("Iltimos, o'quvchining familiyasini kiriting");
+    document.getElementById('rx-oquvchi-familiya').focus();
+    return;
+  }
+  if (!oquvchiIsmi) {
+    showErr("Iltimos, o'quvchining ismini kiriting");
+    document.getElementById('rx-oquvchi-ismi').focus();
+    return;
+  }
+  if (!sinf) {
+    showErr("Iltimos, sinf / bosqichni tanlang");
+    document.getElementById('rx-sinf').focus();
+    return;
+  }
 
   const btn = document.getElementById('rx-submit-btn');
   const btnTxt = document.getElementById('rx-submit-txt');
