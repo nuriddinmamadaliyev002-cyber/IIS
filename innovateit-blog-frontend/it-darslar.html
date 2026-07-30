@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Blog — InnovateIT School</title>
-<meta name="description" content="InnovateIT School blogi: maktab yangiliklari, o'quvchilar yutuqlari, IT darslar va ota-onalar uchun foydali maqolalar.">
+<title>IT darslar — InnovateIT School Blog</title>
+<meta name="description" content="InnovateIT School'dan IT darslar: dasturlash, raqamli savodxonlik va foydali qo'llanmalar.">
 <link rel="stylesheet" href="css/blog.css">
 </head>
 <body>
@@ -40,8 +40,8 @@
 <section class="hero dot-texture">
   <div class="wrap">
     <div class="eyebrow">InnovateIT School Blog</div>
-    <h1>IT ta'lim dunyosidagi yangiliklar va yutuqlar</h1>
-    <p class="hero-sub">Maktablarimizdagi yangiliklar, o'quvchilarimizning xalqaro yutuqlari, IT darslar va ota-onalar uchun foydali maslahatlar — bir joyda.</p>
+    <h1>IT darslar va foydali qo'llanmalar</h1>
+    <p class="hero-sub">Dasturlash, raqamli savodxonlik va zamonaviy texnologiyalar bo'yicha o'quvchilar va ota-onalar uchun tushunarli maqolalar.</p>
 
     <div id="featured-slot"></div>
   </div>
@@ -59,7 +59,7 @@
 
 <div class="wrap">
   <div class="cat-bar" id="cat-bar">
-    <button class="chip active" data-slug="">Barchasi</button>
+    <button class="chip" data-slug="">Barchasi</button>
   </div>
 </div>
 
@@ -106,7 +106,7 @@
 <script src="js/blog.js"></script>
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
-initBlogListing();
+initBlogListing('it-darslar');
 </script>
 </body>
 </html>

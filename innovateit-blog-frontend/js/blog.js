@@ -52,6 +52,125 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+// ─── Postlar ro'yxati sahifalari uchun umumiy mantiq ────────────────────────
+// Bosh sahifa (index.html) va har bir kategoriya sahifasi (yangiliklar.html,
+// yutuqlar.html, it-darslar.html) shu funksiyalardan foydalanadi. Har biri
+// initBlogListing(fixedCategory)'ni chaqiradi — fixedCategory bo'sh bo'lsa
+// "Barchasi" (bosh sahifa), aks holda o'sha kategoriya slugi bilan sahifa
+// darhol o'sha kategoriyaga filtrlangan holda, sakramasdan, yuqoridan ochiladi.
+let CURRENT_CATEGORY = '';
+let CURRENT_PAGE = 1;
+const PAGE_LIMIT = 9;
+
+async function initBlogListing(fixedCategory = '') {
+  CURRENT_CATEGORY = fixedCategory || '';
+  await loadCategories(fixedCategory);
+  await loadFeatured();
+  await loadPosts();
+}
+
+async function loadCategories(fixedCategory) {
+  const res = await apiGet('/api/blog/categories');
+  if (!res.ok) return;
+  const bar = document.getElementById('cat-bar');
+  if (!bar) return;
+  res.categories.forEach(c => {
+    if (!c.postlar_soni) return; // bo'sh kategoriyani ko'rsatmaymiz
+    const btn = document.createElement('button');
+    btn.className = 'chip';
+    btn.dataset.slug = c.slug;
+    btn.textContent = `${c.nomi} (${c.postlar_soni})`;
+    btn.onclick = () => selectCategory(c.slug, btn);
+    bar.appendChild(btn);
+  });
+  const allBtn = bar.querySelector('.chip[data-slug=""]');
+  if (allBtn) allBtn.onclick = () => selectCategory('', allBtn);
+
+  if (fixedCategory) {
+    const target = bar.querySelector(`.chip[data-slug="${fixedCategory}"]`);
+    if (target) {
+      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+      target.classList.add('active');
+    }
+  }
+}
+
+function selectCategory(slug, btnEl) {
+  CURRENT_CATEGORY = slug;
+  CURRENT_PAGE = 1;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  btnEl.classList.add('active');
+  loadPosts();
+}
+
+async function loadFeatured() {
+  const slot = document.getElementById('featured-slot');
+  if (!slot) return;
+  const res = await apiGet('/api/blog/posts?limit=1');
+  if (!res.ok || !res.posts.length) { slot.innerHTML = ''; return; }
+  const p = res.posts[0];
+  slot.innerHTML = `
+    <a class="featured" href="post.html?slug=${encodeURIComponent(p.slug)}">
+      <div class="featured-media">
+        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab)}" alt="">` : ''}
+      </div>
+      <div class="featured-body">
+        ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
+        <h2>${esc(p.sarlavha)}</h2>
+        <p>${esc(p.qisqacha || '')}</p>
+        <div class="featured-meta">${esc(p.muallif)} · ${fmtDate(p.chop_vaqti)}</div>
+      </div>
+    </a>`;
+}
+
+async function loadPosts() {
+  const grid = document.getElementById('posts-grid');
+  if (!grid) return;
+  const qs = new URLSearchParams({ page: CURRENT_PAGE, limit: PAGE_LIMIT });
+  if (CURRENT_CATEGORY) qs.set('kategoriya', CURRENT_CATEGORY);
+
+  const res = await apiGet(`/api/blog/posts?${qs}`);
+  if (!res.ok) { grid.innerHTML = '<div class="empty-state">Postlarni yuklab bo\'lmadi</div>'; return; }
+
+  if (!res.posts.length) {
+    grid.innerHTML = '<div class="empty-state">Bu bo\'limda hali postlar yo\'q</div>';
+    document.getElementById('pagination').innerHTML = '';
+    return;
+  }
+
+  grid.innerHTML = res.posts.map(p => `
+    <a class="card" href="post.html?slug=${encodeURIComponent(p.slug)}">
+      <div class="card-media">
+        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab)}" alt="">` : ''}
+      </div>
+      <div class="card-body">
+        ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
+        <h3>${esc(p.sarlavha)}</h3>
+        <p>${esc(p.qisqacha || '')}</p>
+        <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span><span>${p.korishlar || 0} ko'rishlar</span></div>
+      </div>
+    </a>`).join('');
+
+  renderPagination(res.totalPages, res.page);
+}
+
+function renderPagination(totalPages, page) {
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.innerHTML = ''; return; }
+  let html = `<button ${page===1?'disabled':''} onclick="gotoPage(${page-1})">‹</button>`;
+  for (let i = 1; i <= totalPages; i++) {
+    html += `<button class="${i===page?'active':''}" onclick="gotoPage(${i})">${i}</button>`;
+  }
+  html += `<button ${page===totalPages?'disabled':''} onclick="gotoPage(${page+1})">›</button>`;
+  el.innerHTML = html;
+}
+
+function gotoPage(p) {
+  CURRENT_PAGE = p;
+  loadPosts();
+  document.getElementById('posts-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
 // ─── Joriy sahifani nav'da belgilash (active-link) ──────────────────────────
 (function markActiveNav() {
   const current      = new URL(window.location.href);
