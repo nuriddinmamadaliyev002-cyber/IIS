@@ -65,12 +65,26 @@ router.get('/leads', requireAuth(['admin', 'sales']), async (req, res) => {
   const { holat } = req.query;
 
   try {
-    let where  = '';
+    const where  = [];
     const params = [];
+
     if (holat) {
       params.push(holat);
-      where = `WHERE l.holat = $${params.length}`;
+      where.push(`l.holat = $${params.length}`);
     }
+
+    // Sales xodimi faqat o'ziga biriktirilgan maktablar leadlarini ko'rishi kerak.
+    // Superadmin/admin barcha leadlarni ko'radi.
+    if (req.user.role === 'sales' && !req.user.isSuper) {
+      const maktabIds = await getSalesMaktabIds(req.user.id);
+      if (maktabIds.length === 0) {
+        return res.json({ ok: true, leadlar: [] });
+      }
+      params.push(maktabIds);
+      where.push(`l.maktab_id = ANY($${params.length})`);
+    }
+
+    const whereSql = where.length ? `WHERE ${where.join(' AND ')}` : '';
 
     const result = await pool.query(
       `SELECT l.*, m.nomi AS maktab_nomi,
@@ -78,7 +92,7 @@ router.get('/leads', requireAuth(['admin', 'sales']), async (req, res) => {
        FROM leadlar l
        LEFT JOIN maktablar m       ON m.id = l.maktab_id
        LEFT JOIN sales_xodimlar s  ON s.id = l.biriktirilgan
-       ${where}
+       ${whereSql}
        ORDER BY l.yaratilgan DESC`,
       params
     );
