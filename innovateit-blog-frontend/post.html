@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title id="page-title">Post — Innovate IT School Blog</title>
-<meta name="description" id="page-desc" content="Innovate IT School blogi">
+<title id="page-title">Post — InnovateIT School Blog</title>
+<meta name="description" id="page-desc" content="InnovateIT School blogi">
 <link rel="stylesheet" href="css/blog.css">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.1.6/purify.min.js"></script>
 </head>
@@ -13,14 +13,14 @@
 <header class="site-header">
   <div class="wrap">
     <a href="/" class="brand">
-      <img class="mark" src="img/logo-mark.png" alt="Innovate IT School logotipi">
-      Innovate IT&nbsp;School
+      <img class="mark" src="img/logo-mark.png" alt="InnovateIT School logotipi">
+      InnovateIT&nbsp;School
     </a>
     <nav class="header-nav">
       <a href="/">Bosh sahifa</a>
-      <a href="/#yangiliklar">Yangiliklar</a>
-      <a href="/#yutuqlar">Yutuqlar</a>
-      <a href="/#darslar">IT darslar</a>
+      <a href="/?kategoriya=yangiliklar">Yangiliklar</a>
+      <a href="/?kategoriya=oquvchilar-yutuqlari">Yutuqlar</a>
+      <a href="/?kategoriya=it-darslar">IT darslar</a>
       <a href="royxat.html" class="nav-cta">Ro'yxatdan o'tish</a>
     </nav>
     <button class="menu-toggle" id="menu-toggle" aria-label="Menyuni ochish" aria-expanded="false" aria-controls="mobile-nav">
@@ -31,9 +31,9 @@
 
 <nav class="mobile-nav" id="mobile-nav">
   <a href="/">Bosh sahifa</a>
-  <a href="/#yangiliklar">Yangiliklar</a>
-  <a href="/#yutuqlar">Yutuqlar</a>
-  <a href="/#darslar">IT darslar</a>
+  <a href="/?kategoriya=yangiliklar">Yangiliklar</a>
+  <a href="/?kategoriya=oquvchilar-yutuqlari">Yutuqlar</a>
+  <a href="/?kategoriya=it-darslar">IT darslar</a>
   <a href="royxat.html">Ro'yxatdan o'tish</a>
 </nav>
 <div class="mobile-nav-backdrop" id="mobile-nav-backdrop"></div>
@@ -69,7 +69,7 @@
     <div class="footer-grid">
       <div>
         <div class="brand" style="margin-bottom:10px;">
-          <img class="mark" src="img/logo-mark.png" alt="Innovate IT School logotipi"> Innovate IT&nbsp;School
+          <img class="mark" src="img/logo-mark.png" alt="InnovateIT School logotipi"> InnovateIT&nbsp;School
         </div>
         <p class="footer-note">Buyuk Britaniya va Singapur milliy maktab ta'lim dasturi asosida — maktab hududida, xavfsiz va sifatli IT ta'lim.</p>
       </div>
@@ -88,7 +88,7 @@
         </a>
       </div>
     </div>
-    <div class="footer-bottom">© <span id="year"></span> Innovate IT School. Barcha huquqlar himoyalangan.</div>
+    <div class="footer-bottom">© <span id="year"></span> InnovateIT School. Barcha huquqlar himoyalangan.</div>
   </div>
 </footer>
 
@@ -104,7 +104,7 @@ async function loadPost() {
   if (!res.ok) { showNotFound(); return; }
 
   const p = res.post;
-  document.getElementById('page-title').textContent = `${p.sarlavha} — Innovate IT School Blog`;
+  document.getElementById('page-title').textContent = `${p.sarlavha} — InnovateIT School Blog`;
   document.getElementById('page-desc').setAttribute('content', p.seo_tavsif || p.qisqacha || '');
   document.getElementById('post-title').textContent = p.sarlavha;
   document.getElementById('post-author').textContent = p.muallif;

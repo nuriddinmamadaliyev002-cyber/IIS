@@ -1,157 +1,162 @@
-# 📝 Innovate IT School — Blog moduli qo'shildi
+# 📝 Innovate IT School — Blog moduli
 
-## Nima o'zgardi
+> ✅ Bu hujjat 2026-07-30'da mavjud kod bazasiga (repo tuzilishi, `DEPLOY.md`,
+> `nginx-innovateitschool-blog.conf`, `deploy.sh`) qarab qayta tekshirilib
+> yangilandi. Eski versiyada bir nechta eskirgan taxmin bor edi — port 3001
+> o'rniga to'g'risi **3002**, PM2 process nomi `innovateit-backend` o'rniga
+> **`innovateit-crm`**, repo/deploy yo'li `/var/www/Innovateit` yoki alohida
+> `/var/www/innovateit-blog-frontend` o'rniga to'g'risi **`/var/www/IIS`**
+> (ikkala frontend ham shu yagona repo ichida, `git pull` bilan birga
+> yangilanadi — alohida `scp` shart emas).
+
+## Nima uchun bu modul bor
+
+`innovateitschool.uz` — ochiq (public, login shart emas) blog sayti:
+maktab yangiliklari, o'quvchilar yutuqlari, IT darslar va ota-onalar uchun
+maqolalar. Shu bilan bir qatorda **qabul/lead** oqimi ham shu saytda
+joylashgan (`royxat.html` → `sales` moduli, bor keyin sales bo'limi ular
+bilan bog'lanadi).
+
+## Fayllar xaritasi
 
 ```
 innovateit-backend/
-  migrations/002_blog_module.sql   ← YANGI: blog_posts, blog_categories jadvallari
-  src/routes/blog.js               ← YANGI: /api/blog/* endpointlari
-  src/index.js                     ← o'zgartirildi: blog router ulandi
+  migrations/002_blog_module.sql     ← blog_posts, blog_categories, blog_tags jadvallari
+  migrations/003_blog_cover_position.sql ← muqova rasm fokus pozitsiyasi (0-100)
+  migrations/004_blog_cover_zoom.sql     ← muqova rasm zoom (100-250%)
+  migrations/005_sales_module.sql        ← sales_xodimlar, leadlar (royxat.html forma shu yerga yozadi)
+  src/routes/blog.js                 ← /api/blog/* endpointlari (public + admin)
+  src/routes/sales.js                ← /api/sales/leads (royxat.html POST qiladigan joy)
+  src/index.js                       ← barcha router'lar shu yerda ulanadi
 
-innovateit-frontend/                (CRM paneli — new.innovateitschool.uz)
-  index.html                       ← o'zgartirildi: "📝 Blog" tabi + modallar qo'shildi
-  js/api.js                        ← o'zgartirildi: blog admin metodlari qo'shildi
-  js/app.js                        ← o'zgartirildi: switchTab('bl') qo'shildi
-  js/blog-admin.js                 ← YANGI: blog CRUD mantig'i
+innovateit-frontend/                  (CRM paneli — new.innovateitschool.uz)
+  index.html                         ← "📝 Blog" tabi + post/kategoriya modallari
+  js/api.js                          ← blog admin API metodlari
+  js/app.js                          ← switchTab('bl') va tab ulanishi
+  js/blog-admin.js                   ← blog CRUD mantig'i (post/kategoriya, muqova pozitsiya/zoom)
+  js/sales-admin.js                  ← leadlar/sales xodimlari boshqaruvi
 
-innovateit-blog-frontend/           (YANGI — ochiq blog sayti, innovateitschool.uz)
-  index.html                       ← postlar ro'yxati, hero, kategoriya filtri
-  post.html                        ← bitta post sahifasi
-  css/blog.css                     ← dizayn tizimi
-  js/blog.js                       ← API client
+innovateit-blog-frontend/             (ochiq blog sayti — innovateitschool.uz)
+  index.html                         ← postlar ro'yxati, hero, kategoriya filtri, qabul banneri
+  post.html                          ← bitta post (DOMPurify bilan XSS himoyasi)
+  royxat.html                        ← qabul/lead formasi (sales moduliga yozadi)
+  css/blog.css                       ← umumiy dizayn tizimi
+  css/royxat.css                     ← royxat.html'ga xos stillar
+  js/blog.js                         ← API client + umumiy yordamchilar (BASE, apiGet, mobil menyu)
+  js/royxat.js                       ← forma validatsiyasi va yuborish
 ```
 
-## 1) Serverda migration ishga tushirish
+## Arxitektura (bitta backend, ikkita domen)
 
-CRM allaqachon ishlayotgan `innovateit` bazasida (o'zgartirmasdan, faqat yangi jadvallar qo'shiladi):
+```
+                          ┌──────────────────────────────┐
+ new.innovateitschool.uz  │  innovateit-frontend           │  CRM / Superadmin panel
+     ├── /                │  (static HTML/CSS/JS)          │  (+ 📝 Blog tab)
+     └── /api, /upload ───┤  └────────────────────────────┘
+                          │
+                          ▼
+                  Node.js :3002  (Express, PM2 process: innovateit-crm)
+                  /api/blog, /api/sales, /api/auth, ...
+                          │
+                          ▼
+                  PostgreSQL (innovateit DB)
+                          ▲
+                          │
+                          ┌──────────────────────────────┐
+ innovateitschool.uz      │  innovateit-blog-frontend       │  Ochiq blog sayti
+     ├── /                │  (static HTML/CSS/JS)           │  (public, login shart emas)
+     └── /api ────────────┘  ├── index.html, post.html      │
+                              └── royxat.html (lead forma) ──┘
+```
+
+- **Bitta Node.js backend** (`innovateit-backend`, PM2 nomi **`innovateit-crm`**,
+  port **3002**) ikkala domenga ham xizmat qiladi.
+- Blogni boshqarish faqat `new.innovateitschool.uz` CRM panelidagi
+  **"📝 Blog"** tabi orqali (faqat superadmin — frontendda tab yashirilgan,
+  backendda ham `requireSuperAdmin` middleware bilan qayta tekshiriladi).
+- Repo joylashuvi: **`/var/www/IIS`**. Ikkala frontend (`innovateit-frontend`
+  va `innovateit-blog-frontend`) ham shu repo ichida — nginx ularni
+  to'g'ridan-to'g'ri `root` sifatida ko'rsatadi, alohida `scp` qilish shart
+  emas, `git pull`/`deploy.sh` bilan birga yangilanadi.
+- Uploads (muqova rasmlar) nginx orqali `alias` bilan to'g'ridan-to'g'ri
+  diskdan (`/var/www/IIS/innovateit-backend/uploads/`) beriladi — Node
+  backendga proxy qilinmaydi.
+
+## 1) Migratsiyalarni ishga tushirish
+
+Yangi serverda yoki hali ishga tushirilmagan bo'lsa:
 
 ```bash
-cd /var/www/Innovateit/innovateit-backend
+cd /var/www/IIS/innovateit-backend
+sudo -u postgres psql -d innovateit -f innovateit_schema_setup.sql   # asosiy sxema (blog+sales jadvallari shu ichida ham bor)
+# yoki alohida migratsiyalar bilan qadam-baqadam:
 sudo -u postgres psql -d innovateit -f migrations/002_blog_module.sql
+sudo -u postgres psql -d innovateit -f migrations/003_blog_cover_position.sql
+sudo -u postgres psql -d innovateit -f migrations/004_blog_cover_zoom.sql
+sudo -u postgres psql -d innovateit -f migrations/005_sales_module.sql
 ```
 
 Tekshirish:
 ```bash
 sudo -u postgres psql -d innovateit -c "\dt blog_*"
+sudo -u postgres psql -d innovateit -c "\dt leadlar"
 ```
 
-## 2) Backendni yangilash
+> ℹ️ Odatiy holatda bularning barchasi `bash deploy.sh` ichidagi
+> `innovateit_schema_setup.sql` bosqichi orqali avtomatik qo'llaniladi —
+> qo'lda ishga tushirish faqat noldan sozlashda yoki muammoni debug
+> qilishda kerak bo'ladi.
+
+## 2) Kundalik yangilash (kod o'zgargandan keyin)
+
+Serverda:
+```bash
+cd /var/www/IIS
+bash deploy.sh
+```
+
+`deploy.sh` avtomatik bajaradi: `git pull` → statik fayllarni cache-busting
+bilan versiyalash → `npm install --production` → schema sinxronlash →
+`pm2 restart innovateit-crm` → `http://127.0.0.1:3002/health` tekshiruvi.
+
+Superadmin CRM panelida (`new.innovateitschool.uz`) kirganda **📝 Blog**
+tabi ko'rinadi; oddiy (maktab) adminlar uni ko'rmaydi.
+
+## 3) Nginx
+
+Blog sayti uchun konfiguratsiya repo ichida tayyor:
+**`nginx-innovateitschool-blog.conf`** (root: `/var/www/IIS/innovateit-blog-frontend`,
+`/api/` va `/uploads/` — bitta backendga, port 3002 ga). Faylni faqat bir
+marta `sites-enabled`ga ulash kifoya:
 
 ```bash
-cd /var/www/Innovateit/innovateit-backend
-git pull   # yoki fayllarni scp bilan yuklang
-pm2 restart innovateit-backend
-pm2 logs innovateit-backend --lines 20
-```
-
-`.env` faylida hech narsa o'zgartirish shart emas — blog moduli mavjud
-`JWT_SECRET`, `DB_*` va superadmin sozlamalaridan foydalanadi.
-
-## 3) CRM frontendni yangilash (new.innovateitschool.uz)
-
-```bash
-scp -r innovateit-frontend/* root@SERVER:/var/www/innovateit-frontend/
-```
-
-Superadmin login qilganda endi tablar qatorida **📝 Blog** tugmasi ko'rinadi.
-Oddiy (maktab) adminlar bu tabni ko'rmaydi — mavjud `super-admin` cheklovi
-avtomatik ishlaydi, backend tomonda ham `requireSuperAdmin` bilan qayta
-tekshiriladi.
-
-## 4) Yangi domen: innovateitschool.uz (ochiq blog sayti)
-
-### 4.1 — Frontend fayllarni serverga yuklash
-
-```bash
-sudo mkdir -p /var/www/innovateit-blog-frontend
-scp -r innovateit-blog-frontend/* root@SERVER:/var/www/innovateit-blog-frontend/
-```
-
-### 4.2 — Nginx: ikkinchi server bloki qo'shish
-
-Mavjud `new.innovateitschool.uz` konfiguratsiyasiga tegmang. Yangi fayl:
-
-```bash
-sudo nano /etc/nginx/sites-available/innovateitschool-blog
-```
-
-```nginx
-server {
-    listen 80;
-    server_name innovateitschool.uz www.innovateitschool.uz;
-
-    root /var/www/innovateit-blog-frontend;
-    index index.html;
-
-    location / {
-        try_files $uri $uri.html $uri/ =404;
-    }
-
-    # ─── Bir xil backendga proxy (blog + uploads) ───
-    location /api {
-        proxy_pass         http://127.0.0.1:3001;
-        proxy_http_version 1.1;
-        proxy_set_header   Host              $host;
-        proxy_set_header   X-Real-IP         $remote_addr;
-        proxy_set_header   X-Forwarded-For   $proxy_add_x_forwarded_for;
-        proxy_set_header   X-Forwarded-Proto $scheme;
-    }
-
-    location /uploads {
-        proxy_pass http://127.0.0.1:3001;
-    }
-
-    location ~* \.(css|js|png|jpg|jpeg|webp|ico|woff2?)$ {
-        expires 7d;
-        add_header Cache-Control "public, immutable";
-    }
-}
-```
-
-```bash
+sudo cp /var/www/IIS/nginx-innovateitschool-blog.conf /etc/nginx/sites-available/innovateitschool-blog
 sudo ln -s /etc/nginx/sites-available/innovateitschool-blog /etc/nginx/sites-enabled/
 sudo nginx -t
 sudo systemctl reload nginx
-sudo certbot --nginx -d innovateitschool.uz -d www.innovateitschool.uz
+sudo certbot --nginx -d innovateitschool.uz -d www.innovateitschool.uz   # real sertifikat uchun
 ```
 
-> ⚠️ Bitta backend (`127.0.0.1:3001`, PM2 process `innovateit-backend`)
-> ikkala domenga ham xizmat qiladi. CORS'da `innovateitschool.uz` allaqachon
-> ruxsat etilgan edi (`src/index.js`), qo'shimcha o'zgartirish shart emas.
+`new.innovateitschool.uz` konfiguratsiyasiga hech qanday o'zgartirish shart
+emas — u alohida faylda, mustaqil ishlaydi.
 
-## 5) Tekshirish
+## 4) Tekshirish
 
 ```bash
 curl https://innovateitschool.uz/api/blog/posts
-curl https://new.innovateitschool.uz/api/auth/login -X POST -H "Content-Type: application/json" -d '{"username":"...","parol":"..."}'
+curl https://innovateitschool.uz/api/sales/leads -X POST -H "Content-Type: application/json" \
+  -d '{"ism":"Test","telefon":"+998901234567"}'
+curl https://new.innovateitschool.uz/api/auth/login -X POST -H "Content-Type: application/json" \
+  -d '{"username":"...","parol":"..."}'
 ```
 
-CRM panelida (**new.innovateitschool.uz**) superadmin bilan kiring → **📝 Blog**
-tabini oching → "➕ Yangi post" orqali birinchi postni yarating → holatni
-**✅ Chop etilgan** qilib saqlang → https://innovateitschool.uz da darhol
-ko'rinadi.
+Ish jarayoni: CRM panelida (**new.innovateitschool.uz**) superadmin bilan
+kiring → **📝 Blog** tabini oching → "➕ Yangi post" orqali post yarating →
+holatni **✅ Chop etilgan** qilib saqlang → https://innovateitschool.uz da
+darhol ko'rinadi. Qabul formasi (`royxat.html`) orqali kelgan leadlar CRM
+panelidagi **Sales** tabida (yoki alohida `sales.html` panelida) ko'rinadi.
 
-## Arxitektura xulosasi
+---
 
-```
-                     ┌─────────────────────────┐
-                     │   PostgreSQL: innovateit  │
-                     │  (+ blog_posts, blog_categories) │
-                     └────────────┬─────────────┘
-                                  │
-                     ┌────────────┴─────────────┐
-                     │  innovateit-backend (PM2) │
-                     │  Express :3001            │
-                     │  /api/auth, /api/students │
-                     │  /api/blog  ← YANGI        │
-                     └──┬─────────────────────┬──┘
-                        │ nginx proxy         │ nginx proxy
-        ┌───────────────┴───────┐   ┌─────────┴──────────────┐
-        │ new.innovateitschool.uz │   │ innovateitschool.uz     │
-        │ CRM paneli (admin/     │   │ Ochiq blog sayti         │
-        │ superadmin, +Blog tab) │   │ (public, login shart emas)│
-        └────────────────────────┘   └─────────────────────────┘
-```
-
-Bitta baza, bitta backend, bitta superadmin login — ikkita frontend, ikkita
-domen.
+Bitta baza, bitta backend, bitta repo (`/var/www/IIS`), bitta superadmin
+login — ikkita frontend, ikkita domen.

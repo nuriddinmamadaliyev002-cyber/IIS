@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  Innovate IT School — Blog frontend
+//  InnovateIT School — Blog frontend
 //  Backend: bir xil Node.js/Express API (CRM bilan bir xil server, /api/blog)
 // ═══════════════════════════════════════════════════════════════════════════
 
