@@ -64,49 +64,16 @@ const PAGE_LIMIT = 9;
 
 async function initBlogListing(fixedCategory = '') {
   CURRENT_CATEGORY = fixedCategory || '';
-  await loadCategories(fixedCategory);
   await loadFeatured();
   await loadPosts();
-}
-
-async function loadCategories(fixedCategory) {
-  const res = await apiGet('/api/blog/categories');
-  if (!res.ok) return;
-  const bar = document.getElementById('cat-bar');
-  if (!bar) return;
-  res.categories.forEach(c => {
-    if (!c.postlar_soni) return; // bo'sh kategoriyani ko'rsatmaymiz
-    const btn = document.createElement('button');
-    btn.className = 'chip';
-    btn.dataset.slug = c.slug;
-    btn.textContent = `${c.nomi} (${c.postlar_soni})`;
-    btn.onclick = () => selectCategory(c.slug, btn);
-    bar.appendChild(btn);
-  });
-  const allBtn = bar.querySelector('.chip[data-slug=""]');
-  if (allBtn) allBtn.onclick = () => selectCategory('', allBtn);
-
-  if (fixedCategory) {
-    const target = bar.querySelector(`.chip[data-slug="${fixedCategory}"]`);
-    if (target) {
-      document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-      target.classList.add('active');
-    }
-  }
-}
-
-function selectCategory(slug, btnEl) {
-  CURRENT_CATEGORY = slug;
-  CURRENT_PAGE = 1;
-  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
-  btnEl.classList.add('active');
-  loadPosts();
 }
 
 async function loadFeatured() {
   const slot = document.getElementById('featured-slot');
   if (!slot) return;
-  const res = await apiGet('/api/blog/posts?limit=1');
+  const qs = new URLSearchParams({ limit: 1 });
+  if (CURRENT_CATEGORY) qs.set('kategoriya', CURRENT_CATEGORY);
+  const res = await apiGet(`/api/blog/posts?${qs}`);
   if (!res.ok || !res.posts.length) { slot.innerHTML = ''; return; }
   const p = res.posts[0];
   slot.innerHTML = `
