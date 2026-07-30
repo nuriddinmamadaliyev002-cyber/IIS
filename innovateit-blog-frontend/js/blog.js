@@ -52,6 +52,23 @@ function getQueryParam(name) {
   return new URLSearchParams(window.location.search).get(name);
 }
 
+// ─── Joriy sahifani nav'da belgilash (active-link) ──────────────────────────
+(function markActiveNav() {
+  const current      = new URL(window.location.href);
+  const currentPath   = current.pathname.replace(/index\.html$/, '');
+  const currentKateg  = current.searchParams.get('kategoriya');
+
+  document.querySelectorAll('.header-nav a, .mobile-nav a').forEach(a => {
+    const href = a.getAttribute('href');
+    if (!href) return;
+    const linkUrl  = new URL(href, window.location.href);
+    const linkPath = linkUrl.pathname.replace(/index\.html$/, '');
+    const linkKateg = linkUrl.searchParams.get('kategoriya');
+    const isActive = linkPath === currentPath && linkKateg === currentKateg;
+    a.classList.toggle('active', isActive);
+  });
+})();
+
 // ─── Mobil hamburger menyu ──────────────────────────────────────────────────
 (function initMobileNav() {
   const toggle   = document.getElementById('menu-toggle');
