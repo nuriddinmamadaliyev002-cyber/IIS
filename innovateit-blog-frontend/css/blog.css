@@ -121,8 +121,7 @@ img { max-width: 100%; display: block; }
 }
 .header-nav a:not(.nav-cta):hover::after { opacity: .6; transform: scaleX(1); }
 .header-nav a.active:not(.nav-cta)::after { opacity: 1; transform: scaleX(1); }
-.header-nav a.active:not(.nav-cta) { font-weight: 800; }
-.header-nav a.active:not(.nav-cta) { font-weight: 800; }
+.header-nav a.active:not(.nav-cta) { font-weight: 800; font-size: 14px; }
 .nav-cta {
   background: #fff; color: var(--indigo-deep) !important;
   padding: 9px 18px; border-radius: 100px; font-family: var(--font-mono);
