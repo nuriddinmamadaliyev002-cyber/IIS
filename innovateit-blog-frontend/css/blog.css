@@ -73,9 +73,19 @@ img { max-width: 100%; display: block; }
 }
 
 /* ─── Header ─────────────────────────────────────────────────────────────── */
+/* .site-header, .site-footer va .admission-banner bir xil "brend gradienti"dan
+   foydalanadi. background-attachment:fixed tufayli bu gradient elementning
+   o'z qutisiga emas, balki viewport'ga (ekranga) "yopishtiriladi" — shu bois
+   uch xil joyda, uch xil kenglikdagi elementlarda ham xuddi bitta katta
+   rasmning turli oynalaridek, bir xil x-koordinatada bir xil rang chiqadi. */
+.site-header,
+.site-footer,
+.admission-banner {
+  background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
+  background-attachment: fixed;
+}
 .site-header {
   position: sticky; top: 0; z-index: 50;
-  background: linear-gradient(100deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
   border-bottom: none;
 }
 .site-header .wrap {
@@ -110,11 +120,10 @@ img { max-width: 100%; display: block; }
 /* ─── Qabul banneri (bosh sahifada) ─── */
 .admission-banner {
   display: flex; align-items: center; justify-content: space-between; gap: 16px;
-  background: linear-gradient(120deg, var(--indigo), var(--indigo-deep));
   border-radius: var(--radius); padding: 18px 26px; margin: 28px 0;
   text-decoration: none; transition: transform .15s, box-shadow .15s;
 }
-.admission-banner:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(91,79,232,0.28); }
+.admission-banner:hover { transform: translateY(-2px); box-shadow: 0 10px 26px rgba(20,110,190,0.3); }
 .admission-banner-text { display: flex; flex-direction: column; gap: 3px; }
 .admission-banner-eyebrow {
   font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
@@ -353,7 +362,6 @@ body.nav-open { overflow: hidden; }
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 .site-footer {
   border-top: none; padding: 48px 0 36px;
-  background: linear-gradient(100deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
 }
 .footer-grid {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap;
