@@ -404,6 +404,12 @@ body.nav-open { overflow: hidden; }
   color: #fff; text-decoration: none;
 }
 .footer-links a svg { width: 16px; height: 16px; flex-shrink: 0; }
+.footer-icon-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 26px; height: 26px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 4px rgba(10,30,60,0.25); flex-shrink: 0;
+}
+.footer-icon-badge svg { width: 15px; height: 15px; }
 .footer-links a:hover { color: rgba(255,255,255,0.75); }
 .footer-bottom {
   margin-top: 32px; padding-top: 20px; border-top: 1px solid rgba(255,255,255,0.3);
