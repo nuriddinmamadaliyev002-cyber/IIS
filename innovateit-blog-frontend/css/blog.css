@@ -32,7 +32,7 @@
   --cyan-deep:  #00707D;
   --sky:        #94D5FF;  /* logotip foni — chap/ochroq moviy */
   --sky-deep:   #5CB6F5;  /* logotip foni — o'rta ohang */
-  --sky-darker: #1670C4;  /* logotip foni — o'ng/to'q moviy */
+  --sky-darker: #3E9BDC;  /* logotip foni — o'ng/to'q moviy (yumshatilgan) */
   --brand-cyan: #05BFF6;  /* logotipdagi haqiqiy rang — header/footer foni */
 
   --font-display: 'Space Grotesk', sans-serif;
@@ -75,7 +75,7 @@ img { max-width: 100%; display: block; }
 /* ─── Header ─────────────────────────────────────────────────────────────── */
 .site-header {
   position: sticky; top: 0; z-index: 50;
-  background: linear-gradient(100deg, var(--brand-cyan) 0%, var(--brand-cyan) 28%, var(--sky-darker) 88%, var(--sky-darker) 100%);
+  background: linear-gradient(100deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
   border-bottom: none;
 }
 .site-header .wrap {
@@ -97,7 +97,7 @@ img { max-width: 100%; display: block; }
 .header-nav a {
   font-family: var(--font-mono); font-size: 13px; letter-spacing: .02em;
   color: #fff; font-weight: 600;
-  text-shadow: 0 1px 6px rgba(4,30,50,0.4);
+  text-shadow: 0 1px 6px rgba(4,30,50,0.55);
 }
 .header-nav a:hover { color: rgba(255,255,255,0.8); }
 .nav-cta {
@@ -353,7 +353,7 @@ body.nav-open { overflow: hidden; }
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 .site-footer {
   border-top: none; padding: 48px 0 36px;
-  background: linear-gradient(100deg, var(--brand-cyan) 0%, var(--brand-cyan) 28%, var(--sky-darker) 88%, var(--sky-darker) 100%);
+  background: linear-gradient(100deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
 }
 .footer-grid {
   display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; flex-wrap: wrap;
