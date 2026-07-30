@@ -103,6 +103,7 @@ function postCardHtml(p) {
         ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
         <h3>${esc(p.sarlavha)}</h3>
         <p>${esc(p.qisqacha || '')}</p>
+        <span class="card-more">Ko'proq o'qish →</span>
         <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span><span>${p.korishlar || 0} ko'rishlar</span></div>
       </div>
     </a>`;
