@@ -321,6 +321,8 @@ body.nav-open { overflow: hidden; }
   font-family: var(--font-mono); font-size: 11.5px; color: var(--ink-faint);
   display: flex; justify-content: space-between; margin-top: 4px;
 }
+.views-count { display: inline-flex; align-items: center; gap: 4px; }
+.icon-eye { width: 14px; height: 14px; flex-shrink: 0; }
 
 .empty-state {
   text-align: center; padding: 80px 20px; color: var(--ink-faint);

@@ -88,7 +88,7 @@ async function loadPost() {
   document.getElementById('post-title').textContent = p.sarlavha;
   document.getElementById('post-author').textContent = p.muallif;
   document.getElementById('post-date').textContent = fmtDate(p.chop_vaqti);
-  document.getElementById('post-views').textContent = `${p.korishlar || 0} ko'rishlar`;
+  document.getElementById('post-views').innerHTML = fmtViews(p.korishlar);
 
   if (p.muqova_rasm) {
     const cover = document.getElementById('post-cover');

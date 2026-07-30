@@ -39,7 +39,17 @@ async function apiGet(path) {
 function fmtDate(iso) {
   if (!iso) return '';
   const d = new Date(iso);
-  return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: 'long', year: 'numeric' });
+  if (isNaN(d.getTime())) return '';
+  const dd   = String(d.getDate()).padStart(2, '0');
+  const mm   = String(d.getMonth() + 1).padStart(2, '0');
+  const yyyy = d.getFullYear();
+  return `${dd}/${mm}/${yyyy}`;
+}
+
+// Ko'rishlar sonini ko'z ikonkasi bilan chiqaruvchi HTML bo'lagi
+const EYE_ICON = '<svg class="icon-eye" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M1.4 12S5.2 5 12 5s10.6 7 10.6 7-3.8 7-10.6 7S1.4 12 1.4 12Z" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><circle cx="12" cy="12" r="3.3" stroke="currentColor" stroke-width="1.8"/></svg>';
+function fmtViews(n) {
+  return `<span class="views-count">${EYE_ICON}${n || 0}</span>`;
 }
 
 function esc(s) {
@@ -104,7 +114,7 @@ function postCardHtml(p) {
         <h3>${esc(p.sarlavha)}</h3>
         <p>${esc(p.qisqacha || '')}</p>
         <a class="card-more" href="post.html?slug=${encodeURIComponent(p.slug)}">Ko'proq o'qish →</a>
-        <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span><span>${p.korishlar || 0} ko'rishlar</span></div>
+        <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span>${fmtViews(p.korishlar)}</div>
       </div>
     </div>`;
 }
