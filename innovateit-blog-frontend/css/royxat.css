@@ -27,7 +27,7 @@
    mobilda (≤900px) tartib o'zgaradi — "nima beriladi" va "qo'shimcha
    imkoniyatlar" formadan YUQORIDA, "Savollaringiz bormi" esa formadan
    PASTDA chiqadi, har bir karta orasida aniq masofa bilan. */
-.rx-wrap { padding: 48px 0 80px; }
+.rx-wrap { padding-top: 48px; padding-bottom: 80px; }
 .rx-grid {
   display: grid; align-items: start;
   grid-template-columns: 1.4fr 1fr;
