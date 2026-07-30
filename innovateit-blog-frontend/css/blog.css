@@ -5,7 +5,7 @@
      Bg alt:         #EFEDF9
      Ink:            #14161F
      Ink soft:       #53546A
-     Indigo:         #5B4FE8  (brend rangi — chuqurlashtirilgan)
+     Indigo (accent):#1670C4  (asosiy aksent — header/footer moviy oilasiga moslashtirilgan)
      Mint:           #1FA37E  (brend rangi — chuqurlashtirilgan)
      Amber (stamp):  #D98E1C  (sertifikat muhri rangi)
      Line:           #E3E1F0
@@ -23,8 +23,8 @@
   --ink:        #14161F;
   --ink-soft:   #53546A;
   --ink-faint:  #8B8CA3;
-  --indigo:     #5B4FE8;
-  --indigo-deep:#443AC7;
+  --indigo:     #1670C4;  /* asosiy aksent — endi header/footer bilan bir xil moviy oilasi */
+  --indigo-deep:#0F5493;  /* hover/faol holat uchun to'qroq ohang */
   --mint:       #1FA37E;
   --amber:      #D98E1C;
   --line:       #E3E1F0;
@@ -223,7 +223,7 @@ body.nav-open { overflow: hidden; }
 }
 .featured-media {
   position: relative; min-height: 280px;
-  background: linear-gradient(135deg, var(--indigo) 0%, #7B6FF0 55%, var(--mint) 100%);
+  background: linear-gradient(135deg, var(--indigo) 0%, #4FA8E0 55%, var(--mint) 100%);
 }
 .featured-media img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
 .featured-body { padding: 36px 40px; display: flex; flex-direction: column; justify-content: center; }
@@ -259,7 +259,7 @@ body.nav-open { overflow: hidden; }
 .cat-tag {
   display: inline-block; font-family: var(--font-mono); font-size: 11px; font-weight: 600;
   letter-spacing: .04em; text-transform: uppercase; color: var(--indigo);
-  padding: 4px 10px; border-radius: 100px; background: rgba(91,79,232,0.09);
+  padding: 4px 10px; border-radius: 100px; background: rgba(22,112,196,0.09);
 }
 
 /* ─── Post grid ──────────────────────────────────────────────────────────── */
@@ -337,7 +337,7 @@ body.nav-open { overflow: hidden; }
 .article-body h2 { font-family: var(--font-display); font-size: 26px; margin: 40px 0 16px; }
 .article-body h3 { font-family: var(--font-display); font-size: 21px; margin: 32px 0 14px; }
 .article-body img { border-radius: var(--radius-sm); margin: 28px 0; }
-.article-body a { color: var(--indigo); text-decoration: underline; text-decoration-color: rgba(91,79,232,.35); }
+.article-body a { color: var(--indigo); text-decoration: underline; text-decoration-color: rgba(22,112,196,.35); }
 .article-body ul, .article-body ol { padding-left: 22px; }
 .article-body blockquote {
   margin: 28px 0; padding: 4px 0 4px 20px; border-left: 3px solid var(--indigo);
