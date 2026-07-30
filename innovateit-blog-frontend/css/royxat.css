@@ -22,13 +22,31 @@
   .rx-stats { grid-template-columns: repeat(2, 1fr); }
 }
 
-/* ─── Layout ─── */
+/* ─── Layout ───
+   Grid-area orqali: desktopda forma chapda, 3 ta yon karta o'ngda ustma-ust;
+   mobilda (≤900px) tartib o'zgaradi — "nima beriladi" va "qo'shimcha
+   imkoniyatlar" formadan YUQORIDA, "Savollaringiz bormi" esa formadan
+   PASTDA chiqadi, har bir karta orasida aniq masofa bilan. */
 .rx-wrap { padding: 48px 0 80px; }
 .rx-grid {
-  display: grid; grid-template-columns: 1.4fr 1fr; gap: 32px; align-items: start;
+  display: grid; align-items: start;
+  grid-template-columns: 1.4fr 1fr;
+  grid-template-areas:
+    "form info1"
+    "form info2"
+    "form contact";
+  column-gap: 32px; row-gap: 18px;
 }
+.rx-form-card   { grid-area: form; }
+.rx-info-1      { grid-area: info1; }
+.rx-info-2      { grid-area: info2; }
+.rx-side-contact{ grid-area: contact; }
 @media (max-width: 900px) {
-  .rx-grid { grid-template-columns: 1fr; }
+  .rx-grid {
+    grid-template-columns: 1fr;
+    grid-template-areas: "info1" "info2" "form" "contact";
+    row-gap: 22px;
+  }
 }
 
 /* ─── Forma karta ─── */
@@ -91,8 +109,7 @@
 }
 .rx-back-link:hover { text-decoration: underline; }
 
-/* ─── Yon panel ─── */
-.rx-side { display: flex; flex-direction: column; gap: 18px; }
+/* ─── Yon panel kartalari ─── */
 .rx-side-card {
   background: var(--paper-alt); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 24px;
