@@ -71,11 +71,13 @@
 
 .rx-submit {
   width: 100%; padding: 15px; border: none; border-radius: 100px;
-  background: var(--indigo); color: #fff; font-family: var(--font-mono);
+  background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
+  background-attachment: fixed;
+  color: #fff; font-family: var(--font-mono);
   font-size: 14px; font-weight: 600; letter-spacing: .02em; cursor: pointer;
-  transition: background .15s, transform .1s;
+  transition: filter .15s, transform .1s;
 }
-.rx-submit:hover:not(:disabled) { background: var(--indigo-deep); }
+.rx-submit:hover:not(:disabled) { filter: brightness(0.92); }
 .rx-submit:active:not(:disabled) { transform: scale(.99); }
 .rx-submit:disabled { opacity: .6; cursor: not-allowed; }
 
@@ -101,7 +103,10 @@
 .rx-check-list { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 11px; }
 .rx-check-list li { font-size: 14px; color: var(--ink-soft); line-height: 1.4; }
 
-.rx-side-contact { background: var(--indigo); }
+.rx-side-contact {
+  background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
+  background-attachment: fixed;
+}
 .rx-side-contact h3, .rx-side-contact p { color: #fff; }
 .rx-side-contact p { font-size: 14px; margin: 0 0 16px; opacity: .92; }
 .rx-tg-btn {
