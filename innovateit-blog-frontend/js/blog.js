@@ -90,6 +90,24 @@ async function loadFeatured() {
     </a>`;
 }
 
+// Bitta post kartochkasi HTML shabloni — postlar ro'yxatida (kategoriya
+// sahifalarida) va bosh sahifadagi kategoriya karusellarida bir xil
+// ko'rinishda qayta ishlatiladi.
+function postCardHtml(p) {
+  return `
+    <a class="card" href="post.html?slug=${encodeURIComponent(p.slug)}">
+      <div class="card-media">
+        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab)}" alt="">` : ''}
+      </div>
+      <div class="card-body">
+        ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
+        <h3>${esc(p.sarlavha)}</h3>
+        <p>${esc(p.qisqacha || '')}</p>
+        <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span><span>${p.korishlar || 0} ko'rishlar</span></div>
+      </div>
+    </a>`;
+}
+
 async function loadPosts() {
   const grid = document.getElementById('posts-grid');
   if (!grid) return;
@@ -105,18 +123,8 @@ async function loadPosts() {
     return;
   }
 
-  grid.innerHTML = res.posts.map(p => `
-    <a class="card" href="post.html?slug=${encodeURIComponent(p.slug)}">
-      <div class="card-media">
-        ${p.muqova_rasm ? `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab)}" alt="">` : ''}
-      </div>
-      <div class="card-body">
-        ${p.kategoriya_nomi ? `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>` : ''}
-        <h3>${esc(p.sarlavha)}</h3>
-        <p>${esc(p.qisqacha || '')}</p>
-        <div class="card-meta"><span>${fmtDate(p.chop_vaqti)}</span><span>${p.korishlar || 0} ko'rishlar</span></div>
-      </div>
-    </a>`).join('');
+  grid.innerHTML = res.posts.map(postCardHtml).join('');
+
 
   renderPagination(res.totalPages, res.page);
 }
@@ -138,7 +146,60 @@ function gotoPage(p) {
   document.getElementById('posts-grid').scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
-// ─── Joriy sahifani nav'da belgilash (active-link) ──────────────────────────
+// ─── Bosh sahifa: har bir kategoriya bo'yicha eng so'ngi 2ta post (Owl Carousel) ──
+// Yangi postlar qo'shilaverganda bosh sahifadagi umumiy postlar soni cheksiz
+// o'sib ketmasligi uchun — har bir kategoriyadan faqat eng so'nggi 2ta post
+// ko'rsatiladi, kategoriya ichida esa Owl Carousel bilan varaqlash mumkin.
+const CATEGORY_PAGES = {
+  'yangiliklar':          'yangiliklar.html',
+  'oquvchilar-yutuqlari': 'yutuqlar.html',
+  'it-darslar':           'it-darslar.html'
+};
+const HOME_CAROUSEL_LIMIT = 2;
+
+async function initHomeCategoryCarousels() {
+  const wrap = document.getElementById('cat-sections');
+  if (!wrap) return;
+
+  const catRes = await apiGet('/api/blog/categories');
+  if (!catRes.ok || !catRes.categories.length) { wrap.innerHTML = ''; return; }
+
+  const sections = [];
+  for (const cat of catRes.categories) {
+    const postsRes = await apiGet(`/api/blog/posts?kategoriya=${encodeURIComponent(cat.slug)}&limit=${HOME_CAROUSEL_LIMIT}`);
+    if (!postsRes.ok || !postsRes.posts.length) continue;
+    const pageHref = CATEGORY_PAGES[cat.slug] || 'yangiliklar.html';
+    sections.push(`
+      <section class="cat-section">
+        <div class="wrap">
+          <div class="cat-section-head">
+            <h2>${esc(cat.nomi)}</h2>
+            <a href="${pageHref}">Barchasini ko'rish →</a>
+          </div>
+          <div class="owl-carousel owl-theme cat-carousel">
+            ${postsRes.posts.map(postCardHtml).join('')}
+          </div>
+        </div>
+      </section>`);
+  }
+
+  wrap.innerHTML = sections.join('') || '<div class="wrap"><div class="empty-state">Hali postlar yo\'q</div></div>';
+
+  if (typeof $ !== 'undefined' && $.fn && $.fn.owlCarousel) {
+    $('.cat-carousel').each(function () {
+      $(this).owlCarousel({
+        items: 2,
+        margin: 24,
+        nav: true,
+        dots: true,
+        loop: false,
+        responsive: { 0: { items: 1 }, 640: { items: 2 } }
+      });
+    });
+  }
+}
+
+
 (function markActiveNav() {
   const current      = new URL(window.location.href);
   const currentPath   = current.pathname.replace(/index\.html$/, '');

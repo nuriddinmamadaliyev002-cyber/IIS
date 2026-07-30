@@ -320,6 +320,40 @@ body.nav-open { overflow: hidden; }
   font-family: var(--font-mono); font-size: 14px;
 }
 
+/* ─── Bosh sahifa: kategoriya bo'limlari (Owl Carousel) ─────────────────── */
+.cat-section { padding: 20px 0 40px; }
+.cat-section-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  margin-bottom: 20px;
+}
+.cat-section-head h2 {
+  font-family: var(--font-display); font-size: 22px; font-weight: 700; margin: 0;
+}
+.cat-section-head a {
+  font-family: var(--font-mono); font-size: 12.5px; font-weight: 600; color: var(--indigo);
+  white-space: nowrap;
+}
+.cat-section-head a:hover { color: var(--indigo-deep); }
+
+.cat-carousel .owl-stage-outer { padding: 4px 2px 10px; }
+.cat-carousel .card { height: 100%; }
+.cat-carousel .owl-nav button.owl-prev,
+.cat-carousel .owl-nav button.owl-next {
+  position: absolute; top: 38%; width: 38px; height: 38px; border-radius: 50%;
+  background: var(--card) !important; border: 1px solid var(--line);
+  color: var(--ink) !important; font-size: 18px; box-shadow: 0 2px 8px rgba(20,22,31,0.1);
+}
+.cat-carousel .owl-nav button.owl-prev { left: -14px; }
+.cat-carousel .owl-nav button.owl-next { right: -14px; }
+.cat-carousel .owl-nav button.owl-prev:hover,
+.cat-carousel .owl-nav button.owl-next:hover { background: var(--indigo) !important; color: #fff !important; }
+.cat-carousel .owl-nav .disabled { display: none; }
+.cat-carousel .owl-dots { margin-top: 14px; text-align: center; }
+.cat-carousel .owl-dots .owl-dot span {
+  width: 7px; height: 7px; margin: 0 4px; background: var(--line);
+}
+.cat-carousel .owl-dots .owl-dot.active span { background: var(--indigo); }
+
 /* ─── Pagination ─────────────────────────────────────────────────────────── */
 .pagination { display: flex; justify-content: center; gap: 8px; margin-top: 44px; }
 .pagination button {

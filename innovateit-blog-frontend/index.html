@@ -6,6 +6,8 @@
 <title>Blog — InnovateIT School</title>
 <meta name="description" content="InnovateIT School blogi: maktab yangiliklari, o'quvchilar yutuqlari, IT darslar va ota-onalar uchun foydali maqolalar.">
 <link rel="stylesheet" href="css/blog.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.carousel.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/assets/owl.theme.default.min.css">
 </head>
 <body>
 
@@ -57,17 +59,16 @@
   </a>
 </div>
 
-<section class="grid-section">
-  <div class="wrap">
-    <div class="grid" id="posts-grid">
-      <!-- Skeleton loading -->
-      <div class="card"><div class="card-media skel"></div><div class="card-body"><div class="skel" style="height:18px;width:80%;border-radius:6px;"></div><div class="skel" style="height:14px;width:100%;border-radius:6px;margin-top:8px;"></div></div></div>
+<div id="cat-sections">
+  <!-- Skeleton loading -->
+  <div class="wrap" style="padding:24px 0;">
+    <div class="skel" style="height:22px;width:180px;border-radius:6px;margin-bottom:18px;"></div>
+    <div class="grid">
       <div class="card"><div class="card-media skel"></div><div class="card-body"><div class="skel" style="height:18px;width:80%;border-radius:6px;"></div><div class="skel" style="height:14px;width:100%;border-radius:6px;margin-top:8px;"></div></div></div>
       <div class="card"><div class="card-media skel"></div><div class="card-body"><div class="skel" style="height:18px;width:80%;border-radius:6px;"></div><div class="skel" style="height:14px;width:100%;border-radius:6px;margin-top:8px;"></div></div></div>
     </div>
-    <div class="pagination" id="pagination"></div>
   </div>
-</section>
+</div>
 
 <footer class="site-footer">
   <div class="wrap">
@@ -98,9 +99,12 @@
 </footer>
 
 <script src="js/blog.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.1/jquery.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/OwlCarousel2/2.3.4/owl.carousel.min.js"></script>
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
-initBlogListing();
+loadFeatured();
+initHomeCategoryCarousels();
 </script>
 </body>
 </html>
