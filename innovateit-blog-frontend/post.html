@@ -10,37 +10,16 @@
 </head>
 <body>
 
-<header class="site-header">
+<header class="site-header post-header">
   <div class="wrap">
-    <a href="/" class="brand">
+    <span class="brand">
       <img class="mark" src="img/logo-mark.png" alt="InnovateIT School logotipi">
       InnovateIT&nbsp;School
-    </a>
-    <nav class="header-nav">
-      <a href="/">Bosh sahifa</a>
-      <a href="yangiliklar.html">Yangiliklar</a>
-      <a href="yutuqlar.html">Yutuqlar</a>
-      <a href="it-darslar.html">IT darslar</a>
-      <a href="royxat.html" class="nav-cta">Ro'yxatdan o'tish</a>
-    </nav>
-    <button class="menu-toggle" id="menu-toggle" aria-label="Menyuni ochish" aria-expanded="false" aria-controls="mobile-nav">
-      <span></span><span></span><span></span>
-    </button>
+    </span>
   </div>
 </header>
 
-<nav class="mobile-nav" id="mobile-nav">
-  <a href="/">Bosh sahifa</a>
-  <a href="yangiliklar.html">Yangiliklar</a>
-  <a href="yutuqlar.html">Yutuqlar</a>
-  <a href="it-darslar.html">IT darslar</a>
-  <a href="royxat.html">Ro'yxatdan o'tish</a>
-</nav>
-<div class="mobile-nav-backdrop" id="mobile-nav-backdrop"></div>
-
 <div class="wrap article-head">
-  <a href="/" class="back-link">← Barcha postlar</a>
-  <div id="cat-slot"></div>
   <h1 id="post-title">Yuklanmoqda...</h1>
   <div class="article-meta">
     <span id="post-author"></span>
@@ -111,10 +90,6 @@ async function loadPost() {
   document.getElementById('post-date').textContent = fmtDate(p.chop_vaqti);
   document.getElementById('post-views').textContent = `${p.korishlar || 0} ko'rishlar`;
 
-  if (p.kategoriya_nomi) {
-    document.getElementById('cat-slot').innerHTML = `<span class="cat-tag">${esc(p.kategoriya_nomi)}</span>`;
-  }
-
   if (p.muqova_rasm) {
     const cover = document.getElementById('post-cover');
     cover.style.display = 'block';
@@ -128,6 +103,25 @@ async function loadPost() {
     ? DOMPurify.sanitize(p.kontent, { ADD_ATTR: ['target'] })
     : p.kontent;
   document.getElementById('post-content').innerHTML = cleanHtml;
+
+  renderBottomBackLink(p.kategoriya_slug);
+}
+
+// Kategoriya slugiga qarab to'g'ri ro'yxat sahifasiga qaytish havolasini
+// postning eng pastiga qo'yadi (yagona ko'rinadigan navigatsiya elementi —
+// o'quvchining e'tibori postni o'qishga qaratilishi uchun).
+const CATEGORY_BACK_LINKS = {
+  'yangiliklar':            { href: 'yangiliklar.html', label: 'Yangiliklarga qaytish' },
+  'oquvchilar-yutuqlari':   { href: 'yutuqlar.html',     label: 'Yutuqlarga qaytish' },
+  'it-darslar':             { href: 'it-darslar.html',   label: 'IT darslarga qaytish' }
+};
+
+function renderBottomBackLink(kategoriyaSlug) {
+  const target = CATEGORY_BACK_LINKS[kategoriyaSlug] || { href: '/', label: 'Barcha postlarga qaytish' };
+  const wrap = document.createElement('div');
+  wrap.className = 'article-body';
+  wrap.innerHTML = `<a href="${target.href}" class="back-link back-link-bottom">← ${esc(target.label)}</a>`;
+  document.getElementById('post-content').insertAdjacentElement('afterend', wrap);
 }
 
 function showNotFound() {

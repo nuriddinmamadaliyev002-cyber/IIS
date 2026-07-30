@@ -373,6 +373,22 @@ body.nav-open { overflow: hidden; }
 }
 .back-link:hover { color: var(--indigo); }
 
+/* Post sahifasida boshqa hech qanday link ko'rinmasligi kerak — brend faqat
+   vizual, bosilmaydigan holatda ko'rsatiladi (diqqat postni o'qishga qaratiladi). */
+.post-header .brand { cursor: default; }
+.post-header .header-nav,
+.post-header .nav-cta,
+.post-header .menu-toggle { display: none !important; }
+
+/* Post matnining eng pastida ko'rinadigan yagona navigatsiya elementi */
+.back-link-bottom {
+  display: block; width: 100%; box-sizing: border-box;
+  font-size: 14px; font-weight: 600; color: var(--indigo);
+  margin-top: 24px; padding-top: 24px; border-top: 1px solid var(--line);
+  text-decoration: none; letter-spacing: .01em;
+}
+.back-link-bottom:hover { color: var(--indigo-deep); }
+
 /* ─── Footer ─────────────────────────────────────────────────────────────── */
 .site-footer {
   border-top: none; padding: 48px 0 36px;
