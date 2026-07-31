@@ -100,6 +100,47 @@ router.get('/students', requireAuth(['admin', 'buxgalter']), async (req, res) =>
   }
 });
 
+// ─── GET /api/buxgalter/qabul-royxati ────────────────────────────────────────
+//  "Qabul YYYY-YY" pseudo-oy uchun: sales moduldagi "royxatga_olindi" holatidagi
+//  leadlar (hali oquvchilar jadvaliga ko'chirilmagan, yangi o'quv yiliga qabul
+//  qilinganlar) ro'yxati. To'lov ma'lumotlari bo'lmaydi — faqat F.I.Sh/maktab/
+//  sinf/telefon.
+router.get('/qabul-royxati', requireAuth(['admin', 'buxgalter']), async (req, res) => {
+  try {
+    let maktabFilter = '';
+    let params       = [];
+
+    if (req.user.role === 'buxgalter') {
+      const maktabIds = await getBuxMaktabIds(req.user.entityId);
+      if (maktabIds.length > 0) {
+        maktabFilter = 'AND l.maktab_id = ANY($1)';
+        params.push(maktabIds);
+      }
+    }
+
+    const result = await pool.query(
+      `SELECT l.id,
+              l.oquvchi_ismi     AS ism,
+              l.oquvchi_familiya AS familiya,
+              l.sinf,
+              l.telefon,
+              l.telefon2,
+              l.maktab_id,
+              COALESCE(m.nomi, l.hudud, '') AS maktab
+       FROM leadlar l
+       LEFT JOIN maktablar m ON m.id = l.maktab_id
+       WHERE l.holat = 'royxatga_olindi' ${maktabFilter}
+       ORDER BY maktab, l.sinf, l.oquvchi_familiya, l.oquvchi_ismi`,
+      params
+    );
+
+    res.json({ ok: true, students: result.rows.map(r => ({ ...r, nofaol: false })) });
+  } catch (err) {
+    console.error("qabul ro'yxati olish xatolik:", err.message);
+    res.status(500).json({ ok: false, error: 'DB xatoligi: ' + err.message });
+  }
+});
+
 // ─── GET /api/buxgalter/tolovlar ─────────────────────────────────────────────
 router.get('/tolovlar', requireAuth(['admin', 'buxgalter']), async (req, res) => {
   const { oy } = req.query;
@@ -174,32 +215,56 @@ router.post('/init-oy', requireAuth(['admin', 'buxgalter']), async (req, res) =>
   if (!p.oy) return res.status(400).json({ ok: false, error: 'oy kerak' });
 
   try {
-    const activeQ = await pool.query(
-      `SELECT id, ism, familiya, maktab_id, sinf, telefon, boshlagan
-       FROM oquvchilar
-       WHERE boshlagan IS NOT NULL AND boshlagan != '' AND LEFT(boshlagan,7) <= $1`,
-      [p.oy]
-    );
-    const nofaolQ = await pool.query(
-      `SELECT id, ism, familiya, maktab_id, sinf, telefon, boshlagan
-       FROM nofaol_oquvchilar
-       WHERE boshlagan IS NOT NULL AND boshlagan != ''
-         AND chiqgan IS NOT NULL AND chiqgan != ''
-         AND LEFT(boshlagan,7) <= $1
-         AND CASE
-               WHEN SUBSTRING(chiqgan,3,1)='.'
-               THEN CONCAT(RIGHT(chiqgan,4),'-',SUBSTRING(chiqgan,4,2))
-               ELSE LEFT(chiqgan,7)
-             END >= $1`,
-      [p.oy]
-    );
+    let all = [];
 
-    const all = [...activeQ.rows, ...nofaolQ.rows];
+    if (p.oy === 'QABUL-2026-27') {
+      // ── "Qabul" pseudo-oyi: manba — sales moduldagi ro'yxatga olindi leadlar ──
+      let maktabFilter = '';
+      let leadParams   = [];
+      if (req.user.role === 'buxgalter') {
+        const maktabIds = await getBuxMaktabIds(req.user.entityId);
+        if (maktabIds.length > 0) {
+          maktabFilter = 'AND maktab_id = ANY($1)';
+          leadParams.push(maktabIds);
+        }
+      }
+      const leadsQ = await pool.query(
+        `SELECT id, oquvchi_ismi AS ism, oquvchi_familiya AS familiya,
+                maktab_id, sinf, telefon
+         FROM leadlar
+         WHERE holat = 'royxatga_olindi' ${maktabFilter}`,
+        leadParams
+      );
+      all = leadsQ.rows;
+    } else {
+      const activeQ = await pool.query(
+        `SELECT id, ism, familiya, maktab_id, sinf, telefon, boshlagan
+         FROM oquvchilar
+         WHERE boshlagan IS NOT NULL AND boshlagan != '' AND LEFT(boshlagan,7) <= $1`,
+        [p.oy]
+      );
+      const nofaolQ = await pool.query(
+        `SELECT id, ism, familiya, maktab_id, sinf, telefon, boshlagan
+         FROM nofaol_oquvchilar
+         WHERE boshlagan IS NOT NULL AND boshlagan != ''
+           AND chiqgan IS NOT NULL AND chiqgan != ''
+           AND LEFT(boshlagan,7) <= $1
+           AND CASE
+                 WHEN SUBSTRING(chiqgan,3,1)='.'
+                 THEN CONCAT(RIGHT(chiqgan,4),'-',SUBSTRING(chiqgan,4,2))
+                 ELSE LEFT(chiqgan,7)
+               END >= $1`,
+        [p.oy]
+      );
+      all = [...activeQ.rows, ...nofaolQ.rows];
+    }
+
     let inserted = 0;
 
     for (const s of all) {
       let tarif = 0, tolov_kerak = 0;
-      if (p.oldingi_oy) {
+      // "Qabul" uchun oldingi oydan tarif ko'chirilmaydi — depozit har doim 0 dan boshlanadi
+      if (p.oldingi_oy && p.oy !== 'QABUL-2026-27') {
         const prev = await pool.query(
           `SELECT tarif, tolov_kerak FROM tolovlar
            WHERE oy=$1 AND oquvchi_id=$2 LIMIT 1`,

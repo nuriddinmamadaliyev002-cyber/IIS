@@ -14,8 +14,15 @@ let STAT_FILTER = '';  // 'all' | 'toliq' | 'qarzdor' | 'nofaol' | 'empty'
 // ─── Yordamchi ───────────────────────────────────
 const g = id => document.getElementById(id);
 
+// ─── "Qabul YYYY-YY" pseudo-oy — Avgust bilan Sentabr orasiga qistiriladi ──
+//  Bu yerda haqiqiy oy emas, balki sales moduldan "ro'yxatga olindi" bo'lgan
+//  (hali to'lov kuzatuvi boshlanmagan) o'quvchilar ro'yxati ko'rsatiladi.
+const QABUL_OY = 'QABUL-2026-27';
+function isQabulOy(oy) { return oy === QABUL_OY; }
+
 function oyNomi(oyStr) {
   if (!oyStr) return '—';
+  if (isQabulOy(oyStr)) return 'Qabul 2026-27';
   const [y, m] = oyStr.split('-');
   const oylar = ['','Yanvar','Fevral','Mart','Aprel','May','Iyun',
                  'Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
@@ -23,11 +30,15 @@ function oyNomi(oyStr) {
 }
 
 function prevOy(oy) {
+  if (isQabulOy(oy)) return '2026-08';
+  if (oy === '2026-09') return QABUL_OY;
   const [y, m] = oy.split('-').map(Number);
   const d = new Date(y, m - 2, 1);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
 }
 function nextOy(oy) {
+  if (isQabulOy(oy)) return '2026-09';
+  if (oy === '2026-08') return QABUL_OY;
   const [y, m] = oy.split('-').map(Number);
   const d = new Date(y, m, 1);
   return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
@@ -75,7 +86,7 @@ function tolovHolati(kerak, qildi) {
 window.addEventListener('DOMContentLoaded', () => {
   // Oxirgi tanlangan oyni saqlash/tiklash
   const savedOy = localStorage.getItem('iit_bux_oy');
-  CURRENT_OY = (savedOy && /^\d{4}-\d{2}$/.test(savedOy)) ? savedOy : currentOyStr();
+  CURRENT_OY = (savedOy && (savedOy === QABUL_OY || /^\d{4}-\d{2}$/.test(savedOy))) ? savedOy : currentOyStr();
   g('oy-label').textContent = oyNomi(CURRENT_OY);
 
   // Saved session
@@ -330,6 +341,8 @@ function changeOy(dir) {
 
 // ─── Ma'lumot yuklash ────────────────────────────
 async function loadData() {
+  if (isQabulOy(CURRENT_OY)) { await loadQabulData(); return; }
+
   g('bux-tbody').innerHTML = `<tr><td colspan="13" class="bux-loading">⏳ Yuklanmoqda…</td></tr>`;
   clearStats();
   setTimeout(fixMainMargin, 100);
@@ -366,6 +379,42 @@ async function loadData() {
     applyFilters();
   } catch(e) {
     g('bux-tbody').innerHTML = `<tr><td colspan="15" class="bux-loading">❌ Xatolik: ${e.message}</td></tr>`;
+  }
+}
+
+// ─── "Qabul 2026-27" — sales moduldan ro'yxatga olindi bo'lgan o'quvchilar ──
+//  Ular ham oddiy oy kabi to'liq funksional: qaydnoma, ehtimoliy sana, depozit
+//  (to'lov kerak/qildi), kvitansiya — buxgalter bu yerdan oldindan depozit
+//  yig'adi, shuning uchun barcha ustunlar va moliyaviy panel ko'rinishi kerak.
+async function loadQabulData() {
+  g('bux-tbody').innerHTML = `<tr><td colspan="13" class="bux-loading">⏳ Yuklanmoqda…</td></tr>`;
+  clearStats();
+  setTimeout(fixMainMargin, 100);
+
+  try {
+    const [studRes, tolovRes] = await Promise.all([
+      api.qabulRoyxati({ username: U.username, parol: U.parol }),
+      api.getTolovlar({ username: U.username, parol: U.parol, oy: CURRENT_OY })
+    ]);
+    if (!studRes.ok) { showToast('❌ ' + studRes.error, 'error'); return; }
+
+    const students = studRes.students || [];
+    const tolovMap = {};
+    (tolovRes.tolovlar || []).forEach(t => {
+      if (t.oquvchi_id) tolovMap[`id:${t.oquvchi_id}`] = t;
+      const fallback = `${t.oquvchi_ism}|${t.oquvchi_familiya}|${t.maktab_id || ''}`;
+      if (!tolovMap[fallback]) tolovMap[fallback] = t;
+    });
+
+    ALL_DATA = students.map(s => {
+      const byId       = s.id ? tolovMap[`id:${s.id}`] : null;
+      const byFallback = tolovMap[`${s.ism}|${s.familiya}|${s.maktab_id || ''}`];
+      return { student: s, tolov: byId || byFallback || null };
+    });
+
+    applyFilters();
+  } catch (e) {
+    g('bux-tbody').innerHTML = `<tr><td colspan="13" class="bux-loading">❌ Xatolik: ${e.message}</td></tr>`;
   }
 }
 
@@ -472,9 +521,12 @@ function buildFilterOptions() {
 function renderTable() {
   const tbody = g('bux-tbody');
   if (FILTERED.length === 0) {
+    const emptyMsg = isQabulOy(CURRENT_OY)
+      ? "Hozircha \"ro'yxatga olindi\" holatidagi o'quvchi yo'q."
+      : 'Hozircha ma\'lumot yo\'q. "Oyni boshlash" tugmasini bosing.';
     tbody.innerHTML = `<tr><td colspan="13" class="bux-empty">
       <span class="emoji">💼</span>
-      Hozircha ma'lumot yo'q. "Oyni boshlash" tugmasini bosing.
+      ${emptyMsg}
     </td></tr>`;
     return;
   }

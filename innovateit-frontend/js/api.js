@@ -264,6 +264,7 @@ const api = {
   biriktirAdmin:    (d) => api.post('/api/buxgalter/biriktiruv', d),
   ajratAdmin:       (d) => api.del('/api/buxgalter/biriktiruv', d),
   buxGetStudents:   (d) => api.get('/api/buxgalter/students', d),
+  qabulRoyxati:     (d) => api.get('/api/buxgalter/qabul-royxati', d),
   getTolovlar:      (d) => api.get('/api/buxgalter/tolovlar', d),
   saveTolov:        (d) => api.post('/api/buxgalter/tolovlar', d),
   initOy:           (d) => api.post('/api/buxgalter/init-oy', d),
