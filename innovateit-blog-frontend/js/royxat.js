@@ -20,13 +20,13 @@ async function loadMaktablar() {
   try {
     const r = await apiGet('/api/maktablar');
     if (r.ok && Array.isArray(r.maktablar) && r.maktablar.length) {
-      sel.innerHTML = '<option value="">Tanlang (yoki hududni yozing)</option>' +
+      sel.innerHTML = '<option value="">Tanlang</option>' +
         r.maktablar.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('');
     } else {
-      sel.innerHTML = '<option value="">Ro\'yxatda topilmadi — hududni yozing</option>';
+      sel.innerHTML = '<option value="">Ro\'yxat topilmadi — birozdan so\'ng qayta urinib ko\'ring</option>';
     }
   } catch (e) {
-    sel.innerHTML = '<option value="">Ro\'yxatni yuklab bo\'lmadi — hududni yozing</option>';
+    sel.innerHTML = '<option value="">Ro\'yxatni yuklab bo\'lmadi — sahifani yangilang</option>';
   }
 }
 
@@ -92,8 +92,7 @@ async function onSubmit(e) {
   const oquvchiFamiliya = document.getElementById('rx-oquvchi-familiya').value.trim();
   const oquvchiIsmi     = document.getElementById('rx-oquvchi-ismi').value.trim();
   const sinf            = document.getElementById('rx-sinf').value;
-  const maktabId        = document.getElementById('rx-maktab').value || null;
-  const hudud           = document.getElementById('rx-hudud').value.trim();
+  const maktabId        = document.getElementById('rx-maktab').value;
   const izoh            = document.getElementById('rx-izoh').value.trim();
 
   const errEl = document.getElementById('rx-err');
@@ -125,8 +124,13 @@ async function onSubmit(e) {
     return;
   }
   if (!sinf) {
-    showErr("Iltimos, sinf / bosqichni tanlang");
+    showErr("Iltimos, sinfni tanlang");
     document.getElementById('rx-sinf').focus();
+    return;
+  }
+  if (!maktabId) {
+    showErr("Iltimos, maktabni tanlang");
+    document.getElementById('rx-maktab').focus();
     return;
   }
 
@@ -141,8 +145,8 @@ async function onSubmit(e) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf,
-        maktabId: maktabId ? parseInt(maktabId, 10) : null,
-        hudud, izoh, manba: 'sayt',
+        maktabId: parseInt(maktabId, 10),
+        izoh, manba: 'sayt',
       }),
     });
     const data = await res.json();
