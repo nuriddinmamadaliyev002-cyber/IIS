@@ -161,13 +161,22 @@ function renderLeads() {
         </select>
       </td>
       <td>
-        <input type="text" class="sl-qaydnoma-input" value="${esc(l.qaydnoma || '')}"
+        <textarea class="sl-qaydnoma-input" rows="1"
           placeholder="Eslatma…" onblur="updateQaydnoma(${l.id}, this.value, this)"
-          onkeydown="if(event.key==='Enter') this.blur()"
-          style="width:130px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;">
+          oninput="autosizeQaydnoma(this)"
+          style="width:150px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;">${esc(l.qaydnoma || '')}</textarea>
       </td>
     </tr>`;
   }).join('');
+
+  // Mavjud (uzun) qaydnoma matnlari uchun balandlikni darhol moslashtiramiz
+  tbody.querySelectorAll('.sl-qaydnoma-input').forEach(autosizeQaydnoma);
+}
+
+// ─── Qaydnoma matn maydonini avtomatik kengaytirish (Word'dagidek qatorga tushadi) ───
+function autosizeQaydnoma(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
 }
 
 async function updateQaydnoma(id, qaydnoma, inputEl) {
