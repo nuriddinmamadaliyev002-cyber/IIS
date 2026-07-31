@@ -564,7 +564,11 @@ function renderTable() {
       <td class="col-maktab">${s.maktab || '—'}</td>
       <td class="col-sinf">${s.sinf || '—'}</td>
       <td class="col-tel">${s.telefon || '—'}${s.telefon2 ? `<br><span class="tel2">${s.telefon2}</span>` : ''}</td>
-      <td class="col-qayd editable" data-field="qaydnoma" onclick="cellClick(${i},'qaydnoma',event)" title="${t?.qaydnoma ? t.qaydnoma.replace(/"/g,'&quot;') : ''}">        <span id="disp-qaydnoma-${i}">${t?.qaydnoma ? t.qaydnoma.replace(/\n/g,'<br>') : '<span class="amount-0">—</span>'}</span>
+      <td class="col-qayd">
+        <textarea class="bx-qayd-input" rows="1" spellcheck="false"
+          placeholder="Eslatma…" onblur="saveQaydnomaBux(${i}, this.value)"
+          oninput="autosizeQaydBux(this)"
+          style="width:100%;min-width:150px;padding:5px 6px;border:none;border-radius:8px;font-size:12.5px;font-family:inherit;background:transparent;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;outline:none;box-shadow:none;">${escBxQayd(t?.qaydnoma || '')}</textarea>
       </td>
       <td class="col-ehtimoliy editable" data-field="ehtimoliy_tolov_sanasi" onclick="cellClick(${i},'ehtimoliy_tolov_sanasi',event)" style="cursor:pointer;">
         <span id="disp-ehtimoliy_tolov_sanasi-${i}">${t?.ehtimoliy_tolov_sanasi ? tolovSanasi(t.ehtimoliy_tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
@@ -586,6 +590,9 @@ function renderTable() {
     </tr>`;
   }).join('');
 
+  // Mavjud (uzun) qaydnoma matnlari uchun balandlikni darhol moslashtiramiz
+  tbody.querySelectorAll('.bx-qayd-input').forEach(autosizeQaydBux);
+
   // Fixed header clone ni yangilash
   const clone = g('fixed-thead-clone');
   if (clone) {
@@ -604,6 +611,29 @@ function renderTable() {
 
 function encodeKey(s) {
   return btoa(encodeURIComponent(`${s.ism}|${s.familiya}|${s.admin}`));
+}
+
+// ─── Qaydnoma (textarea) — sales panelidagi kabi doim tahrirlanadigan maydon ───
+function escBxQayd(s) {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// Matn maydonini avtomatik kengaytirish (Word'dagidek qatorga tushadi)
+function autosizeQaydBux(el) {
+  el.style.height = 'auto';
+  el.style.height = el.scrollHeight + 'px';
+}
+
+async function saveQaydnomaBux(idx, qaydnoma) {
+  const item = FILTERED[idx];
+  if (!item) return;
+  if (!item.tolov) item.tolov = {};
+  if ((item.tolov.qaydnoma || '') === qaydnoma) return; // o'zgarish bo'lmasa — saqlamaymiz
+  item.tolov.qaydnoma = qaydnoma;
+  await saveRow(idx);
 }
 
 // ─── Inline tahrirlash ───────────────────────────
