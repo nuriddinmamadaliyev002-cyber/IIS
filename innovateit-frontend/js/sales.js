@@ -20,11 +20,14 @@ function esc(s) {
   }[c]));
 }
 
+const OY_NOMLARI = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
+
 function formatDate(iso) {
   if (!iso) return '—';
   const d = new Date(iso);
-  return d.toLocaleDateString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric' }) +
-         ' ' + d.toLocaleTimeString('uz-UZ', { hour: '2-digit', minute: '2-digit' });
+  if (isNaN(d.getTime())) return '—';
+  const pad = n => String(n).padStart(2, '0');
+  return `${OY_NOMLARI[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
 function togglePw() {
@@ -169,7 +172,7 @@ function renderLeads() {
           style="width:150px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;">${esc(l.qaydnoma || '')}</textarea>
       </td>
       <td>
-        <input type="datetime-local" class="sl-vaqt-input" value="${toDatetimeLocal(l.gaplashilgan_vaqt)}"
+        <input type="datetime-local" class="sl-vaqt-input" lang="sv-SE" value="${toDatetimeLocal(l.gaplashilgan_vaqt)}"
           onchange="updateGaplashilganVaqt(${l.id}, this.value, this)"
           style="padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;">
       </td>
