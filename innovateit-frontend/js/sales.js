@@ -156,8 +156,8 @@ function renderLeads() {
         ${l.telefon2 ? `<br><a href="tel:${esc(l.telefon2)}" style="color:#6b7280;text-decoration:none;font-size:12px;">${esc(l.telefon2)}</a>` : ''}
       </td>
       <td>${esc([l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ') || '—')}</td>
-      <td>${esc(l.sinf || '—')}</td>
       <td>${esc(l.maktab_nomi || l.hudud || '—')}</td>
+      <td>${esc(l.sinf || '—')}</td>
       <td style="font-size:12px;color:#9ca3af;white-space:nowrap;">${formatDate(l.yaratilgan)}</td>
       <td>
         <select onchange="updateHolat(${l.id}, this.value)"
@@ -169,7 +169,7 @@ function renderLeads() {
         <textarea class="sl-qaydnoma-input" rows="1"
           placeholder="Eslatma…" onblur="updateQaydnoma(${l.id}, this.value, this)"
           oninput="autosizeQaydnoma(this)"
-          style="width:150px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;">${esc(l.qaydnoma || '')}</textarea>
+          style="width:300px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;">${esc(l.qaydnoma || '')}</textarea>
       </td>
       <td>
         <span class="sl-vaqt-display" id="sl-vaqt-disp-${l.id}"
