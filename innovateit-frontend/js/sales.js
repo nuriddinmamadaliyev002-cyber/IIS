@@ -153,15 +153,39 @@ function renderLeads() {
       <td>${esc(l.sinf || '—')}</td>
       <td>${esc(l.maktab_nomi || l.hudud || '—')}</td>
       <td style="max-width:220px;white-space:normal;color:#6b7280;">${esc(l.izoh || '—')}</td>
+      <td style="font-size:12px;color:#9ca3af;white-space:nowrap;">${formatDate(l.yaratilgan)}</td>
       <td>
         <select onchange="updateHolat(${l.id}, this.value)"
           style="padding:5px 8px;border-radius:8px;border:1.5px solid ${holatInfo.color}33;background:${holatInfo.bg};color:${holatInfo.color};font-size:12px;font-weight:600;">
           ${holatOptions}
         </select>
       </td>
-      <td style="font-size:12px;color:#9ca3af;white-space:nowrap;">${formatDate(l.yaratilgan)}</td>
+      <td>
+        <input type="text" class="sl-qaydnoma-input" value="${esc(l.qaydnoma || '')}"
+          placeholder="Eslatma qo'shish…" onblur="updateQaydnoma(${l.id}, this.value, this)"
+          onkeydown="if(event.key==='Enter') this.blur()"
+          style="width:170px;padding:5px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;">
+      </td>
     </tr>`;
   }).join('');
+}
+
+async function updateQaydnoma(id, qaydnoma, inputEl) {
+  try {
+    const r = await api.updateLead({ id, qaydnoma });
+    if (r.ok) {
+      const lead = LEADS.find(l => l.id === id);
+      if (lead) lead.qaydnoma = qaydnoma;
+      if (inputEl) {
+        inputEl.style.borderColor = '#16a34a';
+        setTimeout(() => { inputEl.style.borderColor = ''; }, 800);
+      }
+    } else {
+      alert('❌ ' + r.error);
+    }
+  } catch (e) {
+    alert('❌ Xatolik: ' + e.message);
+  }
 }
 
 async function updateHolat(id, holat) {

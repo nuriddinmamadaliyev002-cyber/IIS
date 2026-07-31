@@ -326,6 +326,7 @@ CREATE TABLE IF NOT EXISTS leadlar (
     maktab_id      INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
     hudud          TEXT    DEFAULT '',
     izoh           TEXT    DEFAULT '',
+    qaydnoma       TEXT    DEFAULT '',              -- sales xodimining qo'ng'iroq eslatmasi
     manba          TEXT    DEFAULT 'sayt',
     holat          TEXT    NOT NULL DEFAULT 'yangi'
                      CHECK (holat IN ('yangi', 'boglanildi', 'royxatga_olindi', 'bekor_qilindi')),
@@ -352,6 +353,7 @@ END $$;
 
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS oquvchi_familiya TEXT DEFAULT '';
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS telefon2         TEXT DEFAULT '';
+ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS qaydnoma         TEXT DEFAULT ''; -- sales xodimining qo'ng'iroq eslatmasi
 
 
 -- ─── 22. SALES XODIMLARIGA MAKTAB BIRIKTIRISH ─────────────────────────────────

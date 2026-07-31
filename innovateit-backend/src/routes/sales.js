@@ -117,7 +117,7 @@ router.get('/leads', requireAuth(['admin', 'sales']), async (req, res) => {
 // ─── PUT /api/sales/leads/:id — holat/biriktirilganini yangilash ─────────────
 router.put('/leads/:id', requireAuth(['admin', 'sales']), async (req, res) => {
   const { id }   = req.params;
-  const { holat, biriktirilgan, izoh } = req.body;
+  const { holat, biriktirilgan, izoh, qaydnoma } = req.body;
 
   const ruxsatEtilganHolatlar = ['yangi', 'boglanildi', 'royxatga_olindi', 'bekor_qilindi'];
   if (holat && !ruxsatEtilganHolatlar.includes(holat))
@@ -131,6 +131,7 @@ router.put('/leads/:id', requireAuth(['admin', 'sales']), async (req, res) => {
     if (holat !== undefined)          { fields.push(`holat = $${i++}`); params.push(holat); }
     if (biriktirilgan !== undefined)  { fields.push(`biriktirilgan = $${i++}`); params.push(biriktirilgan); }
     if (izoh !== undefined)           { fields.push(`izoh = $${i++}`); params.push(izoh); }
+    if (qaydnoma !== undefined)       { fields.push(`qaydnoma = $${i++}`); params.push(qaydnoma); }
     fields.push(`yangilangan = NOW()`);
 
     if (fields.length === 1)

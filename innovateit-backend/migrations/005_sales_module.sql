@@ -39,6 +39,7 @@ CREATE TABLE IF NOT EXISTS leadlar (
     maktab_id      INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
     hudud          TEXT    DEFAULT '',               -- agar maktab ro'yxatda bo'lmasa, erkin matn
     izoh           TEXT    DEFAULT '',
+    qaydnoma       TEXT    DEFAULT '',                -- sales xodimining qo'ng'iroq eslatmasi
     manba          TEXT    DEFAULT 'sayt',            -- 'sayt' | 'telegram' | 'qolda' va h.k.
     holat          TEXT    NOT NULL DEFAULT 'yangi'
                      CHECK (holat IN ('yangi', 'boglanildi', 'royxatga_olindi', 'bekor_qilindi')),
