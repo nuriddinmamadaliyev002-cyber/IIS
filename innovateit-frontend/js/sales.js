@@ -148,8 +148,10 @@ function renderLeads() {
 
     return `<tr>
       <td style="font-weight:600;">${esc(l.ism)}</td>
-      <td><a href="tel:${esc(l.telefon)}" style="color:#2563eb;text-decoration:none;">${esc(l.telefon)}</a></td>
-      <td>${l.telefon2 ? `<a href="tel:${esc(l.telefon2)}" style="color:#2563eb;text-decoration:none;">${esc(l.telefon2)}</a>` : '—'}</td>
+      <td>
+        <a href="tel:${esc(l.telefon)}" style="color:#2563eb;text-decoration:none;font-weight:600;">${esc(l.telefon)}</a>
+        ${l.telefon2 ? `<br><a href="tel:${esc(l.telefon2)}" style="color:#6b7280;text-decoration:none;font-size:12px;">${esc(l.telefon2)}</a>` : ''}
+      </td>
       <td>${esc([l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ') || '—')}</td>
       <td>${esc(l.sinf || '—')}</td>
       <td>${esc(l.maktab_nomi || l.hudud || '—')}</td>
