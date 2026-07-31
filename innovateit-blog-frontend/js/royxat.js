@@ -52,19 +52,21 @@ function isTelOk(val) {
   const d = val.replace(/\D/g, '');
   return d.length === 12 && d.startsWith('998');
 }
-function validateTel(inp, hintEl) {
+// Eslatma: xato holati (qizil ramka/hint) endi faqat "Ro'yxatdan o'tish"
+// bosilib, forma yuborilganda ko'rsatiladi (showTelErr orqali). Yozish
+// paytida yoki fokusdan chiqishda darhol xato ko'rsatilmaydi — foydalanuvchi
+// hali to'ldirib ulgurmagan bo'lishi mumkin.
+function clearTelState(inp, hintEl) {
   if (!inp) return;
-  const val = inp.value.trim();
-  if (!val) {
-    inp.className = 'tel-input';
-    if (hintEl) { hintEl.className = 'rx-tel-hint'; hintEl.textContent = ''; }
-    return;
-  }
-  const ok = isTelOk(val);
-  inp.className = 'tel-input ' + (ok ? 'tel-ok' : 'tel-err');
+  inp.className = 'tel-input';
+  if (hintEl) { hintEl.className = 'rx-tel-hint'; hintEl.textContent = ''; }
+}
+function showTelErr(inp, hintEl) {
+  if (!inp) return;
+  inp.className = 'tel-input tel-err';
   if (hintEl) {
-    hintEl.className   = 'rx-tel-hint ' + (ok ? 'ok' : 'err');
-    hintEl.textContent = ok ? "✓ To'g'ri format" : "✗ +998 XX XXX XX XX formatida kiriting";
+    hintEl.className   = 'rx-tel-hint err';
+    hintEl.textContent = "✗ +998 XX XXX XX XX formatida kiriting";
   }
 }
 function setupTel(inpId, hintId) {
@@ -77,9 +79,10 @@ function setupTel(inpId, hintId) {
     this.value   = fmtTel(this.value);
     const diff   = this.value.length - oldLen;
     try { this.setSelectionRange(pos + diff, pos + diff); } catch (e) {}
-    validateTel(this, hint);
+    // Yozayotganda avvalgi xato holati bo'lsa, tozalab boramiz —
+    // qayta xato faqat keyingi submitda ko'rsatiladi.
+    clearTelState(this, hint);
   });
-  inp.addEventListener('blur', () => validateTel(inp, hint));
 }
 
 // ─── Forma yuborish ───────────────────────────────────────────────────────
@@ -97,19 +100,28 @@ async function onSubmit(e) {
   const errEl = document.getElementById('rx-err');
   errEl.style.display = 'none';
 
+  const telInp   = document.getElementById('rx-telefon');
+  const telHint  = document.getElementById('rx-tel-hint');
+  const tel2Inp  = document.getElementById('rx-telefon2');
+  const tel2Hint = document.getElementById('rx-tel2-hint');
+  clearTelState(telInp, telHint);
+  clearTelState(tel2Inp, tel2Hint);
+
   if (!ism) {
     showErr('Iltimos, ismingizni kiriting');
     document.getElementById('rx-ism').focus();
     return;
   }
   if (!telefon || !isTelOk(telefon)) {
+    showTelErr(telInp, telHint);
     showErr("Iltimos, telefon raqamni +998 XX XXX XX XX formatida kiriting");
-    document.getElementById('rx-telefon').focus();
+    telInp.focus();
     return;
   }
   if (telefon2 && !isTelOk(telefon2)) {
+    showTelErr(tel2Inp, tel2Hint);
     showErr("Qo'shimcha telefon raqam formati noto'g'ri");
-    document.getElementById('rx-telefon2').focus();
+    tel2Inp.focus();
     return;
   }
   if (!oquvchiFamiliya) {
