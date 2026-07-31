@@ -166,10 +166,10 @@ function renderLeads() {
         </select>
       </td>
       <td>
-        <textarea class="sl-qaydnoma-input" rows="1"
+        <textarea class="sl-qaydnoma-input" rows="1" spellcheck="false"
           placeholder="Eslatma…" onblur="updateQaydnoma(${l.id}, this.value, this)"
           oninput="autosizeQaydnoma(this)"
-          style="width:300px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;">${esc(l.qaydnoma || '')}</textarea>
+          style="width:300px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;outline:none;box-shadow:none;">${esc(l.qaydnoma || '')}</textarea>
       </td>
       <td>
         <span class="sl-vaqt-display" id="sl-vaqt-disp-${l.id}"
