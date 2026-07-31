@@ -173,8 +173,8 @@ function renderLeads() {
       </td>
       <td>
         <span class="sl-vaqt-display" id="sl-vaqt-disp-${l.id}"
-          onclick="editVaqt(${l.id}, '${toDatetimeLocal(l.gaplashilgan_vaqt)}')"
-          style="cursor:pointer;font-size:12px;color:${l.gaplashilgan_vaqt ? '#1a1917' : '#9ca3af'};white-space:nowrap;border-bottom:1px dashed var(--border);padding-bottom:1px;">${l.gaplashilgan_vaqt ? formatDate(l.gaplashilgan_vaqt) : 'Belgilash…'}</span>
+          onclick="editVaqt(${l.id}, '${toDateOnly(l.gaplashilgan_vaqt)}')"
+          style="cursor:pointer;font-size:12px;color:${l.gaplashilgan_vaqt ? '#1a1917' : '#9ca3af'};white-space:nowrap;border-bottom:1px dashed var(--border);padding-bottom:1px;">${l.gaplashilgan_vaqt ? formatDateOnly(l.gaplashilgan_vaqt) : 'Belgilash…'}</span>
       </td>
     </tr>`;
   }).join('');
@@ -189,25 +189,31 @@ function autosizeQaydnoma(el) {
   el.style.height = el.scrollHeight + 'px';
 }
 
-// ─── Gaplashilgan vaqt (mijoz bilan aloqa qilingan vaqt) ─────────────────────
-// Postgres timestamp'ni <input type="datetime-local"> kutgan "YYYY-MM-DDTHH:MM"
-// formatiga o'giradi (foydalanuvchining mahalliy vaqt zonasida ko'rsatiladi).
-function toDatetimeLocal(ts) {
+// ─── Gaplashilgan sana (mijoz bilan aloqa qilingan sana) ─────────────────────
+// Faqat SANA saqlanadi, vaqt kerak emas. Postgres timestamp'ni <input type="date">
+// kutgan "YYYY-MM-DD" formatiga o'giradi.
+function toDateOnly(ts) {
   if (!ts) return '';
   const d = new Date(ts);
   if (isNaN(d.getTime())) return '';
   const pad = n => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-// Ustunga bosilganda formatlangan matn o'rniga tahrirlash uchun input chiqadi.
+function formatDateOnly(iso) {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '—';
+  return `${OY_NOMLARI[d.getMonth()]} ${d.getDate()}, ${d.getFullYear()}`;
+}
+
+// Ustunga bosilganda formatlangan matn o'rniga tahrirlash uchun sana inputi chiqadi.
 function editVaqt(id, currentValue) {
   const disp = g(`sl-vaqt-disp-${id}`);
   if (!disp || disp.tagName === 'INPUT') return;
 
   const inp = document.createElement('input');
-  inp.type  = 'datetime-local';
-  inp.lang  = 'sv-SE';
+  inp.type  = 'date';
   inp.id    = `sl-vaqt-disp-${id}`;
   inp.className = 'sl-vaqt-input';
   inp.value = currentValue;
@@ -238,9 +244,9 @@ async function updateGaplashilganVaqt(id, value) {
     const span = document.createElement('span');
     span.className = 'sl-vaqt-display';
     span.id = `sl-vaqt-disp-${id}`;
-    span.onclick = () => editVaqt(id, toDatetimeLocal(lead ? lead.gaplashilgan_vaqt : null));
+    span.onclick = () => editVaqt(id, toDateOnly(lead ? lead.gaplashilgan_vaqt : null));
     span.style.cssText = `cursor:pointer;font-size:12px;color:${lead && lead.gaplashilgan_vaqt ? '#1a1917' : '#9ca3af'};white-space:nowrap;border-bottom:1px dashed var(--border);padding-bottom:1px;`;
-    span.textContent = lead && lead.gaplashilgan_vaqt ? formatDate(lead.gaplashilgan_vaqt) : 'Belgilash…';
+    span.textContent = lead && lead.gaplashilgan_vaqt ? formatDateOnly(lead.gaplashilgan_vaqt) : 'Belgilash…';
     inp.replaceWith(span);
   }
 }
