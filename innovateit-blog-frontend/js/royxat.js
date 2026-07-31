@@ -93,7 +93,6 @@ async function onSubmit(e) {
   const oquvchiIsmi     = document.getElementById('rx-oquvchi-ismi').value.trim();
   const sinf            = document.getElementById('rx-sinf').value;
   const maktabId        = document.getElementById('rx-maktab').value;
-  const izoh            = document.getElementById('rx-izoh').value.trim();
 
   const errEl = document.getElementById('rx-err');
   errEl.style.display = 'none';
@@ -146,7 +145,7 @@ async function onSubmit(e) {
       body: JSON.stringify({
         ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf,
         maktabId: parseInt(maktabId, 10),
-        izoh, manba: 'sayt',
+        manba: 'sayt',
       }),
     });
     const data = await res.json();

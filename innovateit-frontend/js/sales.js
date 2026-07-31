@@ -153,7 +153,6 @@ function renderLeads() {
       <td>${esc([l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ') || '—')}</td>
       <td>${esc(l.sinf || '—')}</td>
       <td>${esc(l.maktab_nomi || l.hudud || '—')}</td>
-      <td style="max-width:160px;white-space:normal;color:#6b7280;">${esc(l.izoh || '—')}</td>
       <td style="font-size:12px;color:#9ca3af;white-space:nowrap;">${formatDate(l.yaratilgan)}</td>
       <td>
         <select onchange="updateHolat(${l.id}, this.value)"
