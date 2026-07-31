@@ -168,6 +168,11 @@ function renderLeads() {
           oninput="autosizeQaydnoma(this)"
           style="width:150px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;">${esc(l.qaydnoma || '')}</textarea>
       </td>
+      <td>
+        <input type="datetime-local" class="sl-vaqt-input" value="${toDatetimeLocal(l.gaplashilgan_vaqt)}"
+          onchange="updateGaplashilganVaqt(${l.id}, this.value, this)"
+          style="padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;">
+      </td>
     </tr>`;
   }).join('');
 
@@ -179,6 +184,35 @@ function renderLeads() {
 function autosizeQaydnoma(el) {
   el.style.height = 'auto';
   el.style.height = el.scrollHeight + 'px';
+}
+
+// ─── Gaplashilgan vaqt (mijoz bilan aloqa qilingan vaqt) ─────────────────────
+// Postgres timestamp'ni <input type="datetime-local"> kutgan "YYYY-MM-DDTHH:MM"
+// formatiga o'giradi (foydalanuvchining mahalliy vaqt zonasida ko'rsatiladi).
+function toDatetimeLocal(ts) {
+  if (!ts) return '';
+  const d = new Date(ts);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+async function updateGaplashilganVaqt(id, value, inputEl) {
+  try {
+    const r = await api.updateLead({ id, gaplashilgan_vaqt: value || null });
+    if (r.ok) {
+      const lead = LEADS.find(l => l.id === id);
+      if (lead) lead.gaplashilgan_vaqt = value || null;
+      if (inputEl) {
+        inputEl.style.borderColor = '#16a34a';
+        setTimeout(() => { inputEl.style.borderColor = ''; }, 800);
+      }
+    } else {
+      alert('❌ ' + r.error);
+    }
+  } catch (e) {
+    alert('❌ Server bilan bogʻlanib boʻlmadi');
+  }
 }
 
 async function updateQaydnoma(id, qaydnoma, inputEl) {

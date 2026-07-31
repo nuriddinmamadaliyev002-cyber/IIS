@@ -327,6 +327,7 @@ CREATE TABLE IF NOT EXISTS leadlar (
     hudud          TEXT    DEFAULT '',
     izoh           TEXT    DEFAULT '',
     qaydnoma       TEXT    DEFAULT '',              -- sales xodimining qo'ng'iroq eslatmasi
+    gaplashilgan_vaqt TIMESTAMP,                     -- mijoz bilan gaplashilgan vaqt
     manba          TEXT    DEFAULT 'sayt',
     holat          TEXT    NOT NULL DEFAULT 'yangi'
                      CHECK (holat IN ('yangi', 'boglanildi', 'royxatga_olindi', 'bekor_qilindi')),
@@ -354,6 +355,7 @@ END $$;
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS oquvchi_familiya TEXT DEFAULT '';
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS telefon2         TEXT DEFAULT '';
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS qaydnoma         TEXT DEFAULT ''; -- sales xodimining qo'ng'iroq eslatmasi
+ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS gaplashilgan_vaqt TIMESTAMP; -- mijoz bilan gaplashilgan vaqt
 
 
 -- ─── 22. SALES XODIMLARIGA MAKTAB BIRIKTIRISH ─────────────────────────────────
