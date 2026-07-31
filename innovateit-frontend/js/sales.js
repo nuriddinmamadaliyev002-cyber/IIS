@@ -172,9 +172,9 @@ function renderLeads() {
           style="width:150px;padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;">${esc(l.qaydnoma || '')}</textarea>
       </td>
       <td>
-        <input type="datetime-local" class="sl-vaqt-input" lang="sv-SE" value="${toDatetimeLocal(l.gaplashilgan_vaqt)}"
-          onchange="updateGaplashilganVaqt(${l.id}, this.value, this)"
-          style="padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;">
+        <span class="sl-vaqt-display" id="sl-vaqt-disp-${l.id}"
+          onclick="editVaqt(${l.id}, '${toDatetimeLocal(l.gaplashilgan_vaqt)}')"
+          style="cursor:pointer;font-size:12px;color:${l.gaplashilgan_vaqt ? '#1a1917' : '#9ca3af'};white-space:nowrap;border-bottom:1px dashed var(--border);padding-bottom:1px;">${l.gaplashilgan_vaqt ? formatDate(l.gaplashilgan_vaqt) : 'Belgilash…'}</span>
       </td>
     </tr>`;
   }).join('');
@@ -200,21 +200,48 @@ function toDatetimeLocal(ts) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-async function updateGaplashilganVaqt(id, value, inputEl) {
+// Ustunga bosilganda formatlangan matn o'rniga tahrirlash uchun input chiqadi.
+function editVaqt(id, currentValue) {
+  const disp = g(`sl-vaqt-disp-${id}`);
+  if (!disp || disp.tagName === 'INPUT') return;
+
+  const inp = document.createElement('input');
+  inp.type  = 'datetime-local';
+  inp.lang  = 'sv-SE';
+  inp.id    = `sl-vaqt-disp-${id}`;
+  inp.className = 'sl-vaqt-input';
+  inp.value = currentValue;
+  inp.style.cssText = 'padding:5px 6px;border:1.5px solid var(--border);border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;';
+  inp.onblur = () => updateGaplashilganVaqt(id, inp.value);
+
+  disp.replaceWith(inp);
+  inp.focus();
+  if (inp.showPicker) { try { inp.showPicker(); } catch (e) {} }
+}
+
+async function updateGaplashilganVaqt(id, value) {
+  const inp = g(`sl-vaqt-disp-${id}`);
   try {
     const r = await api.updateLead({ id, gaplashilgan_vaqt: value || null });
     if (r.ok) {
       const lead = LEADS.find(l => l.id === id);
       if (lead) lead.gaplashilgan_vaqt = value || null;
-      if (inputEl) {
-        inputEl.style.borderColor = '#16a34a';
-        setTimeout(() => { inputEl.style.borderColor = ''; }, 800);
-      }
     } else {
       alert('❌ ' + r.error);
     }
   } catch (e) {
     alert('❌ Server bilan bogʻlanib boʻlmadi');
+  }
+  // Har qanday holatda ham inputni yana formatlangan matnga (SANA ustuni kabi) qaytaramiz
+  if (inp && inp.tagName === 'INPUT') {
+    const lead = LEADS.find(l => l.id === id);
+    const span = document.createElement('span');
+    span.className = 'sl-vaqt-display';
+    span.id = `sl-vaqt-disp-${id}`;
+    span.onclick = () => editVaqt(id, toDatetimeLocal(lead ? lead.gaplashilgan_vaqt : null));
+    span.style.cssText = `cursor:pointer;font-size:12px;color:${lead && lead.gaplashilgan_vaqt ? '#1a1917' : '#9ca3af'};white-space:nowrap;border-bottom:1px dashed var(--border);padding-bottom:1px;`;
+    span.textContent = lead && lead.gaplashilgan_vaqt ? formatDate(lead.gaplashilgan_vaqt) : 'Belgilash…';
+    inp.replaceWith(span);
   }
 }
 
