@@ -8,14 +8,17 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/hover.css">
   <style>
-    .data-table { width:100%; border-collapse:collapse; font-size:12.5px; table-layout:auto; }
+    .data-table { width:100%; border-collapse:collapse; font-size:12.5px; table-layout:auto; border:none; }
     .data-table th {
       text-align:left; padding:8px 8px; font-size:10.5px; font-weight:700;
       text-transform:uppercase; letter-spacing:.03em; color:#9ca3af;
-      border-bottom:1.5px solid var(--border); white-space:nowrap;
+      border-bottom:1.5px solid var(--border); border-left:none; border-right:none;
+      white-space:nowrap; background:#f8fafc;
     }
-    .data-table td { padding:8px 8px; border-bottom:1px solid var(--border); vertical-align:middle; }
-    .data-table tbody tr:hover { background:#fafafa; }
+    .data-table td { padding:8px 8px; border-bottom:1px solid #eef0f2; border-left:none; border-right:none; vertical-align:middle; }
+    .data-table tbody tr:nth-child(even) { background:#f8fafc; }
+    .data-table tbody tr:nth-child(odd)  { background:#ffffff; }
+    .data-table tbody tr:hover { background:#eef2ff; }
     .sl-stat-cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
     .sl-stat-card {
       flex:1; min-width:120px; background:#fff; border:1.5px solid var(--border);

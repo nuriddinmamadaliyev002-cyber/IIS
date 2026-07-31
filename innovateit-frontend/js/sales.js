@@ -125,6 +125,7 @@ function renderStats() {
     <div class="sl-stat-card"><div class="num" style="color:#2563eb;">${counts.yangi}</div><div class="lbl">Yangi</div></div>
     <div class="sl-stat-card"><div class="num" style="color:#d97706;">${counts.boglanildi}</div><div class="lbl">Bog'lanildi</div></div>
     <div class="sl-stat-card"><div class="num" style="color:#16a34a;">${counts.royxatga_olindi}</div><div class="lbl">Ro'yxatga olindi</div></div>
+    <div class="sl-stat-card"><div class="num" style="color:#dc2626;">${counts.bekor_qilindi}</div><div class="lbl">Bekor qilindi</div></div>
   `;
 }
 
