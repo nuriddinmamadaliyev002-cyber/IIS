@@ -826,6 +826,10 @@ a:focus-visible, button:focus-visible, .chip:focus-visible {
 .gov-photo figcaption {
   padding: 12px 16px; font-family: var(--font-mono); font-size: 12px; color: var(--ink-faint);
 }
+/* Yakka (solo) tik surat — ramka rasmning o'z nisbatiga (portret) mos, kesilmaydi */
+.gov-support-solo { display: flex; justify-content: center; }
+.gov-photo-portrait { max-width: 340px; width: 100%; }
+.gov-photo-portrait img { height: auto; aspect-ratio: 896 / 1188; object-fit: cover; object-position: center top; }
 .gov-quote {
   margin-top: 26px; padding: 24px 28px; border-left: 3px solid var(--mint);
   background: var(--paper-alt); border-radius: 0 var(--radius) var(--radius) 0;
