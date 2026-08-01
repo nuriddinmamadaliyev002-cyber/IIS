@@ -723,9 +723,8 @@ a:focus-visible, button:focus-visible, .chip:focus-visible {
   padding: 8px 16px; border-radius: 100px; border: 1px solid var(--line);
   background: var(--card); color: var(--ink-soft);
 }
-.country-chip .flag-img {
-  width: 18px; height: 13px; border-radius: 2px; object-fit: cover;
-  flex-shrink: 0; box-shadow: 0 0 0 1px rgba(20,22,31,0.08);
+.country-chip .flag {
+  font-size: 16px; line-height: 1; flex-shrink: 0;
 }
 @media (max-width: 640px) {
   .country-chips { flex-direction: column; align-items: stretch; }
@@ -751,8 +750,7 @@ a:focus-visible, button:focus-visible, .chip:focus-visible {
   color: var(--ink-soft); background: var(--card); border: 1px solid var(--line);
   padding: 6px 14px 6px 10px; border-radius: 100px;
 }
-.hero-flag-chip .flag { font-size: 16px; line-height: 1; }
-.hero-flag-chip .flag-img { width: 20px; height: 14px; border-radius: 2px; object-fit: cover; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(20,22,31,0.08); }
+.hero-flag-chip .flag { font-size: 18px; line-height: 1; }
 
 /* ─── Hero — katta ekranlarda bayroqlar sarlavhaning o'ng tomonida, katta o'lchamda ─── */
 @media (min-width: 1024px) {
@@ -784,9 +782,8 @@ a:focus-visible, button:focus-visible, .chip:focus-visible {
     gap: 16px;
     border-radius: 100px;
   }
-  .hero-flag-chip .flag-img {
-    width: 72px; height: 48px; border-radius: 6px;
-    box-shadow: 0 0 0 1px rgba(20,22,31,0.12);
+  .hero-flag-chip .flag {
+    font-size: 44px;
   }
 }
 
