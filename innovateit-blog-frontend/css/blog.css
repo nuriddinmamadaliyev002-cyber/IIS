@@ -406,8 +406,8 @@ body.nav-open { overflow: hidden; }
 .cover-slide img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; cursor: zoom-in; }
 /* Galereya rasmlari muqovadan farqli proporsiyada bo'lishi mumkin — shuning
    uchun kesilmasdan, to'liq holda (letterbox fon bilan) ko'rsatiladi.
-   Fon rangi saytning umumiy och (light) dizayniga mos tanlangan. */
-.cover-slide-gallery { background: var(--paper-alt); }
+   Fon rangi sahifa foni bilan bir xil — shu sabab chegara/quti ko'rinmaydi. */
+.cover-slide-gallery { background: var(--paper); }
 .cover-slide-gallery img { object-fit: contain; }
 .cover-nav {
   position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
