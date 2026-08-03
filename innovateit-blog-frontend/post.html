@@ -140,10 +140,10 @@ let coverIdx = 0;
 function initCoverCarousel(p) {
   coverImages = [];
   if (p.muqova_rasm) {
-    coverImages.push({ src: resolveUpload(p.muqova_rasm), style: coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab) });
+    coverImages.push({ src: resolveUpload(p.muqova_rasm), style: coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab), isCover: true });
   }
   if (Array.isArray(p.galereya)) {
-    p.galereya.forEach(filename => coverImages.push({ src: resolveUpload(filename), style: '' }));
+    p.galereya.forEach(filename => coverImages.push({ src: resolveUpload(filename), style: '', isCover: false }));
   }
   if (!coverImages.length) return;
 
@@ -154,8 +154,11 @@ function initCoverCarousel(p) {
   const nextBtn = document.getElementById('cover-next');
 
   cover.style.display = 'block';
+  // Muqova rasmi (1-slayd) — object-fit:cover + pozitsiya/zoom bilan kesiladi.
+  // Galereya rasmlari — object-fit:contain bilan TO'LIQ, kesilmasdan ko'rsatiladi
+  // (proporsiyasi turlicha bo'lishi mumkin, shuning uchun majburan kesib bo'lmaydi).
   track.innerHTML = coverImages.map((img, i) => `
-    <div class="cover-slide">
+    <div class="cover-slide${img.isCover ? '' : ' cover-slide-gallery'}">
       <img src="${img.src}" style="${img.style}" alt="" loading="${i === 0 ? 'eager' : 'lazy'}"
            onclick="openLightbox('${img.src.replace(/'/g, "\\'")}')">
     </div>`).join('');
