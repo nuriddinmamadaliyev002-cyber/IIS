@@ -72,6 +72,24 @@ function blFillCategorySelect() {
     BL_CATEGORIES.map(c => `<option value="${c.id}">${blHtmlEsc(c.nomi)}</option>`).join('');
 }
 
+// ─── Chop etilgan sana maydoni (datetime-local <-> ISO) ────────────────────────
+function blToLocalInputValue(dateOrIso) {
+  const d = dateOrIso instanceof Date ? dateOrIso : new Date(dateOrIso);
+  if (isNaN(d.getTime())) return '';
+  const pad = n => String(n).padStart(2, '0');
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+function blSetDateNow() {
+  g('bl-p-sana').value = blToLocalInputValue(new Date());
+}
+
+function blToggleDateField() {
+  const isPublished = g('bl-p-holat').value === 'chop_etilgan';
+  g('bl-p-sana-wrap').style.display = isPublished ? 'block' : 'none';
+  if (isPublished && !g('bl-p-sana').value) blSetDateNow();
+}
+
 // ─── Post modal ─────────────────────────────────────────────────────────────
 function blOpenPostModal() {
   g('bl-modal-title').textContent = '➕ Yangi post';
@@ -82,6 +100,8 @@ function blOpenPostModal() {
   g('bl-p-muallif').value = 'Innovate IT School';
   g('bl-p-muqova').value = '';
   g('bl-p-holat').value = 'qoralama';
+  g('bl-p-sana').value = '';
+  blToggleDateField();
   g('bl-p-cover-status').textContent = '';
   g('bl-p-cover-preview-wrap').style.display = 'none';
   blSetCoverPosition(50);
@@ -103,6 +123,8 @@ async function blEditPost(id) {
   g('bl-p-muallif').value = p.muallif || 'Innovate IT School';
   g('bl-p-muqova').value = p.muqova_rasm || '';
   g('bl-p-holat').value = p.holat;
+  g('bl-p-sana').value = p.chop_vaqti ? blToLocalInputValue(p.chop_vaqti) : '';
+  blToggleDateField();
   g('bl-p-err').style.display = 'none';
   blFillCategorySelect();
   if (p.kategoriya_id) g('bl-p-kategoriya').value = p.kategoriya_id;
@@ -207,7 +229,10 @@ async function blSavePost() {
     muqova_masshtab: parseInt(g('bl-p-masshtab').value, 10) || 100,
     kategoriya_id: g('bl-p-kategoriya').value || null,
     muallif: g('bl-p-muallif').value.trim() || 'Innovate IT School',
-    holat: g('bl-p-holat').value
+    holat: g('bl-p-holat').value,
+    chop_vaqti: g('bl-p-holat').value === 'chop_etilgan' && g('bl-p-sana').value
+      ? new Date(g('bl-p-sana').value).toISOString()
+      : null
   };
 
   const btn = g('bl-p-save-btn');

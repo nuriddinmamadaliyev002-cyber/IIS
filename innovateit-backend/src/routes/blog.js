@@ -185,13 +185,19 @@ router.get('/admin/posts/:id', async (req, res) => {
 router.post('/admin/posts', async (req, res) => {
   try {
     const { sarlavha, qisqacha = '', kontent, muqova_rasm = '', muqova_pozitsiya = 50, muqova_masshtab = 100, kategoriya_id = null,
-            muallif = 'Innovate IT School', holat = 'qoralama', seo_tavsif = '' } = req.body;
+            muallif = 'Innovate IT School', holat = 'qoralama', seo_tavsif = '', chop_vaqti = null } = req.body;
 
     if (!sarlavha || !kontent)
       return res.status(400).json({ ok: false, error: "Sarlavha va kontent kerak" });
 
     const slug = await uniqueSlug(sarlavha);
-    const chopVaqti = holat === 'chop_etilgan' ? new Date() : null;
+    // Eski yillar yangiliklarini orqaga sana bilan joylash uchun chop_vaqti
+    // qo'lda ham berilishi mumkin; berilmasa joriy vaqt ishlatiladi.
+    let chopVaqti = null;
+    if (holat === 'chop_etilgan') {
+      const custom = chop_vaqti ? new Date(chop_vaqti) : null;
+      chopVaqti = (custom && !isNaN(custom.getTime())) ? custom : new Date();
+    }
 
     const q = await pool.query(
       `INSERT INTO blog_posts
@@ -219,16 +225,27 @@ router.put('/admin/posts/:id', async (req, res) => {
       sarlavha = old.sarlavha, qisqacha = old.qisqacha, kontent = old.kontent,
       muqova_rasm = old.muqova_rasm, muqova_pozitsiya = old.muqova_pozitsiya, muqova_masshtab = old.muqova_masshtab,
       kategoriya_id = old.kategoriya_id,
-      muallif = old.muallif, holat = old.holat, seo_tavsif = old.seo_tavsif
+      muallif = old.muallif, holat = old.holat, seo_tavsif = old.seo_tavsif,
+      chop_vaqti = undefined
     } = req.body;
 
     let slug = old.slug;
     if (sarlavha !== old.sarlavha) slug = await uniqueSlug(sarlavha, id);
 
-    // Birinchi marta chop etilayotgan bo'lsa chop_vaqti belgilanadi
+    // Eski yillar yangiliklarini orqaga sana bilan joylash uchun chop_vaqti
+    // qo'lda o'zgartirilishi mumkin. Aks holda: birinchi marta chop etilganda
+    // joriy vaqt qo'yiladi, keyingi tahrirlarda eski sana saqlanadi.
     let chopVaqti = old.chop_vaqti;
-    if (holat === 'chop_etilgan' && !old.chop_vaqti) chopVaqti = new Date();
-    if (holat === 'qoralama') chopVaqti = null;
+    if (holat === 'qoralama') {
+      chopVaqti = null;
+    } else if (holat === 'chop_etilgan') {
+      if (chop_vaqti) {
+        const custom = new Date(chop_vaqti);
+        if (!isNaN(custom.getTime())) chopVaqti = custom;
+      } else if (!old.chop_vaqti) {
+        chopVaqti = new Date();
+      }
+    }
 
     const q = await pool.query(
       `UPDATE blog_posts SET

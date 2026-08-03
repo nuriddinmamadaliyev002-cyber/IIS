@@ -1051,10 +1051,18 @@
       </div>
       <div class="field-group" style="margin-top:12px;">
         <label class="field-label">Holat</label>
-        <select class="field-input" id="bl-p-holat">
+        <select class="field-input" id="bl-p-holat" onchange="blToggleDateField()">
           <option value="qoralama">📝 Qoralama</option>
           <option value="chop_etilgan">✅ Chop etilgan (saytda ko'rinadi)</option>
         </select>
+      </div>
+      <div class="field-group" style="margin-top:12px;" id="bl-p-sana-wrap">
+        <label class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Chop etilgan sana</span>
+          <button type="button" onclick="blSetDateNow()" style="background:none;border:none;color:#6c63ff;font-size:12px;font-weight:600;cursor:pointer;">Hozir</button>
+        </label>
+        <input type="datetime-local" class="field-input" id="bl-p-sana">
+        <p style="font-size:12px;color:#9ca3af;margin-top:6px;">Eski yillar yangiliklarini joylashda sanani orqaga o'zgartirishingiz mumkin. Postlar saytda va kategoriyada shu sana bo'yicha tartiblanadi.</p>
       </div>
       <p class="err-msg" id="bl-p-err" style="display:none;"></p>
     </div>
