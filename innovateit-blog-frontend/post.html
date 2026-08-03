@@ -75,6 +75,20 @@
 <script>
 document.getElementById('year').textContent = new Date().getFullYear();
 
+// DOMPurify iframe'larni tozalayotganda faqat YouTube/Vimeo manbalariga
+// ruxsat beradi — boshqa domendagi iframe (potentsial zararli) olib tashlanadi.
+if (typeof DOMPurify !== 'undefined') {
+  const ALLOWED_IFRAME_HOSTS = ['www.youtube.com', 'youtube.com', 'player.vimeo.com'];
+  DOMPurify.addHook('uponSanitizeElement', (node, data) => {
+    if (data.tagName === 'iframe') {
+      let ok = false;
+      try { ok = ALLOWED_IFRAME_HOSTS.includes(new URL(node.getAttribute('src'), location.href).hostname); }
+      catch (e) { ok = false; }
+      if (!ok) node.remove();
+    }
+  });
+}
+
 async function loadPost() {
   const slug = getQueryParam('slug');
   if (!slug) { showNotFound(); return; }
@@ -99,8 +113,13 @@ async function loadPost() {
   // Kontent HTML sifatida saqlanadi (admin panelidan kiritiladi).
   // Kelajakda superadmindan boshqa rollar ham post yoza olishi mumkinligini
   // hisobga olib, XSS'dan himoya sifatida DOMPurify bilan tozalanadi.
+  // iframe faqat YouTube/Vimeo video ko'mish uchun ruxsat etiladi — boshqa
+  // domenlardagi iframe'lar xavfsizlik uchun hook orqali olib tashlanadi.
   const cleanHtml = (typeof DOMPurify !== 'undefined')
-    ? DOMPurify.sanitize(p.kontent, { ADD_ATTR: ['target'] })
+    ? DOMPurify.sanitize(p.kontent, {
+        ADD_ATTR: ['target', 'controls', 'preload', 'playsinline'],
+        ADD_TAGS: ['iframe', 'video', 'source']
+      })
     : p.kontent;
   document.getElementById('post-content').innerHTML = cleanHtml;
 

@@ -365,4 +365,17 @@ const api = {
     return r.json();
   },
   deleteFile: (filename) => api.del(`/upload/${filename}`, {}),
+
+  // ─── Video upload (blog postlari uchun) — token bilan, kattaroq fayl limiti ───
+  uploadVideo: async (formData) => {
+    const token = tokenStore.get();
+    const headers = {};
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+    const r = await fetch(`${BASE}/upload-video`, {
+      method: 'POST',
+      headers,
+      body: formData
+    });
+    return r.json();
+  },
 };

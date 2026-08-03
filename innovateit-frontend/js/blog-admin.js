@@ -239,6 +239,171 @@ async function blDeletePost(id) {
   }
 }
 
+// ─── Postga video qo'shish (YouTube / Vimeo yoki localdan yuklash) ─────────────
+let BL_KONTENT_CARET = null; // video qo'shishdan oldingi kursor pozitsiyasini eslab qolish
+let BL_VIDEO_MODE = 'link';  // 'link' | 'file'
+let BL_VIDEO_UPLOADED = null; // { filename } — localdan yuklangan video
+
+function blOpenVideoModal() {
+  const ta = g('bl-p-kontent');
+  BL_KONTENT_CARET = ta.selectionStart ?? ta.value.length;
+  g('bl-video-url').value = '';
+  g('bl-video-file').value = '';
+  g('bl-video-uploaded-filename').value = '';
+  BL_VIDEO_UPLOADED = null;
+  g('bl-video-upload-progress-wrap').style.display = 'none';
+  g('bl-video-upload-progress-bar').style.width = '0%';
+  g('bl-video-err').style.display = 'none';
+  blSwitchVideoTab('link');
+  g('bl-video-modal').style.display = 'flex';
+  setTimeout(() => g('bl-video-url').focus(), 50);
+}
+
+function blCloseVideoModal() {
+  g('bl-video-modal').style.display = 'none';
+}
+
+function blSwitchVideoTab(mode) {
+  BL_VIDEO_MODE = mode;
+  const isLink = mode === 'link';
+  g('bl-video-tab-link').style.display = isLink ? 'block' : 'none';
+  g('bl-video-tab-file').style.display = isLink ? 'none' : 'block';
+  g('bl-video-tab-btn-link').style.background = isLink ? '#6c63ff' : '#f3f4f6';
+  g('bl-video-tab-btn-link').style.color = isLink ? '#fff' : '#374151';
+  g('bl-video-tab-btn-file').style.background = isLink ? '#f3f4f6' : '#6c63ff';
+  g('bl-video-tab-btn-file').style.color = isLink ? '#374151' : '#fff';
+  g('bl-video-err').style.display = 'none';
+}
+
+// URL'dan YouTube/Vimeo video ID'sini ajratib oladi
+function blParseVideoUrl(url) {
+  url = (url || '').trim();
+  let m;
+
+  // YouTube: youtu.be/ID, youtube.com/watch?v=ID, /shorts/ID, /embed/ID
+  m = url.match(/(?:youtu\.be\/|youtube\.com\/(?:watch\?v=|shorts\/|embed\/))([a-zA-Z0-9_-]{11})/);
+  if (m) return { provider: 'youtube', id: m[1] };
+
+  // Vimeo: vimeo.com/ID (ixtiyoriy /video/ oldida)
+  m = url.match(/vimeo\.com\/(?:video\/)?(\d+)/);
+  if (m) return { provider: 'vimeo', id: m[1] };
+
+  return null;
+}
+
+function blBuildVideoEmbed(parsed) {
+  if (parsed.provider === 'youtube') {
+    return `<div class="video-embed"><iframe src="https://www.youtube.com/embed/${parsed.id}" title="YouTube video" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen></iframe></div>`;
+  }
+  return `<div class="video-embed"><iframe src="https://player.vimeo.com/video/${parsed.id}" title="Vimeo video" frameborder="0" allow="autoplay; fullscreen; picture-in-picture" allowfullscreen></iframe></div>`;
+}
+
+function blBuildLocalVideoEmbed(filename) {
+  const src = blResolveUpload(filename);
+  return `<video class="local-video" controls preload="metadata" src="${src}"></video>`;
+}
+
+// XHR orqali yuklaymiz (fetch progress ko'rsatmaydi, katta fayllar uchun kerak)
+function blUploadVideoFile(ev) {
+  const file = ev.target.files[0];
+  if (!file) return;
+
+  BL_VIDEO_UPLOADED = null;
+  g('bl-video-uploaded-filename').value = '';
+  g('bl-video-err').style.display = 'none';
+
+  const maxBytes = 200 * 1024 * 1024;
+  if (file.size > maxBytes) {
+    g('bl-video-err').textContent = "Video 200MB dan katta bo'lmasligi kerak";
+    g('bl-video-err').style.display = 'block';
+    ev.target.value = '';
+    return;
+  }
+
+  const wrap = g('bl-video-upload-progress-wrap');
+  const bar  = g('bl-video-upload-progress-bar');
+  const status = g('bl-video-upload-status');
+  wrap.style.display = 'block';
+  bar.style.width = '0%';
+  status.textContent = 'Yuklanmoqda... 0%';
+
+  const fd = new FormData();
+  fd.append('file', file);
+
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', `${BASE}/upload-video`);
+  const token = (typeof tokenStore !== 'undefined') ? tokenStore.get() : null;
+  if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
+
+  xhr.upload.onprogress = (e) => {
+    if (!e.lengthComputable) return;
+    const pct = Math.round((e.loaded / e.total) * 100);
+    bar.style.width = pct + '%';
+    status.textContent = `Yuklanmoqda... ${pct}%`;
+  };
+
+  xhr.onload = () => {
+    let res;
+    try { res = JSON.parse(xhr.responseText); } catch (e) { res = { ok: false, error: 'Server javobi noto\'g\'ri' }; }
+    if (res.ok) {
+      BL_VIDEO_UPLOADED = { filename: res.filename };
+      g('bl-video-uploaded-filename').value = res.filename;
+      status.textContent = '✅ Yuklandi';
+      bar.style.width = '100%';
+    } else {
+      status.textContent = '❌ ' + (res.error || 'Yuklanmadi');
+      g('bl-video-err').textContent = res.error || 'Video yuklanmadi';
+      g('bl-video-err').style.display = 'block';
+    }
+  };
+  xhr.onerror = () => {
+    status.textContent = '❌ Tarmoq xatoligi';
+    g('bl-video-err').textContent = "Yuklashda tarmoq xatoligi yuz berdi";
+    g('bl-video-err').style.display = 'block';
+  };
+  xhr.send(fd);
+}
+
+function blInsertEmbedAtCaret(embedHtml) {
+  const ta = g('bl-p-kontent');
+  const pos = BL_KONTENT_CARET ?? ta.value.length;
+  const before = ta.value.slice(0, pos);
+  const after = ta.value.slice(pos);
+  const needsNewlineBefore = before && !before.endsWith('\n');
+  const insertion = (needsNewlineBefore ? '\n\n' : '') + embedHtml + '\n\n';
+  ta.value = before + insertion + after;
+
+  const newPos = (before + insertion).length;
+  ta.focus();
+  ta.setSelectionRange(newPos, newPos);
+}
+
+function blInsertVideo() {
+  const errEl = g('bl-video-err');
+
+  if (BL_VIDEO_MODE === 'link') {
+    const parsed = blParseVideoUrl(g('bl-video-url').value);
+    if (!parsed) {
+      errEl.textContent = "Havola tanilmadi. YouTube yoki Vimeo havolasini kiriting.";
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    blInsertEmbedAtCaret(blBuildVideoEmbed(parsed));
+  } else {
+    if (!BL_VIDEO_UPLOADED) {
+      errEl.textContent = "Avval video faylni yuklang, keyin qo'shing.";
+      errEl.style.display = 'block';
+      return;
+    }
+    errEl.style.display = 'none';
+    blInsertEmbedAtCaret(blBuildLocalVideoEmbed(BL_VIDEO_UPLOADED.filename));
+  }
+
+  blCloseVideoModal();
+  toast('✅ Video qoshildi', 'success');
+}
+
 // ─── Kategoriyalar boshqaruvi ───────────────────────────────────────────────────
 async function blOpenCategoryManager() {
   g('bl-cat-modal').style.display = 'flex';

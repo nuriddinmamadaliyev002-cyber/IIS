@@ -22,6 +22,7 @@ const maktablarRouter = require('./routes/maktablar');
 const telegramRouter       = require('./routes/telegram');
 const blogRouter       = require('./routes/blog');
 const salesRouter      = require('./routes/sales');
+const { requireAuth }  = require('./middleware/jwt');
 
 
 
@@ -50,6 +51,33 @@ const upload = multer({
   fileFilter: (req, file, cb) => {
     const allowed = ['.jpg','.jpeg','.png','.gif','.webp','.pdf'];
     const mimes   = ['image/jpeg','image/png','image/gif','image/webp','image/bmp','application/pdf'];
+    const ext = path.extname(file.originalname).toLowerCase();
+    cb(null, (ext ? allowed.includes(ext) : false) || mimes.includes(file.mimetype));
+  }
+});
+
+// ─── Blog postlariga video yuklash uchun alohida sozlama (kattaroq limit) ───
+const VIDEO_DIR = path.join(__dirname, '../uploads/videos');
+if (!fs.existsSync(VIDEO_DIR)) fs.mkdirSync(VIDEO_DIR, { recursive: true });
+
+const videoStorage = multer.diskStorage({
+  destination: VIDEO_DIR,
+  filename: (req, file, cb) => {
+    let ext = path.extname(file.originalname).toLowerCase();
+    if (!ext) {
+      const mimeToExt = { 'video/mp4': '.mp4', 'video/webm': '.webm', 'video/quicktime': '.mov', 'video/x-matroska': '.mkv' };
+      ext = mimeToExt[file.mimetype] || '.mp4';
+    }
+    cb(null, `video_${Date.now()}_${Math.random().toString(36).slice(2,7)}${ext}`);
+  }
+});
+
+const uploadVideo = multer({
+  storage: videoStorage,
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200MB
+  fileFilter: (req, file, cb) => {
+    const allowed = ['.mp4','.webm','.mov','.mkv'];
+    const mimes   = ['video/mp4','video/webm','video/quicktime','video/x-matroska'];
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, (ext ? allowed.includes(ext) : false) || mimes.includes(file.mimetype));
   }
@@ -87,6 +115,18 @@ app.delete('/upload/:filename', (req, res) => {
   const fp = path.join(UPLOAD_DIR, req.params.filename);
   if (fs.existsSync(fp)) { fs.unlinkSync(fp); return res.json({ ok: true }); }
   res.json({ ok: false, error: 'Fayl topilmadi' });
+});
+
+// ─── Video yuklash (blog postlari uchun, faqat superadmin) ───
+app.post('/upload-video', requireAuth(['admin']), (req, res) => {
+  uploadVideo.single('file')(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE' ? 'Video 200MB dan katta bo\'lmasligi kerak' : err.message;
+      return res.status(400).json({ ok: false, error: msg });
+    }
+    if (!req.file) return res.json({ ok: false, error: "Video yuklanmadi (format qo'llab-quvvatlanmaydi)" });
+    res.json({ ok: true, filename: `videos/${req.file.filename}` });
+  });
 });
 
 // ─── Health ───
