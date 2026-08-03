@@ -29,17 +29,17 @@
 </div>
 
 <div class="wrap">
-  <div class="article-cover" id="post-cover" style="display:none;"></div>
+  <div class="article-cover" id="post-cover" style="display:none;">
+    <div class="cover-track" id="cover-track"></div>
+    <button type="button" class="cover-nav cover-prev" id="cover-prev" aria-label="Oldingi rasm">‹</button>
+    <button type="button" class="cover-nav cover-next" id="cover-next" aria-label="Keyingi rasm">›</button>
+    <div class="cover-dots" id="cover-dots"></div>
+  </div>
 </div>
 
 <article class="article-body" id="post-content">
   <p>Yuklanmoqda...</p>
 </article>
-
-<div class="wrap" id="post-gallery-wrap" style="display:none;">
-  <div class="post-gallery-title">🖼️ Rasmlar galereyasi</div>
-  <div class="post-gallery" id="post-gallery"></div>
-</div>
 
 <div class="lightbox" id="lightbox" onclick="closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()" aria-label="Yopish">✕</button>
@@ -114,12 +114,6 @@ async function loadPost() {
   document.getElementById('post-date').textContent = fmtDate(p.chop_vaqti);
   document.getElementById('post-views').innerHTML = fmtViews(p.korishlar);
 
-  if (p.muqova_rasm) {
-    const cover = document.getElementById('post-cover');
-    cover.style.display = 'block';
-    cover.innerHTML = `<img src="${resolveUpload(p.muqova_rasm)}" style="${coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab)}" alt="">`;
-  }
-
   // Kontent HTML sifatida saqlanadi (admin panelidan kiritiladi).
   // Kelajakda superadmindan boshqa rollar ham post yoza olishi mumkinligini
   // hisobga olib, XSS'dan himoya sifatida DOMPurify bilan tozalanadi.
@@ -133,18 +127,75 @@ async function loadPost() {
     : p.kontent;
   document.getElementById('post-content').innerHTML = cleanHtml;
 
-  // Qo'shimcha rasmlar (galereya) — faqat to'liq post sahifasida ko'rinadi
-  if (Array.isArray(p.galereya) && p.galereya.length) {
-    const galWrap = document.getElementById('post-gallery-wrap');
-    const gal = document.getElementById('post-gallery');
-    gal.innerHTML = p.galereya.map(filename => {
-      const src = resolveUpload(filename);
-      return `<button type="button" class="post-gallery-item" onclick="openLightbox('${src.replace(/'/g, "\\'")}')"><img src="${src}" alt="" loading="lazy"></button>`;
-    }).join('');
-    galWrap.style.display = 'block';
-  }
+  // Muqova rasmi + qo'shimcha rasmlar (galereya) — bitta carousel sifatida,
+  // -> strelkasini bosib muqovadan keyingi rasmlarga o'tiladi.
+  initCoverCarousel(p);
 
   renderBottomBackLink(p.kategoriya_slug);
+}
+
+let coverImages = [];
+let coverIdx = 0;
+
+function initCoverCarousel(p) {
+  coverImages = [];
+  if (p.muqova_rasm) {
+    coverImages.push({ src: resolveUpload(p.muqova_rasm), style: coverPosStyle(p.muqova_pozitsiya, p.muqova_masshtab) });
+  }
+  if (Array.isArray(p.galereya)) {
+    p.galereya.forEach(filename => coverImages.push({ src: resolveUpload(filename), style: '' }));
+  }
+  if (!coverImages.length) return;
+
+  const cover  = document.getElementById('post-cover');
+  const track  = document.getElementById('cover-track');
+  const dots   = document.getElementById('cover-dots');
+  const prevBtn = document.getElementById('cover-prev');
+  const nextBtn = document.getElementById('cover-next');
+
+  cover.style.display = 'block';
+  track.innerHTML = coverImages.map((img, i) => `
+    <div class="cover-slide">
+      <img src="${img.src}" style="${img.style}" alt="" loading="${i === 0 ? 'eager' : 'lazy'}"
+           onclick="openLightbox('${img.src.replace(/'/g, "\\'")}')">
+    </div>`).join('');
+
+  const multi = coverImages.length > 1;
+  prevBtn.style.display = multi ? 'flex' : 'none';
+  nextBtn.style.display = multi ? 'flex' : 'none';
+  dots.style.display    = multi ? 'flex' : 'none';
+
+  if (multi) {
+    dots.innerHTML = coverImages.map((_, i) => `<button type="button" aria-label="Rasm ${i + 1}"></button>`).join('');
+    Array.from(dots.children).forEach((d, i) => d.addEventListener('click', () => goToCoverSlide(i)));
+    prevBtn.addEventListener('click', () => goToCoverSlide((coverIdx - 1 + coverImages.length) % coverImages.length));
+    nextBtn.addEventListener('click', () => goToCoverSlide((coverIdx + 1) % coverImages.length));
+
+    // Mobilda barmoq bilan surish (swipe)
+    let touchStartX = null;
+    track.addEventListener('touchstart', e => { touchStartX = e.touches[0].clientX; }, { passive: true });
+    track.addEventListener('touchend', e => {
+      if (touchStartX === null) return;
+      const dx = e.changedTouches[0].clientX - touchStartX;
+      if (Math.abs(dx) > 40) goToCoverSlide(dx < 0 ? (coverIdx + 1) % coverImages.length : (coverIdx - 1 + coverImages.length) % coverImages.length);
+      touchStartX = null;
+    }, { passive: true });
+  }
+
+  coverIdx = 0;
+  updateCoverSlide();
+}
+
+function goToCoverSlide(i) {
+  coverIdx = i;
+  updateCoverSlide();
+}
+
+function updateCoverSlide() {
+  const track = document.getElementById('cover-track');
+  const dots  = document.getElementById('cover-dots');
+  track.style.transform = `translateX(-${coverIdx * 100}%)`;
+  Array.from(dots.children).forEach((d, i) => d.classList.toggle('active', i === coverIdx));
 }
 
 function openLightbox(src) {

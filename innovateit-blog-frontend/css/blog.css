@@ -400,6 +400,35 @@ body.nav-open { overflow: hidden; }
 }
 .article-cover img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; }
 
+/* Muqova + galereya carousel — -> strelkasi bilan qo'shimcha rasmlarga o'tiladi */
+.cover-track { display: flex; width: 100%; height: 100%; transition: transform .35s ease; }
+.cover-slide { flex: 0 0 100%; height: 100%; position: relative; }
+.cover-slide img { width: 100%; height: 100%; object-fit: cover; position: absolute; inset: 0; cursor: zoom-in; }
+.cover-nav {
+  position: absolute; top: 50%; transform: translateY(-50%); z-index: 2;
+  width: 40px; height: 40px; border-radius: 50%; border: none;
+  background: rgba(10,10,15,.45); color: #fff; font-size: 22px; line-height: 1;
+  display: none; align-items: center; justify-content: center; cursor: pointer;
+  transition: background .2s;
+}
+.cover-nav:hover { background: rgba(10,10,15,.68); }
+.cover-prev { left: 14px; }
+.cover-next { right: 14px; }
+.cover-dots {
+  position: absolute; bottom: 14px; left: 50%; transform: translateX(-50%);
+  display: none; gap: 6px; z-index: 2;
+}
+.cover-dots button {
+  width: 7px; height: 7px; border-radius: 50%; border: none; padding: 0;
+  background: rgba(255,255,255,.55); cursor: pointer; transition: all .2s;
+}
+.cover-dots button.active { background: #fff; width: 18px; border-radius: 4px; }
+@media (max-width: 640px) {
+  .cover-nav { width: 34px; height: 34px; font-size: 18px; }
+  .cover-prev { left: 8px; }
+  .cover-next { right: 8px; }
+}
+
 .article-body {
   max-width: 700px; margin: 0 auto; padding: 40px 24px 100px;
   font-size: 19px; line-height: 1.75;
@@ -432,26 +461,7 @@ body.nav-open { overflow: hidden; }
   border-radius: var(--radius-sm); background: #000;
 }
 
-/* Post galereyasi (qo'shimcha rasmlar) — faqat to'liq post sahifasida */
-.post-gallery-title {
-  max-width: 700px; margin: 0 auto 16px; font-family: var(--font-display);
-  font-size: 20px; font-weight: 700; color: var(--ink);
-}
-.post-gallery {
-  max-width: 700px; margin: 0 auto 60px;
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
-}
-.post-gallery-item {
-  border: none; padding: 0; margin: 0; cursor: pointer; background: #f3f4f6;
-  border-radius: var(--radius-sm); overflow: hidden; aspect-ratio: 1 / 1;
-}
-.post-gallery-item img {
-  width: 100%; height: 100%; object-fit: cover; display: block;
-  transition: transform .25s ease;
-}
-.post-gallery-item:hover img { transform: scale(1.06); }
-
-/* Lightbox — galereya rasmini kattalashtirib ko'rish */
+/* Lightbox — carousel rasmini kattalashtirib ko'rish */
 .lightbox {
   display: none; position: fixed; inset: 0; z-index: 9999;
   background: rgba(10,10,15,.92); align-items: center; justify-content: center;
@@ -468,10 +478,6 @@ body.nav-open { overflow: hidden; }
   color: #fff; font-size: 18px; cursor: pointer;
 }
 .lightbox-close:hover { background: rgba(255,255,255,.22); }
-
-@media (max-width: 640px) {
-  .post-gallery { grid-template-columns: repeat(2, 1fr); }
-}
 
 .back-link {
   font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft);
