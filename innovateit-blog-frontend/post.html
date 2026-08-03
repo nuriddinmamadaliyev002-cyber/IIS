@@ -41,9 +41,11 @@
   <p>Yuklanmoqda...</p>
 </article>
 
-<div class="lightbox" id="lightbox" onclick="closeLightbox()">
+<div class="lightbox" id="lightbox" onclick="if(event.target===this)closeLightbox()">
   <button class="lightbox-close" onclick="closeLightbox()" aria-label="Yopish">✕</button>
-  <img id="lightbox-img" src="" alt="">
+  <button class="lightbox-nav lightbox-prev" id="lightbox-prev" onclick="event.stopPropagation();lightboxStep(-1)" aria-label="Oldingi rasm">‹</button>
+  <img id="lightbox-img" src="" alt="" onclick="event.stopPropagation()">
+  <button class="lightbox-nav lightbox-next" id="lightbox-next" onclick="event.stopPropagation();lightboxStep(1)" aria-label="Keyingi rasm">›</button>
 </div>
 
 <div class="wrap" id="not-found" style="display:none;text-align:center;padding:80px 20px;">
@@ -160,7 +162,7 @@ function initCoverCarousel(p) {
   track.innerHTML = coverImages.map((img, i) => `
     <div class="cover-slide${img.isCover ? '' : ' cover-slide-gallery'}">
       <img src="${img.src}" style="${img.style}" alt="" loading="${i === 0 ? 'eager' : 'lazy'}"
-           onclick="openLightbox('${img.src.replace(/'/g, "\\'")}')">
+           onclick="openLightbox(${i})">
     </div>`).join('');
 
   const multi = coverImages.length > 1;
@@ -201,8 +203,11 @@ function updateCoverSlide() {
   Array.from(dots.children).forEach((d, i) => d.classList.toggle('active', i === coverIdx));
 }
 
-function openLightbox(src) {
-  document.getElementById('lightbox-img').src = src;
+let lightboxIdx = 0;
+
+function openLightbox(idx) {
+  lightboxIdx = idx;
+  updateLightboxImg();
   document.getElementById('lightbox').classList.add('open');
   document.body.style.overflow = 'hidden';
 }
@@ -210,6 +215,25 @@ function closeLightbox() {
   document.getElementById('lightbox').classList.remove('open');
   document.body.style.overflow = '';
 }
+function lightboxStep(dir) {
+  if (!coverImages.length) return;
+  lightboxIdx = (lightboxIdx + dir + coverImages.length) % coverImages.length;
+  updateLightboxImg();
+}
+function updateLightboxImg() {
+  const img = coverImages[lightboxIdx];
+  if (!img) return;
+  document.getElementById('lightbox-img').src = img.src;
+  const multi = coverImages.length > 1;
+  document.getElementById('lightbox-prev').style.display = multi ? 'flex' : 'none';
+  document.getElementById('lightbox-next').style.display = multi ? 'flex' : 'none';
+}
+document.addEventListener('keydown', e => {
+  if (!document.getElementById('lightbox').classList.contains('open')) return;
+  if (e.key === 'Escape') closeLightbox();
+  else if (e.key === 'ArrowLeft') lightboxStep(-1);
+  else if (e.key === 'ArrowRight') lightboxStep(1);
+});
 
 // Kategoriya slugiga qarab standart (fallback) ro'yxat sahifasi — agar
 // qaysi sahifadan kelinganini aniqlab bo'lmasa shunga qaytariladi.
