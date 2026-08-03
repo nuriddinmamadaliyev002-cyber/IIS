@@ -432,6 +432,47 @@ body.nav-open { overflow: hidden; }
   border-radius: var(--radius-sm); background: #000;
 }
 
+/* Post galereyasi (qo'shimcha rasmlar) — faqat to'liq post sahifasida */
+.post-gallery-title {
+  max-width: 700px; margin: 0 auto 16px; font-family: var(--font-display);
+  font-size: 20px; font-weight: 700; color: var(--ink);
+}
+.post-gallery {
+  max-width: 700px; margin: 0 auto 60px;
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px;
+}
+.post-gallery-item {
+  border: none; padding: 0; margin: 0; cursor: pointer; background: #f3f4f6;
+  border-radius: var(--radius-sm); overflow: hidden; aspect-ratio: 1 / 1;
+}
+.post-gallery-item img {
+  width: 100%; height: 100%; object-fit: cover; display: block;
+  transition: transform .25s ease;
+}
+.post-gallery-item:hover img { transform: scale(1.06); }
+
+/* Lightbox — galereya rasmini kattalashtirib ko'rish */
+.lightbox {
+  display: none; position: fixed; inset: 0; z-index: 9999;
+  background: rgba(10,10,15,.92); align-items: center; justify-content: center;
+  padding: 32px;
+}
+.lightbox.open { display: flex; }
+.lightbox img {
+  max-width: 100%; max-height: 100%; border-radius: 8px;
+  box-shadow: 0 20px 60px rgba(0,0,0,.5);
+}
+.lightbox-close {
+  position: absolute; top: 20px; right: 24px; width: 40px; height: 40px;
+  border-radius: 50%; border: none; background: rgba(255,255,255,.12);
+  color: #fff; font-size: 18px; cursor: pointer;
+}
+.lightbox-close:hover { background: rgba(255,255,255,.22); }
+
+@media (max-width: 640px) {
+  .post-gallery { grid-template-columns: repeat(2, 1fr); }
+}
+
 .back-link {
   font-family: var(--font-mono); font-size: 13px; color: var(--ink-soft);
   display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px;

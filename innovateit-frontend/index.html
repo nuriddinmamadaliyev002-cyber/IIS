@@ -1044,6 +1044,15 @@
       </div>
       <div class="field-group" style="margin-top:12px;">
         <label class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>Qo'shimcha rasmlar (galereya)</span>
+          <span id="bl-p-galereya-count" style="font-size:12px;color:#9ca3af;font-weight:400;"></span>
+        </label>
+        <input type="file" id="bl-p-galereya-file" accept="image/*" multiple onchange="blUploadGalleryFiles(event)" style="font-size:13px;">
+        <p style="font-size:12px;color:#9ca3af;margin-top:6px;">Bu rasmlar ro'yxat/kartochkalarda ko'rinmaydi — faqat postning to'liq sahifasida "Batafsil" bosilgandan keyin galereya sifatida chiqadi.</p>
+        <div id="bl-p-galereya-list" style="display:flex;flex-wrap:wrap;gap:8px;margin-top:10px;"></div>
+      </div>
+      <div class="field-group" style="margin-top:12px;">
+        <label class="field-label" style="display:flex;align-items:center;justify-content:space-between;">
           <span>Kontent (HTML ruxsat etiladi)</span>
           <button type="button" onclick="blOpenVideoModal()" style="padding:5px 12px;background:#eef2ff;color:#4338ca;border:none;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;">🎥 Video qo'shish</button>
         </label>

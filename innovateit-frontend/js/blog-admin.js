@@ -90,6 +90,47 @@ function blToggleDateField() {
   if (isPublished && !g('bl-p-sana').value) blSetDateNow();
 }
 
+// ─── Postga qo'shimcha rasmlar (galereya) ───────────────────────────────────────
+let BL_GALLERY = []; // yuklangan rasm fayl nomlari ro'yxati
+
+function blRenderGalleryList() {
+  const wrap = g('bl-p-galereya-list');
+  const countEl = g('bl-p-galereya-count');
+  countEl.textContent = BL_GALLERY.length ? `${BL_GALLERY.length} ta rasm` : '';
+  wrap.innerHTML = BL_GALLERY.map((filename, idx) => `
+    <div style="position:relative;width:72px;height:72px;border-radius:8px;overflow:hidden;border:1px solid #e5e7eb;flex-shrink:0;">
+      <img src="${blResolveUpload(filename)}" style="width:100%;height:100%;object-fit:cover;display:block;">
+      <button type="button" onclick="blRemoveGalleryImage(${idx})" title="O'chirish"
+        style="position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;border:none;cursor:pointer;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center;">✕</button>
+    </div>
+  `).join('');
+}
+
+function blRemoveGalleryImage(idx) {
+  BL_GALLERY.splice(idx, 1);
+  blRenderGalleryList();
+}
+
+async function blUploadGalleryFiles(ev) {
+  const files = Array.from(ev.target.files || []);
+  if (!files.length) return;
+  const countEl = g('bl-p-galereya-count');
+
+  for (const file of files) {
+    countEl.textContent = `Yuklanmoqda... (${file.name})`;
+    const fd = new FormData();
+    fd.append('file', file);
+    const res = await api.uploadFile(fd);
+    if (res.ok) {
+      BL_GALLERY.push(res.filename);
+    } else {
+      toast(`❌ ${file.name} yuklanmadi`, 'error');
+    }
+  }
+  ev.target.value = '';
+  blRenderGalleryList();
+}
+
 // ─── Post modal ─────────────────────────────────────────────────────────────
 function blOpenPostModal() {
   g('bl-modal-title').textContent = '➕ Yangi post';
@@ -102,6 +143,8 @@ function blOpenPostModal() {
   g('bl-p-holat').value = 'qoralama';
   g('bl-p-sana').value = '';
   blToggleDateField();
+  BL_GALLERY = [];
+  blRenderGalleryList();
   g('bl-p-cover-status').textContent = '';
   g('bl-p-cover-preview-wrap').style.display = 'none';
   blSetCoverPosition(50);
@@ -125,6 +168,8 @@ async function blEditPost(id) {
   g('bl-p-holat').value = p.holat;
   g('bl-p-sana').value = p.chop_vaqti ? blToLocalInputValue(p.chop_vaqti) : '';
   blToggleDateField();
+  BL_GALLERY = Array.isArray(p.galereya) ? [...p.galereya] : [];
+  blRenderGalleryList();
   g('bl-p-err').style.display = 'none';
   blFillCategorySelect();
   if (p.kategoriya_id) g('bl-p-kategoriya').value = p.kategoriya_id;
@@ -232,7 +277,8 @@ async function blSavePost() {
     holat: g('bl-p-holat').value,
     chop_vaqti: g('bl-p-holat').value === 'chop_etilgan' && g('bl-p-sana').value
       ? new Date(g('bl-p-sana').value).toISOString()
-      : null
+      : null,
+    galereya: BL_GALLERY
   };
 
   const btn = g('bl-p-save-btn');
