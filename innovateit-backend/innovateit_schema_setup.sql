@@ -370,6 +370,78 @@ CREATE TABLE IF NOT EXISTS sales_maktablar (
 );
 
 
+-- ─── 23. BLOG KATEGORIYALARI ───────────────────────────────────────────────────
+--  innovateitschool.uz (ochiq blog sayti) uchun jadvallar.
+--  Boshqaruv: faqat superadmin (new.innovateitschool.uz CRM paneli ichidan).
+CREATE TABLE IF NOT EXISTS blog_categories (
+    id         SERIAL PRIMARY KEY,
+    nomi       TEXT NOT NULL UNIQUE,          -- "Yangiliklar", "O'quvchilar yutuqlari"...
+    slug       TEXT NOT NULL UNIQUE,          -- "yangiliklar" (URL uchun)
+    tavsif     TEXT DEFAULT '',
+    tartib     INTEGER DEFAULT 0,             -- ko'rsatish tartibi
+    yaratilgan TIMESTAMP DEFAULT NOW()
+);
+
+
+-- ─── 24. BLOG POSTLARI ──────────────────────────────────────────────────────────
+--  muqova_pozitsiya / muqova_masshtab — muqova rasmning fokus nuqtasi va zoomi
+--  galereya — postning to'liq sahifasida ko'rsatiladigan qo'shimcha rasmlar (JSONB massiv)
+CREATE TABLE IF NOT EXISTS blog_posts (
+    id                SERIAL PRIMARY KEY,
+    sarlavha          TEXT NOT NULL,                        -- title
+    slug              TEXT NOT NULL UNIQUE,                 -- URL: /post/shu-slug
+    qisqacha          TEXT DEFAULT '',                       -- excerpt / preview matni
+    kontent           TEXT NOT NULL,                          -- HTML/Markdown asosiy matn
+    muqova_rasm       TEXT DEFAULT '',                        -- cover image (uploads/... yoki URL)
+    muqova_pozitsiya  INTEGER NOT NULL DEFAULT 50
+                        CHECK (muqova_pozitsiya BETWEEN 0 AND 100),
+    muqova_masshtab   INTEGER NOT NULL DEFAULT 100
+                        CHECK (muqova_masshtab BETWEEN 100 AND 250),
+    kategoriya_id     INTEGER REFERENCES blog_categories(id) ON DELETE SET NULL,
+    muallif           TEXT DEFAULT 'Innovate IT School',
+    holat             TEXT NOT NULL DEFAULT 'qoralama'        -- 'qoralama' | 'chop_etilgan'
+                        CHECK (holat IN ('qoralama', 'chop_etilgan')),
+    korishlar         INTEGER DEFAULT 0,                       -- views soni
+    seo_tavsif        TEXT DEFAULT '',                         -- meta description
+    chop_vaqti        TIMESTAMP,                                -- published_at (chop etilgan vaqt)
+    galereya          JSONB NOT NULL DEFAULT '[]'::jsonb,      -- qo'shimcha rasmlar: ["rasm1.jpg","rasm2.jpg"]
+    yaratilgan        TIMESTAMP DEFAULT NOW(),
+    yangilangan       TIMESTAMP DEFAULT NOW()
+);
+
+
+-- ─── 25. BLOG TEGLARI (ixtiyoriy, kelajakda kengaytirish uchun) ──────────────────
+CREATE TABLE IF NOT EXISTS blog_tags (
+    id   SERIAL PRIMARY KEY,
+    nomi TEXT NOT NULL UNIQUE,
+    slug TEXT NOT NULL UNIQUE
+);
+
+CREATE TABLE IF NOT EXISTS blog_post_tags (
+    post_id INTEGER REFERENCES blog_posts(id) ON DELETE CASCADE,
+    tag_id  INTEGER REFERENCES blog_tags(id)  ON DELETE CASCADE,
+    PRIMARY KEY (post_id, tag_id)
+);
+
+-- ─── 25.1 Eski (mavjud) bazalar uchun idempotent yangilanish ──────────────────
+--  Agar blog_posts jadvali avvalroq (002 migratsiyasi bilan, 003/004/009'siz)
+--  yaratilgan bo'lsa, quyidagi qatorlar yetishmayotgan ustunlarni xavfsiz
+--  qo'shib qo'yadi — har bir deployda qayta ishga tushirsa ham xato bermaydi.
+ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS muqova_pozitsiya INTEGER NOT NULL DEFAULT 50
+  CHECK (muqova_pozitsiya BETWEEN 0 AND 100);
+ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS muqova_masshtab INTEGER NOT NULL DEFAULT 100
+  CHECK (muqova_masshtab BETWEEN 100 AND 250);
+ALTER TABLE blog_posts ADD COLUMN IF NOT EXISTS galereya JSONB NOT NULL DEFAULT '[]'::jsonb;
+
+-- ─── Boshlang'ich kategoriyalar (mavjud bo'lmasa qo'shiladi) ────────────────────
+INSERT INTO blog_categories (nomi, slug, tavsif, tartib) VALUES
+    ('Yangiliklar',            'yangiliklar',            'Maktab va tashkilot yangiliklari', 1),
+    ('O''quvchilar yutuqlari', 'oquvchilar-yutuqlari',   'Olimpiada va boshqa yutuqlar',      2),
+    ('IT darslar',             'it-darslar',             'Dasturlash va texnologiya darslari', 3),
+    ('Ota-onalar uchun',       'ota-onalar-uchun',       'Maslahat va foydali maqolalar',     4)
+ON CONFLICT (slug) DO NOTHING;
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
@@ -466,10 +538,16 @@ CREATE INDEX IF NOT EXISTS idx_leadlar_biriktirilgan   ON leadlar(biriktirilgan)
 CREATE INDEX IF NOT EXISTS idx_salesmak_salesid        ON sales_maktablar(sales_id);
 CREATE INDEX IF NOT EXISTS idx_salesmak_maktabid       ON sales_maktablar(maktab_id);
 
+-- blog
+CREATE INDEX IF NOT EXISTS idx_blog_posts_holat        ON blog_posts(holat);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_slug         ON blog_posts(slug);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_kategoriya   ON blog_posts(kategoriya_id);
+CREATE INDEX IF NOT EXISTS idx_blog_posts_chopvaqti    ON blog_posts(chop_vaqti DESC);
+
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
---  Barcha 19 ta jadval yaratildi
+--  Barcha 25 ta jadval yaratildi
 -- ════════════════════════════════════════════════════════════════════════════
 \echo '✅ IIS schema muvaffaqiyatli yaratildi!'
 \echo '   Jadvallar: maktablar, adminlar, buxgalterlar, oquvchilar,'
@@ -478,4 +556,6 @@ CREATE INDEX IF NOT EXISTS idx_salesmak_maktabid       ON sales_maktablar(maktab
 \echo '              dars_jadvali, buxgalter_maktablar, tolovlar,'
 \echo '              portfolio_viewers, oqituvchi_portfolio,'
 \echo '              oqituvchi_sertifikat_fayllar, viewer_teachers,'
-\echo '              telegram_users, anketa_sorovlar, oqituvchi_oquvchilar'
+\echo '              telegram_users, anketa_sorovlar, oqituvchi_oquvchilar,'
+\echo '              sales_xodimlar, leadlar, sales_maktablar,'
+\echo '              blog_categories, blog_posts, blog_tags, blog_post_tags'
