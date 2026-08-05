@@ -49,7 +49,7 @@ function currentOyStr() {
 }
 
 function formatSum(n, type) {
-  if (!n || n === 0) return '<span class="amount-0">—</span>';
+  if (!n || n === 0) return '';
   const formatted = n.toLocaleString('ru-RU');
   if (type === 'qildi') return `<span class="amount-qildi">${formatted} <span class="amount-currency">so'm</span></span>`;
   if (type === 'kerak') return `<span class="amount-kerak">${formatted} <span class="amount-currency">so'm</span></span>`;
@@ -60,7 +60,7 @@ function parseSum(s) {
 }
 
 function tolovSanasi(dateStr) {
-  if (!dateStr) return '—';
+  if (!dateStr) return '';
   // DD.MM.YYYY → "Mart 14"
   const oylar = ['','Yanvar','Fevral','Mart','Aprel','May','Iyun',
                  'Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
@@ -72,7 +72,7 @@ function tolovSanasi(dateStr) {
 }
 
 function tolovHolati(kerak, qildi) {
-  if (!kerak || kerak === 0) return '<span class="badge-empty">—</span>';
+  if (!kerak || kerak === 0) return '';
   if (qildi > kerak) {
     const ortiqcha = qildi - kerak;
     return `<span class="badge-toliq">✅ To'liq <span class="badge-ortiqcha">+${ortiqcha.toLocaleString('ru-RU')} so'm ortiqcha</span></span>`;
@@ -571,10 +571,10 @@ function renderTable() {
           style="width:100%;min-width:150px;padding:5px 6px;border:none;border-radius:8px;font-size:12.5px;font-family:inherit;background:transparent;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;outline:none;box-shadow:none;">${escBxQayd(t?.qaydnoma || '')}</textarea>
       </td>
       <td class="col-ehtimoliy editable" data-field="ehtimoliy_tolov_sanasi" onclick="cellClick(${i},'ehtimoliy_tolov_sanasi',event)" style="cursor:pointer;">
-        <span id="disp-ehtimoliy_tolov_sanasi-${i}">${t?.ehtimoliy_tolov_sanasi ? tolovSanasi(t.ehtimoliy_tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
+        <span id="disp-ehtimoliy_tolov_sanasi-${i}">${t?.ehtimoliy_tolov_sanasi ? tolovSanasi(t.ehtimoliy_tolov_sanasi) : ''}</span>
       </td>
       <td class="col-gap editable" data-field="gaplashilgan_vaqt" onclick="cellClick(${i},'gaplashilgan_vaqt',event)">
-        <span id="disp-gaplashilgan_vaqt-${i}">${t?.gaplashilgan_vaqt ? tolovSanasi(t.gaplashilgan_vaqt) : '<span class="amount-0">—</span>'}</span>
+        <span id="disp-gaplashilgan_vaqt-${i}">${t?.gaplashilgan_vaqt ? tolovSanasi(t.gaplashilgan_vaqt) : ''}</span>
       </td>
       <td class="col-kerak editable" data-field="tolov_kerak" onclick="cellClick(${i},'tolov_kerak',event)">
         <span id="disp-tolov_kerak-${i}">${formatSum(kerak,'kerak')}</span>
@@ -583,7 +583,7 @@ function renderTable() {
         <span id="disp-tolov_qildi-${i}">${formatSum(qildi,'qildi')}</span>
       </td>
       <td class="col-sana editable" data-field="tolov_sanasi" onclick="cellClick(${i},'tolov_sanasi',event)" style="cursor:pointer;">
-        <span id="disp-tolov_sanasi-${i}">${t?.tolov_sanasi ? tolovSanasi(t.tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
+        <span id="disp-tolov_sanasi-${i}">${t?.tolov_sanasi ? tolovSanasi(t.tolov_sanasi) : ''}</span>
       </td>
       <td class="col-holat" id="holat-${i}">${tolovHolati(kerak, qildi)}</td>
       <td class="col-kvit" id="kvit-cell-${i}">${kvitCell}</td>
@@ -818,8 +818,8 @@ async function commitEdit(idx, field) {
     ? (field === 'tolov_qildi' ? formatSum(val,'qildi')
        : field === 'tolov_kerak' ? formatSum(val,'kerak')
        : formatSum(val))
-    : isDate ? (val ? tolovSanasi(val) : '<span class="amount-0">—</span>')
-    : (val || '<span class="amount-0">—</span>');
+    : isDate ? (val ? tolovSanasi(val) : '')
+    : (val || '');
   const dispEl2 = g(`disp-${field}-${idx}`);
   if (dispEl2) {
     dispEl2.innerHTML = dispVal;
@@ -1580,7 +1580,7 @@ document.addEventListener('keydown', e => {
                          : field === 'tolov_kerak' ? formatSum(0,'kerak')
                          : formatSum(0);
       } else {
-        dispEl.innerHTML = '<span class="amount-0">—</span>';
+        dispEl.innerHTML = '';
       }
     }
 
