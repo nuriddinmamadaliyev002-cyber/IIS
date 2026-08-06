@@ -81,7 +81,9 @@ bot.onText(/\/start/, async (msg) => {
 
   const ism = msg.from.first_name || 'Foydalanuvchi';
   bot.sendMessage(chatId,
-    `Assalomu alaykum, *${ism}*! 👋\n\nInnovateIT School boshqaruv tizimiga kirish uchun quyidagi tugmani bosing:`,
+    `Assalomu alaykum, *${ism}*! 👋\n\nInnovateIT School boshqaruv tizimiga kirish uchun quyidagi tugmani bosing:\n\n` +
+    `🆔 Sizning Telegram ID'ingiz: \`${userId}\`\n` +
+    `_(Buxgalter yoki admin sifatida ulanish uchun bu raqamni superadminga yuboring)_`,
     {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -99,13 +101,17 @@ bot.onText(/\/miniapp/, async (msg) => {
   const allowed = await isGroupMember(msg.from.id);
   if (!allowed) return bot.sendMessage(msg.chat.id, '⛔ Ruxsat yo\'q.');
 
-  bot.sendMessage(msg.chat.id, '🚀 Mini Appni ochish:', {
-    reply_markup: {
-      inline_keyboard: [[
-        { text: '📱 InnovateIT Mini App', web_app: { url: MINIAPP_URL } }
-      ]]
+  bot.sendMessage(msg.chat.id,
+    `🚀 Mini Appni ochish:\n\n🆔 Sizning Telegram ID'ingiz: \`${msg.from.id}\``,
+    {
+      parse_mode: 'Markdown',
+      reply_markup: {
+        inline_keyboard: [[
+          { text: '📱 InnovateIT Mini App', web_app: { url: MINIAPP_URL } }
+        ]]
+      }
     }
-  });
+  );
 });
 
 // ─── CALLBACK QUERY — Superadmin tugmalari ───────────────────────────────────
