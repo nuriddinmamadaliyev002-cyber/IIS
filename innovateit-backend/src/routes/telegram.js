@@ -267,6 +267,56 @@ router.put('/anketa/:id', async (req, res) => {
   }
 });
 
+// ─── POST /api/telegram/kandidat-log — bot guruh a'zosini qayd qiladi ─────────
+// BOT_SECRET header orqali himoyalangan (bot.js dagi X-Bot-Secret bilan bir xil kalit)
+router.post('/kandidat-log', async (req, res) => {
+  const botSecret = req.headers['x-bot-secret'];
+  const expected   = process.env.BOT_SECRET || 'bot-ichki-so\'rov';
+  if (botSecret !== expected) {
+    return res.status(403).json({ ok: false, error: 'Ruxsat yo\'q' });
+  }
+
+  const { telegramId, telegramIsm, telegramUsername } = req.body;
+  if (!telegramId) return res.status(400).json({ ok: false, error: 'telegramId majburiy' });
+
+  try {
+    await pool.query(
+      `INSERT INTO telegram_kandidatlar (telegram_id, telegram_ism, telegram_username, oxirgi_faollik)
+       VALUES ($1, $2, $3, NOW())
+       ON CONFLICT (telegram_id) DO UPDATE
+       SET telegram_ism = EXCLUDED.telegram_ism,
+           telegram_username = EXCLUDED.telegram_username,
+           oxirgi_faollik = NOW()`,
+      [telegramId, telegramIsm || null, telegramUsername || null]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/telegram/kandidatlar — hali biriktirilmagan guruh a'zolari ──────
+router.get('/kandidatlar', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+
+  try {
+    const result = await pool.query(
+      `SELECT k.telegram_id, k.telegram_ism, k.telegram_username, k.oxirgi_faollik
+       FROM telegram_kandidatlar k
+       LEFT JOIN telegram_users tu ON tu.telegram_id = k.telegram_id
+       WHERE tu.id IS NULL
+       ORDER BY k.oxirgi_faollik DESC
+       LIMIT 200`
+    );
+    res.json({ ok: true, kandidatlar: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 // ─── GET /api/telegram/birikmalar — barcha birikmalar (superadmin) ────────────
 router.get('/birikmalar', requireAuth(['admin']), async (req, res) => {
   if (!req.user.isSuper)

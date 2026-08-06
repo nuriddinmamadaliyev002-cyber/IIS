@@ -4,7 +4,7 @@
 
 
 
-let U         = null;   // { username, parol, ism }
+let U         = null;   // { ism, viaTelegram: true } — JWT token orqali autentifikatsiya (Telegram Mini App)
 let ALL_DATA  = [];     // { student, tolov } merged array
 let FILTERED  = [];     // after filter
 let COL_FILTERS = {};   // { colKey: Set<string> | null } — ColContextMenu qiymatlar filtri
@@ -49,7 +49,7 @@ function currentOyStr() {
 }
 
 function formatSum(n, type) {
-  if (!n || n === 0) return '';
+  if (!n || n === 0) return '<span class="amount-0">—</span>';
   const formatted = n.toLocaleString('ru-RU');
   if (type === 'qildi') return `<span class="amount-qildi">${formatted} <span class="amount-currency">so'm</span></span>`;
   if (type === 'kerak') return `<span class="amount-kerak">${formatted} <span class="amount-currency">so'm</span></span>`;
@@ -60,7 +60,7 @@ function parseSum(s) {
 }
 
 function tolovSanasi(dateStr) {
-  if (!dateStr) return '';
+  if (!dateStr) return '—';
   // DD.MM.YYYY → "Mart 14"
   const oylar = ['','Yanvar','Fevral','Mart','Aprel','May','Iyun',
                  'Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
@@ -72,7 +72,7 @@ function tolovSanasi(dateStr) {
 }
 
 function tolovHolati(kerak, qildi) {
-  if (!kerak || kerak === 0) return '';
+  if (!kerak || kerak === 0) return '<span class="badge-empty">—</span>';
   if (qildi > kerak) {
     const ortiqcha = qildi - kerak;
     return `<span class="badge-toliq">✅ To'liq <span class="badge-ortiqcha">+${ortiqcha.toLocaleString('ru-RU')} so'm ortiqcha</span></span>`;
@@ -89,6 +89,24 @@ window.addEventListener('DOMContentLoaded', () => {
   CURRENT_OY = (savedOy && (savedOy === QABUL_OY || /^\d{4}-\d{2}$/.test(savedOy))) ? savedOy : currentOyStr();
   g('oy-label').textContent = oyNomi(CURRENT_OY);
 
+  // ─── Telegram Mini App orqali kirish ────────────────────────────────────
+  // Bot/Mini App foydalanuvchini tekshirib, JWT tokenni ?tg_token= orqali
+  // shu sahifaga yo'naltiradi. Buxgalter FAQAT shu yo'l orqali kiradi —
+  // login/parol so'ralmaydi.
+  const params  = new URLSearchParams(window.location.search);
+  const tgToken = params.get('tg_token');
+  if (tgToken) {
+    api.setToken(tgToken);
+    const payload = api.getUser(); // JWT ichidan { ism, entityId, ... } ni o'qiydi
+    const ism     = params.get('tg_ism') || payload?.ism || '';
+    U = { ism, viaTelegram: true };
+    localStorage.setItem('iit_bux_u', JSON.stringify(U));
+    // URL ni tozalash — token manzil satrida qolib ketmasin
+    window.history.replaceState({}, '', window.location.pathname);
+    showApp();
+    return;
+  }
+
   // Saved session
   try {
     const saved = localStorage.getItem('iit_bux_u');
@@ -97,36 +115,7 @@ window.addEventListener('DOMContentLoaded', () => {
       showApp();
     }
   } catch(e) { localStorage.removeItem('iit_bux_u'); }
-
-  g('inp-parol').addEventListener('keydown', e => { if (e.key==='Enter') doLogin(); });
-  g('inp-username').addEventListener('keydown', e => { if (e.key==='Enter') g('inp-parol').focus(); });
 });
-
-async function doLogin() {
-  const username = g('inp-username').value.trim();
-  const parol    = g('inp-parol').value;
-  if (!username || !parol) return;
-
-  const btn = g('login-btn');
-  btn.disabled = true; btn.textContent = 'Tekshirilmoqda…';
-
-  try {
-    const r = await api.loginBuxgalter({ username, parol });
-    if (r.ok) {
-      U = { username, parol, ism: r.ism };
-      localStorage.setItem('iit_bux_u', JSON.stringify(U));
-      showApp();
-    } else {
-      const errEl = g('login-err');
-      errEl.textContent = '❌ ' + (r.error || "Username yoki parol noto'g'ri");
-      errEl.style.display = 'block';
-    }
-  } catch(e) {
-    g('login-err').textContent = '❌ Ulanishda xatolik';
-    g('login-err').style.display = 'block';
-  }
-  btn.disabled = false; btn.textContent = 'Kirish';
-}
 
 function doLogout() {
   U = null; ALL_DATA = []; FILTERED = []; COL_FILTERS = {};
@@ -350,8 +339,8 @@ async function loadData() {
   try {
     // Parallel: barcha o'quvchilar + bu oylik to'lovlar
     const [studRes, tolovRes] = await Promise.all([
-      api.buxGetStudents({ username: U.username, parol: U.parol, oy: CURRENT_OY }),
-      api.getTolovlar({ username: U.username, parol: U.parol, oy: CURRENT_OY })
+      api.buxGetStudents({ oy: CURRENT_OY }),
+      api.getTolovlar({ oy: CURRENT_OY })
     ]);
 
     if (!studRes.ok) { showToast('❌ ' + studRes.error, 'error'); return; }
@@ -393,8 +382,8 @@ async function loadQabulData() {
 
   try {
     const [studRes, tolovRes] = await Promise.all([
-      api.qabulRoyxati({ username: U.username, parol: U.parol }),
-      api.getTolovlar({ username: U.username, parol: U.parol, oy: CURRENT_OY })
+      api.qabulRoyxati({}),
+      api.getTolovlar({ oy: CURRENT_OY })
     ]);
     if (!studRes.ok) { showToast('❌ ' + studRes.error, 'error'); return; }
 
@@ -571,10 +560,10 @@ function renderTable() {
           style="width:100%;min-width:150px;padding:5px 6px;border:none;border-radius:8px;font-size:12.5px;font-family:inherit;background:transparent;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;outline:none;box-shadow:none;">${escBxQayd(t?.qaydnoma || '')}</textarea>
       </td>
       <td class="col-ehtimoliy editable" data-field="ehtimoliy_tolov_sanasi" onclick="cellClick(${i},'ehtimoliy_tolov_sanasi',event)" style="cursor:pointer;">
-        <span id="disp-ehtimoliy_tolov_sanasi-${i}">${t?.ehtimoliy_tolov_sanasi ? tolovSanasi(t.ehtimoliy_tolov_sanasi) : ''}</span>
+        <span id="disp-ehtimoliy_tolov_sanasi-${i}">${t?.ehtimoliy_tolov_sanasi ? tolovSanasi(t.ehtimoliy_tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
       </td>
       <td class="col-gap editable" data-field="gaplashilgan_vaqt" onclick="cellClick(${i},'gaplashilgan_vaqt',event)">
-        <span id="disp-gaplashilgan_vaqt-${i}">${t?.gaplashilgan_vaqt ? tolovSanasi(t.gaplashilgan_vaqt) : ''}</span>
+        <span id="disp-gaplashilgan_vaqt-${i}">${t?.gaplashilgan_vaqt ? tolovSanasi(t.gaplashilgan_vaqt) : '<span class="amount-0">—</span>'}</span>
       </td>
       <td class="col-kerak editable" data-field="tolov_kerak" onclick="cellClick(${i},'tolov_kerak',event)">
         <span id="disp-tolov_kerak-${i}">${formatSum(kerak,'kerak')}</span>
@@ -583,7 +572,7 @@ function renderTable() {
         <span id="disp-tolov_qildi-${i}">${formatSum(qildi,'qildi')}</span>
       </td>
       <td class="col-sana editable" data-field="tolov_sanasi" onclick="cellClick(${i},'tolov_sanasi',event)" style="cursor:pointer;">
-        <span id="disp-tolov_sanasi-${i}">${t?.tolov_sanasi ? tolovSanasi(t.tolov_sanasi) : ''}</span>
+        <span id="disp-tolov_sanasi-${i}">${t?.tolov_sanasi ? tolovSanasi(t.tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
       </td>
       <td class="col-holat" id="holat-${i}">${tolovHolati(kerak, qildi)}</td>
       <td class="col-kvit" id="kvit-cell-${i}">${kvitCell}</td>
@@ -818,8 +807,8 @@ async function commitEdit(idx, field) {
     ? (field === 'tolov_qildi' ? formatSum(val,'qildi')
        : field === 'tolov_kerak' ? formatSum(val,'kerak')
        : formatSum(val))
-    : isDate ? (val ? tolovSanasi(val) : '')
-    : (val || '');
+    : isDate ? (val ? tolovSanasi(val) : '<span class="amount-0">—</span>')
+    : (val || '<span class="amount-0">—</span>');
   const dispEl2 = g(`disp-${field}-${idx}`);
   if (dispEl2) {
     dispEl2.innerHTML = dispVal;
@@ -887,8 +876,6 @@ async function saveRow(idx) {
 
   try {
     const r = await api.saveTolov({
-      username:         U.username,
-      parol:            U.parol,
       oy:               CURRENT_OY,
       oquvchi_id:       s.id        || null,
       oquvchi_ism:      s.ism,
@@ -918,8 +905,6 @@ async function saveRow(idx) {
 async function initOy() {
   const prevO = prevOy(CURRENT_OY);
   const r = await api.initOy({
-    username:   U.username,
-    parol:      U.parol,
     oy:         CURRENT_OY,
     oldingi_oy: prevO
   });
@@ -1580,7 +1565,7 @@ document.addEventListener('keydown', e => {
                          : field === 'tolov_kerak' ? formatSum(0,'kerak')
                          : formatSum(0);
       } else {
-        dispEl.innerHTML = '';
+        dispEl.innerHTML = '<span class="amount-0">—</span>';
       }
     }
 
@@ -1605,7 +1590,6 @@ document.addEventListener('keydown', e => {
 
 // ─── Filter events ───────────────────────────────
 window.changeOy       = changeOy;
-window.doLogin        = doLogin;
 window.doLogout       = doLogout;
 window.applyFilters   = applyFilters;
 window.exportExcel    = exportExcel;

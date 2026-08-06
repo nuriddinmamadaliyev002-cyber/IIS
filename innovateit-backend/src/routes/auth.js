@@ -3,7 +3,6 @@
 //  POST /api/auth/login         — FAQAT superadmin (username + parol)
 //  POST /api/auth/login-admin   — Maktab admini (username + parol)
 //  POST /api/auth/login-viewer  — Portfolio viewer (username + parol)
-//  POST /api/auth/login-buxgalter — Buxgalter (username + parol)
 //  POST /api/auth/login-sales   — Sales xodimi (username + parol)
 //  POST /api/auth/refresh       — Tokenni yangilash
 //
@@ -13,7 +12,7 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 const { Router }                          = require('express');
-const { verifySuperAdmin, verifyViewer }  = require('../middleware/auth');
+const { verifySuperAdmin, verifyViewer, hashPassword } = require('../middleware/auth');
 const { generateToken, requireAuth }      = require('../middleware/jwt');
 const pool                                = require('../db');
 const bcrypt                              = require('bcryptjs');
@@ -124,59 +123,6 @@ router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi'
   // Barcha JWT maydonlarini saqlab yangi token berish
   const token = generateToken(req.user);
   res.json({ ok: true, token });
-});
-
-// ─── POST /api/auth/login-buxgalter — buxgalter login ────────────────────────
-router.post('/login-buxgalter', async (req, res) => {
-  const { username, parol } = req.body;
-
-  if (!username || !parol)
-    return res.status(400).json({ ok: false, error: 'Username va parol kerak' });
-
-  try {
-    const result = await pool.query(
-      `SELECT b.id, b.ism, b.familiya, b.parol,
-              ARRAY_AGG(bm.maktab_id) FILTER (WHERE bm.maktab_id IS NOT NULL) AS maktab_ids
-       FROM buxgalterlar b
-       LEFT JOIN buxgalter_maktablar bm ON bm.buxgalter_id = b.id
-       WHERE b.username = $1
-       GROUP BY b.id`,
-      [username.trim().toLowerCase()]
-    );
-
-    if (result.rowCount === 0)
-      return res.status(401).json({ ok: false, error: "Username yoki parol noto'g'ri" });
-
-    const bux = result.rows[0];
-
-    if (!bux.parol)
-      return res.status(401).json({ ok: false, error: "Bu buxgalter uchun parol belgilanmagan. Superadmin bilan bog'laning." });
-
-    const ok = await bcrypt.compare(parol, bux.parol);
-    if (!ok)
-      return res.status(401).json({ ok: false, error: "Username yoki parol noto'g'ri" });
-
-    const token = generateToken({
-      id:        bux.id,
-      username:  username.trim().toLowerCase(),
-      ism:       `${bux.familiya} ${bux.ism}`.trim(),
-      isSuper:   false,
-      role:      'buxgalter',
-      entityId:  bux.id,
-      maktabIds: bux.maktab_ids || [],
-    });
-
-    res.json({
-      ok:        true,
-      token,
-      id:        bux.id,
-      ism:       `${bux.familiya} ${bux.ism}`.trim(),
-      maktabIds: bux.maktab_ids || [],
-    });
-  } catch (err) {
-    console.error('login-buxgalter xatolik:', err.message);
-    res.status(500).json({ ok: false, error: 'Server xatoligi' });
-  }
 });
 
 // ─── POST /api/auth/login-sales — sales xodimi login ─────────────────────────

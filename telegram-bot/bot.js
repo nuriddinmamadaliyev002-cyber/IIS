@@ -8,63 +8,31 @@ const API_BASE       = process.env.API_BASE || 'http://localhost:3001/api';
 
 const bot = new TelegramBot(BOT_TOKEN, { polling: true });
 
-// ─── Bot qo'shilgan guruhlar ──────────────────────────────────────────────────
-const activeGroups = new Set();
-
-// Restart dan keyin .env dagi guruhlarni yuklash
-if (process.env.SAVED_GROUPS) {
-  process.env.SAVED_GROUPS.split(',')
-    .map(id => parseInt(id.trim()))
-    .filter(Boolean)
-    .forEach(id => {
-      activeGroups.add(id);
-      console.log(`📌 Saqlangan guruh yuklandi: ${id}`);
-    });
-}
-
-bot.on('my_chat_member', async (update) => {
-  const chat    = update.chat;
-  const addedBy = update.from;
-  const status  = update.new_chat_member.status;
-
-  if (!['group', 'supergroup'].includes(chat.type)) return;
-
-  if (['member', 'administrator'].includes(status)) {
-    if (addedBy.id !== SUPER_ADMIN_ID) {
-      console.log(`⛔ Ruxsatsiz: ${addedBy.username || addedBy.id} → ${chat.title}`);
-      await bot.leaveChat(chat.id);
-      return;
-    }
-    activeGroups.add(chat.id);
-    console.log(`✅ Guruhga qo'shildi: ${chat.title} (${chat.id})`);
-    console.log(`💾 .env ga qo'shing: SAVED_GROUPS=${[...activeGroups].join(',')}`);
-
-  } else if (['left', 'kicked'].includes(status)) {
-    activeGroups.delete(chat.id);
-    console.log(`❌ Guruhdan chiqdi: ${chat.title} (${chat.id})`);
-  }
-});
-
-// Restart dan keyin guruhlarni tiklash
-bot.on('message', (msg) => {
-  if (['group', 'supergroup'].includes(msg.chat.type)) {
-    activeGroups.add(msg.chat.id);
-  }
-});
-
-// ─── Guruh a'zoligini tekshirish ─────────────────────────────────────────────
-async function isGroupMember(userId) {
-  if (activeGroups.size === 0) return false;
-  for (const groupId of activeGroups) {
-    try {
-      const m = await bot.getChatMember(groupId, userId);
-      if (['creator', 'administrator', 'member'].includes(m.status)) return true;
-    } catch (_) {}
-  }
-  return false;
+// ─── Foydalanuvchini "kandidat" sifatida backendga yozib qo'yish ─────────────
+// Botga /start yozgan HAR BIR kishi shu ro'yxatga tushadi — shunda superadmin
+// panelida Telegram ID'ni qo'lda kiritish o'rniga ro'yxatdan tanlash mumkin bo'ladi.
+function logKandidat(from) {
+  if (!from || from.is_bot) return;
+  fetch(`${API_BASE}/telegram/kandidat-log`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Bot-Secret': process.env.BOT_SECRET || 'bot-ichki-so\'rov',
+    },
+    body: JSON.stringify({
+      telegramId: from.id,
+      telegramIsm: [from.first_name, from.last_name].filter(Boolean).join(' '),
+      telegramUsername: from.username || null,
+    }),
+  }).catch(() => {}); // jim xatolik — bot ishlashini to'xtatmasin
 }
 
 // ─── /start ──────────────────────────────────────────────────────────────────
+// ⚠️ Guruh a'zoligi endi TALAB QILINMAYDI — bot istalgan kishiga javob beradi.
+//    Haqiqiy kirish esa Mini App orqali tekshiriladi: superadmin panelida
+//    Telegram ID biriktirilgan bo'lsagina, foydalanuvchi o'ziga tegishli
+//    panelga (masalan buxgalter.html) avtomatik yo'naltiriladi. Biriktirilmagan
+//    bo'lsa — Mini App anketa (so'rov) formasini ko'rsatadi.
 bot.onText(/\/start/, async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;
@@ -72,18 +40,13 @@ bot.onText(/\/start/, async (msg) => {
   // Faqat shaxsiy chat
   if (msg.chat.type !== 'private') return;
 
-  const allowed = await isGroupMember(userId);
-  if (!allowed) {
-    return bot.sendMessage(chatId,
-      '⛔ Kechirasiz, bu botdan faqat guruh a\'zolari foydalana oladi.'
-    );
-  }
+  logKandidat(msg.from);
 
   const ism = msg.from.first_name || 'Foydalanuvchi';
   bot.sendMessage(chatId,
     `Assalomu alaykum, *${ism}*! 👋\n\nInnovateIT School boshqaruv tizimiga kirish uchun quyidagi tugmani bosing:\n\n` +
     `🆔 Sizning Telegram ID'ingiz: \`${userId}\`\n` +
-    `_(Buxgalter yoki admin sifatida ulanish uchun bu raqamni superadminga yuboring)_`,
+    `_(Agar hali biriktirilmagan bo'lsangiz, bu raqamni superadminga yuboring)_`,
     {
       parse_mode: 'Markdown',
       reply_markup: {
@@ -98,9 +61,7 @@ bot.onText(/\/start/, async (msg) => {
 // ─── /miniapp ────────────────────────────────────────────────────────────────
 bot.onText(/\/miniapp/, async (msg) => {
   if (msg.chat.type !== 'private') return;
-  const allowed = await isGroupMember(msg.from.id);
-  if (!allowed) return bot.sendMessage(msg.chat.id, '⛔ Ruxsat yo\'q.');
-
+  logKandidat(msg.from);
   bot.sendMessage(msg.chat.id,
     `🚀 Mini Appni ochish:\n\n🆔 Sizning Telegram ID'ingiz: \`${msg.from.id}\``,
     {

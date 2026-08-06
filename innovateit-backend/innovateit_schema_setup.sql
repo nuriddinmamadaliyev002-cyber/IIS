@@ -442,6 +442,18 @@ INSERT INTO blog_categories (nomi, slug, tavsif, tartib) VALUES
 ON CONFLICT (slug) DO NOTHING;
 
 
+-- ─── 26. TELEGRAM KANDIDATLAR ──────────────────────────────────────────────────
+--  Botga /start yozgan har bir foydalanuvchi shu yerga yoziladi (id, ism, username).
+--  Superadmin buxgalter/admin biriktirishda ID'ni qo'lda kiritish o'rniga shu
+--  ro'yxatdan tanlashi mumkin bo'ladi. Guruhga a'zolik endi TALAB QILINMAYDI.
+CREATE TABLE IF NOT EXISTS telegram_kandidatlar (
+    telegram_id       BIGINT PRIMARY KEY,
+    telegram_ism      TEXT,
+    telegram_username TEXT,
+    oxirgi_faollik    TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi

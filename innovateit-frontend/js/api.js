@@ -164,15 +164,6 @@ const api = {
     if (res.ok && res.token) tokenStore.set(res.token);
     return res;
   },
-  loginBuxgalter: async (d) => {
-    const res = await fetch(`${BASE}/api/auth/login-buxgalter`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(d)
-    }).then(r => r.json());
-    if (res.ok && res.token) tokenStore.set(res.token);
-    return res;
-  },
   loginSales: async (d) => {
     const res = await fetch(`${BASE}/api/auth/login-sales`, {
       method: 'POST',
@@ -331,6 +322,9 @@ const api = {
   createMaktab:    (d) => api.post('/api/maktablar', d),
   editMaktab:      (d) => api.put(`/api/maktablar/${d.id}`, d),
   deleteMaktab:    (id) => api.del(`/api/maktablar/${id}`),
+
+  // ─── Telegram kandidatlar (botga /start yozganlar ro'yxati) ───
+  getKandidatlar: () => api.get('/api/telegram/kandidatlar'),
 
   // ─── Telegram birikmalar ───
   getTgBirikmalar:  ()  => api.get('/api/telegram/birikmalar'),

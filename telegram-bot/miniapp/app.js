@@ -83,9 +83,21 @@ window.addEventListener('DOMContentLoaded', async () => {
         // Telegram WebApp da tashqi sahifani ochish
         if (tg && tg.openLink) {
           // Foydalanuvchiga tushuntirish
-          showAdminRedirect(redirectUrl);
+          showAdminRedirect(redirectUrl, { role: 'admin' });
         } else {
           window.location.href = redirectUrl;
+        }
+        return;
+      }
+      // ─── Buxgalter → to'liq buxgalter web paneliga redirect ────────────────
+      // Buxgalter kirishi FAQAT shu yo'l orqali — bot faqat tekshiruv vositachisi,
+      // haqiqiy ish esa to'liq CRM (buxgalter.html) da davom etadi.
+      if (ROL === 'buxgalter') {
+        const buxUrl = `${WEB_PANEL_URL}/buxgalter.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+        if (tg && tg.openLink) {
+          showAdminRedirect(buxUrl, { role: 'buxgalter' });
+        } else {
+          window.location.href = buxUrl;
         }
         return;
       }
@@ -354,21 +366,30 @@ function kutishClose() {
 }
 
 // ═══════════════════════════════════════════
-//  ADMIN — WEB PANELGA YO'NALTIRISH
+//  ADMIN / BUXGALTER — WEB PANELGA YO'NALTIRISH
 // ═══════════════════════════════════════════
-function showAdminRedirect(url) {
+function showAdminRedirect(url, opts) {
+  const cfg = {
+    admin: {
+      icon: '🖥️', title: 'Siz Admin sifatida kirdingiz',
+      desc: "Admin paneli to'liq brauzerda ochiladi.<br>O'quvchilar va davomatni u yerda boshqaring.",
+      btn: "🌐 Admin panelni ochish",
+    },
+    buxgalter: {
+      icon: '💼', title: 'Siz Buxgalter sifatida kirdingiz',
+      desc: "Buxgalter paneli to'liq brauzerda ochiladi.<br>To'lovlarni u yerda boshqaring.",
+      btn: "💼 Buxgalter panelni ochish",
+    },
+  }[opts?.role || 'admin'];
+
   showPage('loadingPage');
-  // Loading sahifasini admin redirect sahifasi sifatida ishlatamiz
   const loadPage = document.getElementById('loadingPage');
   loadPage.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 24px;text-align:center;">
-      <div style="width:88px;height:88px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:42px;">🖥️</div>
+      <div style="width:88px;height:88px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:42px;">${cfg.icon}</div>
       <div>
-        <div style="font-size:20px;font-weight:700;margin-bottom:8px;">Siz Admin sifatida kirdingiз</div>
-        <div style="font-size:14px;color:var(--hint);line-height:1.5;">
-          Admin paneli to'liq brauzerda ochiladi.<br>
-          O'quvchilar va davomatni u yerda boshqaring.
-        </div>
+        <div style="font-size:20px;font-weight:700;margin-bottom:8px;">${cfg.title}</div>
+        <div style="font-size:14px;color:var(--hint);line-height:1.5;">${cfg.desc}</div>
       </div>
       <button onclick="openAdminPanel()" style="
         background:linear-gradient(135deg,#6c63ff,#a78bfa);
@@ -376,7 +397,7 @@ function showAdminRedirect(url) {
         padding:16px 32px;font-size:16px;font-weight:600;
         cursor:pointer;width:100%;max-width:280px;
         box-shadow:0 4px 20px rgba(108,99,255,0.4);
-      ">🌐 Admin panelni ochish</button>
+      ">${cfg.btn}</button>
       <div style="font-size:12px;color:var(--hint);">
         Brauzerda avtomatik kirasiz
       </div>

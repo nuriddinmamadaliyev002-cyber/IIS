@@ -9,6 +9,9 @@
 // DELETE /api/buxgalter/:id           — o'chirish (superadmin)
 // POST   /api/buxgalter/biriktiruv    — maktab biriktirish (superadmin)
 // DELETE /api/buxgalter/biriktiruv    — maktab ajratish (superadmin)
+//
+// Buxgalter kirishi FAQAT Telegram orqali (bot → Mini App → /api/telegram/check
+// → shu paneliga JWT bilan redirect). Email/parol tizimi yo'q.
 const { Router }      = require('express');
 const pool            = require('../db');
 const { requireAuth } = require('../middleware/jwt');
@@ -304,7 +307,6 @@ router.get('/', requireAuth(['admin']), async (req, res) => {
          b.id,
          b.ism,
          b.familiya,
-         b.username,
          b.telegram_id,
          b.yaratilgan,
          COALESCE(
@@ -338,36 +340,19 @@ router.post('/', requireAuth(['admin']), async (req, res) => {
 
   const ism       = req.body.ism?.trim();
   const familiya  = req.body.familiya?.trim() || '';
-  const username  = req.body.username?.trim().toLowerCase();
-  const parol     = req.body.parol;
   const maktablar = req.body.maktablar || [];
 
   if (!ism)
     return res.status(400).json({ ok: false, error: 'Ism majburiy' });
-  if (!username || !parol)
-    return res.status(400).json({ ok: false, error: 'Username va parol majburiy' });
-  if (parol.length < 6)
-    return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
-
-  const { hashPassword } = require('../middleware/auth');
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // Username takrorlanishini tekshirish
-    const uCheck = await client.query('SELECT id FROM buxgalterlar WHERE username=$1', [username]);
-    if (uCheck.rowCount > 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ ok: false, error: 'Bu username allaqachon band' });
-    }
-
-    const parolHash = await hashPassword(parol);
-
     const result = await client.query(
-      `INSERT INTO buxgalterlar (ism, familiya, username, parol, yaratilgan)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [ism, familiya, username, parolHash, todayUZ()]
+      `INSERT INTO buxgalterlar (ism, familiya, yaratilgan)
+       VALUES ($1, $2, $3) RETURNING id`,
+      [ism, familiya, todayUZ()]
     );
     const buxId = result.rows[0].id;
 
@@ -398,48 +383,18 @@ router.put('/:id', requireAuth(['admin']), async (req, res) => {
   const id        = parseInt(req.params.id);
   const ism       = req.body.ism?.trim();
   const familiya  = req.body.familiya?.trim() || '';
-  const username  = req.body.username?.trim().toLowerCase();
-  const parol     = req.body.parol;
   const maktablar = req.body.maktablar;
 
   if (!ism)
     return res.status(400).json({ ok: false, error: 'Ism majburiy' });
 
-  const { hashPassword } = require('../middleware/auth');
-
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    // Username o'zgartirilsa — takrorlanishini tekshir
-    if (username) {
-      const uCheck = await client.query(
-        'SELECT id FROM buxgalterlar WHERE username=$1 AND id != $2',
-        [username, id]
-      );
-      if (uCheck.rowCount > 0) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ ok: false, error: 'Bu username allaqachon band' });
-      }
-    }
-
-    // Parol o'zgartirilsa — hash
-    let parolHash = null;
-    if (parol && parol.length > 0) {
-      if (parol.length < 6) {
-        await client.query('ROLLBACK');
-        return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
-      }
-      parolHash = await hashPassword(parol);
-    }
-
     const result = await client.query(
-      `UPDATE buxgalterlar
-       SET ism=$1, familiya=$2,
-           username=COALESCE($3, username),
-           parol=COALESCE($4, parol)
-       WHERE id=$5`,
-      [ism, familiya, username || null, parolHash, id]
+      `UPDATE buxgalterlar SET ism=$1, familiya=$2 WHERE id=$3`,
+      [ism, familiya, id]
     );
     if (result.rowCount === 0) {
       await client.query('ROLLBACK');

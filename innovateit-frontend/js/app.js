@@ -73,27 +73,21 @@ async function doLogin() {
         localStorage.setItem('iit_u', JSON.stringify(U));
         showApp();
       } else {
-        // 3. Buxgalter sifatida tekshiramiz
-        const rb = await api.loginBuxgalter({ username, parol });
-        if (rb.ok) {
-          localStorage.setItem('iit_bux_u', JSON.stringify({ username, parol, ism: rb.ism }));
-          window.location.href = 'buxgalter.html';
+        // 3. Sales xodimi sifatida tekshiramiz
+        // (Buxgalter bu yerda YO'Q — buxgalter FAQAT Telegram bot orqali kiradi)
+        const rs = await api.loginSales({ username, parol });
+        if (rs.ok) {
+          localStorage.setItem('iit_sales_u', JSON.stringify({ username, ism: rs.ism, id: rs.id }));
+          window.location.href = 'sales.html';
         } else {
-          // 4. Sales xodimi sifatida tekshiramiz
-          const rs = await api.loginSales({ username, parol });
-          if (rs.ok) {
-            localStorage.setItem('iit_sales_u', JSON.stringify({ username, ism: rs.ism, id: rs.id }));
-            window.location.href = 'sales.html';
+          // 4. Viewer sifatida tekshiramiz
+          const rv = await api.loginViewer({ username, parol });
+          if (rv.ok) {
+            // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
+            localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
+            window.location.href = 'portfolio-viewer.html';
           } else {
-            // 5. Viewer sifatida tekshiramiz
-            const rv = await api.loginViewer({ username, parol });
-            if (rv.ok) {
-              // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
-              localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
-              window.location.href = 'portfolio-viewer.html';
-            } else {
-              showErr(g('login-err'), "Username yoki parol noto'g'ri");
-            }
+            showErr(g('login-err'), "Username yoki parol noto'g'ri");
           }
         }
       }
@@ -967,7 +961,7 @@ async function loadBuxgalterlar() {
   listEl.innerHTML = '<div style="padding:16px;color:#7a7870;font-size:13px;">⏳ Yuklanmoqda…</div>';
 
   try {
-    const r = await api.getBiriktirmalar({ username: U.username, parol: U.parol });
+    const r = await api.getBiriktirmalar({});
     if (!r.ok) { listEl.innerHTML = `<div style="color:#dc2626;padding:12px;font-size:13px;">❌ ${r.error}</div>`; return; }
 
     BUX_DATA = { buxgalterlar: r.buxgalterlar || [], maktablar: r.maktablar || [] };
@@ -1018,17 +1012,18 @@ function renderBuxgalterList() {
           <div style="width:36px;height:36px;border-radius:50%;background:#e0faf6;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">💼</div>
           <div>
             <div style="font-weight:600;font-size:14px;">${esc(b.ism)}</div>
-            <div style="font-size:12px;color:#7a7870;font-family:'DM Mono',monospace;">@${esc(b.username)}</div>
-            <div style="font-size:11px;color:#9ca3af;margin-top:2px;">
-              🔑 <span style="font-family:'DM Mono',monospace;letter-spacing:.05em;">${esc(b.parol || '—')}</span>
+            <div style="font-size:11px;margin-top:2px;">
+              ${b.telegram_id
+                ? `<span style="color:#059669;">📱 Telegram bog'langan <span style="color:#9ca3af;font-family:'DM Mono',monospace;">(${b.telegram_id})</span></span>`
+                : '<span style="color:#dc2626;">❌ Telegram bog\'lanmagan</span>'}
             </div>
           </div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-          <button class="bux-edit-btn" onclick="openEditBux('${esc(b.username)}','${esc(b.ism)}')">
-            ✏️ Tahrirlash
+        <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;flex-wrap:wrap;">
+          <button class="bux-edit-btn" onclick="openEditBux(${b.id})" style="${!b.telegram_id ? 'background:#fef3c7;border-color:#fde68a;color:#92400e;' : ''}">
+            📱 ${b.telegram_id ? "Telegram tahrirlash" : "Telegram bog'lash"}
           </button>
-          <button class="bux-del-btn" onclick="deleteBuxgalter(${b.id},'${esc(b.username)}','${esc(b.ism)}')">
+          <button class="bux-del-btn" onclick="deleteBuxgalter(${b.id},'${esc(b.ism)}')">
             O'chirish
           </button>
         </div>
@@ -1056,33 +1051,25 @@ function renderBuxgalterList() {
 
 async function createBuxgalter() {
   const ism      = (g('bux-ism')?.value      || '').trim();
-  const username = (g('bux-username')?.value || '').trim();
-  const parol    = (g('bux-parol')?.value    || '');
+  const familiya = (g('bux-familiya')?.value || '').trim();
   const errEl    = g('bux-err');
   const btnTxt   = g('bux-btn-txt');
   const spinner  = g('bux-spinner');
 
   errEl.style.display = 'none';
 
-  if (!ism)      { errEl.textContent = '❌ Ism kiritilmagan'; errEl.style.display = 'block'; return; }
-  if (!username) { errEl.textContent = '❌ Username kiritilmagan'; errEl.style.display = 'block'; return; }
-  if (!parol)    { errEl.textContent = '❌ Parol kiritilmagan'; errEl.style.display = 'block'; return; }
-  if (parol.length < 6) { errEl.textContent = '❌ Parol kamida 6 ta belgi bo\'lishi kerak'; errEl.style.display = 'block'; return; }
+  if (!ism) { errEl.textContent = '❌ Ism kiritilmagan'; errEl.style.display = 'block'; return; }
 
-  btnTxt.textContent = 'Saqlanmoqda…';
+  btnTxt.textContent = 'Yaratilmoqda…';
   if (spinner) spinner.style.display = 'inline-block';
 
   try {
-    const r = await api.createBuxgalter({
-      username: U.username, parol: U.parol,
-      newIsm: ism, newUsername: username, newParol: parol
-    });
+    const r = await api.createBuxgalter({ ism, familiya });
 
     if (r.ok) {
-      toast('✅ Buxgalter yaratildi', 'success');
       g('bux-ism').value      = '';
-      g('bux-username').value = '';
-      g('bux-parol').value    = '';
+      g('bux-familiya').value = '';
+      toast('✅ Buxgalter yaratildi — endi Telegram ID biriktiring', 'success');
       loadBuxgalterlar();
     } else {
       errEl.textContent = '❌ ' + r.error;
@@ -1097,7 +1084,7 @@ async function createBuxgalter() {
   if (spinner) spinner.style.display = 'none';
 }
 
-async function deleteBuxgalter(id, username, ism) {
+async function deleteBuxgalter(id, ism) {
   if (!confirm(`"${ism}" buxgalterni o'chirmoqchimisiz?\n\nU buxgalter paneliga kira olmaydi.`)) return;
 
   try {
@@ -1134,10 +1121,7 @@ async function biriktirBuxMaktab(buxId) {
   let xato = 0;
 
   for (const maktabId of maktabIds) {
-    const r = await api.biriktirAdmin({
-      username: U.username, parol: U.parol,
-      buxId, maktabId
-    });
+    const r = await api.biriktirAdmin({ buxId, maktabId });
     if (!r.ok) xato++;
   }
 
@@ -1148,10 +1132,7 @@ async function biriktirBuxMaktab(buxId) {
 
 async function ajratBuxMaktab(buxId, maktabId) {
   if (!confirm(`Bu maktabni buxgalterdan ajratasizmi?`)) return;
-  const r = await api.ajratAdmin({
-    username: U.username, parol: U.parol,
-    buxId, maktabId
-  });
+  const r = await api.ajratAdmin({ buxId, maktabId });
   if (r.ok) { toast('✅ Ajratildi'); loadBuxgalterlar(); }
   else       toast('❌ ' + r.error, 'error');
 }
@@ -1161,20 +1142,40 @@ async function biriktirAdmin(buxUsername) { toast('⚠️ Eski API. Sahifani yan
 async function ajratAdmin(adminUsername, buxUsername) { toast('⚠️ Eski API. Sahifani yangilang.', 'error'); }
 
 // ─── Buxgalter tahrirlash modal ───────────────────
-let _editBuxOldUsername = '';
 let _editBuxId = null;
 
-function openEditBux(username, ism) {
-  _editBuxOldUsername = username;
-  // id ni BUX_DATA dan topamiz
-  const bux = BUX_DATA.buxgalterlar.find(b => b.username === username);
-  _editBuxId = bux ? bux.id : null;
+function openEditBux(id) {
+  const bux = BUX_DATA.buxgalterlar.find(b => b.id === id);
+  _editBuxId = bux ? bux.id : id;
   g('edit-bux-familiya').value = bux?.familiya || '';
-  g('edit-bux-ism').value      = bux?.ism || ism;
-  g('edit-bux-username').value = username;
-  g('edit-bux-parol').value    = '';
+  g('edit-bux-ism').value      = bux?.ism || '';
+  g('edit-bux-tgid').value     = bux?.telegram_id || '';
+  g('edit-bux-tg-status').innerHTML = bux?.telegram_id
+    ? `<span style="color:#059669;">✅ Bog'langan (ID: ${bux.telegram_id})</span>`
+    : `<span style="color:#dc2626;">❌ Hali bog'lanmagan — buxgalter panelga kira olmaydi</span>`;
   g('edit-bux-err').style.display = 'none';
   g('edit-bux-modal').style.display = 'flex';
+  loadBuxKandidatlar();
+}
+
+async function loadBuxKandidatlar() {
+  const sel = g('edit-bux-kandidatlar');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
+  try {
+    const r = await api.getKandidatlar();
+    if (!r.ok || !r.kandidatlar?.length) {
+      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
+      r.kandidatlar.map(k => {
+        const label = `${esc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
+        return `<option value="${k.telegram_id}">${label}</option>`;
+      }).join('');
+  } catch (e) {
+    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
+  }
 }
 function closeEditBux() {
   g('edit-bux-modal').style.display = 'none';
@@ -1183,31 +1184,60 @@ function closeEditBux() {
 async function saveEditBux() {
   const newFamiliya = g('edit-bux-familiya').value.trim();
   const newIsm      = g('edit-bux-ism').value.trim();
-  const newUsername = g('edit-bux-username').value.trim();
-  const newParol    = g('edit-bux-parol').value.trim();
+  const newTgId     = g('edit-bux-tgid').value.trim();
   const errEl       = g('edit-bux-err');
   errEl.style.display = 'none';
 
-  if (!newIsm)      { errEl.textContent = '❌ Ism kerak'; errEl.style.display='block'; return; }
-  if (!newUsername) { errEl.textContent = '❌ Username kerak'; errEl.style.display='block'; return; }
-  if (newParol && newParol.length < 6) { errEl.textContent = '❌ Parol kamida 6 ta belgi'; errEl.style.display='block'; return; }
+  if (!newIsm)   { errEl.textContent = '❌ Ism kerak'; errEl.style.display='block'; return; }
+  if (newTgId && !/^\d+$/.test(newTgId)) {
+    errEl.textContent = "❌ Telegram ID faqat raqamlardan iborat bo'lishi kerak"; errEl.style.display='block'; return;
+  }
   if (!_editBuxId) { errEl.textContent = '❌ Buxgalter ID topilmadi'; errEl.style.display='block'; return; }
 
+  const bux = BUX_DATA.buxgalterlar.find(b => b.id === _editBuxId);
+  const oldTgId = bux?.telegram_id ? String(bux.telegram_id) : '';
+
+  // 1) Asosiy ma'lumotlar
   const r = await api.editBuxgalter({
     id: _editBuxId,
     ism: newIsm,
     familiya: newFamiliya,
-    username: newUsername,
-    parol: newParol || undefined,
   });
-  if (r.ok) {
-    closeEditBux();
-    toast('✅ Buxgalter yangilandi', 'success');
-    loadBuxgalterlar();
-  } else {
+  if (!r.ok) {
     errEl.textContent = '❌ ' + r.error;
     errEl.style.display = 'block';
+    return;
   }
+
+  // 2) Telegram ID o'zgargan bo'lsa — biriktirish/ajratish
+  try {
+    if (newTgId && newTgId !== oldTgId) {
+      // Eski ID boshqa raqamga almashtirilayotgan bo'lsa — avval eskisini ajratamiz
+      // (telegram_users jadvalida "yetim" yozuv qolib ketmasligi uchun)
+      if (oldTgId) await api.tgAjrat(oldTgId);
+      const tr = await api.tgBirikdir({
+        telegramId: parseInt(newTgId),
+        telegramIsm: `${newFamiliya} ${newIsm}`.trim(),
+        rol: 'buxgalter',
+        entityId: _editBuxId,
+      });
+      if (!tr.ok) {
+        errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + tr.error;
+        errEl.style.display = 'block';
+        return;
+      }
+    } else if (!newTgId && oldTgId) {
+      await api.tgAjrat(oldTgId);
+    }
+  } catch (e) {
+    errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + e.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  closeEditBux();
+  toast('✅ Buxgalter yangilandi', 'success');
+  loadBuxgalterlar();
 }
 
 // ─── Global exports (HTML onclick lari uchun) ───
