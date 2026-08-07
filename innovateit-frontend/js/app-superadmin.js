@@ -100,12 +100,13 @@ let TG_ENTITIES = {}; // { admin: [], buxgalter: [], oqituvchi: [], oquvchi: [] 
 
 async function loadTgBirikmalar() {
   try {
-    const [bir, adm, bux, tea, stu] = await Promise.all([
+    const [bir, adm, bux, tea, stu, sal] = await Promise.all([
       api.getTgBirikmalar(),
       api.getAdmins(),
       api.getBiriktirmalar(),
       api.getTeachers(),
       api.getStudents({ limit: 9999 }),
+      api.getSalesXodimlar(),
     ]);
 
     TG_ENTITIES = {
@@ -113,6 +114,7 @@ async function loadTgBirikmalar() {
       buxgalter: (bir.ok     ? (bux.buxgalterlar || []) : []),
       oqituvchi: (tea.ok     ? tea.teachers      : []),
       oquvchi:   (stu.ok     ? stu.students      : []),
+      sales:     (sal.ok     ? (sal.xodimlar || []) : []),
     };
 
     if (bir.ok) renderTgBirikmalar(bir.birikmalar);
@@ -126,7 +128,7 @@ function renderTgBirikmalar(list) {
     tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;opacity:.5">Birikma yo\'q</td></tr>';
     return;
   }
-  const rolLabels = { admin:'👤 Admin', buxgalter:'💼 Buxgalter', oqituvchi:'👩‍🏫 O\'qituvchi', oquvchi:'🎓 O\'quvchi' };
+  const rolLabels = { admin:'👤 Admin', buxgalter:'💼 Buxgalter', oqituvchi:'👩‍🏫 O\'qituvchi', oquvchi:'🎓 O\'quvchi', sales:'🎯 Sales' };
   tb.innerHTML = list.map(b => `
     <tr>
       <td><code>${b.telegram_id}</code></td>
@@ -135,7 +137,7 @@ function renderTgBirikmalar(list) {
       <td>${esc(b.fish || '—')}</td>
       <td>${esc(b.biriktirilgan || '')}</td>
       <td>
-        <button class="btn-small" onclick="tgAjrat('${b.telegram_id}','${esc(b.fish || b.telegram_ism || '')}')">Ajratish</button>
+        <button class="btn-small" onclick="tgAjrat('${b.telegram_id}','${esc(b.fish || b.telegram_ism || '')}','${b.rol}')">Ajratish</button>
       </td>
     </tr>`).join('');
 }
@@ -148,7 +150,7 @@ function onTgRolChange() {
 
   if (!rol) { wrap.style.display = 'none'; return; }
 
-  const labels = { admin:"Admin tanlang", buxgalter:"Buxgalter tanlang", oqituvchi:"O'qituvchi tanlang", oquvchi:"O'quvchi tanlang" };
+  const labels = { admin:"Admin tanlang", buxgalter:"Buxgalter tanlang", oqituvchi:"O'qituvchi tanlang", oquvchi:"O'quvchi tanlang", sales:"Sales xodimi tanlang" };
   label.textContent = labels[rol] || 'Foydalanuvchi';
 
   const list = TG_ENTITIES[rol] || [];
@@ -190,10 +192,10 @@ async function tgBirikdir() {
   } catch(e) { errEl.textContent = '❌ Xatolik'; errEl.style.display = 'block'; }
 }
 
-async function tgAjrat(telegramId, fish) {
+async function tgAjrat(telegramId, fish, rol) {
   // confirm olib tashlandi
   try {
-    const r = await api.tgAjrat(telegramId);
+    const r = await api.tgAjrat(telegramId, rol);
     if (r.ok) { toast('✅ Ajratildi', 'success'); await loadTgBirikmalar(); }
     else toast('❌ ' + r.error, 'error');
   } catch(e) { toast('❌ Xatolik', 'error'); }

@@ -1,5 +1,6 @@
 // ─── Telegram routes ─────────────────────────────────────────────────────────
-// GET  /api/telegram/check/:telegramId   — ID biriktirilganmi? (miniapp)
+// GET  /api/telegram/check/:telegramId       — ID biriktirilganmi? (miniapp)
+// GET  /api/telegram/check/:telegramId/:rol  — bir necha rolga bog'langanda, tanlangan rol uchun token
 // POST /api/telegram/anketa              — anketa yuborish (miniapp)
 // GET  /api/telegram/anketa              — so'rovlar ro'yxati (superadmin)
 // PUT  /api/telegram/anketa/:id          — tasdiqlash yoki rad etish (superadmin)
@@ -12,15 +13,129 @@ const { requireAuth } = require('../middleware/jwt');
 
 const router = Router();
 
+// ─── Yordamchi: bitta telegram_users qatori uchun entity + JWT tayyorlash ────
+async function buildAuthResponse(tgUser, tgId) {
+  const { rol, entity_id, entity_table } = tgUser;
+
+  let entityRes;
+  if (entity_table === 'adminlar') {
+    entityRes = await pool.query(
+      `SELECT a.ism, a.familiya, m.nomi AS maktab_nomi, m.id AS maktab_id
+       FROM adminlar a
+       LEFT JOIN maktablar m ON m.id = a.maktab_id
+       WHERE a.id=$1`,
+      [entity_id]
+    );
+  } else if (entity_table === 'buxgalterlar') {
+    entityRes = await pool.query(
+      `SELECT b.id, b.ism, b.familiya,
+              COALESCE(ARRAY_AGG(m.nomi) FILTER (WHERE m.id IS NOT NULL), '{}') AS maktablar,
+              COALESCE(ARRAY_AGG(m.id)   FILTER (WHERE m.id IS NOT NULL), '{}') AS maktab_idlar
+       FROM buxgalterlar b
+       LEFT JOIN buxgalter_maktablar bm ON bm.buxgalter_id = b.id
+       LEFT JOIN maktablar m             ON m.id = bm.maktab_id
+       WHERE b.id=$1
+       GROUP BY b.id`,
+      [entity_id]
+    );
+  } else if (entity_table === 'oqituvchilar') {
+    entityRes = await pool.query(
+      `SELECT o.id, o.ism, o.familiya, o.fan,
+              COALESCE(ARRAY_AGG(m.nomi) FILTER (WHERE m.id IS NOT NULL), '{}') AS maktablar,
+              COALESCE(ARRAY_AGG(m.id)   FILTER (WHERE m.id IS NOT NULL), '{}') AS maktab_idlar
+       FROM oqituvchilar o
+       LEFT JOIN oqituvchi_maktablar om ON om.oqituvchi_id = o.id
+       LEFT JOIN maktablar m             ON m.id = om.maktab_id
+       WHERE o.id=$1
+       GROUP BY o.id`,
+      [entity_id]
+    );
+  } else if (entity_table === 'oquvchilar') {
+    entityRes = await pool.query(
+      `SELECT o.id, o.ism, o.familiya, m.nomi AS maktab, o.sinf, o.maktab_id
+       FROM oquvchilar o
+       LEFT JOIN maktablar m ON m.id = o.maktab_id
+       WHERE o.id=$1`,
+      [entity_id]
+    );
+  } else if (entity_table === 'sales_xodimlar') {
+    entityRes = await pool.query(
+      `SELECT s.id, s.ism, s.familiya,
+              COALESCE(ARRAY_AGG(m.nomi) FILTER (WHERE m.id IS NOT NULL), '{}') AS maktablar,
+              COALESCE(ARRAY_AGG(m.id)   FILTER (WHERE m.id IS NOT NULL), '{}') AS maktab_idlar
+       FROM sales_xodimlar s
+       LEFT JOIN sales_maktablar sm ON sm.sales_id = s.id
+       LEFT JOIN maktablar m        ON m.id = sm.maktab_id
+       WHERE s.id=$1
+       GROUP BY s.id`,
+      [entity_id]
+    );
+  }
+
+  if (!entityRes || entityRes.rowCount === 0) return null;
+
+  const { generateToken } = require('../middleware/jwt');
+  const entity = entityRes.rows[0];
+  const ism    = `${entity.familiya || ''} ${entity.ism}`.trim();
+
+  const tokenPayload = {
+    telegramId:  tgId,
+    ism,
+    rol,
+    entityId:    entity_id,
+    entityTable: entity_table,
+    isSuper:     false,
+    role:        rol,
+  };
+
+  if (rol === 'admin') {
+    tokenPayload.maktabId   = entity.maktab_id;
+    tokenPayload.maktabNomi = entity.maktab_nomi;
+  }
+  if (['oqituvchi', 'buxgalter'].includes(rol)) {
+    tokenPayload.maktablar   = (entity.maktablar   || []).filter(Boolean);
+    tokenPayload.maktabIdlar = (entity.maktab_idlar || []).filter(Boolean);
+    tokenPayload.maktabId    = tokenPayload.maktabIdlar[0] || null;
+  }
+  if (rol === 'sales') {
+    tokenPayload.id          = entity_id; // sales.js routelari req.user.id ga tayanadi
+    tokenPayload.maktablar   = (entity.maktablar   || []).filter(Boolean);
+    tokenPayload.maktabIdlar = (entity.maktab_idlar || []).filter(Boolean);
+  }
+  if (rol === 'oquvchi') {
+    tokenPayload.maktabId = entity.maktab_id || null;
+    tokenPayload.maktab   = entity.maktab    || '';
+    tokenPayload.sinf     = entity.sinf      || '';
+  }
+
+  const token = generateToken(tokenPayload);
+
+  return {
+    ok:    true,
+    found: true,
+    rol,
+    ism,
+    token,
+    entityId: entity_id,
+    ...(rol === 'admin'      && { maktabId: entity.maktab_id, maktabNomi: entity.maktab_nomi }),
+    ...(rol === 'oqituvchi'  && { maktablar: tokenPayload.maktablar, maktabIdlar: tokenPayload.maktabIdlar }),
+    ...(rol === 'buxgalter'  && { maktablar: tokenPayload.maktablar }),
+    ...(rol === 'sales'      && { maktablar: tokenPayload.maktablar }),
+    ...(rol === 'oquvchi'    && { maktab: entity.maktab, sinf: entity.sinf }),
+  };
+}
+
 // ─── GET /api/telegram/check/:telegramId ─────────────────────────────────────
 // Miniapp har ochilganda shu endpointni chaqiradi
-// Javob: { ok, found, rol, ism, maktablar?, sinf? }
+// Javob: { ok, found, rol, ism, maktablar?, sinf? }  YOKI
+//        bir necha rolga bog'langan bo'lsa: { ok, found, multiple:true, roles:[{rol,ism}] }
 router.get('/check/:telegramId', async (req, res) => {
   const tgId = parseInt(req.params.telegramId);
   if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
 
   try {
-    // telegram_users jadvalidan tekshirish
+    // telegram_users jadvalidan tekshirish — bitta odam bir nechta rolga
+    // (masalan ham buxgalter, ham sales) bog'langan bo'lishi mumkin
     const tgRes = await pool.query(
       'SELECT * FROM telegram_users WHERE telegram_id=$1',
       [tgId]
@@ -38,130 +153,58 @@ router.get('/check/:telegramId', async (req, res) => {
       return res.json({ ok: true, found: false, anketaHolat: null });
     }
 
-    const tgUser = tgRes.rows[0];
-    const { rol, entity_id, entity_table } = tgUser;
-
-    // Tegishli jadvaldan ma'lumot olish
-    let entityRes;
-    if (entity_table === 'adminlar') {
-      entityRes = await pool.query(
-        `SELECT a.ism, a.familiya, m.nomi AS maktab_nomi, m.id AS maktab_id
-         FROM adminlar a
-         LEFT JOIN maktablar m ON m.id = a.maktab_id
-         WHERE a.id=$1`,
-        [entity_id]
-      );
-    } else if (entity_table === 'buxgalterlar') {
-      entityRes = await pool.query(
-        `SELECT b.id, b.ism, b.familiya,
-                COALESCE(ARRAY_AGG(m.nomi) FILTER (WHERE m.id IS NOT NULL), '{}') AS maktablar,
-                COALESCE(ARRAY_AGG(m.id)   FILTER (WHERE m.id IS NOT NULL), '{}') AS maktab_idlar
-         FROM buxgalterlar b
-         LEFT JOIN buxgalter_maktablar bm ON bm.buxgalter_id = b.id
-         LEFT JOIN maktablar m             ON m.id = bm.maktab_id
-         WHERE b.id=$1
-         GROUP BY b.id`,
-        [entity_id]
-      );
-    } else if (entity_table === 'oqituvchilar') {
-      entityRes = await pool.query(
-        `SELECT o.id, o.ism, o.familiya, o.fan,
-                COALESCE(ARRAY_AGG(m.nomi) FILTER (WHERE m.id IS NOT NULL), '{}') AS maktablar,
-                COALESCE(ARRAY_AGG(m.id)   FILTER (WHERE m.id IS NOT NULL), '{}') AS maktab_idlar
-         FROM oqituvchilar o
-         LEFT JOIN oqituvchi_maktablar om ON om.oqituvchi_id = o.id
-         LEFT JOIN maktablar m             ON m.id = om.maktab_id
-         WHERE o.id=$1
-         GROUP BY o.id`,
-        [entity_id]
-      );
-    } else if (entity_table === 'oquvchilar') {
-      entityRes = await pool.query(
-        `SELECT o.id, o.ism, o.familiya, m.nomi AS maktab, o.sinf, o.maktab_id
-         FROM oquvchilar o
-         LEFT JOIN maktablar m ON m.id = o.maktab_id
-         WHERE o.id=$1`,
-        [entity_id]
-      );
-    } else if (entity_table === 'sales_xodimlar') {
-      entityRes = await pool.query(
-        `SELECT s.id, s.ism, s.familiya,
-                COALESCE(ARRAY_AGG(m.nomi) FILTER (WHERE m.id IS NOT NULL), '{}') AS maktablar,
-                COALESCE(ARRAY_AGG(m.id)   FILTER (WHERE m.id IS NOT NULL), '{}') AS maktab_idlar
-         FROM sales_xodimlar s
-         LEFT JOIN sales_maktablar sm ON sm.sales_id = s.id
-         LEFT JOIN maktablar m        ON m.id = sm.maktab_id
-         WHERE s.id=$1
-         GROUP BY s.id`,
-        [entity_id]
-      );
+    // Faqat bitta rolga bog'langan bo'lsa — to'g'ridan-to'g'ri token bilan javob
+    if (tgRes.rowCount === 1) {
+      const result = await buildAuthResponse(tgRes.rows[0], tgId);
+      if (!result) return res.status(404).json({ ok: false, error: "Foydalanuvchi ma'lumoti topilmadi" });
+      return res.json(result);
     }
 
-    if (!entityRes || entityRes.rowCount === 0) {
+    // Bir nechta rolga bog'langan — tanlov ro'yxatini qaytaramiz, token YO'Q
+    // (token faqat rol tanlangandan keyin /check/:telegramId/:rol orqali beriladi)
+    const roles = [];
+    for (const row of tgRes.rows) {
+      const info = await buildAuthResponse(row, tgId);
+      if (info) roles.push({ rol: info.rol, ism: info.ism });
+    }
+    if (roles.length === 0)
       return res.status(404).json({ ok: false, error: "Foydalanuvchi ma'lumoti topilmadi" });
+    if (roles.length === 1) {
+      // Boshqa rollar entity topilmadi bilan tugagan bo'lishi mumkin — yagona qolganini beramiz
+      const row = tgRes.rows.find(r => r.rol === roles[0].rol);
+      const result = await buildAuthResponse(row, tgId);
+      return res.json(result);
     }
 
-    // JWT token yaratish
-    const { generateToken } = require('../middleware/jwt');
-    const entity = entityRes.rows[0];
-    const ism    = `${entity.familiya || ''} ${entity.ism}`.trim();
-
-    const tokenPayload = {
-      telegramId:  tgId,
-      ism,
-      rol,
-      entityId:    entity_id,
-      entityTable: entity_table,
-      isSuper:     false,
-      role:        rol,
-    };
-
-    // Admin uchun maktab ma'lumoti
-    if (rol === 'admin') {
-      tokenPayload.maktabId   = entity.maktab_id;
-      tokenPayload.maktabNomi = entity.maktab_nomi;
-    }
-
-    // O'qituvchi va buxgalter uchun maktablar ro'yxati
-    if (['oqituvchi', 'buxgalter'].includes(rol)) {
-      tokenPayload.maktablar   = (entity.maktablar   || []).filter(Boolean);
-      tokenPayload.maktabIdlar = (entity.maktab_idlar || []).filter(Boolean);
-      // Asosiy maktab (birinchisi) — davomat kabi single-maktab filtrlarda ishlatiladi
-      tokenPayload.maktabId    = tokenPayload.maktabIdlar[0] || null;
-    }
-
-    // Sales xodimi uchun ham maktablar ro'yxati
-    if (rol === 'sales') {
-      tokenPayload.id          = entity_id; // sales.js routelari req.user.id ga tayanadi
-      tokenPayload.maktablar   = (entity.maktablar   || []).filter(Boolean);
-      tokenPayload.maktabIdlar = (entity.maktab_idlar || []).filter(Boolean);
-    }
-
-    // O'quvchi uchun sinf va maktab_id
-    if (rol === 'oquvchi') {
-      tokenPayload.maktabId = entity.maktab_id || null;
-      tokenPayload.maktab   = entity.maktab    || '';
-      tokenPayload.sinf     = entity.sinf      || '';
-    }
-
-    const token = generateToken(tokenPayload);
-
-    res.json({
-      ok:    true,
-      found: true,
-      rol,
-      ism,
-      token,
-      entityId: entity_id,
-      ...(rol === 'admin'      && { maktabId: entity.maktab_id, maktabNomi: entity.maktab_nomi }),
-      ...(rol === 'oqituvchi'  && { maktablar: tokenPayload.maktablar, maktabIdlar: tokenPayload.maktabIdlar }),
-      ...(rol === 'buxgalter'  && { maktablar: tokenPayload.maktablar }),
-      ...(rol === 'sales'      && { maktablar: tokenPayload.maktablar }),
-      ...(rol === 'oquvchi'    && { maktab: entity.maktab, sinf: entity.sinf }),
-    });
+    res.json({ ok: true, found: true, multiple: true, roles });
 
   } catch (err) {
     console.error('telegram/check xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/telegram/check/:telegramId/:rol ────────────────────────────────
+// Bir necha rolga bog'langan foydalanuvchi Mini App'da rolni tanlagandan keyin
+// aynan shu rol uchun JWT token olish uchun chaqiriladi.
+router.get('/check/:telegramId/:rol', async (req, res) => {
+  const tgId = parseInt(req.params.telegramId);
+  const rol  = req.params.rol;
+  if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
+
+  try {
+    const tgRes = await pool.query(
+      'SELECT * FROM telegram_users WHERE telegram_id=$1 AND rol=$2',
+      [tgId, rol]
+    );
+    if (tgRes.rowCount === 0)
+      return res.status(404).json({ ok: false, error: 'Bu rol uchun birikma topilmadi' });
+
+    const result = await buildAuthResponse(tgRes.rows[0], tgId);
+    if (!result) return res.status(404).json({ ok: false, error: "Foydalanuvchi ma'lumoti topilmadi" });
+    res.json(result);
+  } catch (err) {
+    console.error('telegram/check/:rol xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });
@@ -357,6 +400,7 @@ router.get('/birikmalar', requireAuth(['admin']), async (req, res) => {
            WHEN tu.entity_table = 'buxgalterlar'  THEN (SELECT ism||' '||familiya FROM buxgalterlar  WHERE id=tu.entity_id)
            WHEN tu.entity_table = 'oqituvchilar'  THEN (SELECT ism||' '||familiya FROM oqituvchilar  WHERE id=tu.entity_id)
            WHEN tu.entity_table = 'oquvchilar'    THEN (SELECT ism||' '||familiya FROM oquvchilar    WHERE id=tu.entity_id)
+           WHEN tu.entity_table = 'sales_xodimlar' THEN (SELECT ism||' '||familiya FROM sales_xodimlar WHERE id=tu.entity_id)
          END AS fish
        FROM telegram_users tu
        ORDER BY tu.biriktirilgan DESC`
@@ -397,13 +441,13 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
     if (entityCheck.rowCount === 0)
       return res.status(404).json({ ok: false, error: "Foydalanuvchi topilmadi" });
 
-    // Biriktirish
+    // Biriktirish — (telegram_id, rol) juftligi bo'yicha upsert, shunda bitta
+    // odam bir nechta rolga (masalan ham buxgalter, ham sales) bog'lana oladi
     await pool.query(
       `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)
        VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (telegram_id) DO UPDATE SET
+       ON CONFLICT (telegram_id, rol) DO UPDATE SET
          telegram_ism  = EXCLUDED.telegram_ism,
-         rol           = EXCLUDED.rol,
          entity_id     = EXCLUDED.entity_id,
          entity_table  = EXCLUDED.entity_table,
          biriktirilgan = TO_CHAR(NOW(), 'DD.MM.YYYY')`,
@@ -435,27 +479,40 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
 });
 
 // ─── DELETE /api/telegram/birikdir/:tgId — ajratish (superadmin) ─────────────
+//  ?rol=buxgalter kabi query bo'lsa — FAQAT o'sha rolni ajratadi (bitta odam
+//  bir nechta rolga bog'langan bo'lishi mumkinligi uchun). rol berilmasa —
+//  eski xatti-harakat: shu telegram_id ga tegishli BARCHA rollarni ajratadi.
 router.delete('/birikdir/:tgId', requireAuth(['admin']), async (req, res) => {
   if (!req.user.isSuper)
     return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
 
   const tgId = parseInt(req.params.tgId);
+  const rol  = req.query.rol || null;
 
   try {
-    // Qaysi jadvaldan ekanligini topish
     const tgRes = await pool.query(
-      'SELECT entity_id, entity_table FROM telegram_users WHERE telegram_id=$1', [tgId]
+      rol
+        ? 'SELECT entity_id, entity_table FROM telegram_users WHERE telegram_id=$1 AND rol=$2'
+        : 'SELECT entity_id, entity_table FROM telegram_users WHERE telegram_id=$1',
+      rol ? [tgId, rol] : [tgId]
     );
     if (tgRes.rowCount === 0)
       return res.status(404).json({ ok: false, error: 'Birikma topilmadi' });
 
-    const { entity_id, entity_table } = tgRes.rows[0];
-
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
-      await client.query('DELETE FROM telegram_users WHERE telegram_id=$1', [tgId]);
-      await client.query(`UPDATE ${entity_table} SET telegram_id=NULL WHERE id=$1`, [entity_id]);
+
+      for (const { entity_id, entity_table } of tgRes.rows) {
+        await client.query(`UPDATE ${entity_table} SET telegram_id=NULL WHERE id=$1`, [entity_id]);
+      }
+
+      if (rol) {
+        await client.query('DELETE FROM telegram_users WHERE telegram_id=$1 AND rol=$2', [tgId, rol]);
+      } else {
+        await client.query('DELETE FROM telegram_users WHERE telegram_id=$1', [tgId]);
+      }
+
       // Anketa holatini "rad etildi" ga o'zgartirish
       await client.query(
         `UPDATE anketa_sorovlar SET holat='rad etildi' WHERE telegram_id=$1`,

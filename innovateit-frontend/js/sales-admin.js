@@ -239,7 +239,7 @@ async function saveEditSales() {
 
   try {
     if (newTgId && newTgId !== oldTgId) {
-      if (oldTgId) await api.tgAjrat(oldTgId);
+      if (oldTgId) await api.tgAjrat(oldTgId, 'sales');
       const tr = await api.tgBirikdir({
         telegramId: parseInt(newTgId),
         telegramIsm: `${newFamiliya} ${newIsm}`.trim(),
@@ -252,7 +252,7 @@ async function saveEditSales() {
         return;
       }
     } else if (!newTgId && oldTgId) {
-      await api.tgAjrat(oldTgId);
+      await api.tgAjrat(oldTgId, 'sales');
     }
   } catch (e) {
     errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + e.message;

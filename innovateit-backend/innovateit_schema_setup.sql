@@ -262,15 +262,36 @@ CREATE TABLE IF NOT EXISTS viewer_teachers (
 
 -- ─── 17. TELEGRAM FOYDALANUVCHILAR ───────────────────────────────────────────
 --  Telegram bot orqali kirgan foydalanuvchilar
+--  ⚠️ Bir telegram_id BIR NECHTA rolga bog'lanishi mumkin (masalan bir kishi
+--     ham buxgalter, ham sales bo'lishi mumkin) — shuning uchun unikallik
+--     (telegram_id, rol) juftligi bo'yicha, yolg'iz telegram_id bo'yicha emas.
 CREATE TABLE IF NOT EXISTS telegram_users (
     id            SERIAL PRIMARY KEY,
-    telegram_id   BIGINT  NOT NULL UNIQUE,
+    telegram_id   BIGINT  NOT NULL,
     telegram_ism  TEXT,
-    rol           TEXT    NOT NULL,                  -- admin / oqituvchi / oquvchi / buxgalter
+    rol           TEXT    NOT NULL,                  -- admin / oqituvchi / oquvchi / buxgalter / sales
     entity_id     INTEGER NOT NULL,                  -- tegishli jadvalda ID
     entity_table  TEXT    NOT NULL,                  -- jadval nomi
-    biriktirilgan TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY')
+    biriktirilgan TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY'),
+    UNIQUE (telegram_id, rol)
 );
+
+-- Eski bazalarda telegram_id ustunidagi yagona UNIQUE cheklovni composite bilan almashtirish
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'telegram_users_telegram_id_key'
+  ) THEN
+    ALTER TABLE telegram_users DROP CONSTRAINT telegram_users_telegram_id_key;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'telegram_users_telegram_id_rol_key'
+  ) THEN
+    ALTER TABLE telegram_users ADD CONSTRAINT telegram_users_telegram_id_rol_key UNIQUE (telegram_id, rol);
+  END IF;
+END $$;
 
 
 -- ─── 18. ANKETA SO'ROVLAR ────────────────────────────────────────────────────

@@ -320,7 +320,7 @@ const api = {
   // ─── Telegram birikmalar ───
   getTgBirikmalar:  ()  => api.get('/api/telegram/birikmalar'),
   tgBirikdir:       (d) => api.post('/api/telegram/birikdir', d),
-  tgAjrat:          (tgId) => api.del(`/api/telegram/birikdir/${tgId}`),
+  tgAjrat:          (tgId, rol) => api.del(`/api/telegram/birikdir/${tgId}${rol ? '?rol=' + encodeURIComponent(rol) : ''}`),
 
   // ─── Anketa so'rovlar ───
   getSorovlar:      (d) => api.get('/api/telegram/anketa', d),

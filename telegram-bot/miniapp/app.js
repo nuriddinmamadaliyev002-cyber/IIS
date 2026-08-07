@@ -54,6 +54,97 @@ function showPage(id) {
 // ═══════════════════════════════════════════
 //  INIT — Sahifa ochilganda
 // ═══════════════════════════════════════════
+// ─── Topilgan (found) natijani qayta ishlash — bir joydan chaqiriladi ────────
+// (dastlabki tekshiruvda ham, rol tanlangandan keyin ham ishlatiladi)
+function handleAuthResult(data) {
+  TOKEN    = data.token;
+  ROL      = data.rol;
+  USER_ISM = data.ism;
+
+  // ─── Admin → to'liq web panelga redirect ──────────────────────────────
+  // Admin Telegram Mini App emas, to'liq brauzer panelida ishlashi kerak
+  if (ROL === 'admin') {
+    const redirectUrl = `${WEB_PANEL_URL}?tg_token=${encodeURIComponent(data.token)}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(redirectUrl, { role: 'admin' });
+    } else {
+      window.location.href = redirectUrl;
+    }
+    return;
+  }
+  // ─── Buxgalter → to'liq buxgalter web paneliga redirect ────────────────
+  // Buxgalter kirishi FAQAT shu yo'l orqali — bot faqat tekshiruv vositachisi,
+  // haqiqiy ish esa to'liq CRM (buxgalter.html) da davom etadi.
+  if (ROL === 'buxgalter') {
+    const buxUrl = `${WEB_PANEL_URL}/buxgalter.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(buxUrl, { role: 'buxgalter' });
+    } else {
+      window.location.href = buxUrl;
+    }
+    return;
+  }
+  // ─── Sales → to'liq sales web paneliga redirect ─────────────────────────
+  if (ROL === 'sales') {
+    const salesUrl = `${WEB_PANEL_URL}/sales.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(salesUrl, { role: 'sales' });
+    } else {
+      window.location.href = salesUrl;
+    }
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────────
+
+  showDashboard(data);
+}
+
+// ─── Bir necha rolga bog'langanda — tanlov ekrani ────────────────────────────
+function showRoleChooser(tgId, roles) {
+  const rolLabels = {
+    admin:     { icon: '🖥️', label: 'Admin' },
+    buxgalter: { icon: '💼', label: 'Buxgalter' },
+    sales:     { icon: '🎯', label: 'Sales xodimi' },
+    oqituvchi: { icon: '👩‍🏫', label: "O'qituvchi" },
+    oquvchi:   { icon: '🎓', label: "O'quvchi" },
+  };
+
+  showPage('loadingPage');
+  const loadPage = document.getElementById('loadingPage');
+  loadPage.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 24px;text-align:center;">
+      <div style="font-size:18px;font-weight:700;">Qaysi sifatida kirasiz?</div>
+      <div style="font-size:13px;color:var(--hint);margin-bottom:8px;">
+        Siz bir nechta rolga bog'langansiz — birini tanlang
+      </div>
+      ${roles.map(r => `
+        <button onclick="chooseRole(${tgId}, '${r.rol}')" style="
+          display:flex;align-items:center;gap:12px;width:100%;max-width:300px;
+          background:var(--card-bg,#fff);border:1px solid var(--border,#e5e7eb);
+          border-radius:14px;padding:14px 18px;font-size:15px;font-weight:600;
+          cursor:pointer;text-align:left;
+        ">
+          <span style="font-size:22px;">${(rolLabels[r.rol] || {}).icon || '👤'}</span>
+          <span>
+            <div>${(rolLabels[r.rol] || {}).label || r.rol}</div>
+            <div style="font-size:12px;font-weight:400;color:var(--hint);">${r.ism}</div>
+          </span>
+        </button>
+      `).join('')}
+    </div>`;
+}
+
+async function chooseRole(tgId, rol) {
+  try {
+    const res  = await fetch(`${API_BASE}/telegram/check/${tgId}/${rol}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    handleAuthResult(data);
+  } catch (e) {
+    showKutish(tgId, 'xatolik');
+  }
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   // TelegramID ni aniqlash
   const tgId = tgUser?.id;
@@ -70,50 +161,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
     if (!data.ok) throw new Error(data.error);
 
-    if (data.found) {
-      // Biriktirilgan — token bilan dashboardga
-      TOKEN    = data.token;
-      ROL      = data.rol;
-      USER_ISM = data.ism;
-
-      // ─── Admin → to'liq web panelga redirect ──────────────────────────────
-      // Admin Telegram Mini App emas, to'liq brauzer panelida ishlashi kerak
-      if (ROL === 'admin') {
-        const redirectUrl = `${WEB_PANEL_URL}?tg_token=${encodeURIComponent(data.token)}`;
-        // Telegram WebApp da tashqi sahifani ochish
-        if (tg && tg.openLink) {
-          // Foydalanuvchiga tushuntirish
-          showAdminRedirect(redirectUrl, { role: 'admin' });
-        } else {
-          window.location.href = redirectUrl;
-        }
-        return;
-      }
-      // ─── Buxgalter → to'liq buxgalter web paneliga redirect ────────────────
-      // Buxgalter kirishi FAQAT shu yo'l orqali — bot faqat tekshiruv vositachisi,
-      // haqiqiy ish esa to'liq CRM (buxgalter.html) da davom etadi.
-      if (ROL === 'buxgalter') {
-        const buxUrl = `${WEB_PANEL_URL}/buxgalter.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
-        if (tg && tg.openLink) {
-          showAdminRedirect(buxUrl, { role: 'buxgalter' });
-        } else {
-          window.location.href = buxUrl;
-        }
-        return;
-      }
-      // ─── Sales → to'liq sales web paneliga redirect ─────────────────────────
-      if (ROL === 'sales') {
-        const salesUrl = `${WEB_PANEL_URL}/sales.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
-        if (tg && tg.openLink) {
-          showAdminRedirect(salesUrl, { role: 'sales' });
-        } else {
-          window.location.href = salesUrl;
-        }
-        return;
-      }
-      // ──────────────────────────────────────────────────────────────────────
-
-      showDashboard(data);
+    if (data.multiple) {
+      // Bir necha rolga bog'langan — tanlov ko'rsatamiz
+      showRoleChooser(tgId, data.roles);
+    } else if (data.found) {
+      handleAuthResult(data);
     } else if (data.anketaHolat === 'kutilmoqda') {
       // So'rov yuborilgan, kutilmoqda
       showKutish(tgId, 'kutilmoqda');

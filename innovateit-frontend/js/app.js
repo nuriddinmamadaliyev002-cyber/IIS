@@ -1207,7 +1207,7 @@ async function saveEditBux() {
     if (newTgId && newTgId !== oldTgId) {
       // Eski ID boshqa raqamga almashtirilayotgan bo'lsa — avval eskisini ajratamiz
       // (telegram_users jadvalida "yetim" yozuv qolib ketmasligi uchun)
-      if (oldTgId) await api.tgAjrat(oldTgId);
+      if (oldTgId) await api.tgAjrat(oldTgId, 'buxgalter');
       const tr = await api.tgBirikdir({
         telegramId: parseInt(newTgId),
         telegramIsm: `${newFamiliya} ${newIsm}`.trim(),
@@ -1220,7 +1220,7 @@ async function saveEditBux() {
         return;
       }
     } else if (!newTgId && oldTgId) {
-      await api.tgAjrat(oldTgId);
+      await api.tgAjrat(oldTgId, 'buxgalter');
     }
   } catch (e) {
     errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + e.message;
