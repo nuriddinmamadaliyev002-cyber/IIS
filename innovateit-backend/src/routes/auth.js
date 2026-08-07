@@ -3,10 +3,9 @@
 //  POST /api/auth/login         — FAQAT superadmin (username + parol)
 //  POST /api/auth/login-admin   — Maktab admini (username + parol)
 //  POST /api/auth/login-viewer  — Portfolio viewer (username + parol)
-//  POST /api/auth/login-sales   — Sales xodimi (username + parol)
 //  POST /api/auth/refresh       — Tokenni yangilash
 //
-//  ⚠️  Buxgalter, o'qituvchi, o'quvchi uchun login YO'Q.
+//  ⚠️  Buxgalter, sales, o'qituvchi, o'quvchi uchun login YO'Q.
 //      Ular faqat Telegram Mini App orqali kiradi:
 //      GET /api/telegram/check/:telegramId  → JWT token
 //
@@ -123,52 +122,6 @@ router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi'
   // Barcha JWT maydonlarini saqlab yangi token berish
   const token = generateToken(req.user);
   res.json({ ok: true, token });
-});
-
-// ─── POST /api/auth/login-sales — sales xodimi login ─────────────────────────
-router.post('/login-sales', async (req, res) => {
-  const { username, parol } = req.body;
-
-  if (!username || !parol)
-    return res.status(400).json({ ok: false, error: 'Username va parol kerak' });
-
-  try {
-    const result = await pool.query(
-      `SELECT id, ism, familiya, parol FROM sales_xodimlar WHERE username = $1`,
-      [username.trim().toLowerCase()]
-    );
-
-    if (result.rowCount === 0)
-      return res.status(401).json({ ok: false, error: "Username yoki parol noto'g'ri" });
-
-    const xodim = result.rows[0];
-
-    if (!xodim.parol)
-      return res.status(401).json({ ok: false, error: "Bu xodim uchun parol belgilanmagan. Superadmin bilan bog'laning." });
-
-    const ok = await bcrypt.compare(parol, xodim.parol);
-    if (!ok)
-      return res.status(401).json({ ok: false, error: "Username yoki parol noto'g'ri" });
-
-    const token = generateToken({
-      id:       xodim.id,
-      username: username.trim().toLowerCase(),
-      ism:      `${xodim.familiya} ${xodim.ism}`.trim(),
-      isSuper:  false,
-      role:     'sales',
-      entityId: xodim.id,
-    });
-
-    res.json({
-      ok:    true,
-      token,
-      id:    xodim.id,
-      ism:   `${xodim.familiya} ${xodim.ism}`.trim(),
-    });
-  } catch (err) {
-    console.error('login-sales xatolik:', err.message);
-    res.status(500).json({ ok: false, error: 'Server xatoligi' });
-  }
 });
 
 module.exports = router;

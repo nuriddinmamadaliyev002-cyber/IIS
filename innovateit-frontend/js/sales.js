@@ -2,7 +2,7 @@
 //  InnovateIT — Sales Panel JS
 // ═══════════════════════════════════════════════════
 
-let U = null;       // { username, ism }
+let U = null;       // { ism, id, viaTelegram: true } — JWT orqali (Telegram Mini App)
 let LEADS = [];
 
 const g = id => document.getElementById(id);
@@ -39,6 +39,20 @@ function togglePw() {
 
 // ─── Kirish ──────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  // ─── Telegram Mini App orqali kirish ────────────────────────────────────
+  const params  = new URLSearchParams(window.location.search);
+  const tgToken = params.get('tg_token');
+  if (tgToken) {
+    api.setToken(tgToken);
+    const payload = api.getUser();
+    const ism     = params.get('tg_ism') || payload?.ism || '';
+    U = { ism, viaTelegram: true, id: payload?.id };
+    localStorage.setItem('iit_sales_u', JSON.stringify(U));
+    window.history.replaceState({}, '', window.location.pathname);
+    showApp();
+    return;
+  }
+
   try {
     const saved = localStorage.getItem('iit_sales_u');
     if (saved && api.isLoggedIn()) {
@@ -48,36 +62,7 @@ window.addEventListener('DOMContentLoaded', () => {
       localStorage.removeItem('iit_sales_u');
     }
   } catch (e) { localStorage.removeItem('iit_sales_u'); }
-
-  g('inp-parol').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-  g('inp-username').addEventListener('keydown', e => { if (e.key === 'Enter') g('inp-parol').focus(); });
 });
-
-async function doLogin() {
-  const username = g('inp-username').value.trim();
-  const parol    = g('inp-parol').value;
-  if (!username || !parol) return;
-
-  const btn = g('login-btn');
-  btn.disabled = true; btn.textContent = 'Tekshirilmoqda…';
-  g('login-err').style.display = 'none';
-
-  try {
-    const r = await api.loginSales({ username, parol });
-    if (r.ok) {
-      U = { username, ism: r.ism, id: r.id };
-      localStorage.setItem('iit_sales_u', JSON.stringify(U));
-      showApp();
-    } else {
-      g('login-err').textContent = '❌ ' + (r.error || "Username yoki parol noto'g'ri");
-      g('login-err').style.display = 'block';
-    }
-  } catch (e) {
-    g('login-err').textContent = '❌ Ulanishda xatolik';
-    g('login-err').style.display = 'block';
-  }
-  btn.disabled = false; btn.textContent = 'Kirish';
-}
 
 function doLogout() {
   U = null; LEADS = [];

@@ -73,22 +73,15 @@ async function doLogin() {
         localStorage.setItem('iit_u', JSON.stringify(U));
         showApp();
       } else {
-        // 3. Sales xodimi sifatida tekshiramiz
-        // (Buxgalter bu yerda YO'Q — buxgalter FAQAT Telegram bot orqali kiradi)
-        const rs = await api.loginSales({ username, parol });
-        if (rs.ok) {
-          localStorage.setItem('iit_sales_u', JSON.stringify({ username, ism: rs.ism, id: rs.id }));
-          window.location.href = 'sales.html';
+        // 3. Viewer sifatida tekshiramiz
+        // (Buxgalter va Sales bu yerda YO'Q — ikkalasi ham FAQAT Telegram bot orqali kiradi)
+        const rv = await api.loginViewer({ username, parol });
+        if (rv.ok) {
+          // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
+          localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
+          window.location.href = 'portfolio-viewer.html';
         } else {
-          // 4. Viewer sifatida tekshiramiz
-          const rv = await api.loginViewer({ username, parol });
-          if (rv.ok) {
-            // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
-            localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
-            window.location.href = 'portfolio-viewer.html';
-          } else {
-            showErr(g('login-err'), "Username yoki parol noto'g'ri");
-          }
+          showErr(g('login-err'), "Username yoki parol noto'g'ri");
         }
       }
     }

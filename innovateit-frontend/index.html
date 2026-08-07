@@ -570,7 +570,7 @@
       <!-- Yangi sales xodimi yaratish -->
       <div class="admin-card" style="margin-top:14px;">
         <div class="card-title">➕ Yangi sales xodimi yaratish</div>
-        <div class="create-grid">
+        <div class="create-grid" style="grid-template-columns:1fr 1fr auto;">
           <div class="field-group" style="margin:0">
             <label class="field-label">Familiya</label>
             <input class="field-input" id="sl-familiya" placeholder="Karimov" autocomplete="off">
@@ -579,22 +579,6 @@
             <label class="field-label">Ism</label>
             <input class="field-input" id="sl-ism" placeholder="Aziz" autocomplete="off">
           </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Username</label>
-            <input class="field-input" id="sl-username" placeholder="aziz.sales" autocomplete="new-password" spellcheck="false">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Parol</label>
-            <div style="position:relative;display:flex;align-items:center;">
-              <input class="field-input" id="sl-parol" type="password" placeholder="Kamida 6 belgi" autocomplete="new-password" style="padding-right:40px;width:100%;box-sizing:border-box;">
-              <button type="button" onclick="togglePw('sl-parol')" tabindex="-1"
-                style="position:absolute;right:10px;background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;color:#888;">
-                <svg id="eye-sl-parol" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-          </div>
           <div style="display:flex;align-items:flex-end;">
             <button class="btn-submit" onclick="createSalesXodim()" style="margin:0;width:100%;">
               <span class="spinner" id="sl-spinner"></span>
@@ -602,6 +586,9 @@
             </button>
           </div>
         </div>
+        <p style="font-size:12px;color:#9ca3af;margin-top:6px;">
+          📱 Yaratgach, ro'yxatdagi "Telegram bog'lash" tugmasi orqali Telegram ID'ni biriktiring — sales xodimi shu orqali kiradi.
+        </p>
         <p id="sl-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;"></p>
 
         <div class="divider"></div>
@@ -613,6 +600,45 @@
       </div>
 
     </div><!-- /tab-sl -->
+
+    <!-- ─── Sales tahrirlash modal ─── -->
+    <div class="modal-overlay" id="edit-sales-modal" onclick="if(event.target===this)closeEditSales()"
+      style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);
+             align-items:center;justify-content:center;padding:16px;">
+      <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:420px;
+                   box-shadow:0 8px 40px rgba(0,0,0,.2);">
+        <div style="font-size:16px;font-weight:700;margin-bottom:18px;">✏️ Sales xodimini tahrirlash</div>
+
+        <div class="field-group" style="margin-bottom:12px;">
+          <label class="field-label">Familiya</label>
+          <input class="field-input" id="edit-sl-familiya" placeholder="Karimov" autocomplete="off">
+        </div>
+        <div class="field-group" style="margin-bottom:12px;">
+          <label class="field-label">Ism</label>
+          <input class="field-input" id="edit-sl-ism" placeholder="Aziz" autocomplete="off">
+        </div>
+
+        <div class="field-group" style="margin-bottom:6px;">
+          <label class="field-label">📱 Telegram ID <span style="color:#9ca3af;font-weight:400;">(asosiy kirish usuli)</span></label>
+          <input class="field-input" id="edit-sl-tgid" type="text" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
+        </div>
+        <select id="edit-sl-kandidatlar" onchange="if(this.value){document.getElementById('edit-sl-tgid').value=this.value;this.selectedIndex=0;}"
+          class="field-input" style="margin-bottom:6px;">
+          <option value="">— yoki botga /start yozganlar ro'yxatidan tanlang —</option>
+        </select>
+        <p style="font-size:12px;color:#9ca3af;margin:-2px 0 4px;">
+          Sales xodimi botga <b>/start</b> yozsa, shu ro'yxatda avtomatik paydo bo'ladi.
+        </p>
+        <p id="edit-sl-tg-status" style="font-size:12px;margin:2px 0 4px;"></p>
+
+        <p id="edit-sl-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;"></p>
+
+        <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;flex-wrap:wrap;">
+          <button onclick="closeEditSales()" class="btn-cancel">Bekor qilish</button>
+          <button onclick="saveEditSales()" class="btn-submit">Saqlash</button>
+        </div>
+      </div>
+    </div>
 
 
   </div><!-- /main -->

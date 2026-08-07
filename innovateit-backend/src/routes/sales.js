@@ -13,7 +13,6 @@
 const { Router }       = require('express');
 const pool              = require('../db');
 const { requireAuth }   = require('../middleware/jwt');
-const { hashPassword }  = require('../middleware/auth');
 
 const router = Router();
 function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
@@ -184,7 +183,7 @@ router.get('/', requireAuth(['admin']), async (req, res) => {
 
     const result = await pool.query(
       `SELECT
-         s.id, s.ism, s.familiya, s.username, s.telegram_id, s.yaratilgan,
+         s.id, s.ism, s.familiya, s.telegram_id, s.yaratilgan,
          COALESCE(
            JSON_AGG(
              JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi)
@@ -210,34 +209,21 @@ router.post('/', requireAuth(['admin']), async (req, res) => {
   if (!req.user.isSuper)
     return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
 
-  const ism      = req.body.ism?.trim();
-  const familiya = req.body.familiya?.trim() || '';
-  const username = req.body.username?.trim().toLowerCase();
-  const parol    = req.body.parol;
+  const ism       = req.body.ism?.trim();
+  const familiya  = req.body.familiya?.trim() || '';
   const maktablar = req.body.maktablar || [];
 
   if (!ism)
     return res.status(400).json({ ok: false, error: 'Ism majburiy' });
-  if (!username || !parol)
-    return res.status(400).json({ ok: false, error: 'Username va parol majburiy' });
-  if (parol.length < 6)
-    return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
 
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
 
-    const uCheck = await client.query('SELECT id FROM sales_xodimlar WHERE username=$1', [username]);
-    if (uCheck.rowCount > 0) {
-      await client.query('ROLLBACK');
-      return res.status(400).json({ ok: false, error: 'Bu username allaqachon band' });
-    }
-
-    const parolHash = await hashPassword(parol);
     const result = await client.query(
-      `INSERT INTO sales_xodimlar (ism, familiya, username, parol, yaratilgan)
-       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
-      [ism, familiya, username, parolHash, todayUZ()]
+      `INSERT INTO sales_xodimlar (ism, familiya, yaratilgan)
+       VALUES ($1, $2, $3) RETURNING id`,
+      [ism, familiya, todayUZ()]
     );
     const salesId = result.rows[0].id;
 
@@ -266,32 +252,18 @@ router.put('/:id', requireAuth(['admin']), async (req, res) => {
     return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
 
   const { id } = req.params;
-  const ism      = req.body.ism?.trim();
-  const familiya = req.body.familiya?.trim();
-  const username = req.body.username?.trim().toLowerCase();
-  const parol    = req.body.parol;
+  const ism       = req.body.ism?.trim();
+  const familiya  = req.body.familiya?.trim();
   const maktablar = req.body.maktablar;
 
   const client = await pool.connect();
   try {
-    if (parol && parol.length < 6) {
-      client.release();
-      return res.status(400).json({ ok: false, error: "Parol kamida 6 belgi bo'lishi kerak" });
-    }
-
     await client.query('BEGIN');
 
-    let q, params;
-    if (parol) {
-      const parolHash = await hashPassword(parol);
-      q = 'UPDATE sales_xodimlar SET ism=$1, familiya=$2, username=$3, parol=$4 WHERE id=$5';
-      params = [ism, familiya, username, parolHash, id];
-    } else {
-      q = 'UPDATE sales_xodimlar SET ism=$1, familiya=$2, username=$3 WHERE id=$4';
-      params = [ism, familiya, username, id];
-    }
-
-    const result = await client.query(q, params);
+    const result = await client.query(
+      'UPDATE sales_xodimlar SET ism=$1, familiya=$2 WHERE id=$3',
+      [ism, familiya, id]
+    );
     if (result.rowCount === 0) {
       await client.query('ROLLBACK');
       return res.status(404).json({ ok: false, error: 'Xodim topilmadi' });

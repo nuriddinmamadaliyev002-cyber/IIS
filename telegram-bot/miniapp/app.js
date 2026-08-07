@@ -101,6 +101,16 @@ window.addEventListener('DOMContentLoaded', async () => {
         }
         return;
       }
+      // ─── Sales → to'liq sales web paneliga redirect ─────────────────────────
+      if (ROL === 'sales') {
+        const salesUrl = `${WEB_PANEL_URL}/sales.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+        if (tg && tg.openLink) {
+          showAdminRedirect(salesUrl, { role: 'sales' });
+        } else {
+          window.location.href = salesUrl;
+        }
+        return;
+      }
       // ──────────────────────────────────────────────────────────────────────
 
       showDashboard(data);
@@ -379,6 +389,11 @@ function showAdminRedirect(url, opts) {
       icon: '💼', title: 'Siz Buxgalter sifatida kirdingiz',
       desc: "Buxgalter paneli to'liq brauzerda ochiladi.<br>To'lovlarni u yerda boshqaring.",
       btn: "💼 Buxgalter panelni ochish",
+    },
+    sales: {
+      icon: '🎯', title: 'Siz Sales xodimi sifatida kirdingiz',
+      desc: "Sales paneli to'liq brauzerda ochiladi.<br>Arizalarni u yerda boshqaring.",
+      btn: "🎯 Sales panelni ochish",
     },
   }[opts?.role || 'admin'];
 

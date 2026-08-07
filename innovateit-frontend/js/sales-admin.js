@@ -79,12 +79,18 @@ function renderSalesXodimlar() {
           <div style="width:36px;height:36px;border-radius:50%;background:#fdf0e0;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;">🎯</div>
           <div>
             <div style="font-weight:600;font-size:14px;">${slEsc(x.familiya)} ${slEsc(x.ism)}</div>
-            <div style="font-size:12px;color:#7a7870;font-family:'DM Mono',monospace;">@${slEsc(x.username)}</div>
+            <div style="font-size:11px;margin-top:2px;">
+              ${x.telegram_id
+                ? `<span style="color:#059669;">📱 Telegram bog'langan <span style="color:#9ca3af;font-family:'DM Mono',monospace;">(${x.telegram_id})</span></span>`
+                : '<span style="color:#dc2626;">❌ Telegram bog\'lanmagan</span>'}
+            </div>
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
-          <button class="bux-edit-btn" onclick="openEditSales(${x.id})">✏️ Tahrirlash</button>
-          <button class="bux-del-btn" onclick="deleteSalesXodim(${x.id},'${slEsc(x.username)}','${slEsc(x.ism)}')">O'chirish</button>
+          <button class="bux-edit-btn" onclick="openEditSales(${x.id})" style="${!x.telegram_id ? 'background:#fef3c7;border-color:#fde68a;color:#92400e;' : ''}">
+            📱 ${x.telegram_id ? "Telegram tahrirlash" : "Telegram bog'lash"}
+          </button>
+          <button class="bux-del-btn" onclick="deleteSalesXodim(${x.id},'${slEsc(x.ism)}')">O'chirish</button>
         </div>
       </div>
 
@@ -136,31 +142,24 @@ async function ajratSalesMaktab(salesId, maktabId) {
 async function createSalesXodim() {
   const ism      = (g('sl-ism')?.value      || '').trim();
   const familiya = (g('sl-familiya')?.value || '').trim();
-  const username = (g('sl-username')?.value || '').trim();
-  const parol    = (g('sl-parol')?.value    || '');
   const errEl    = g('sl-err');
   const btnTxt   = g('sl-btn-txt');
   const spinner  = g('sl-spinner');
 
   errEl.style.display = 'none';
 
-  if (!ism)      { errEl.textContent = '❌ Ism kiritilmagan'; errEl.style.display = 'block'; return; }
-  if (!username) { errEl.textContent = '❌ Username kiritilmagan'; errEl.style.display = 'block'; return; }
-  if (!parol)    { errEl.textContent = '❌ Parol kiritilmagan'; errEl.style.display = 'block'; return; }
-  if (parol.length < 6) { errEl.textContent = "❌ Parol kamida 6 ta belgi bo'lishi kerak"; errEl.style.display = 'block'; return; }
+  if (!ism) { errEl.textContent = '❌ Ism kiritilmagan'; errEl.style.display = 'block'; return; }
 
-  btnTxt.textContent = 'Saqlanmoqda…';
+  btnTxt.textContent = 'Yaratilmoqda…';
   if (spinner) spinner.style.display = 'inline-block';
 
   try {
-    const r = await api.createSales({ ism, familiya, username, parol });
+    const r = await api.createSales({ ism, familiya });
 
     if (r.ok) {
-      toast('✅ Sales xodimi yaratildi', 'success');
+      toast('✅ Sales xodimi yaratildi — endi Telegram ID biriktiring', 'success');
       g('sl-ism').value = '';
       g('sl-familiya').value = '';
-      g('sl-username').value = '';
-      g('sl-parol').value = '';
       loadSalesXodimlar();
     } else {
       errEl.textContent = '❌ ' + r.error;
@@ -175,40 +174,98 @@ async function createSalesXodim() {
   if (spinner) spinner.style.display = 'none';
 }
 
+// ─── Sales tahrirlash modal ───────────────────
+let _editSalesId = null;
+
 function openEditSales(id) {
   const x = SL_XODIMLAR.find(s => s.id === id);
-  if (!x) return;
-
-  const yangiIsm      = prompt('Ism:', x.ism);
-  if (yangiIsm === null) return;
-  const yangiFamiliya = prompt('Familiya:', x.familiya || '');
-  if (yangiFamiliya === null) return;
-  const yangiUsername = prompt('Username:', x.username);
-  if (yangiUsername === null) return;
-  const yangiParol     = prompt("Yangi parol (bo'sh qoldirsangiz o'zgarmaydi):", '');
-  if (yangiParol === null) return;
-
-  editSalesXodim(id, yangiIsm.trim(), yangiFamiliya.trim(), yangiUsername.trim(), yangiParol.trim());
+  _editSalesId = x ? x.id : id;
+  g('edit-sl-familiya').value = x?.familiya || '';
+  g('edit-sl-ism').value      = x?.ism || '';
+  g('edit-sl-tgid').value     = x?.telegram_id || '';
+  g('edit-sl-tg-status').innerHTML = x?.telegram_id
+    ? `<span style="color:#059669;">✅ Bog'langan (ID: ${x.telegram_id})</span>`
+    : `<span style="color:#dc2626;">❌ Hali bog'lanmagan — sales xodimi panelga kira olmaydi</span>`;
+  g('edit-sl-err').style.display = 'none';
+  g('edit-sales-modal').style.display = 'flex';
+  loadSalesKandidatlar();
+}
+function closeEditSales() {
+  g('edit-sales-modal').style.display = 'none';
 }
 
-async function editSalesXodim(id, ism, familiya, username, parol) {
+async function loadSalesKandidatlar() {
+  const sel = g('edit-sl-kandidatlar');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
   try {
-    const payload = { id, ism, familiya, username };
-    if (parol) payload.parol = parol;
-
-    const r = await api.editSales(payload);
-    if (r.ok) {
-      toast('✅ Yangilandi', 'success');
-      loadSalesXodimlar();
-    } else {
-      toast('❌ ' + r.error, 'error');
+    const r = await api.getKandidatlar();
+    if (!r.ok || !r.kandidatlar?.length) {
+      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
+      return;
     }
+    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
+      r.kandidatlar.map(k => {
+        const label = `${slEsc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + slEsc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
+        return `<option value="${k.telegram_id}">${label}</option>`;
+      }).join('');
   } catch (e) {
-    toast('❌ Xatolik: ' + e.message, 'error');
+    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
   }
 }
 
-async function deleteSalesXodim(id, username, ism) {
+async function saveEditSales() {
+  const newFamiliya = g('edit-sl-familiya').value.trim();
+  const newIsm      = g('edit-sl-ism').value.trim();
+  const newTgId     = g('edit-sl-tgid').value.trim();
+  const errEl       = g('edit-sl-err');
+  errEl.style.display = 'none';
+
+  if (!newIsm) { errEl.textContent = '❌ Ism kerak'; errEl.style.display = 'block'; return; }
+  if (newTgId && !/^\d+$/.test(newTgId)) {
+    errEl.textContent = "❌ Telegram ID faqat raqamlardan iborat bo'lishi kerak"; errEl.style.display = 'block'; return;
+  }
+  if (!_editSalesId) { errEl.textContent = '❌ Xodim ID topilmadi'; errEl.style.display = 'block'; return; }
+
+  const x = SL_XODIMLAR.find(s => s.id === _editSalesId);
+  const oldTgId = x?.telegram_id ? String(x.telegram_id) : '';
+
+  const r = await api.editSales({ id: _editSalesId, ism: newIsm, familiya: newFamiliya });
+  if (!r.ok) {
+    errEl.textContent = '❌ ' + r.error;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  try {
+    if (newTgId && newTgId !== oldTgId) {
+      if (oldTgId) await api.tgAjrat(oldTgId);
+      const tr = await api.tgBirikdir({
+        telegramId: parseInt(newTgId),
+        telegramIsm: `${newFamiliya} ${newIsm}`.trim(),
+        rol: 'sales',
+        entityId: _editSalesId,
+      });
+      if (!tr.ok) {
+        errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + tr.error;
+        errEl.style.display = 'block';
+        return;
+      }
+    } else if (!newTgId && oldTgId) {
+      await api.tgAjrat(oldTgId);
+    }
+  } catch (e) {
+    errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + e.message;
+    errEl.style.display = 'block';
+    return;
+  }
+
+  closeEditSales();
+  toast('✅ Yangilandi', 'success');
+  loadSalesXodimlar();
+}
+
+async function deleteSalesXodim(id, ism) {
   if (!confirm(`"${ism}" sales xodimini o'chirmoqchimisiz?\n\nU sales paneliga kira olmaydi.`)) return;
 
   try {

@@ -30,42 +30,39 @@
 </head>
 <body>
 
-<!-- ════════════ LOGIN ════════════ -->
+<!-- ════════════ LOGIN (Telegram orqali) ════════════ -->
 <div id="login-screen">
   <div class="login-card">
     <div class="login-logo">InnovateIT School</div>
     <h1 class="login-title">Sales Panel</h1>
-    <p class="login-sub">Arizalarni boshqarish tizimiga kiring</p>
+    <p class="login-sub">Bu panelga faqat Telegram orqali kirish mumkin</p>
 
-    <div class="field-group">
-      <label class="field-label">Username</label>
-      <input class="field-input" type="text" id="inp-username"
-        placeholder="sales_login" autocomplete="username">
+    <div style="text-align:center;padding:20px 0;">
+      <div style="width:76px;height:76px;margin:0 auto 16px;background:linear-gradient(135deg,#2563eb,#60a5fa);
+                  border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;">📱</div>
+      <p style="font-size:13px;color:#6b7280;line-height:1.6;max-width:280px;margin:0 auto;">
+        Telegram botimizni oching va u yerdan <b>Sales panel</b> tugmasini bosing.
+        Superadmin sizning Telegram hisobingizni oldindan tizimga biriktirgan bo'lishi kerak.
+      </p>
     </div>
 
-    <div class="field-group" style="margin-top:14px;">
-      <label class="field-label">Parol</label>
-      <div class="pw-wrap" style="position:relative;">
-        <input class="field-input" type="password" id="inp-parol"
-          placeholder="••••••" autocomplete="current-password"
-          style="padding-right:44px;">
-        <button type="button" onclick="togglePw()"
-          style="position:absolute;right:12px;top:50%;transform:translateY(-50%);
-                 background:none;border:none;cursor:pointer;font-size:18px;padding:0;color:#7a7870;"
-          id="pw-eye">👁</button>
-      </div>
-    </div>
-
-    <p id="login-err" style="display:none;color:#dc2626;font-size:13px;margin-top:10px;"></p>
-
-    <button class="btn-primary" id="login-btn" onclick="doLogin()"
-      style="width:100%;margin-top:20px;padding:13px;border-radius:10px;
+    <a href="#" id="bot-open-link" target="_blank" rel="noopener"
+      class="btn-primary"
+      style="display:block;text-align:center;width:100%;margin-top:8px;padding:13px;border-radius:10px;
              background:#2563eb;color:#fff;border:none;font-size:15px;
-             font-weight:600;cursor:pointer;font-family:inherit;
-             transition:opacity .15s;"
+             font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;
+             transition:opacity .15s;box-sizing:border-box;"
       onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-      Kirish
-    </button>
+      🤖 Botni ochish
+    </a>
+
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:#9ca3af;">
+      Telegram'ingiz hali biriktirilmaganmi? Superadmin bilan bog'laning.
+    </p>
+
+    <p style="text-align:center;margin-top:16px;font-size:12px;color:#9ca3af;">
+      ← <a href="index.html" style="color:#2563eb;">Asosiy panelga qaytish</a>
+    </p>
   </div>
 </div>
 
@@ -124,5 +121,10 @@
 
 <script src="js/api.js"></script>
 <script src="js/sales.js"></script>
+<script>
+// ⚠️ MUHIM: bu yerga haqiqiy bot username'ini kiriting
+const BOT_USERNAME = 'InnovateIT_School_bot';
+document.getElementById('bot-open-link').href = `https://t.me/${BOT_USERNAME}`;
+</script>
 </body>
 </html>

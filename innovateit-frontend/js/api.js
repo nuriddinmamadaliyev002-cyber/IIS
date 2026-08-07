@@ -164,15 +164,6 @@ const api = {
     if (res.ok && res.token) tokenStore.set(res.token);
     return res;
   },
-  loginSales: async (d) => {
-    const res = await fetch(`${BASE}/api/auth/login-sales`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(d)
-    }).then(r => r.json());
-    if (res.ok && res.token) tokenStore.set(res.token);
-    return res;
-  },
   loginAdmin: async (d) => {
     const res = await fetch(`${BASE}/api/auth/login-admin`, {
       method: 'POST',
