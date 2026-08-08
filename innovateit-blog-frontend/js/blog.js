@@ -231,7 +231,7 @@ async function initHomeMixedCarousel() {
   const currentPath   = current.pathname.replace(/index\.html$/, '');
   const currentKateg  = current.searchParams.get('kategoriya');
 
-  document.querySelectorAll('.header-nav a, .mobile-nav a').forEach(a => {
+  document.querySelectorAll('.header-nav a, .mobile-nav-links a').forEach(a => {
     const href = a.getAttribute('href');
     if (!href) return;
     const linkUrl  = new URL(href, window.location.href);
@@ -247,6 +247,7 @@ async function initHomeMixedCarousel() {
   const toggle   = document.getElementById('menu-toggle');
   const nav      = document.getElementById('mobile-nav');
   const backdrop = document.getElementById('mobile-nav-backdrop');
+  const closeBtn = document.getElementById('mobile-nav-close');
   if (!toggle || !nav || !backdrop) return;
 
   function openNav() {
@@ -266,6 +267,7 @@ async function initHomeMixedCarousel() {
     nav.classList.contains('open') ? closeNav() : openNav();
   });
   backdrop.addEventListener('click', closeNav);
+  closeBtn?.addEventListener('click', closeNav);
   nav.querySelectorAll('a').forEach(a => a.addEventListener('click', closeNav));
   document.addEventListener('keydown', e => { if (e.key === 'Escape') closeNav(); });
 })();
