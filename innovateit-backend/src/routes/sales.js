@@ -57,6 +57,23 @@ router.post('/leads', async (req, res) => {
     return res.status(400).json({ ok: false, error: 'Maktab majburiy' });
 
   try {
+    // ─── Dublikatni tekshirish ────────────────────────────────────────────
+    // Bir xil telefon + o'quvchi F.I. + maktab bilan so'nggi 24 soat ichida
+    // ariza allaqachon yuborilgan bo'lsa — yangi qator qo'shmaymiz (masalan
+    // sekin internet tufayli tugma bir necha marta bosilishi, sahifa qayta
+    // yuklanib forma qayta yuborilishi kabi holatlar uchun). Foydalanuvchiga
+    // baribir "muvaffaqiyatli" javob qaytaramiz — u xatolik ko'rmaydi.
+    const dupCheck = await pool.query(
+      `SELECT id FROM leadlar
+       WHERE telefon = $1 AND oquvchi_familiya = $2 AND oquvchi_ismi = $3 AND maktab_id = $4
+         AND yaratilgan > NOW() - INTERVAL '24 hours'
+       LIMIT 1`,
+      [telefon, oquvchiFamiliya, oquvchiIsmi, maktabId]
+    );
+    if (dupCheck.rowCount > 0) {
+      return res.json({ ok: true, id: dupCheck.rows[0].id, duplicate: true });
+    }
+
     const result = await pool.query(
       `INSERT INTO leadlar (ism, telefon, telefon2, oquvchi_familiya, oquvchi_ismi, sinf, maktab_id, hudud, izoh, manba)
        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,

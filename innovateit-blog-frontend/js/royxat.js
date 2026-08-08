@@ -3,6 +3,9 @@
 //  BASE, apiGet, esc — js/blog.js'dan keladi (avval ulangan bo'lishi kerak)
 // ═══════════════════════════════════════════════════════════════════════════
 
+const RX_STORAGE_KEY = 'iis_royxat_last';
+const RX_REMINDER_MS = 24 * 60 * 60 * 1000; // 24 soat
+
 window.addEventListener('DOMContentLoaded', () => {
   loadMaktablar();
   setupTel('rx-telefon', 'rx-tel-hint');
@@ -10,7 +13,48 @@ window.addEventListener('DOMContentLoaded', () => {
 
   const form = document.getElementById('rx-form');
   if (form) form.addEventListener('submit', onSubmit);
+
+  const newBtn = document.getElementById('rx-already-newbtn');
+  if (newBtn) newBtn.addEventListener('click', () => {
+    document.getElementById('rx-already').style.display = 'none';
+    document.getElementById('rx-form-state').style.display = 'block';
+  });
+
+  checkRecentSubmission();
 });
+
+// ─── So'nggi 24 soatda ariza yuborilganmi — brauzerda tekshirish ────────────
+// Sekin internet yoki bexosdan bir necha marta bosilishi kabi hollarda
+// bir xil odam qayta-qayta forma to'ldirib, dublikat ariza yaratmasligi uchun.
+function checkRecentSubmission() {
+  try {
+    const raw = localStorage.getItem(RX_STORAGE_KEY);
+    if (!raw) return;
+    const last = JSON.parse(raw);
+    if (!last || !last.time || (Date.now() - last.time) > RX_REMINDER_MS) return;
+
+    document.getElementById('rx-form-state').style.display = 'none';
+    document.getElementById('rx-already-info').textContent =
+      `${last.oquvchiFamiliya || ''} ${last.oquvchiIsmi || ''} nomiga ${formatRxTime(last.time)} yuborilgan.`.trim();
+    document.getElementById('rx-already').style.display = 'block';
+  } catch (e) { /* localStorage o'qib bo'lmasa — formani oddiy ko'rsatamiz */ }
+}
+
+function formatRxTime(ts) {
+  const d = new Date(ts);
+  return d.toLocaleString('uz-UZ', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function rememberSubmission(data) {
+  try {
+    localStorage.setItem(RX_STORAGE_KEY, JSON.stringify({
+      time: Date.now(),
+      oquvchiFamiliya: data.oquvchiFamiliya,
+      oquvchiIsmi:     data.oquvchiIsmi,
+      telefon:         data.telefon,
+    }));
+  } catch (e) { /* localStorage yopiq bo'lsa — jim o'tkazamiz */ }
+}
 
 // ─── Hamkor maktablar ro'yxatini yuklash ─────────────────────────────────────
 async function loadMaktablar() {
@@ -163,6 +207,7 @@ async function onSubmit(e) {
     const data = await res.json();
 
     if (data.ok) {
+      rememberSubmission({ oquvchiFamiliya, oquvchiIsmi, telefon });
       document.getElementById('rx-form-state').style.display = 'none';
       document.getElementById('rx-success').style.display = 'block';
       document.getElementById('rx-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
