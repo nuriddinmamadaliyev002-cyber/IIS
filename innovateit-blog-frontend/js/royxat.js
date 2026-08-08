@@ -14,10 +14,22 @@ window.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('rx-form');
   if (form) form.addEventListener('submit', onSubmit);
 
+  const agreeCheck = document.getElementById('rx-agree-check');
+  const submitBtn  = document.getElementById('rx-submit-btn');
+  if (agreeCheck && submitBtn) {
+    agreeCheck.addEventListener('change', () => {
+      submitBtn.disabled = !agreeCheck.checked;
+    });
+  }
+
   const newBtn = document.getElementById('rx-already-newbtn');
   if (newBtn) newBtn.addEventListener('click', () => {
     document.getElementById('rx-already').style.display = 'none';
     document.getElementById('rx-form-state').style.display = 'block';
+    // Forma qayta ko'rsatilganda checkbox va tugma boshlang'ich holatga qaytadi —
+    // har bir yangi ariza uchun shartnoma bilan qayta tanishib chiqqanini bildiradi.
+    if (agreeCheck) agreeCheck.checked = false;
+    if (submitBtn) submitBtn.disabled = true;
     document.getElementById('rx-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
@@ -254,6 +266,12 @@ async function onSubmit(e) {
     document.getElementById('rx-maktab').focus();
     return;
   }
+  const agreeCheck = document.getElementById('rx-agree-check');
+  if (!agreeCheck.checked) {
+    showErr("Iltimos, shartnoma bilan tanishib chiqqaningizni belgilang");
+    agreeCheck.focus();
+    return;
+  }
 
   const btn = document.getElementById('rx-submit-btn');
   const btnTxt = document.getElementById('rx-submit-txt');
@@ -268,6 +286,7 @@ async function onSubmit(e) {
         ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf,
         maktabId: parseInt(maktabId, 10),
         manba: 'sayt',
+        shartnomaKorilgan: true,
       }),
     });
     const data = await res.json();

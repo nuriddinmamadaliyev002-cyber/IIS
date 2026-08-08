@@ -110,6 +110,18 @@
 
 .rx-privacy { text-align: center; font-size: 12px; color: var(--ink-faint); margin: 14px 0 0; }
 
+/* ─── Shartnoma bilan tanishib chiqdim checkbox ─── */
+.rx-agree {
+  display: flex; align-items: flex-start; gap: 9px; cursor: pointer;
+  margin: 0 0 18px; font-size: 13.5px; color: var(--ink-soft); line-height: 1.45;
+}
+.rx-agree input[type="checkbox"] {
+  flex: none; width: 18px; height: 18px; margin-top: 1px; cursor: pointer;
+  accent-color: var(--indigo);
+}
+.rx-agree a { color: var(--indigo); text-decoration: underline; }
+.rx-agree a:hover { text-decoration: none; }
+
 /* ─── Success holati ─── */
 .rx-success-icon { font-size: 48px; margin-bottom: 6px; }
 .rx-back-link {

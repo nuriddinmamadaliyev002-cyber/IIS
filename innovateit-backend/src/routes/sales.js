@@ -42,6 +42,7 @@ router.post('/leads', async (req, res) => {
   const hudud           = req.body.hudud?.trim() || '';
   const izoh            = req.body.izoh?.trim() || '';
   const manba           = req.body.manba?.trim() || 'sayt';
+  const shartnomaKorilgan = !!req.body.shartnomaKorilgan;
 
   if (!ism)
     return res.status(400).json({ ok: false, error: 'Ism majburiy' });
@@ -75,9 +76,10 @@ router.post('/leads', async (req, res) => {
     }
 
     const result = await pool.query(
-      `INSERT INTO leadlar (ism, telefon, telefon2, oquvchi_familiya, oquvchi_ismi, sinf, maktab_id, hudud, izoh, manba)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-      [ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf, maktabId, hudud, izoh, manba]
+      `INSERT INTO leadlar (ism, telefon, telefon2, oquvchi_familiya, oquvchi_ismi, sinf, maktab_id, hudud, izoh, manba, shartnoma_korilgan, shartnoma_korilgan_vaqt)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING id`,
+      [ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf, maktabId, hudud, izoh, manba,
+       shartnomaKorilgan, shartnomaKorilgan ? new Date() : null]
     );
     res.json({ ok: true, id: result.rows[0].id });
   } catch (err) {

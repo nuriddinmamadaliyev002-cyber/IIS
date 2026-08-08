@@ -353,6 +353,8 @@ CREATE TABLE IF NOT EXISTS leadlar (
     holat          TEXT    NOT NULL DEFAULT 'yangi'
                      CHECK (holat IN ('yangi', 'boglanildi', 'royxatga_olindi', 'bekor_qilindi')),
     biriktirilgan  INTEGER REFERENCES sales_xodimlar(id) ON DELETE SET NULL,
+    shartnoma_korilgan       BOOLEAN NOT NULL DEFAULT FALSE, -- "shartnoma bilan tanishib chiqdim" checkboxi
+    shartnoma_korilgan_vaqt  TIMESTAMP,                      -- checkbox belgilangan vaqt
     yaratilgan     TIMESTAMP DEFAULT NOW(),
     yangilangan    TIMESTAMP DEFAULT NOW()
 );
@@ -377,6 +379,8 @@ ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS oquvchi_familiya TEXT DEFAULT '';
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS telefon2         TEXT DEFAULT '';
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS qaydnoma         TEXT DEFAULT ''; -- sales xodimining qo'ng'iroq eslatmasi
 ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS gaplashilgan_vaqt TIMESTAMP; -- mijoz bilan gaplashilgan vaqt
+ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS shartnoma_korilgan      BOOLEAN NOT NULL DEFAULT FALSE; -- "shartnoma bilan tanishib chiqdim" checkboxi
+ALTER TABLE leadlar ADD COLUMN IF NOT EXISTS shartnoma_korilgan_vaqt TIMESTAMP; -- checkbox belgilangan vaqt
 
 
 -- ─── 22. SALES XODIMLARIGA MAKTAB BIRIKTIRISH ─────────────────────────────────
