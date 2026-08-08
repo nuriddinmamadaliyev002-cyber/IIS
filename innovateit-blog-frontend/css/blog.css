@@ -219,7 +219,9 @@ img { max-width: 100%; display: block; }
   font-family: var(--font-display); font-weight: 700; font-size: 16px;
   color: var(--ink);
 }
-.mobile-nav-brand .mark { width: 28px; height: 28px; object-fit: contain; flex-shrink: 0; }
+.mobile-nav-brand .mark {
+  width: 30px; height: 30px; object-fit: contain; flex-shrink: 0;
+}
 .mobile-nav-close {
   flex-shrink: 0; width: 36px; height: 36px;
   display: flex; align-items: center; justify-content: center;
@@ -234,14 +236,23 @@ img { max-width: 100%; display: block; }
 .mobile-nav-links { display: flex; flex-direction: column; gap: 4px; }
 .mobile-nav a {
   font-family: var(--font-mono); font-size: 15px; font-weight: 500;
-  color: var(--ink); padding: 14px 4px; border-bottom: 1px solid var(--line);
+  color: var(--ink); padding: 14px 4px 14px 12px; border-bottom: 1px solid var(--line);
+  border-left: 3px solid transparent;
+  transition: border-color .15s ease, background-color .15s ease, color .15s ease;
 }
-.mobile-nav a:hover { color: var(--indigo); }
-.mobile-nav a.active { color: var(--indigo); font-weight: 700; }
+.mobile-nav-links a:not(.mobile-cta):hover,
+.mobile-nav-links a:not(.mobile-cta):active {
+  color: var(--indigo); border-left-color: var(--indigo); background: var(--paper-alt);
+}
+.mobile-nav a.active:not(.mobile-cta) {
+  color: var(--indigo); font-weight: 700; border-left-color: var(--indigo); background: var(--paper-alt);
+}
 .mobile-nav .mobile-cta {
-  margin-top: 18px; text-align: center; border: none; border-radius: 100px;
+  margin-top: 18px; text-align: center; border: none; border-left: none; border-radius: 100px;
   padding: 12px 16px; background: var(--ink); color: #fff;
 }
+.mobile-nav .mobile-cta:hover,
+.mobile-nav .mobile-cta:active { background: var(--indigo-deep); color: #fff; }
 
 /* ─── Panel pastidagi tezkor aloqa (bo'sh joyni to'ldiradi) ─── */
 .mobile-nav-footer {
@@ -261,6 +272,7 @@ img { max-width: 100%; display: block; }
 .mobile-nav-backdrop {
   position: fixed; inset: 0; z-index: 100;
   background: rgba(20,22,31,0.35);
+  backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
   opacity: 0; visibility: hidden;
   transition: opacity .25s ease, visibility .25s ease;
 }
