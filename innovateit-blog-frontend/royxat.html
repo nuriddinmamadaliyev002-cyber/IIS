@@ -142,14 +142,21 @@
         <a href="/" class="rx-back-link">← Bosh sahifaga qaytish</a>
       </div>
 
-      <!-- Yaqinda ariza yuborilgan holati (localStorage orqali) -->
-      <div id="rx-already" style="display:none;text-align:center;padding:20px 0;">
-        <div class="rx-success-icon">📨</div>
-        <h2 class="rx-form-title">Arizangiz allaqachon qabul qilingan</h2>
-        <p class="rx-form-sub" id="rx-already-info"></p>
-        <p class="rx-form-sub">Xodimlarimiz tez orada siz bilan bog'lanishadi. Agar boshqa farzandingiz uchun ham ariza yubormoqchi bo'lsangiz yoki ma'lumot xato bo'lsa — pastdagi tugmani bosing.</p>
-        <button type="button" class="rx-submit" id="rx-already-newbtn" style="margin-top:8px;">Yangi ariza yuborish</button>
-        <p style="margin-top:14px;"><a href="/" class="rx-back-link">← Bosh sahifaga qaytish</a></p>
+      <!-- Avval yuborilgan arizalar holati (localStorage orqali, doimiy saqlanadi) -->
+      <div id="rx-already" style="display:none;padding:20px 0;">
+        <div style="text-align:center;">
+          <div class="rx-success-icon">📨</div>
+          <h2 class="rx-form-title" id="rx-already-title">Arizangiz allaqachon qabul qilingan</h2>
+          <p class="rx-form-sub">Quyida shu qurilmadan yuborilgan arizalaringiz. Xodimlarimiz tez orada siz bilan bog'lanishadi.</p>
+        </div>
+
+        <div id="rx-already-list" class="rx-already-list"></div>
+
+        <div style="text-align:center;">
+          <p class="rx-form-sub" style="margin-top:22px;">Yana bir farzandingiz uchun ariza yubormoqchimisiz?</p>
+          <button type="button" class="rx-submit" id="rx-already-newbtn" style="margin-top:4px;">+ Yangi ariza yuborish</button>
+          <p style="margin-top:14px;"><a href="/" class="rx-back-link">← Bosh sahifaga qaytish</a></p>
+        </div>
       </div>
     </div>
 

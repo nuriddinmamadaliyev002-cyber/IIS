@@ -118,6 +118,31 @@
 }
 .rx-back-link:hover { text-decoration: underline; }
 
+/* ─── Avval yuborilgan arizalar ro'yxati ─── */
+.rx-already-list {
+  display: flex; flex-direction: column; gap: 12px; margin-top: 18px;
+}
+.rx-already-card {
+  position: relative; background: var(--paper-alt); border: 1px solid var(--line);
+  border-radius: var(--radius-sm); padding: 16px 18px;
+}
+.rx-already-card .rx-ac-top {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 10px;
+  margin-bottom: 10px; flex-wrap: wrap;
+}
+.rx-already-card .rx-ac-name {
+  font-family: var(--font-display); font-weight: 700; font-size: 16px; color: var(--ink);
+}
+.rx-already-card .rx-ac-time {
+  font-family: var(--font-mono); font-size: 11px; color: var(--ink-faint); white-space: nowrap;
+}
+.rx-already-card .rx-ac-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px 18px;
+}
+@media (max-width: 480px) { .rx-already-card .rx-ac-grid { grid-template-columns: 1fr; } }
+.rx-already-card .rx-ac-row { font-size: 13.5px; color: var(--ink-soft); }
+.rx-already-card .rx-ac-row b { color: var(--ink); font-weight: 600; }
+
 /* ─── Yon panel kartalari ─── */
 .rx-side-card {
   background: var(--paper-alt); border: 1px solid var(--line); border-radius: var(--radius);

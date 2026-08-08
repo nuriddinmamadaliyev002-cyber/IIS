@@ -3,8 +3,8 @@
 //  BASE, apiGet, esc — js/blog.js'dan keladi (avval ulangan bo'lishi kerak)
 // ═══════════════════════════════════════════════════════════════════════════
 
-const RX_STORAGE_KEY = 'iis_royxat_last';
-const RX_REMINDER_MS = 24 * 60 * 60 * 1000; // 24 soat
+const RX_STORAGE_KEY     = 'iis_royxat_arizalar'; // massiv — barcha arizalar, doimiy saqlanadi
+const RX_STORAGE_KEY_OLD = 'iis_royxat_last';      // eski (bitta ariza, 24soat) — migratsiya uchun
 
 window.addEventListener('DOMContentLoaded', () => {
   loadMaktablar();
@@ -18,26 +18,86 @@ window.addEventListener('DOMContentLoaded', () => {
   if (newBtn) newBtn.addEventListener('click', () => {
     document.getElementById('rx-already').style.display = 'none';
     document.getElementById('rx-form-state').style.display = 'block';
+    document.getElementById('rx-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
 
-  checkRecentSubmission();
+  migrateOldStorage();
+  renderAlreadySubmitted();
 });
 
-// ─── So'nggi 24 soatda ariza yuborilganmi — brauzerda tekshirish ────────────
-// Sekin internet yoki bexosdan bir necha marta bosilishi kabi hollarda
-// bir xil odam qayta-qayta forma to'ldirib, dublikat ariza yaratmasligi uchun.
-function checkRecentSubmission() {
+// ─── Eski (bitta ariza, 24 soatlik) formatdan yangi (massiv, doimiy) formatga o'tkazish ───
+function migrateOldStorage() {
+  try {
+    const oldRaw = localStorage.getItem(RX_STORAGE_KEY_OLD);
+    if (!oldRaw) return;
+    const old = JSON.parse(oldRaw);
+    if (old && old.time) {
+      const list = getSubmissions();
+      list.push({
+        time: old.time,
+        ism: old.ism || '',
+        telefon: old.telefon || '',
+        telefon2: old.telefon2 || '',
+        oquvchiFamiliya: old.oquvchiFamiliya || '',
+        oquvchiIsmi: old.oquvchiIsmi || '',
+        sinf: old.sinf || '',
+        maktabNomi: old.maktabNomi || '',
+      });
+      saveSubmissions(list);
+    }
+    localStorage.removeItem(RX_STORAGE_KEY_OLD);
+  } catch (e) { /* jim o'tkazamiz */ }
+}
+
+function getSubmissions() {
   try {
     const raw = localStorage.getItem(RX_STORAGE_KEY);
-    if (!raw) return;
-    const last = JSON.parse(raw);
-    if (!last || !last.time || (Date.now() - last.time) > RX_REMINDER_MS) return;
+    const arr = raw ? JSON.parse(raw) : [];
+    return Array.isArray(arr) ? arr : [];
+  } catch (e) { return []; }
+}
 
-    document.getElementById('rx-form-state').style.display = 'none';
-    document.getElementById('rx-already-info').textContent =
-      `${last.oquvchiFamiliya || ''} ${last.oquvchiIsmi || ''} nomiga ${formatRxTime(last.time)} yuborilgan.`.trim();
-    document.getElementById('rx-already').style.display = 'block';
-  } catch (e) { /* localStorage o'qib bo'lmasa — formani oddiy ko'rsatamiz */ }
+function saveSubmissions(list) {
+  try { localStorage.setItem(RX_STORAGE_KEY, JSON.stringify(list)); }
+  catch (e) { /* localStorage yopiq bo'lsa — jim o'tkazamiz */ }
+}
+
+// ─── Shu qurilmadan avval yuborilgan barcha arizalarni ko'rsatish (doimiy) ───
+// Sekin internet yoki bexosdan bir necha marta bosilishi kabi hollarda bir xil
+// odam bilmasdan dublikat ariza yubormasligi, va oldingi arizalari haqida
+// ma'lumot yo'qolmasligi uchun har bir ariza doimiy ro'yxatda saqlanadi.
+function renderAlreadySubmitted() {
+  const list = getSubmissions();
+  if (!list.length) return;
+
+  document.getElementById('rx-form-state').style.display = 'none';
+  document.getElementById('rx-already-title').textContent =
+    list.length > 1 ? 'Arizalaringiz allaqachon qabul qilingan' : 'Arizangiz allaqachon qabul qilingan';
+
+  const listEl = document.getElementById('rx-already-list');
+  listEl.innerHTML = list.slice().reverse().map(rxCardHtml).join('');
+  document.getElementById('rx-already').style.display = 'block';
+}
+
+function rxCardHtml(item) {
+  const rows = [
+    ['Ota-ona', item.ism],
+    ['Telefon', item.telefon],
+    ['Qo\'shimcha tel.', item.telefon2],
+    ['Sinf', item.sinf],
+    ['Maktab', item.maktabNomi],
+  ].filter(([, v]) => !!v);
+
+  return `
+    <div class="rx-already-card">
+      <div class="rx-ac-top">
+        <div class="rx-ac-name">${esc(`${item.oquvchiFamiliya || ''} ${item.oquvchiIsmi || ''}`.trim())}</div>
+        <div class="rx-ac-time">${esc(formatRxTime(item.time))}</div>
+      </div>
+      <div class="rx-ac-grid">
+        ${rows.map(([label, val]) => `<div class="rx-ac-row"><b>${esc(label)}:</b> ${esc(val)}</div>`).join('')}
+      </div>
+    </div>`;
 }
 
 function formatRxTime(ts) {
@@ -46,14 +106,18 @@ function formatRxTime(ts) {
 }
 
 function rememberSubmission(data) {
-  try {
-    localStorage.setItem(RX_STORAGE_KEY, JSON.stringify({
-      time: Date.now(),
-      oquvchiFamiliya: data.oquvchiFamiliya,
-      oquvchiIsmi:     data.oquvchiIsmi,
-      telefon:         data.telefon,
-    }));
-  } catch (e) { /* localStorage yopiq bo'lsa — jim o'tkazamiz */ }
+  const list = getSubmissions();
+  list.push({
+    time: Date.now(),
+    ism:             data.ism,
+    telefon:         data.telefon,
+    telefon2:        data.telefon2,
+    oquvchiFamiliya: data.oquvchiFamiliya,
+    oquvchiIsmi:     data.oquvchiIsmi,
+    sinf:            data.sinf,
+    maktabNomi:      data.maktabNomi,
+  });
+  saveSubmissions(list);
 }
 
 // ─── Hamkor maktablar ro'yxatini yuklash ─────────────────────────────────────
@@ -139,7 +203,9 @@ async function onSubmit(e) {
   const oquvchiFamiliya = document.getElementById('rx-oquvchi-familiya').value.trim();
   const oquvchiIsmi     = document.getElementById('rx-oquvchi-ismi').value.trim();
   const sinf            = document.getElementById('rx-sinf').value;
-  const maktabId        = document.getElementById('rx-maktab').value;
+  const maktabSel       = document.getElementById('rx-maktab');
+  const maktabId        = maktabSel.value;
+  const maktabNomi      = maktabSel.selectedIndex >= 0 ? maktabSel.options[maktabSel.selectedIndex].text : '';
 
   const errEl = document.getElementById('rx-err');
   errEl.style.display = 'none';
@@ -207,7 +273,7 @@ async function onSubmit(e) {
     const data = await res.json();
 
     if (data.ok) {
-      rememberSubmission({ oquvchiFamiliya, oquvchiIsmi, telefon });
+      rememberSubmission({ ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf, maktabNomi });
       document.getElementById('rx-form-state').style.display = 'none';
       document.getElementById('rx-success').style.display = 'block';
       document.getElementById('rx-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
