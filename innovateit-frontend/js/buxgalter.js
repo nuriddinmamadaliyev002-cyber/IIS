@@ -798,6 +798,28 @@ async function commitEdit(idx, field) {
 
   const item = FILTERED[idx];
   if (!item.tolov) item.tolov = {};
+
+  // ─── Muhim ustunlar uchun tasdiqlash so'raladi ────────────────────────
+  // (To'lov qilish kerak / To'lov qildi / To'lov sanasi — pul bilan bog'liq,
+  // xato bosilib ketishning oldini olish uchun)
+  const CONFIRM_FIELDS = {
+    tolov_kerak:  "To'lov qilish kerak",
+    tolov_qildi:  "To'lov qildi",
+    tolov_sanasi: "To'lov sanasi",
+  };
+  if (CONFIRM_FIELDS[field]) {
+    const oldVal = item.tolov[field] ?? (isNum ? 0 : '');
+    if (oldVal !== val) {
+      const s = item.student || {};
+      const msg = `${s.maktab || '—'} ${s.sinf || '—'} o'quvchisi ${s.familiya || ''} ${s.ism || ''}`.trim() +
+        ` ning "${CONFIRM_FIELDS[field]}" ustunidagi o'zgarishni tasdiqlaysizmi ?`;
+      if (!confirm(msg)) {
+        cancelEdit(idx, field);
+        return;
+      }
+    }
+  }
+
   item.tolov[field] = val;
 
   // Update display
