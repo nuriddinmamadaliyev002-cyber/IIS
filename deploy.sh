@@ -34,6 +34,19 @@ find /var/www/IIS -name "*.html" -exec sed -i -E \
 echo "✅ CSS/JS/rasm versiyasi yangilandi: v=${V}"
 echo "   (Brauzer keshi endi eski CSS/JS/rasmlarni ko'rsatmaydi)"
 
+# Telegram Mini App (telegram-bot/miniapp) — papkasiz to'g'ridan-to'g'ri
+# "app.js" / "style.css" deb yozilgani uchun yuqoridagi qoidaga tushmaydi,
+# shuning uchun alohida versiyalanadi. Telegram bu fayllarni juda qattiq
+# keshlaydi, shu qadam bo'lmasa eski Mini App kodi ishlab qolaveradi.
+MINIAPP_HTML="/var/www/IIS/telegram-bot/miniapp/index.html"
+if [ -f "$MINIAPP_HTML" ]; then
+  sed -i -E \
+    -e "s#(href=\"style\.css)(\?v=[0-9]+)?\"#\1?v=${V}\"#g" \
+    -e "s#(src=\"app\.js)(\?v=[0-9]+)?\"#\1?v=${V}\"#g" \
+    "$MINIAPP_HTML"
+  echo "✅ Mini App (app.js/style.css) versiyasi yangilandi: v=${V}"
+fi
+
 # ─── 2. Backend dependencies ───
 echo ""
 echo "📦 2. Backend dependencies tekshirilmoqda..."
@@ -65,13 +78,14 @@ sudo -u postgres psql -d "$DB_NAME" \
   -f /var/www/IIS/innovateit-backend/innovateit_schema_setup.sql
 echo "✅ Database tayyor ($DB_NAME)"
 
-# ─── 4. Backend qayta ishga tushirish ───
+# ─── 4. Backend va bot qayta ishga tushirish ───
 echo ""
-echo "🔄 4. Backend qayta ishga tushirilmoqda..."
+echo "🔄 4. Backend va bot qayta ishga tushirilmoqda..."
 pm2 restart innovateit-crm
+pm2 restart innovateit-bot
 sleep 2
 pm2 status
-echo "✅ Backend qayta ishga tushdi"
+echo "✅ Backend va bot qayta ishga tushdi"
 
 # ─── 5. Tekshirish ───
 echo ""
