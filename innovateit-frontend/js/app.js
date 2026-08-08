@@ -1095,12 +1095,17 @@ async function deleteBuxgalter(id, ism) {
 
 // ─── Buxgalter paneliga superadmin sifatida o'tish ───
 function openBuxgalterPanel() {
-  // Superadmin ma'lumotlarini buxgalter session sifatida yozamiz
+  // Superadmin tokeni endi alohida kalitda ('innovateit_bux_token') kerak,
+  // chunki buxgalter.html endi o'z mustaqil token joyidan foydalanadi
+  // (bir vaqtda bir nechta panel tab'da ochilganda bir-birini bosib
+  // yozmasligi uchun). Superadmin tokeni isSuper:true bo'lgani uchun
+  // buxgalter route'laridagi rol tekshiruvini avtomatik o'tadi.
+  const adminToken = localStorage.getItem('innovateit_token');
+  if (adminToken) localStorage.setItem('innovateit_bux_token', adminToken);
+
   localStorage.setItem('iit_bux_u', JSON.stringify({
-    username:    U.username,
-    parol:       U.parol,
-    ism:         U.ism,
-    isSuperAdmin: true  // buxgalter.js bu flagni tekshiradi
+    ism: U.ism,
+    isSuperAdmin: true
   }));
   window.open('buxgalter.html', '_blank');
 }

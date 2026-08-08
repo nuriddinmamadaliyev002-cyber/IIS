@@ -15,7 +15,12 @@ const BASE = (_proto === 'file:' ||
   : '';
 
 // ─── Token boshqaruvi ────────────────────────────────────────────────────────
-const TOKEN_KEY = 'innovateit_token';
+// Har bir panel (index.html, buxgalter.html, sales.html) o'z token'ini alohida
+// localStorage kalitida saqlaydi — shunda ular bir vaqtda turli tab'larda ochiq
+// bo'lsa ham bir-birining tokenini ustidan yozib qo'ymaydi. Panel HTML fayli
+// api.js dan OLDIN `window.API_TOKEN_KEY_OVERRIDE = '...'` belgilashi mumkin;
+// belgilanmasa standart (index.html/admin) kalit ishlatiladi.
+const TOKEN_KEY = window.API_TOKEN_KEY_OVERRIDE || 'innovateit_token';
 
 const tokenStore = {
   get()          { return localStorage.getItem(TOKEN_KEY); },
