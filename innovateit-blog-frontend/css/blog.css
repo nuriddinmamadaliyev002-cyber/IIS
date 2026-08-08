@@ -249,14 +249,14 @@ img { max-width: 100%; display: block; }
 }
 .mobile-nav .mobile-cta {
   margin-top: 18px; text-align: center; border: none; border-left: none; border-radius: 100px;
-  padding: 12px 16px; color: var(--ink) !important;
-  background: var(--brand-cyan);
-  box-shadow: 0 6px 16px rgba(5,191,246,0.35);
+  padding: 12px 16px; color: #fff !important;
+  background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--brand-cyan) 22%, var(--sky-deep) 62%, var(--sky-darker) 100%);
+  box-shadow: none;
 }
 .mobile-nav .mobile-cta:hover,
 .mobile-nav .mobile-cta:active {
-  background: var(--sky-darker);
-  color: var(--ink) !important;
+  background-image: linear-gradient(90deg, var(--sky-deep) 0%, var(--sky-deep) 22%, var(--sky-darker) 62%, var(--indigo) 100%);
+  color: #fff !important;
 }
 
 /* ─── Panel pastidagi tezkor aloqa (bo'sh joyni to'ldiradi) ─── */
@@ -273,7 +273,7 @@ img { max-width: 100%; display: block; }
 }
 .mobile-nav-footer a:hover { color: var(--indigo); }
 .mobile-nav-footer a svg { flex-shrink: 0; }
-.mobile-nav-footer svg.ico-phone { color: var(--indigo); }
+.mobile-nav-footer svg.ico-phone { color: #22C55E; }
 .mobile-nav-footer svg.ico-telegram { color: #29A9EA; }
 .mobile-nav-footer svg.ico-instagram { color: #C1367D; }
 
