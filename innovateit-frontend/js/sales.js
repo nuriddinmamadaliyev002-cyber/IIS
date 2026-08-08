@@ -145,7 +145,7 @@ function renderLeads() {
       <td>${esc(l.sinf || '—')}</td>
       <td style="font-size:12px;color:#9ca3af;white-space:nowrap;">${formatDate(l.yaratilgan)}</td>
       <td>
-        <select onchange="updateHolat(${l.id}, this.value)"
+        <select onchange="updateHolat(${l.id}, this)"
           style="padding:5px 6px;border-radius:8px;border:1.5px solid ${holatInfo.color}33;background:${holatInfo.bg};color:${holatInfo.color};font-size:12px;font-weight:600;">
           ${holatOptions}
         </select>
@@ -254,11 +254,26 @@ async function updateQaydnoma(id, qaydnoma, inputEl) {
   }
 }
 
-async function updateHolat(id, holat) {
+async function updateHolat(id, selectEl) {
+  const lead     = LEADS.find(l => l.id === id);
+  const newHolat = selectEl.value;
+  const oldHolat = lead ? lead.holat : null;
+
+  if (lead && oldHolat !== newHolat) {
+    const maktab = lead.maktab_nomi || lead.hudud || '—';
+    const sinf   = lead.sinf || '—';
+    const fish   = [lead.oquvchi_familiya, lead.oquvchi_ismi].filter(Boolean).join(' ') || '—';
+    const msg = `${maktab} ${sinf} o'quvchisi ${fish} ning ariza holatining o'zgarishini tasdiqlaysizmi ?`;
+    if (!confirm(msg)) {
+      selectEl.value = oldHolat; // eski holatga qaytarish
+      return;
+    }
+  }
+
+  const holat = newHolat;
   try {
     const r = await api.updateLead({ id, holat, biriktirilgan: U && U.id ? U.id : undefined });
     if (r.ok) {
-      const lead = LEADS.find(l => l.id === id);
       if (lead) lead.holat = holat;
       renderStats();
     } else {
