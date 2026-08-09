@@ -140,8 +140,14 @@ async function loadMaktablar() {
   try {
     const r = await apiGet('/api/maktablar');
     if (r.ok && Array.isArray(r.maktablar) && r.maktablar.length) {
+      const sorted = [...r.maktablar].sort((a, b) => {
+        const na = parseInt(String(a.nomi).match(/\d+/)?.[0], 10);
+        const nb = parseInt(String(b.nomi).match(/\d+/)?.[0], 10);
+        if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+        return String(a.nomi).localeCompare(String(b.nomi), 'uz');
+      });
       sel.innerHTML = '<option value="">Tanlang</option>' +
-        r.maktablar.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('');
+        sorted.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('');
     } else {
       sel.innerHTML = '<option value="">Ro\'yxat topilmadi — birozdan so\'ng qayta urinib ko\'ring</option>';
     }
