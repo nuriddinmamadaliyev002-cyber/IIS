@@ -10,10 +10,19 @@
 // ═══════════════════════════════════════════════════════
 let MAKTABLAR = [];
 
+function sortMaktablar(list) {
+  return [...list].sort((a, b) => {
+    const na = parseInt(String(a.nomi).match(/\d+/)?.[0], 10);
+    const nb = parseInt(String(b.nomi).match(/\d+/)?.[0], 10);
+    if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+    return String(a.nomi).localeCompare(String(b.nomi), 'uz');
+  });
+}
+
 async function loadMaktablar() {
   try {
     const d = await api.getMaktablar();
-    if (d.ok) { MAKTABLAR = d.maktablar; renderMaktablar(d.maktablar); }
+    if (d.ok) { MAKTABLAR = sortMaktablar(d.maktablar); renderMaktablar(MAKTABLAR); }
     else toast('❌ ' + d.error, 'error');
   } catch(e) { toast('❌ Server xatoligi', 'error'); }
 }

@@ -1695,7 +1695,14 @@ async function loadTeachersTab() {
       U.isSuper ? api.getMaktablar() : Promise.resolve({ ok: false })
     ]);
     const d = await res.json();
-    if (maktabRes.ok) MAKTABLAR = maktabRes.maktablar || [];
+    if (maktabRes.ok) {
+      MAKTABLAR = (maktabRes.maktablar || []).slice().sort((a, b) => {
+        const na = parseInt(String(a.nomi).match(/\d+/)?.[0], 10);
+        const nb = parseInt(String(b.nomi).match(/\d+/)?.[0], 10);
+        if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+        return String(a.nomi).localeCompare(String(b.nomi), 'uz');
+      });
+    }
     if (d.ok) {
       TEACHERS_TAB = d.teachers || [];
       renderTeachersTab(TEACHERS_TAB);
