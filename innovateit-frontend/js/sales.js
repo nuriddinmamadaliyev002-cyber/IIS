@@ -93,7 +93,7 @@ async function loadLeads() {
     if (r.ok) {
       LEADS = r.leadlar || [];
       buildMaktabFilterOptions();
-      applyMaktabFilter();
+      applyFilters();
     } else {
       loadingEl.innerHTML = `<div style="color:#dc2626;">❌ ${r.error}</div>`;
       return;
@@ -117,11 +117,36 @@ function buildMaktabFilterOptions() {
     + maktablar.map(m => `<option value="${esc(m)}"${m === cur ? ' selected' : ''}>${esc(m)}</option>`).join('');
 }
 
-function applyMaktabFilter() {
+function applyFilters() {
   const maktab = g('sl-maktab-filter').value;
-  FILTERED_LEADS = maktab ? LEADS.filter(l => (l.maktab_nomi || l.hudud || '') === maktab) : LEADS;
+  const search = g('sl-search').value.toLowerCase().trim();
+
+  FILTERED_LEADS = LEADS.filter(l => {
+    if (maktab && (l.maktab_nomi || l.hudud || '') !== maktab) return false;
+    if (search) {
+      const fish = [l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ');
+      const full = `${fish} ${l.telefon || ''} ${l.telefon2 || ''}`.toLowerCase();
+      if (!full.includes(search)) return false;
+    }
+    return true;
+  });
+
   renderStats();
   renderLeads();
+}
+
+function clearSearch() {
+  const inp = g('sl-search');
+  if (inp) { inp.value = ''; inp.focus(); }
+  updateSearchClear();
+  applyFilters();
+}
+
+function updateSearchClear() {
+  const inp = g('sl-search');
+  const btn = g('sl-search-clear');
+  if (!inp || !btn) return;
+  btn.style.display = inp.value.length > 0 ? 'block' : 'none';
 }
 
 function renderStats() {

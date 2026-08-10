@@ -87,7 +87,7 @@
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <div style="font-size:16px;font-weight:700;color:#111827;">📨 Arizalar</div>
       <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <select id="sl-maktab-filter" onchange="applyMaktabFilter()"
+        <select id="sl-maktab-filter" onchange="applyFilters()"
           style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;">
           <option value="">🏫 Barcha maktablar</option>
         </select>
@@ -99,6 +99,15 @@
           <option value="royxatga_olindi">✅ Ro'yxatga olindi</option>
           <option value="bekor_qilindi">❌ Bekor qilindi</option>
         </select>
+        <div style="position:relative;display:flex;align-items:center;min-width:200px;">
+          <input type="text" id="sl-search" placeholder="🔍 F.I. / telefon…"
+            oninput="applyFilters(); updateSearchClear()"
+            style="padding:8px 30px 8px 12px;border:1.5px solid var(--border);border-radius:10px;
+                   font-size:13px;font-family:inherit;width:100%;outline:none;box-sizing:border-box;">
+          <button id="sl-search-clear" onclick="clearSearch()" title="Tozalash"
+            style="position:absolute;right:6px;background:none;border:none;cursor:pointer;
+                   color:#9ca3af;font-size:13px;line-height:1;padding:2px 4px;border-radius:4px;display:none;">✕</button>
+        </div>
       </div>
     </div>
 
