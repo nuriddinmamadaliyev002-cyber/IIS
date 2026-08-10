@@ -180,3 +180,61 @@
 }
 .rx-tg-btn:hover { transform: translateY(-4px); }
 .rx-tg-btn:active { transform: translateY(-1px); }
+/* ═══════════════════════════════════════════════════════════════════════
+   Narxlar banneri — hero stats bilan "Har bir o'quvchiga nima beriladi"
+   kartasi orasida, bitta yaxlit banner ko'rinishida.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.price-banner-wrap { padding-top: 36px; }
+
+.price-banner-card {
+  background: var(--paper-alt); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: 24px; position: relative; overflow: hidden;
+}
+.price-banner-card::before {
+  content: ''; position: absolute; top: 0; left: 0; right: 0; height: 4px;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background-image: linear-gradient(90deg, var(--brand-cyan) 0%, var(--sky-deep) 55%, var(--sky-darker) 100%);
+}
+
+.price-banner-eyebrow {
+  font-family: var(--font-mono); font-size: 11.5px; font-weight: 600;
+  letter-spacing: .08em; text-transform: uppercase; color: var(--indigo);
+  display: inline-flex; align-items: center; gap: 8px; margin-bottom: 10px;
+}
+.price-banner-eyebrow::before {
+  content: ''; width: 7px; height: 7px; border-radius: 50%; background: var(--mint);
+}
+.price-banner-card h2 {
+  font-family: var(--font-display); font-weight: 700; font-size: 21px;
+  line-height: 1.25; margin: 0 0 22px; color: var(--ink);
+}
+
+.price-tiers {
+  display: grid; grid-template-columns: repeat(3, 1fr);
+}
+.price-tier {
+  padding: 0 22px; border-left: 1px solid var(--line);
+}
+.price-tier:first-child { padding-left: 0; border-left: none; }
+.price-tier .sinf {
+  font-family: var(--font-mono); font-size: 12px; font-weight: 600;
+  color: var(--ink-soft); letter-spacing: .01em; margin-bottom: 8px;
+}
+.price-tier .narx {
+  font-family: var(--font-display); font-weight: 700; font-size: 24px; color: var(--indigo);
+  white-space: nowrap;
+}
+.price-tier .narx span {
+  display: block; font-family: var(--font-mono); font-weight: 500; font-size: 11.5px;
+  color: var(--ink-faint); margin-top: 3px;
+}
+
+@media (max-width: 640px) {
+  .price-banner-card { padding: 24px; }
+  .price-tiers { grid-template-columns: 1fr; gap: 16px; }
+  .price-tier {
+    padding: 0 0 16px; border-left: none; border-bottom: 1px solid var(--line);
+  }
+  .price-tier:last-child { padding-bottom: 0; border-bottom: none; }
+}
