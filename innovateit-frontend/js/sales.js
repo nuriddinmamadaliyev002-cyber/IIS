@@ -4,6 +4,7 @@
 
 let U = null;       // { ism, id, viaTelegram: true } — JWT orqali (Telegram Mini App)
 let LEADS = [];
+let FILTERED_LEADS = [];   // maktab filtridan o'tgan ro'yxat (jadval shu asosida chiziladi)
 
 const g = id => document.getElementById(id);
 
@@ -91,8 +92,8 @@ async function loadLeads() {
     const r = await api.getLeads(holat ? { holat } : {});
     if (r.ok) {
       LEADS = r.leadlar || [];
-      renderStats();
-      renderLeads();
+      buildMaktabFilterOptions();
+      applyMaktabFilter();
     } else {
       loadingEl.innerHTML = `<div style="color:#dc2626;">❌ ${r.error}</div>`;
       return;
@@ -104,12 +105,31 @@ async function loadLeads() {
   loadingEl.style.display = 'none';
 }
 
+// ─── Maktab filtri ──────────────────────────────────────
+function buildMaktabFilterOptions() {
+  const sel = g('sl-maktab-filter');
+  const cur = sel.value;
+
+  const maktablar = [...new Set(LEADS.map(l => l.maktab_nomi || l.hudud).filter(Boolean))]
+    .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
+
+  sel.innerHTML = '<option value="">🏫 Barcha maktablar</option>'
+    + maktablar.map(m => `<option value="${esc(m)}"${m === cur ? ' selected' : ''}>${esc(m)}</option>`).join('');
+}
+
+function applyMaktabFilter() {
+  const maktab = g('sl-maktab-filter').value;
+  FILTERED_LEADS = maktab ? LEADS.filter(l => (l.maktab_nomi || l.hudud || '') === maktab) : LEADS;
+  renderStats();
+  renderLeads();
+}
+
 function renderStats() {
   const counts = { yangi: 0, boglanildi: 0, royxatga_olindi: 0, bekor_qilindi: 0 };
-  LEADS.forEach(l => { if (counts[l.holat] !== undefined) counts[l.holat]++; });
+  FILTERED_LEADS.forEach(l => { if (counts[l.holat] !== undefined) counts[l.holat]++; });
 
   g('sl-stats').innerHTML = `
-    <div class="sl-stat-card"><div class="num">${LEADS.length}</div><div class="lbl">Jami</div></div>
+    <div class="sl-stat-card"><div class="num">${FILTERED_LEADS.length}</div><div class="lbl">Jami</div></div>
     <div class="sl-stat-card"><div class="num" style="color:#2563eb;">${counts.yangi}</div><div class="lbl">Yangi</div></div>
     <div class="sl-stat-card"><div class="num" style="color:#d97706;">${counts.boglanildi}</div><div class="lbl">Bog'lanildi</div></div>
     <div class="sl-stat-card"><div class="num" style="color:#16a34a;">${counts.royxatga_olindi}</div><div class="lbl">Ro'yxatga olindi</div></div>
@@ -121,14 +141,14 @@ function renderLeads() {
   const tbody   = g('sl-leads-tbody');
   const emptyEl = g('sl-leads-empty');
 
-  if (!LEADS.length) {
+  if (!FILTERED_LEADS.length) {
     tbody.innerHTML = '';
     emptyEl.style.display = 'block';
     return;
   }
   emptyEl.style.display = 'none';
 
-  tbody.innerHTML = LEADS.map(l => {
+  tbody.innerHTML = FILTERED_LEADS.map(l => {
     const holatInfo = HOLAT_LABELS[l.holat] || HOLAT_LABELS.yangi;
     const holatOptions = Object.entries(HOLAT_LABELS).map(([key, info]) =>
       `<option value="${key}" ${l.holat === key ? 'selected' : ''}>${info.text}</option>`

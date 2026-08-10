@@ -86,14 +86,20 @@
     <!-- CONTROLS -->
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
       <div style="font-size:16px;font-weight:700;color:#111827;">📨 Arizalar</div>
-      <select id="sl-holat-filter" onchange="loadLeads()"
-        style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;">
-        <option value="">Barcha holatlar</option>
-        <option value="yangi">🆕 Yangi</option>
-        <option value="boglanildi">📞 Bog'lanildi</option>
-        <option value="royxatga_olindi">✅ Ro'yxatga olindi</option>
-        <option value="bekor_qilindi">❌ Bekor qilindi</option>
-      </select>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <select id="sl-maktab-filter" onchange="applyMaktabFilter()"
+          style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;">
+          <option value="">🏫 Barcha maktablar</option>
+        </select>
+        <select id="sl-holat-filter" onchange="loadLeads()"
+          style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;">
+          <option value="">Barcha holatlar</option>
+          <option value="yangi">🆕 Yangi</option>
+          <option value="boglanildi">📞 Bog'lanildi</option>
+          <option value="royxatga_olindi">✅ Ro'yxatga olindi</option>
+          <option value="bekor_qilindi">❌ Bekor qilindi</option>
+        </select>
+      </div>
     </div>
 
     <!-- LEADS TABLE -->
