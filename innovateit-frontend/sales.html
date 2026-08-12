@@ -26,6 +26,23 @@
     }
     .sl-stat-card .num { font-size:22px; font-weight:700; color:#111827; }
     .sl-stat-card .lbl { font-size:11px; color:#9ca3af; margin-top:2px; }
+
+    /* ══ FREEZE: topbar + stat-kartalar + filtrlar + jadval header ══ */
+    .sl-frozen-header {
+      position: sticky;
+      top: var(--topbar-h);
+      z-index: 190;
+      background: var(--bg);
+      padding: 20px 20px 0;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    .sl-content { padding: 0 20px 20px; max-width: 1800px; margin: 0 auto; }
+    .data-table thead th {
+      position: sticky;
+      top: var(--sl-thead-top, 150px);
+      z-index: 150;
+    }
   </style>
 </head>
 <body>
@@ -78,7 +95,8 @@
     </div>
   </div>
 
-  <div style="padding:20px;max-width:1800px;margin:0 auto;">
+  <!-- FREEZE QILINADIGAN QISM: stat-kartalar + filtrlar -->
+  <div class="sl-frozen-header" id="sl-frozen-header">
 
     <!-- STAT CARDS -->
     <div class="sl-stat-cards" id="sl-stats"></div>
@@ -111,7 +129,10 @@
       </div>
     </div>
 
-    <!-- LEADS TABLE -->
+  </div>
+
+  <!-- SCROLL BO'LADIGAN QISM: jadval -->
+  <div class="sl-content">
     <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:18px;overflow-x:auto;">
       <table class="data-table" id="sl-leads-table">
         <thead><tr>
@@ -130,7 +151,6 @@
       <div id="sl-leads-empty" style="display:none;text-align:center;padding:32px;color:#9ca3af;">Hali arizalar yo'q</div>
       <div id="sl-leads-loading" style="text-align:center;padding:24px;"><div class="loading-spinner"></div></div>
     </div>
-
   </div>
 </div>
 

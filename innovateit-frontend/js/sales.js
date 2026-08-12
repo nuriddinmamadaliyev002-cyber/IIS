@@ -77,6 +77,18 @@ function showApp() {
   g('app').style.display = 'block';
   g('sales-badge').textContent = U.ism;
   loadLeads();
+  window.addEventListener('resize', updateFrozenOffset);
+  updateFrozenOffset();
+}
+
+// ─── Freeze: topbar + stat-kartalar + filtrlar balandligini hisoblab,
+//     jadval thead'ini shu balandlikdan pastda "yopishtirib" qo'yadi ───
+function updateFrozenOffset() {
+  const topbar = document.querySelector('.topbar');
+  const frozen = g('sl-frozen-header');
+  if (!topbar || !frozen) return;
+  const offset = topbar.offsetHeight + frozen.offsetHeight;
+  document.documentElement.style.setProperty('--sl-thead-top', offset + 'px');
 }
 
 // ─── Leadlar ──────────────────────────────────────
@@ -160,6 +172,7 @@ function renderStats() {
     <div class="sl-stat-card"><div class="num" style="color:#16a34a;">${counts.royxatga_olindi}</div><div class="lbl">Ro'yxatga olindi</div></div>
     <div class="sl-stat-card"><div class="num" style="color:#dc2626;">${counts.bekor_qilindi}</div><div class="lbl">Bekor qilindi</div></div>
   `;
+  updateFrozenOffset();
 }
 
 function renderLeads() {
