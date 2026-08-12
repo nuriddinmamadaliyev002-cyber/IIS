@@ -27,21 +27,56 @@
     .sl-stat-card .num { font-size:22px; font-weight:700; color:#111827; }
     .sl-stat-card .lbl { font-size:11px; color:#9ca3af; margin-top:2px; }
 
-    /* ══ FREEZE: topbar + stat-kartalar + filtrlar + jadval header ══ */
+    /* ══ FREEZE: sahifa o'zi scroll bo'lmaydi, faqat jadval qatorlari ichki
+       scroll'ga ega bo'ladi — shunday qilib topbar + stat-kartalar + filtrlar
+       + jadval sarlavhasi doim ko'rinib turadi ══ */
+    html, body { height: 100%; margin: 0; overflow: hidden; }
+    #app {
+      display: none;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
     .sl-frozen-header {
-      position: sticky;
-      top: var(--topbar-h);
-      z-index: 190;
+      flex-shrink: 0;
       background: var(--bg);
       padding: 20px 20px 0;
       max-width: 1800px;
       margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
     }
-    .sl-content { padding: 0 20px 20px; max-width: 1800px; margin: 0 auto; }
+    .sl-content {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      padding: 0 20px 20px;
+      max-width: 1800px;
+      margin: 0 auto;
+      width: 100%;
+      box-sizing: border-box;
+    }
+    .sl-table-card {
+      flex: 1 1 auto;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: #fff;
+      border: 1.5px solid var(--border);
+      border-radius: 16px;
+      padding: 18px;
+      overflow: hidden;
+    }
+    .sl-table-scroll {
+      flex: 1 1 auto;
+      min-height: 0;
+      overflow: auto;
+    }
     .data-table thead th {
       position: sticky;
-      top: var(--sl-thead-top, 150px);
-      z-index: 150;
+      top: 0;
+      z-index: 5;
     }
   </style>
 </head>
@@ -131,23 +166,25 @@
 
   </div>
 
-  <!-- SCROLL BO'LADIGAN QISM: jadval -->
+  <!-- SCROLL BO'LADIGAN QISM: jadval qatorlari -->
   <div class="sl-content">
-    <div style="background:#fff;border:1.5px solid var(--border);border-radius:16px;padding:18px;overflow-x:auto;">
-      <table class="data-table" id="sl-leads-table">
-        <thead><tr>
-          <th>Ota-ona ismi</th>
-          <th>Telefon raqam</th>
-          <th>O'quvchi F.I.</th>
-          <th>Maktab</th>
-          <th>Sinf</th>
-          <th>Sana</th>
-          <th>Holat</th>
-          <th>Qaydnoma</th>
-          <th>Gaplashilgan sana</th>
-        </tr></thead>
-        <tbody id="sl-leads-tbody"></tbody>
-      </table>
+    <div class="sl-table-card">
+      <div class="sl-table-scroll">
+        <table class="data-table" id="sl-leads-table">
+          <thead><tr>
+            <th>Ota-ona ismi</th>
+            <th>Telefon raqam</th>
+            <th>O'quvchi F.I.</th>
+            <th>Maktab</th>
+            <th>Sinf</th>
+            <th>Sana</th>
+            <th>Holat</th>
+            <th>Qaydnoma</th>
+            <th>Gaplashilgan sana</th>
+          </tr></thead>
+          <tbody id="sl-leads-tbody"></tbody>
+        </table>
+      </div>
       <div id="sl-leads-empty" style="display:none;text-align:center;padding:32px;color:#9ca3af;">Hali arizalar yo'q</div>
       <div id="sl-leads-loading" style="text-align:center;padding:24px;"><div class="loading-spinner"></div></div>
     </div>
