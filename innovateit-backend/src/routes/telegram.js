@@ -110,13 +110,21 @@ async function buildAuthResponse(tgUser, tgId) {
 
   const token = generateToken(tokenPayload);
 
+  // Rol tanlash ekranida ko'rsatiladigan nom: bitta odam bir nechta maktabga
+  // admin bo'lishi mumkin bo'lgani uchun, admin uchun "10-maktab admini" kabi
+  // ajralib turadigan nom qaytariladi; boshqa rollar uchun shaxsning ismi yetarli.
+  const roleLabel = (rol === 'admin')
+    ? (entity.maktab_nomi ? `${entity.maktab_nomi} admini` : `Admin — ${ism}`)
+    : ism;
+
   return {
     ok:    true,
     found: true,
     rol,
     ism,
-    token,
+    roleLabel,
     entityId: entity_id,
+    token,
     ...(rol === 'admin'      && { maktabId: entity.maktab_id, maktabNomi: entity.maktab_nomi }),
     ...(rol === 'oqituvchi'  && { maktablar: tokenPayload.maktablar, maktabIdlar: tokenPayload.maktabIdlar }),
     ...(rol === 'buxgalter'  && { maktablar: tokenPayload.maktablar }),
@@ -135,7 +143,8 @@ router.get('/check/:telegramId', async (req, res) => {
 
   try {
     // telegram_users jadvalidan tekshirish — bitta odam bir nechta rolga
-    // (masalan ham buxgalter, ham sales) bog'langan bo'lishi mumkin
+    // (masalan ham buxgalter, ham sales) VA bitta rol ichida bir nechta
+    // entity'ga (masalan bir nechta maktabga admin) bog'langan bo'lishi mumkin
     const tgRes = await pool.query(
       'SELECT * FROM telegram_users WHERE telegram_id=$1',
       [tgId]
@@ -153,25 +162,26 @@ router.get('/check/:telegramId', async (req, res) => {
       return res.json({ ok: true, found: false, anketaHolat: null });
     }
 
-    // Faqat bitta rolga bog'langan bo'lsa — to'g'ridan-to'g'ri token bilan javob
+    // Faqat bitta birikma bo'lsa — to'g'ridan-to'g'ri token bilan javob
     if (tgRes.rowCount === 1) {
       const result = await buildAuthResponse(tgRes.rows[0], tgId);
       if (!result) return res.status(404).json({ ok: false, error: "Foydalanuvchi ma'lumoti topilmadi" });
       return res.json(result);
     }
 
-    // Bir nechta rolga bog'langan — tanlov ro'yxatini qaytaramiz, token YO'Q
-    // (token faqat rol tanlangandan keyin /check/:telegramId/:rol orqali beriladi)
+    // Bir nechta birikma (rol va/yoki entity bo'yicha) — tanlov ro'yxatini
+    // qaytaramiz, token YO'Q (token faqat aniq birikma tanlangandan keyin
+    // /check/:telegramId/:rol/:entityId orqali beriladi)
     const roles = [];
     for (const row of tgRes.rows) {
       const info = await buildAuthResponse(row, tgId);
-      if (info) roles.push({ rol: info.rol, ism: info.ism });
+      if (info) roles.push({ rol: info.rol, ism: info.ism, roleLabel: info.roleLabel, entityId: info.entityId });
     }
     if (roles.length === 0)
       return res.status(404).json({ ok: false, error: "Foydalanuvchi ma'lumoti topilmadi" });
     if (roles.length === 1) {
-      // Boshqa rollar entity topilmadi bilan tugagan bo'lishi mumkin — yagona qolganini beramiz
-      const row = tgRes.rows.find(r => r.rol === roles[0].rol);
+      // Boshqa birikmalar entity topilmadi bilan tugagan bo'lishi mumkin — yagona qolganini beramiz
+      const row = tgRes.rows.find(r => r.rol === roles[0].rol && r.entity_id === roles[0].entityId);
       const result = await buildAuthResponse(row, tgId);
       return res.json(result);
     }
@@ -184,9 +194,36 @@ router.get('/check/:telegramId', async (req, res) => {
   }
 });
 
-// ─── GET /api/telegram/check/:telegramId/:rol ────────────────────────────────
-// Bir necha rolga bog'langan foydalanuvchi Mini App'da rolni tanlagandan keyin
-// aynan shu rol uchun JWT token olish uchun chaqiriladi.
+// ─── GET /api/telegram/check/:telegramId/:rol/:entityId ──────────────────────
+// Bir nechta birikmaga ega foydalanuvchi Mini App'da aniq birikmani
+// (masalan aynan qaysi maktab admini) tanlagandan keyin shu birikma uchun
+// JWT token olish uchun chaqiriladi.
+router.get('/check/:telegramId/:rol/:entityId', async (req, res) => {
+  const tgId    = parseInt(req.params.telegramId);
+  const rol     = req.params.rol;
+  const entityId = parseInt(req.params.entityId);
+  if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
+
+  try {
+    const tgRes = await pool.query(
+      'SELECT * FROM telegram_users WHERE telegram_id=$1 AND rol=$2 AND entity_id=$3',
+      [tgId, rol, entityId]
+    );
+    if (tgRes.rowCount === 0)
+      return res.status(404).json({ ok: false, error: 'Bu birikma topilmadi' });
+
+    const result = await buildAuthResponse(tgRes.rows[0], tgId);
+    if (!result) return res.status(404).json({ ok: false, error: "Foydalanuvchi ma'lumoti topilmadi" });
+    res.json(result);
+  } catch (err) {
+    console.error('telegram/check/:rol/:entityId xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/telegram/check/:telegramId/:rol ─────────────────────────────────
+// Eskiroq mini-app versiyalari bilan orqaga moslik uchun: entityId
+// berilmasa, shu rol bo'yicha BIRINCHI topilgan birikmani qaytaradi.
 router.get('/check/:telegramId/:rol', async (req, res) => {
   const tgId = parseInt(req.params.telegramId);
   const rol  = req.params.rol;
@@ -194,7 +231,7 @@ router.get('/check/:telegramId/:rol', async (req, res) => {
 
   try {
     const tgRes = await pool.query(
-      'SELECT * FROM telegram_users WHERE telegram_id=$1 AND rol=$2',
+      'SELECT * FROM telegram_users WHERE telegram_id=$1 AND rol=$2 ORDER BY id LIMIT 1',
       [tgId, rol]
     );
     if (tgRes.rowCount === 0)
@@ -441,14 +478,15 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
     if (entityCheck.rowCount === 0)
       return res.status(404).json({ ok: false, error: "Foydalanuvchi topilmadi" });
 
-    // Biriktirish — (telegram_id, rol) juftligi bo'yicha upsert, shunda bitta
-    // odam bir nechta rolga (masalan ham buxgalter, ham sales) bog'lana oladi
+    // Biriktirish — (telegram_id, rol, entity_id) uchligi bo'yicha upsert,
+    // shunda bitta odam bir nechta rolga (masalan ham buxgalter, ham sales)
+    // VA bitta rol ichida bir nechta entity'ga (masalan bir nechta maktabga
+    // admin) bog'lana oladi
     await pool.query(
       `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)
        VALUES ($1,$2,$3,$4,$5)
-       ON CONFLICT (telegram_id, rol) DO UPDATE SET
+       ON CONFLICT (telegram_id, rol, entity_id) DO UPDATE SET
          telegram_ism  = EXCLUDED.telegram_ism,
-         entity_id     = EXCLUDED.entity_id,
          entity_table  = EXCLUDED.entity_table,
          biriktirilgan = TO_CHAR(NOW(), 'DD.MM.YYYY')`,
       [telegramId, telegramIsm || '', rol, entityId, entityTable]
@@ -479,22 +517,28 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
 });
 
 // ─── DELETE /api/telegram/birikdir/:tgId — ajratish (superadmin) ─────────────
-//  ?rol=buxgalter kabi query bo'lsa — FAQAT o'sha rolni ajratadi (bitta odam
-//  bir nechta rolga bog'langan bo'lishi mumkinligi uchun). rol berilmasa —
-//  eski xatti-harakat: shu telegram_id ga tegishli BARCHA rollarni ajratadi.
+//  ?rol=admin&entityId=5 kabi query bo'lsa — FAQAT o'sha aniq birikmani
+//  ajratadi (bitta odam bir nechta rolga, va bitta rol ichida bir nechta
+//  entity'ga bog'langan bo'lishi mumkinligi uchun). Faqat ?rol= berilsa —
+//  o'sha rolga tegishli BARCHA birikmalarni ajratadi. Hech narsa berilmasa —
+//  shu telegram_id ga tegishli BARCHA rollarni ajratadi.
 router.delete('/birikdir/:tgId', requireAuth(['admin']), async (req, res) => {
   if (!req.user.isSuper)
     return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
 
-  const tgId = parseInt(req.params.tgId);
-  const rol  = req.query.rol || null;
+  const tgId     = parseInt(req.params.tgId);
+  const rol      = req.query.rol || null;
+  const entityId = req.query.entityId ? parseInt(req.query.entityId) : null;
 
   try {
+    let whereSql = 'telegram_id=$1';
+    const params = [tgId];
+    if (rol)      { params.push(rol);      whereSql += ` AND rol=$${params.length}`; }
+    if (entityId) { params.push(entityId); whereSql += ` AND entity_id=$${params.length}`; }
+
     const tgRes = await pool.query(
-      rol
-        ? 'SELECT entity_id, entity_table FROM telegram_users WHERE telegram_id=$1 AND rol=$2'
-        : 'SELECT entity_id, entity_table FROM telegram_users WHERE telegram_id=$1',
-      rol ? [tgId, rol] : [tgId]
+      `SELECT entity_id, entity_table FROM telegram_users WHERE ${whereSql}`,
+      params
     );
     if (tgRes.rowCount === 0)
       return res.status(404).json({ ok: false, error: 'Birikma topilmadi' });
@@ -504,14 +548,13 @@ router.delete('/birikdir/:tgId', requireAuth(['admin']), async (req, res) => {
       await client.query('BEGIN');
 
       for (const { entity_id, entity_table } of tgRes.rows) {
+        // Boshqa maktablarga ham admin bo'lgan bo'lsa (adminlar jadvalida
+        // shu telegram_id BOSHQA qatorda ham bo'lishi mumkin), faqat aynan
+        // shu entity qatorining telegram_id ustunini tozalaymiz.
         await client.query(`UPDATE ${entity_table} SET telegram_id=NULL WHERE id=$1`, [entity_id]);
       }
 
-      if (rol) {
-        await client.query('DELETE FROM telegram_users WHERE telegram_id=$1 AND rol=$2', [tgId, rol]);
-      } else {
-        await client.query('DELETE FROM telegram_users WHERE telegram_id=$1', [tgId]);
-      }
+      await client.query(`DELETE FROM telegram_users WHERE ${whereSql}`, params);
 
       // Anketa holatini "rad etildi" ga o'zgartirish
       await client.query(

@@ -42,11 +42,57 @@ CREATE TABLE IF NOT EXISTS adminlar (
     ism         TEXT    NOT NULL,
     familiya    TEXT    NOT NULL DEFAULT '',
     maktab_id   INTEGER REFERENCES maktablar(id) ON DELETE SET NULL,
-    telegram_id BIGINT  UNIQUE,
+    telegram_id BIGINT,  -- ⚠️ UNIQUE EMAS: bitta odam bir nechta maktabga admin bo'lishi uchun
     username    TEXT    UNIQUE,
     parol       TEXT,
     yaratilgan  TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY')
 );
+
+-- Eski (mavjud) bazalarda adminlar jadvali username/parol NOT NULL bilan,
+-- telegram_id ustunisiz yaratilgan bo'lishi mumkin — shu yerda xavfsiz tuzatamiz.
+-- (Yuqoridagi CREATE TABLE IF NOT EXISTS jadval allaqachon mavjud bo'lsa
+--  butunlay o'tkazib yuboriladi, shuning uchun bu DO blok shart.)
+DO $$
+BEGIN
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'adminlar' AND column_name = 'username' AND is_nullable = 'NO'
+  ) THEN
+    ALTER TABLE adminlar ALTER COLUMN username DROP NOT NULL;
+  END IF;
+
+  IF EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'adminlar' AND column_name = 'parol' AND is_nullable = 'NO'
+  ) THEN
+    ALTER TABLE adminlar ALTER COLUMN parol DROP NOT NULL;
+  END IF;
+
+  IF NOT EXISTS (
+    SELECT 1 FROM information_schema.columns
+    WHERE table_name = 'adminlar' AND column_name = 'telegram_id'
+  ) THEN
+    ALTER TABLE adminlar ADD COLUMN telegram_id BIGINT;
+  END IF;
+
+  -- Eski bazada telegram_id ustuniga UNIQUE cheklov qo'yilgan bo'lishi mumkin
+  -- (bitta odam bir nechta maktabga admin bo'la olishi uchun bu cheklov kerak emas)
+  IF EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conrelid = 'adminlar'::regclass AND contype = 'u'
+      AND conname LIKE '%telegram_id%'
+  ) THEN
+    EXECUTE (
+      SELECT 'ALTER TABLE adminlar DROP CONSTRAINT ' || conname
+      FROM pg_constraint
+      WHERE conrelid = 'adminlar'::regclass AND contype = 'u'
+        AND conname LIKE '%telegram_id%'
+      LIMIT 1
+    );
+  END IF;
+END $$;
+
+CREATE INDEX IF NOT EXISTS idx_adminlar_telegram_id ON adminlar (telegram_id);
 
 
 -- ─── 3. BUXGALTERLAR ─────────────────────────────────────────────────────────
@@ -263,8 +309,10 @@ CREATE TABLE IF NOT EXISTS viewer_teachers (
 -- ─── 17. TELEGRAM FOYDALANUVCHILAR ───────────────────────────────────────────
 --  Telegram bot orqali kirgan foydalanuvchilar
 --  ⚠️ Bir telegram_id BIR NECHTA rolga bog'lanishi mumkin (masalan bir kishi
---     ham buxgalter, ham sales bo'lishi mumkin) — shuning uchun unikallik
---     (telegram_id, rol) juftligi bo'yicha, yolg'iz telegram_id bo'yicha emas.
+--     ham buxgalter, ham sales bo'lishi mumkin), va bitta rol ICHIDA ham
+--     BIR NECHTA entity'ga bog'lanishi mumkin (masalan bir kishi bir nechta
+--     maktabga admin bo'lishi mumkin) — shuning uchun unikallik
+--     (telegram_id, rol, entity_id) uchligi bo'yicha.
 CREATE TABLE IF NOT EXISTS telegram_users (
     id            SERIAL PRIMARY KEY,
     telegram_id   BIGINT  NOT NULL,
@@ -273,10 +321,10 @@ CREATE TABLE IF NOT EXISTS telegram_users (
     entity_id     INTEGER NOT NULL,                  -- tegishli jadvalda ID
     entity_table  TEXT    NOT NULL,                  -- jadval nomi
     biriktirilgan TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY'),
-    UNIQUE (telegram_id, rol)
+    UNIQUE (telegram_id, rol, entity_id)
 );
 
--- Eski bazalarda telegram_id ustunidagi yagona UNIQUE cheklovni composite bilan almashtirish
+-- Eski bazalarda avvalgi UNIQUE cheklovlarni composite bilan almashtirish
 DO $$
 BEGIN
   IF EXISTS (
@@ -285,11 +333,17 @@ BEGIN
   ) THEN
     ALTER TABLE telegram_users DROP CONSTRAINT telegram_users_telegram_id_key;
   END IF;
-  IF NOT EXISTS (
+  IF EXISTS (
     SELECT 1 FROM pg_constraint
     WHERE conname = 'telegram_users_telegram_id_rol_key'
   ) THEN
-    ALTER TABLE telegram_users ADD CONSTRAINT telegram_users_telegram_id_rol_key UNIQUE (telegram_id, rol);
+    ALTER TABLE telegram_users DROP CONSTRAINT telegram_users_telegram_id_rol_key;
+  END IF;
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint
+    WHERE conname = 'telegram_users_tgid_rol_entity_key'
+  ) THEN
+    ALTER TABLE telegram_users ADD CONSTRAINT telegram_users_tgid_rol_entity_key UNIQUE (telegram_id, rol, entity_id);
   END IF;
 END $$;
 

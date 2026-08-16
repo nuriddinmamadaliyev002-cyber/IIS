@@ -1,120 +1,151 @@
-// ─── Admins routes ─────────────────────────────────
-// GET    /api/admins     — ro'yxat (faqat superadmin)
-// POST   /api/admins     — yaratish
-// PUT    /api/admins     — tahrirlash
-// DELETE /api/admins     — o'chirish
-const { Router }              = require('express');
-const pool                    = require('../db');
-const { hashPassword }  = require('../middleware/auth');
-const { requireAuth }   = require('../middleware/jwt');
+// ─── Admins (maktab adminlari) routes ──────────────────────────────────────
+// GET    /api/admins      — ro'yxat (faqat superadmin)
+// POST   /api/admins      — yaratish (faqat superadmin)
+// PUT    /api/admins/:id  — tahrirlash (faqat superadmin)
+// DELETE /api/admins/:id  — o'chirish (faqat superadmin)
+//
+// Maktab admini kirishi FAQAT Telegram orqali (bot → Mini App →
+// /api/telegram/check → CRM paneliga JWT bilan redirect, xuddi buxgalter
+// va sales xodimlari kabi). Username/parol tizimi YO'Q — Telegram ID
+// biriktirish /api/telegram/birikdir orqali amalga oshiriladi.
+const { Router }       = require('express');
+const pool             = require('../db');
+const { requireAuth }  = require('../middleware/jwt');
 
 const router = Router();
 router.use(requireAuth(['admin']));
 function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
 
-// ─── GET /api/admins ───
+// ─── GET /api/admins ───────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
-  // maktablar bilan JOIN qilib maktab nomini ham qaytaramiz
-  const result = await pool.query(`
-    SELECT a.id, a.ism, a.familiya, a.username, a.yaratilgan, a.maktab_id, m.nomi AS maktab_nomi
-    FROM adminlar a
-    LEFT JOIN maktablar m ON a.maktab_id = m.id
-    ORDER BY a.id
-  `);
-  // Parolni HECH QACHON frontendga yubormang!
-  res.json({ ok: true, admins: result.rows.map(r => ({
-    id: r.id, ism: r.ism, familiya: r.familiya || '',
-    username: r.username, date: r.yaratilgan,
-    maktab_id: r.maktab_id, maktab_nomi: r.maktab_nomi || null
-  })) });
+  try {
+    const result = await pool.query(`
+      SELECT a.id, a.ism, a.familiya, a.telegram_id, a.yaratilgan,
+             a.maktab_id, m.nomi AS maktab_nomi
+      FROM adminlar a
+      LEFT JOIN maktablar m ON a.maktab_id = m.id
+      ORDER BY a.id
+    `);
+    res.json({
+      ok: true,
+      admins: result.rows.map(r => ({
+        id:          r.id,
+        ism:         r.ism,
+        familiya:    r.familiya || '',
+        date:        r.yaratilgan,
+        maktab_id:   r.maktab_id,
+        maktabId:    r.maktab_id,
+        maktab_nomi: r.maktab_nomi || null,
+        telegram_id: r.telegram_id,
+      }))
+    });
+  } catch (err) {
+    console.error('GET /admins xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
 });
 
-// ─── POST /api/admins — yangi admin yaratish ───
+// ─── POST /api/admins — yangi maktab admini yaratish ───────────────────────
 router.post('/', async (req, res) => {
-  const { newUsername, newParol, newIsm, newFamiliya, newMaktabId } = req.body;
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
-  if (!newUsername?.trim() || !newParol?.trim() || !newIsm?.trim())
-    return res.status(400).json({ ok: false, error: 'Barcha maydonlar majburiy' });
+  const ism      = (req.body.newIsm      || req.body.ism      || '').trim();
+  const familiya = (req.body.newFamiliya || req.body.familiya || '').trim();
+  const maktabIdRaw = req.body.newMaktabId ?? req.body.maktabId ?? null;
+  const maktabId = maktabIdRaw ? parseInt(maktabIdRaw, 10) : null;
 
-  if (newParol.trim().length < 6)
-    return res.status(400).json({ ok: false, error: "Parol kamida 6 ta belgi bo'lishi kerak" });
-
-  const maktabId = newMaktabId ? parseInt(newMaktabId, 10) : null;
+  if (!ism)
+    return res.status(400).json({ ok: false, error: 'Ism majburiy' });
 
   try {
-    const hashed = await hashPassword(newParol.trim());
-    await pool.query(
-      'INSERT INTO adminlar (ism, familiya, username, parol, maktab_id, yaratilgan) VALUES ($1, $2, $3, $4, $5, $6)',
-      [newIsm.trim(), (newFamiliya || '').trim(), newUsername.trim(), hashed, maktabId || null, todayUZ()]
+    const result = await pool.query(
+      `INSERT INTO adminlar (ism, familiya, maktab_id, yaratilgan)
+       VALUES ($1, $2, $3, $4) RETURNING id`,
+      [ism, familiya, maktabId, todayUZ()]
     );
-    res.json({ ok: true });
+    res.json({ ok: true, id: result.rows[0].id });
   } catch (err) {
-    if (err.code === '23505') return res.status(409).json({ ok: false, error: 'Bu username allaqachon mavjud' });
-    throw err;
+    console.error('POST /admins xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });
 
-// ─── PUT /api/admins — tahrirlash ───
-router.put('/', requireAuth(['admin']), async (req, res) => {
-  const { oldUsername, newIsm, newFamiliya, newUsername: nu, newParol: np } = req.body;
+// ─── PUT /api/admins/:id — tahrirlash ───────────────────────────────────────
+router.put('/:id', async (req, res) => {
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
-  const oldU = oldUsername?.trim();
-  const newU = nu?.trim();
-  const newI = newIsm?.trim();
-  if (!oldU || !newU || !newI) return res.status(400).json({ ok: false, error: 'Majburiy maydonlar yetishmaydi' });
+  const id       = parseInt(req.params.id, 10);
+  const ism      = (req.body.newIsm      || req.body.ism      || '').trim();
+  const familiya = (req.body.newFamiliya || req.body.familiya || '').trim();
+  const maktabIdRaw = req.body.newMaktabId ?? req.body.maktabId;
+  const maktabId = (maktabIdRaw === undefined) ? undefined
+                 : (maktabIdRaw ? parseInt(maktabIdRaw, 10) : null);
 
-  const client = await pool.connect();
+  if (!id)   return res.status(400).json({ ok: false, error: 'Admin ID kerak' });
+  if (!ism)  return res.status(400).json({ ok: false, error: 'Ism majburiy' });
+
   try {
-    await client.query('BEGIN');
+    const result = maktabId === undefined
+      ? await pool.query(
+          `UPDATE adminlar SET ism=$1, familiya=$2 WHERE id=$3`,
+          [ism, familiya, id]
+        )
+      : await pool.query(
+          `UPDATE adminlar SET ism=$1, familiya=$2, maktab_id=$3 WHERE id=$4`,
+          [ism, familiya, maktabId, id]
+        );
 
-    let q, params;
-    if (np?.trim()) {
-      if (np.trim().length < 6)
-        return res.status(400).json({ ok: false, error: "Parol kamida 6 ta belgi bo'lishi kerak" });
-      const hashed = await hashPassword(np.trim());
-      q      = 'UPDATE adminlar SET ism=$1, familiya=$2, username=$3, parol=$4 WHERE username=$5';
-      params = [newI, (newFamiliya||'').trim(), newU, hashed, oldU];
-    } else {
-      q      = 'UPDATE adminlar SET ism=$1, familiya=$2, username=$3 WHERE username=$4';
-      params = [newI, (newFamiliya||'').trim(), newU, oldU];
-    }
-
-    const result = await client.query(q, params);
-    if (result.rowCount === 0) {
-      await client.query('ROLLBACK');
+    if (result.rowCount === 0)
       return res.status(404).json({ ok: false, error: 'Admin topilmadi' });
-    }
 
-    // ESLATMA: ilgari bu yerda username o'zgarganda davomat/tolovlar/dars_jadvali
-    // kabi jadvallardagi "admin_username" ustunini ham yangilaydigan kod bor edi.
-    // Bu ustun (va "buxgalter_adminlar" jadvali) haqiqatda hech qachon mavjud
-    // bo'lmagan — tizim allaqachon filtrlash uchun admin_username o'rniga
-    // maktab_id'dan foydalanadi (qarang: src/routes/davomat.js). Eski kod har
-    // safar username o'zgartirilganda xatolik berib, butun tranzaksiyani
-    // ROLLBACK qilib yuborar edi — shuning uchun olib tashlandi.
-
-    await client.query('COMMIT');
     res.json({ ok: true });
   } catch (err) {
-    await client.query('ROLLBACK');
-    throw err;
-  } finally {
-    client.release();
+    console.error('PUT /admins/:id xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });
 
-// ─── DELETE /api/admins ───
-router.delete('/', async (req, res) => {
-  const { deleteUsername } = req.body;
+// ─── DELETE /api/admins/:id ─────────────────────────────────────────────────
+router.delete('/:id', async (req, res) => {
   if (!req.user.isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin" });
 
-  const result = await pool.query('DELETE FROM adminlar WHERE username=$1', [deleteUsername?.trim()]);
-  if (result.rowCount === 0) return res.status(404).json({ ok: false, error: 'Admin topilmadi' });
-  res.json({ ok: true });
+  const id = parseInt(req.params.id, 10);
+  if (!id) return res.status(400).json({ ok: false, error: 'Admin ID kerak' });
+
+  try {
+    const adminRes = await pool.query('SELECT telegram_id FROM adminlar WHERE id=$1', [id]);
+    if (adminRes.rowCount === 0)
+      return res.status(404).json({ ok: false, error: 'Admin topilmadi' });
+
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      const tgId = adminRes.rows[0].telegram_id;
+      if (tgId) {
+        // Faqat SHU admin yozuviga (entity_id) tegishli birikmani o'chiramiz —
+        // agar shu telegram_id boshqa maktab(lar)ga ham admin bo'lgan bo'lsa,
+        // ular tegilmaydi.
+        await client.query(
+          'DELETE FROM telegram_users WHERE telegram_id=$1 AND rol=$2 AND entity_id=$3',
+          [tgId, 'admin', id]
+        );
+      }
+      await client.query('DELETE FROM adminlar WHERE id=$1', [id]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /admins/:id xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
 });
 
 module.exports = router;

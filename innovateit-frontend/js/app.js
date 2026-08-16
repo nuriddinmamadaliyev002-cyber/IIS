@@ -34,6 +34,29 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupTel('e-tel',  'e-tel-hint');
   setupTel('e-tel2', 'e-tel2-hint');
 
+  // ─── Telegram Mini App orqali kirish (maktab admini) ────────────────────
+  // Bot/Mini App admin ekanligini tekshirib, JWT tokenni ?tg_token= orqali
+  // shu sahifaga yo'naltiradi. Maktab admini FAQAT shu yo'l orqali kiradi —
+  // login/parol so'ralmaydi (buxgalter/sales kabi).
+  const _params  = new URLSearchParams(window.location.search);
+  const _tgToken = _params.get('tg_token');
+  if (_tgToken) {
+    api.setToken(_tgToken);
+    const payload = api.getUser(); // JWT ichidan { ism, maktabId, maktabNomi, ... } ni o'qiydi
+    const ism     = _params.get('tg_ism') || payload?.ism || '';
+    U = {
+      ism,
+      isSuper:    false,
+      viaTelegram: true,
+      maktabId:   payload?.maktabId ?? null,
+      maktabNomi: payload?.maktabNomi || '',
+    };
+    localStorage.setItem('iit_u', JSON.stringify(U));
+    window.history.replaceState({}, '', window.location.pathname);
+    await showApp();
+    return;
+  }
+
   try {
     const saved = localStorage.getItem('iit_u');
     if (saved) { U = JSON.parse(saved); await showApp(); }
@@ -66,23 +89,16 @@ async function doLogin() {
       localStorage.setItem('iit_u', JSON.stringify(U));
       showApp();
     } else {
-      // 2. Maktab admini sifatida tekshiramiz
-      const ra = await api.loginAdmin({ username, parol });
-      if (ra.ok) {
-        U = { username, parol, ism: ra.ism, isSuper: false, maktabId: ra.maktabId, maktabNomi: ra.maktabNomi };
-        localStorage.setItem('iit_u', JSON.stringify(U));
-        showApp();
+      // 2. Viewer sifatida tekshiramiz
+      // (Maktab admini, Buxgalter va Sales bu yerda YO'Q — barchasi FAQAT
+      //  Telegram bot orqali kiradi)
+      const rv = await api.loginViewer({ username, parol });
+      if (rv.ok) {
+        // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
+        localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
+        window.location.href = 'portfolio-viewer.html';
       } else {
-        // 3. Viewer sifatida tekshiramiz
-        // (Buxgalter va Sales bu yerda YO'Q — ikkalasi ham FAQAT Telegram bot orqali kiradi)
-        const rv = await api.loginViewer({ username, parol });
-        if (rv.ok) {
-          // token alahida innovateit_viewer_token ga saqlanadi (api.loginViewer ichida)
-          localStorage.setItem('iit_viewer_u', JSON.stringify({ username, ism: rv.ism }));
-          window.location.href = 'portfolio-viewer.html';
-        } else {
-          showErr(g('login-err'), "Username yoki parol noto'g'ri");
-        }
+        showErr(g('login-err'), "Username yoki parol noto'g'ri");
       }
     }
   } catch (e) {
@@ -172,8 +188,8 @@ function switchTab(t) {
 function buildAdminSelector() {
   const sel = g('admin-selector');
   sel.innerHTML = '<option value="">👁 Barcha o\'quvchilar</option>' +
-    ADMINS.map(a => `<option value="${esc(a.username)}">${a.ism} (@${a.username})</option>`).join('');
-  sel.value = viewingAdmin ? viewingAdmin.username : '';
+    ADMINS.map(a => `<option value="${a.id}">${a.ism}${a.maktab_nomi ? ' — ' + esc(a.maktab_nomi) : ''}</option>`).join('');
+  sel.value = viewingAdmin ? viewingAdmin.id : '';
 }
 
 async function onAdminSelect() {
@@ -186,8 +202,8 @@ async function onAdminSelect() {
     g('btn-teachers').style.display  = 'none';  // Tab ichida bor
     g('add-student-form').style.display = 'none';
   } else {
-    const found = ADMINS.find(a => a.username === val);
-    viewingAdmin = found ? { username: found.username, ism: found.ism, parol: found.parol } : null;
+    const found = ADMINS.find(a => String(a.id) === String(val));
+    viewingAdmin = found ? { id: found.id, ism: found.ism, maktab_id: found.maktab_id, maktab_nomi: found.maktab_nomi } : null;
     g('btn-davomat').style.display   = '';
     g('btn-teachers').style.display  = 'none';  // Tab ichida bor
     g('add-student-form').style.display = 'block';
@@ -202,11 +218,11 @@ async function onAdminSelect() {
 async function loadStudents() {
   g('loading-ov').style.display = 'flex';
   try {
-    const d = await api.getStudents({ username: U.username, parol: U.parol });
+    const d = await api.getStudents();
     if (d.ok) {
       let students = d.students;
       if (U.isSuper && viewingAdmin) {
-        students = students.filter(s => s.admin === viewingAdmin.username);
+        students = students.filter(s => String(s.maktabId) === String(viewingAdmin.maktab_id));
       }
       S = students;
       S.forEach((s, i) => s.ri = i);
@@ -644,13 +660,16 @@ function openNofaol() {
 // ─────────────────────────────────────────────
 //  ADMINLAR
 // ─────────────────────────────────────────────
+let ADMIN_MAKTABLAR_CACHE = [];
+
 async function loadAdmins() {
   try {
     const [d, dm] = await Promise.all([
-      api.getAdmins({ username: U.username, parol: U.parol }),
+      api.getAdmins(),
       api.getMaktablar()
     ]);
     if (d.ok) { ADMINS = d.admins; renderAdmins(d.admins); }
+    if (dm.ok) ADMIN_MAKTABLAR_CACHE = dm.maktablar || [];
     // a-maktab-id selectni to'ldirish
     const sel = g('a-maktab-id');
     if (sel && dm.ok) {
@@ -672,12 +691,14 @@ function renderAdmins(admins) {
     <div class="admin-item">
       <div class="admin-info">
         <span class="admin-name">${a.familiya ? esc(a.familiya) + ' ' : ''}${esc(a.ism)}</span>
-        <span class="admin-email">${esc(a.username)}</span>
-        <span class="admin-ptag">🔑 ${a.parol || '—'}</span>
+        <span class="admin-email">${a.maktab_nomi ? '🏫 ' + esc(a.maktab_nomi) : '— maktab biriktirilmagan'}</span>
+        <span class="admin-ptag">${a.telegram_id
+          ? `<span style="color:#059669;">📱 Telegram bog'langan (${a.telegram_id})</span>`
+          : `<span style="color:#dc2626;">❌ Telegram bog'lanmagan</span>`}</span>
       </div>
       <div class="admin-acts">
-        <button class="btn-action" onclick="openAE('${esc(a.username)}','${esc(a.ism)}','${esc(a.parol || '')}','${esc(a.familiya || '')}')">✏️</button>
-        <button class="btn-small"  onclick="delA('${esc(a.username)}','${esc(a.familiya ? a.familiya + ' ' + a.ism : a.ism)}')">O'chirish</button>
+        <button class="btn-action" onclick="openEditAdmin(${a.id})">${a.telegram_id ? '📱' : '✏️'}</button>
+        <button class="btn-small"  onclick="delA(${a.id},'${esc(a.familiya ? a.familiya + ' ' + a.ism : a.ism)}')">O'chirish</button>
       </div>
     </div>`).join('');
 }
@@ -685,23 +706,19 @@ function renderAdmins(admins) {
 async function createAdmin() {
   const familiya = (g('a-familiya')?.value || '').trim();
   const ism      = g('a-ism').value.trim();
-  const username = g('a-username').value.trim();
-  const parol    = g('a-parol').value.trim();
   const maktabId = g('a-maktab-id')?.value || '';
-  if (!ism || !username || !parol) { toast("⚠️ Barcha maydonlarni to'ldiring", 'error'); return; }
+  if (!ism) { toast("⚠️ Ismni kiriting", 'error'); return; }
 
   bl(null, 'a-spinner', 'a-btn-txt', true, 'Yaratilmoqda…');
   try {
     const r = await api.createAdmin({
-      username: U.username, parol: U.parol,
-      newIsm: ism, newFamiliya: familiya, newUsername: username, newParol: parol,
-      newMaktabId: maktabId || null
+      newIsm: ism, newFamiliya: familiya, newMaktabId: maktabId || null
     });
     if (r.ok) {
-      ['a-ism', 'a-username', 'a-parol'].forEach(id => g(id).value = '');
+      g('a-ism').value = '';
       if (g('a-familiya')) g('a-familiya').value = '';
       if (g('a-maktab-id')) g('a-maktab-id').value = '';
-      toast('✅ Admin yaratildi!', 'success');
+      toast("✅ Admin yaratildi — endi Telegram ID biriktiring", 'success');
       await loadAdmins();
       buildAdminSelector();
     } else toast('❌ ' + r.error, 'error');
@@ -709,10 +726,10 @@ async function createAdmin() {
   bl(null, 'a-spinner', 'a-btn-txt', false, 'Yaratish');
 }
 
-async function delA(username, ism) {
-  if (!confirm(`"${ism}" o'chirilsinmi?`)) return;
+async function delA(id, ism) {
+  if (!confirm(`"${ism}" o'chirilsinmi?\n\nU admin panelga kira olmaydi.`)) return;
   try {
-    const r = await api.deleteAdmin({ username: U.username, parol: U.parol, deleteUsername: username });
+    const r = await api.deleteAdmin({ id });
     if (r.ok) {
       toast("✅ Admin o'chirildi", 'success');
       await loadAdmins();
@@ -721,40 +738,122 @@ async function delA(username, ism) {
   } catch (e) {}
 }
 
-let aeOld = null;
+// ─── Admin tahrirlash + Telegram ID biriktirish ───────────────────────────
+let _editAdminId = null;
 
-function openAE(username, ism, parol, familiya) {
-  aeOld = username;
-  if (g('ae-familiya')) g('ae-familiya').value = familiya || '';
-  g('ae-ism').value      = ism;
-  g('ae-username').value = username;
-  g('ae-parol').value    = '';
+function openEditAdmin(id) {
+  const a = ADMINS.find(x => x.id === id);
+  _editAdminId = a ? a.id : id;
+  if (g('ae-familiya')) g('ae-familiya').value = a?.familiya || '';
+  g('ae-ism').value  = a?.ism || '';
+  const selM = g('ae-maktab-id');
+  if (selM) {
+    selM.innerHTML = '<option value="">— Tanlang —</option>' +
+      ADMIN_MAKTABLAR_CACHE.map(m => `<option value="${m.id}" ${String(m.id) === String(a?.maktab_id) ? 'selected' : ''}>${esc(m.nomi)}</option>`).join('');
+  }
+  g('ae-tgid').value = a?.telegram_id || '';
+  const sameTgOtherSchools = a?.telegram_id
+    ? ADMINS.filter(x => x.id !== a.id && String(x.telegram_id) === String(a.telegram_id))
+    : [];
+  g('ae-tg-status').innerHTML = a?.telegram_id
+    ? `<span style="color:#059669;">✅ Bog'langan (ID: ${a.telegram_id})</span>` +
+      (sameTgOtherSchools.length
+        ? `<br><span style="color:#6b7280;">ℹ️ Shu odam yana ${sameTgOtherSchools.length} ta maktabga admin: ${sameTgOtherSchools.map(x => esc(x.maktab_nomi || x.ism)).join(', ')}</span>`
+        : '')
+    : `<span style="color:#dc2626;">❌ Hali bog'lanmagan — admin panelga kira olmaydi</span>`;
+  g('ae-err').style.display = 'none';
   g('ae-modal').style.display = 'flex';
+  loadAdminKandidatlar();
 }
-function closeAE() { g('ae-modal').style.display = 'none'; aeOld = null; }
+
+async function loadAdminKandidatlar() {
+  const sel = g('ae-kandidatlar');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
+  try {
+    const r = await api.getKandidatlar();
+    if (!r.ok || !r.kandidatlar?.length) {
+      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
+      r.kandidatlar.map(k => {
+        const label = `${esc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
+        return `<option value="${k.telegram_id}">${label}</option>`;
+      }).join('');
+  } catch (e) {
+    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
+  }
+}
+
+function closeAE() { g('ae-modal').style.display = 'none'; _editAdminId = null; }
 
 async function saveAE() {
   const familiya = (g('ae-familiya')?.value || '').trim();
   const ism      = g('ae-ism').value.trim();
-  const username = g('ae-username').value.trim();
-  const parol    = g('ae-parol').value.trim();
-  if (!ism || !username) { toast("⚠️ Ism va username majburiy", 'error'); return; }
+  const maktabId = g('ae-maktab-id')?.value || '';
+  const newTgId  = (g('ae-tgid')?.value || '').trim();
+  const errEl    = g('ae-err');
+  errEl.style.display = 'none';
+
+  if (!ism) { errEl.textContent = '❌ Ism majburiy'; errEl.style.display = 'block'; return; }
+  if (newTgId && !/^\d+$/.test(newTgId)) {
+    errEl.textContent = "❌ Telegram ID faqat raqamlardan iborat bo'lishi kerak"; errEl.style.display = 'block'; return;
+  }
+  if (!_editAdminId) { errEl.textContent = '❌ Admin ID topilmadi'; errEl.style.display = 'block'; return; }
+
+  const a = ADMINS.find(x => x.id === _editAdminId);
+  const oldTgId = a?.telegram_id ? String(a.telegram_id) : '';
 
   bl('ae-save', 'ae-spinner', 'ae-btn-txt', true, 'Saqlanmoqda…');
+
+  // 1) Asosiy ma'lumotlar
+  const r = await api.editAdmin({
+    id: _editAdminId, ism, familiya, maktabId: maktabId || null,
+  });
+  if (!r.ok) {
+    errEl.textContent = '❌ ' + r.error;
+    errEl.style.display = 'block';
+    bl('ae-save', 'ae-spinner', 'ae-btn-txt', false, 'Saqlash');
+    return;
+  }
+
+  // 2) Telegram ID o'zgargan bo'lsa — biriktirish/ajratish
   try {
-    const r = await api.editAdmin({
-      username: U.username, parol: U.parol,
-      oldUsername: aeOld, newIsm: ism, newFamiliya: familiya, newUsername: username, newParol: parol
-    });
-    if (r.ok) {
-      closeAE();
-      await loadAdmins();
-      buildAdminSelector();
-      toast('✅ Admin yangilandi!', 'success');
-    } else toast('❌ ' + r.error, 'error');
-  } catch (e) { toast('❌ Xatolik', 'error'); }
+    if (newTgId && newTgId !== oldTgId) {
+      if (oldTgId) await api.tgAjrat(oldTgId, 'admin', _editAdminId);
+      const tr = await api.tgBirikdir({
+        telegramId: parseInt(newTgId),
+        telegramIsm: `${familiya} ${ism}`.trim(),
+        rol: 'admin',
+        entityId: _editAdminId,
+      });
+      if (!tr.ok) {
+        errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + tr.error;
+        errEl.style.display = 'block';
+        bl('ae-save', 'ae-spinner', 'ae-btn-txt', false, 'Saqlash');
+        return;
+      }
+    } else if (!newTgId && oldTgId) {
+      await api.tgAjrat(oldTgId, 'admin', _editAdminId);
+    }
+  } catch (e) {
+    errEl.textContent = '❌ Telegram biriktirishda xatolik: ' + e.message;
+    errEl.style.display = 'block';
+    bl('ae-save', 'ae-spinner', 'ae-btn-txt', false, 'Saqlash');
+    return;
+  }
+
+  closeAE();
+  await loadAdmins();
+  buildAdminSelector();
+  toast('✅ Admin yangilandi!', 'success');
   bl('ae-save', 'ae-spinner', 'ae-btn-txt', false, 'Saqlash');
 }
+window.openEditAdmin = openEditAdmin;
+window.closeAE       = closeAE;
+window.saveAE        = saveAE;
+window.delA          = delA;
 
 // ─────────────────────────────────────────────
 //  O'QITUVCHILAR / DAVOMAT
@@ -762,12 +861,12 @@ async function saveAE() {
 function openTeachers() {
   let teacherUser;
   if (!U.isSuper) {
-    // Oddiy admin — o'zining maktabId si
-    const adminMaktabId = U.maktabId || (ADMINS.find(a => a.username === U.username)?.maktab_id) || null;
-    teacherUser = { username: U.username, parol: U.parol, ism: U.ism, isSuper: false, isSuperProxy: false, maktabId: adminMaktabId };
+    // Oddiy admin — o'zining maktabId si (Telegram JWT ichidan keladi)
+    const adminMaktabId = U.maktabId || null;
+    teacherUser = { ism: U.ism, isSuper: false, isSuperProxy: false, maktabId: adminMaktabId };
   } else if (viewingAdmin) {
     const adminMaktabId = viewingAdmin.maktab_id || null;
-    teacherUser = { username: viewingAdmin.username, parol: viewingAdmin.parol, ism: viewingAdmin.ism, isSuper: false, isSuperProxy: true, superUsername: U.username, superParol: U.parol, superIsm: U.ism, maktabId: adminMaktabId };
+    teacherUser = { ism: viewingAdmin.ism, isSuper: false, isSuperProxy: true, superIsm: U.ism, maktabId: adminMaktabId };
   } else {
     teacherUser = { username: U.username, parol: U.parol, ism: U.ism, isSuper: true, adminsMap: JSON.stringify(ADMINS.map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))) };
   }
@@ -796,13 +895,10 @@ function openDavomat() {
   if (U.isSuper && !viewingAdmin) { toast('⚠️ Avval maktab tanlang!', 'error'); return; }
   const isProxy = U.isSuper && viewingAdmin;
   const davomatUser = {
-    username:      isProxy ? viewingAdmin.username : U.username,
-    parol:         isProxy ? viewingAdmin.parol    : U.parol,
     ism:           isProxy ? viewingAdmin.ism      : U.ism,
+    maktabId:      isProxy ? viewingAdmin.maktab_id : U.maktabId,
     isSuper:       false,
     isSuperProxy:  isProxy,
-    superUsername: U.username,
-    superParol:    U.parol,
     superIsm:      U.ism
   };
   sessionStorage.setItem('iit_davomat_user', JSON.stringify(davomatUser));

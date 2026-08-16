@@ -99,7 +99,7 @@ function handleAuthResult(data) {
   showDashboard(data);
 }
 
-// ─── Bir necha rolga bog'langanda — tanlov ekrani ────────────────────────────
+// ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────
 function showRoleChooser(tgId, roles) {
   const rolLabels = {
     admin:     { icon: '🖥️', label: 'Admin' },
@@ -118,7 +118,7 @@ function showRoleChooser(tgId, roles) {
         Siz bir nechta rolga bog'langansiz — birini tanlang
       </div>
       ${roles.map(r => `
-        <button onclick="chooseRole(${tgId}, '${r.rol}')" style="
+        <button onclick="chooseRole(${tgId}, '${r.rol}', ${r.entityId})" style="
           display:flex;align-items:center;gap:12px;width:100%;max-width:300px;
           background:var(--card-bg,#fff);border:1px solid var(--border,#e5e7eb);
           border-radius:14px;padding:14px 18px;font-size:15px;font-weight:600;
@@ -126,7 +126,7 @@ function showRoleChooser(tgId, roles) {
         ">
           <span style="font-size:22px;">${(rolLabels[r.rol] || {}).icon || '👤'}</span>
           <span>
-            <div>${(rolLabels[r.rol] || {}).label || r.rol}</div>
+            <div>${r.roleLabel || (rolLabels[r.rol] || {}).label || r.rol}</div>
             <div style="font-size:12px;font-weight:400;color:var(--hint);">${r.ism}</div>
           </span>
         </button>
@@ -134,9 +134,9 @@ function showRoleChooser(tgId, roles) {
     </div>`;
 }
 
-async function chooseRole(tgId, rol) {
+async function chooseRole(tgId, rol, entityId) {
   try {
-    const res  = await fetch(`${API_BASE}/telegram/check/${tgId}/${rol}`);
+    const res  = await fetch(`${API_BASE}/telegram/check/${tgId}/${rol}/${entityId}`);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error);
     handleAuthResult(data);

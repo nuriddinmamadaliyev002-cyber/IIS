@@ -146,7 +146,7 @@ function renderTgBirikmalar(list) {
       <td>${esc(b.fish || '—')}</td>
       <td>${esc(b.biriktirilgan || '')}</td>
       <td>
-        <button class="btn-small" onclick="tgAjrat('${b.telegram_id}','${esc(b.fish || b.telegram_ism || '')}','${b.rol}')">Ajratish</button>
+        <button class="btn-small" onclick="tgAjrat('${b.telegram_id}','${esc(b.fish || b.telegram_ism || '')}','${b.rol}',${b.entity_id})">Ajratish</button>
       </td>
     </tr>`).join('');
 }
@@ -201,10 +201,11 @@ async function tgBirikdir() {
   } catch(e) { errEl.textContent = '❌ Xatolik'; errEl.style.display = 'block'; }
 }
 
-async function tgAjrat(telegramId, fish, rol) {
-  // confirm olib tashlandi
+async function tgAjrat(telegramId, fish, rol, entityId) {
+  // confirm olib tashlandi — faqat SHU aniq birikma (masalan aynan shu
+  // maktab uchun admin) ajratiladi, boshqa birikmalar tegilmaydi
   try {
-    const r = await api.tgAjrat(telegramId, rol);
+    const r = await api.tgAjrat(telegramId, rol, entityId);
     if (r.ok) { toast('✅ Ajratildi', 'success'); await loadTgBirikmalar(); }
     else toast('❌ ' + r.error, 'error');
   } catch(e) { toast('❌ Xatolik', 'error'); }

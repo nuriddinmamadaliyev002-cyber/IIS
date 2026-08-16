@@ -42,7 +42,7 @@ function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
 // ─── GET /api/teachers ───
 router.get('/', async (req, res) => {
   try {
-    const { username, isSuper } = req.user;
+    const { maktabId, isSuper } = req.user;
 
     let rows;
     if (isSuper) {
@@ -66,7 +66,7 @@ router.get('/', async (req, res) => {
       `);
       rows = result.rows;
     } else {
-      // Oddiy admin: faqat o'ziga biriktirilgan o'qituvchilar
+      // Oddiy admin: faqat o'z maktabiga biriktirilgan o'qituvchilar
       const result = await pool.query(`
         SELECT
           o.id, o.ism, o.familiya, o.fan, o.telefon, o.telefon2,
@@ -80,11 +80,11 @@ router.get('/', async (req, res) => {
           ) AS maktablar
         FROM oqituvchilar o
         INNER JOIN oqituvchi_maktablar om ON o.id = om.oqituvchi_id
-        INNER JOIN adminlar a ON a.maktab_id = om.maktab_id AND a.username = $1
         LEFT JOIN maktablar m ON m.id = om.maktab_id
+        WHERE om.maktab_id = $1
         GROUP BY o.id
         ORDER BY o.id
-      `, [username]);
+      `, [maktabId]);
       rows = result.rows;
     }
 

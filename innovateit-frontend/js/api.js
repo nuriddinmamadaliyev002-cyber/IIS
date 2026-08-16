@@ -169,15 +169,6 @@ const api = {
     if (res.ok && res.token) tokenStore.set(res.token);
     return res;
   },
-  loginAdmin: async (d) => {
-    const res = await fetch(`${BASE}/api/auth/login-admin`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(d)
-    }).then(r => r.json());
-    if (res.ok && res.token) tokenStore.set(res.token);
-    return res;
-  },
   loginViewer: async (d) => {
     const res = await fetch(`${BASE}/api/auth/login-viewer`, {
       method: 'POST',
@@ -212,12 +203,11 @@ const api = {
   editNofaol:          (d) => api.put('/api/students/inactive', d),
   deleteNofaol:        (d) => api.del('/api/students/inactive', d),
 
-  // ─── Adminlar ───
+  // ─── Adminlar (maktab adminlari — Telegram orqali kiradi) ───
   getAdmins:   (d) => api.get('/api/admins', d),
   createAdmin: (d) => api.post('/api/admins', d),
-  editAdmin:        (d) => api.put('/api/admins', d),
-  changeAdminParol: (d) => api.put('/api/admins', d),
-  deleteAdmin:      (d) => api.del('/api/admins', d),
+  editAdmin:   (d) => api.put(`/api/admins/${d.id}`, d),
+  deleteAdmin: (d) => api.del(`/api/admins/${d.id}`, d),
 
   // ─── Davomat ───
   saveDavomat:        (d) => api.post('/api/davomat', d),
@@ -325,7 +315,14 @@ const api = {
   // ─── Telegram birikmalar ───
   getTgBirikmalar:  ()  => api.get('/api/telegram/birikmalar'),
   tgBirikdir:       (d) => api.post('/api/telegram/birikdir', d),
-  tgAjrat:          (tgId, rol) => api.del(`/api/telegram/birikdir/${tgId}${rol ? '?rol=' + encodeURIComponent(rol) : ''}`),
+  tgAjrat:          (tgId, rol, entityId) => {
+    let url = `/api/telegram/birikdir/${tgId}`;
+    const qs = [];
+    if (rol) qs.push('rol=' + encodeURIComponent(rol));
+    if (entityId) qs.push('entityId=' + encodeURIComponent(entityId));
+    if (qs.length) url += '?' + qs.join('&');
+    return api.del(url);
+  },
 
   // ─── Anketa so'rovlar ───
   getSorovlar:      (d) => api.get('/api/telegram/anketa', d),

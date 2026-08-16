@@ -218,7 +218,7 @@
     <div id="tab-a" style="display:none;">
       <div class="admin-card" style="margin-top:14px;">
         <div class="card-title">➕ Yangi admin yaratish</div>
-        <div class="create-grid">
+        <div class="create-grid" style="grid-template-columns:1fr 1fr 1fr auto;">
           <div class="field-group" style="margin:0">
             <label class="field-label">Familiya</label>
             <input class="field-input" id="a-familiya" placeholder="Valiyev" autocomplete="off">
@@ -233,22 +233,6 @@
               <option value="">— Tanlang —</option>
             </select>
           </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Username</label>
-            <input class="field-input" id="a-username" placeholder="ali_valiyev" autocomplete="new-password" spellcheck="false">
-          </div>
-          <div class="field-group" style="margin:0">
-            <label class="field-label">Parol</label>
-            <div style="position:relative;display:flex;align-items:center;">
-              <input class="field-input" id="a-parol" type="password" placeholder="Kamida 6 belgi" autocomplete="new-password" style="padding-right:40px;width:100%;box-sizing:border-box;">
-              <button type="button" onclick="togglePw('a-parol')" tabindex="-1"
-                style="position:absolute;right:10px;background:none;border:none;cursor:pointer;padding:0;display:flex;align-items:center;color:#888;">
-                <svg id="eye-a-parol" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-          </div>
           <div style="display:flex;align-items:flex-end;">
             <button class="btn-submit" onclick="createAdmin()" style="margin:0;width:100%;">
               <span class="spinner" id="a-spinner"></span>
@@ -256,6 +240,9 @@
             </button>
           </div>
         </div>
+        <p style="font-size:12px;color:#9ca3af;margin-top:6px;">
+          📱 Yaratgach, ro'yxatdagi "Telegram bog'lash" tugmasi orqali Telegram ID'ni biriktiring — admin shu orqali kiradi.
+        </p>
         <div class="divider"></div>
         <div class="card-title">👥 Adminlar ro'yxati</div>
         <div class="admin-list" id="admin-list">
@@ -658,23 +645,27 @@
         <label class="field-label">Ism</label>
         <input class="field-input" id="ae-ism" autocomplete="off">
       </div>
-      <div class="field-group">
-        <label class="field-label">Username</label>
-        <input class="field-input" id="ae-username" autocomplete="off">
-      </div>
       <div class="field-group" style="grid-column:1/-1">
-        <label class="field-label">Parol</label>
-        <div class="pw-wrap">
-          <input class="field-input" type="password" id="ae-parol" placeholder="••••••••" autocomplete="new-password">
-          <button class="eye-btn" onclick="togglePw('ae-parol')" tabindex="-1" type="button">
-            <svg id="eye-ae-parol" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-              <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94"/>
-              <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19"/>
-              <line x1="1" y1="1" x2="23" y2="23"/>
-            </svg>
-          </button>
-        </div>
+        <label class="field-label">Maktab</label>
+        <select class="field-input" id="ae-maktab-id">
+          <option value="">— Tanlang —</option>
+        </select>
       </div>
+      <div class="field-group" style="grid-column:1/-1;margin-bottom:6px;">
+        <label class="field-label">📱 Telegram ID <span style="color:#9ca3af;font-weight:400;">(asosiy kirish usuli)</span></label>
+        <input class="field-input" id="ae-tgid" type="text" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
+      </div>
+      <div class="field-group" style="grid-column:1/-1;margin-top:-8px;">
+        <select id="ae-kandidatlar" onchange="if(this.value){document.getElementById('ae-tgid').value=this.value;this.selectedIndex=0;}"
+          class="field-input" style="margin-bottom:6px;">
+          <option value="">— yoki botga /start yozganlar ro'yxatidan tanlang —</option>
+        </select>
+        <p style="font-size:12px;color:#9ca3af;margin:-2px 0 4px;">
+          Admin botga <b>/start</b> yozsa, shu ro'yxatda avtomatik paydo bo'ladi.
+        </p>
+        <p id="ae-tg-status" style="font-size:12px;margin:2px 0 4px;"></p>
+      </div>
+      <p id="ae-err" style="display:none;color:#dc2626;font-size:13px;grid-column:1/-1;"></p>
     </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeAE()">Bekor qilish</button>
