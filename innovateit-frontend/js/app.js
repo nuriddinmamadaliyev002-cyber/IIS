@@ -113,9 +113,18 @@ function showErr(el, msg) {
 }
 
 function doLogout() {
+  const wasTelegram = !!(U && U.viaTelegram);
   U = null; S = []; ADMINS = []; viewingAdmin = null;
   localStorage.removeItem('iit_u');
   document.body.classList.remove('super-admin');
+
+  // Telegram orqali kirgan admin — parol formasi emas, botga qaytariladi
+  // (u umuman username/parolga ega emas, faqat Telegram orqali kiradi)
+  if (wasTelegram) {
+    window.location.href = 'https://t.me/InnovateIT_School_bot';
+    return;
+  }
+
   g('app').style.display = 'none';
   g('login-screen').style.display = 'flex';
   g('inp-username').value = '';
