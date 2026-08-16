@@ -133,6 +133,13 @@ async function showApp() {
   const b = g('admin-badge');
   b.textContent = U.ism;
 
+  // Yuqori chap burchakdagi brand nomi — oddiy admin uchun o'z maktabi nomi,
+  // superadmin uchun standart "InnovateIT School"
+  const brandEl = g('topbar-brand');
+  if (brandEl) {
+    brandEl.textContent = (!U.isSuper && U.maktabNomi) ? U.maktabNomi : 'InnovateIT School';
+  }
+
   // Body'ga super-admin class qo'shish/olib tashlash
   if (U.isSuper) {
     document.body.classList.add('super-admin');

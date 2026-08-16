@@ -66,7 +66,7 @@ function handleAuthResult(data) {
   if (ROL === 'admin') {
     const redirectUrl = `${WEB_PANEL_URL}?tg_token=${encodeURIComponent(data.token)}`;
     if (tg && tg.openLink) {
-      showAdminRedirect(redirectUrl, { role: 'admin' });
+      showAdminRedirect(redirectUrl, { role: 'admin', maktabNomi: data.maktabNomi });
     } else {
       window.location.href = redirectUrl;
     }
@@ -433,7 +433,10 @@ function kutishClose() {
 function showAdminRedirect(url, opts) {
   const cfg = {
     admin: {
-      icon: '🖥️', title: 'Siz Admin sifatida kirdingiz',
+      icon: '🖥️',
+      title: opts?.maktabNomi
+        ? `Siz ${opts.maktabNomi} admini sifatida kirdingiz`
+        : 'Siz Admin sifatida kirdingiz',
       desc: "Admin paneli to'liq brauzerda ochiladi.<br>O'quvchilar va davomatni u yerda boshqaring.",
       btn: "🌐 Admin panelni ochish",
     },
