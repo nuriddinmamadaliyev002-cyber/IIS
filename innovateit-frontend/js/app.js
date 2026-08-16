@@ -118,10 +118,12 @@ function doLogout() {
   localStorage.removeItem('iit_u');
   document.body.classList.remove('super-admin');
 
-  // Telegram orqali kirgan admin — parol formasi emas, botga qaytariladi
-  // (u umuman username/parolga ega emas, faqat Telegram orqali kiradi)
+  // Telegram orqali kirgan admin — parol formasi emas, botning "Mini Appni
+  // ochish" xabari (bot.js /start) avtomatik qayta ko'rsatiladi (?start=
+  // parametri /start buyrug'ini o'zi yuboradi — foydalanuvchi qo'lda
+  // yozishi shart emas).
   if (wasTelegram) {
-    window.location.href = 'https://t.me/InnovateIT_School_bot';
+    window.location.href = 'https://t.me/InnovateIT_School_bot?start=chiqish';
     return;
   }
 
