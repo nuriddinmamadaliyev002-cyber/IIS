@@ -118,12 +118,19 @@ function doLogout() {
   localStorage.removeItem('iit_u');
   document.body.classList.remove('super-admin');
 
-  // Telegram orqali kirgan admin — parol formasi emas, botning "Mini Appni
-  // ochish" xabari (bot.js /start) avtomatik qayta ko'rsatiladi (?start=
-  // parametri /start buyrug'ini o'zi yuboradi — foydalanuvchi qo'lda
-  // yozishi shart emas).
+  // Telegram orqali kirgan admin — botga yoki Mini App'ga qaytarilmaydi,
+  // to'liq chiqib ketadi: brauzer oynasini yopishga harakat qilamiz;
+  // (xavfsizlik sabab) yopilmasa — sodda "chiqdingiz" ekrani ko'rsatiladi.
   if (wasTelegram) {
-    window.location.href = 'https://t.me/InnovateIT_School_bot?start=chiqish';
+    window.close();
+    document.documentElement.innerHTML = `
+      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
+                  justify-content:center;gap:14px;font-family:system-ui,sans-serif;
+                  background:#0f172a;color:#e5e7eb;text-align:center;padding:24px;box-sizing:border-box;">
+        <div style="font-size:44px;">✅</div>
+        <div style="font-size:18px;font-weight:600;">Siz tizimdan chiqdingiz</div>
+        <div style="font-size:14px;color:#9ca3af;max-width:280px;">Ushbu oynani yopishingiz mumkin.</div>
+      </div>`;
     return;
   }
 
