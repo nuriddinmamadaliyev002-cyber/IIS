@@ -115,7 +115,7 @@ async function buildAuthResponse(tgUser, tgId) {
   // ajralib turadigan nom qaytariladi; boshqa rollar uchun shaxsning ismi yetarli.
   const roleLabel = (rol === 'admin')
     ? (entity.maktab_nomi ? `${entity.maktab_nomi} admini` : `Admin — ${ism}`)
-    : ism;
+    : null;
 
   return {
     ok:    true,
