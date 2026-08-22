@@ -87,6 +87,10 @@ function handleUnauthorized() {
     window.location.href = baseDir + 'buxgalter.html';
   } else if (page.includes('portfolio')) {
     window.location.href = baseDir + 'portfolio-viewer.html';
+  } else if (page.includes('oqituvchi')) {
+    window.location.href = baseDir + 'oqituvchi.html';
+  } else if (page.includes('sales')) {
+    window.location.href = baseDir + 'sales.html';
   } else {
     window.location.href = baseDir + 'index.html';
   }

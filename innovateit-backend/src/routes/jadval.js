@@ -145,8 +145,80 @@ router.get('/mening-jadvalim-oqituvchi', requireAuth(['oqituvchi']), async (req,
   }
 });
 
-router.use(requireAuth(['admin']));
+// ─── POST /api/jadval/mening-jadvalim — O'qituvchi o'zi guruh/jadval yaratadi ──
+// ⚠️  Bu ham router.use(requireAuth(['admin'])) DAN OLDIN turishi SHART!
+router.post('/mening-jadvalim', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, entityId, maktabIdlar } = req.user;
+  const p = req.body;
 
+  if (!entityId) return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
+  if (!p.sinflar) return res.status(400).json({ ok: false, error: 'Sinflar kerak' });
+  if (!p.kunlar)  return res.status(400).json({ ok: false, error: 'Kunlar kerak' });
+
+  const maktabId    = parseInt(p.maktabId);
+  const allowedIds  = (maktabIdlar || []).map(Number);
+  if (!maktabId || !allowedIds.includes(maktabId))
+    return res.status(400).json({ ok: false, error: "Bu maktabga biriktirilmagansiz" });
+
+  const ismParts = (ism || '').trim().split(' ');
+  const familiya = ismParts[0] || '';
+  const ismOnly  = ismParts.slice(1).join(' ') || '';
+
+  try {
+    const teacherRes = await pool.query('SELECT fan FROM oqituvchilar WHERE id=$1', [entityId]);
+    const fan = teacherRes.rows[0]?.fan || '';
+
+    if (p.id) {
+      // Faqat o'zi yaratgan (ism/familiya mos keladigan) yozuvni tahrirlashi mumkin
+      const result = await pool.query(
+        `UPDATE dars_jadvali
+           SET sinflar=$1, kunlar=$2, boshlanish=$3, tugash=$4
+         WHERE id=$5 AND maktab_id=$6
+           AND LOWER(TRIM(teacher_familiya))=LOWER($7) AND LOWER(TRIM(teacher_ism))=LOWER($8)`,
+        [p.sinflar, p.kunlar, p.boshlanish || '', p.tugash || '', p.id, maktabId, familiya, ismOnly]
+      );
+      if (result.rowCount === 0)
+        return res.status(404).json({ ok: false, error: 'Jadval topilmadi' });
+    } else {
+      await pool.query(
+        `INSERT INTO dars_jadvali
+           (maktab_id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+        [maktabId, ismOnly, familiya, fan, p.sinflar, p.kunlar, p.boshlanish || '', p.tugash || '']
+      );
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('POST /jadval/mening-jadvalim xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── DELETE /api/jadval/mening-jadvalim/:id — o'zi yaratgan guruhni o'chiradi ──
+router.delete('/mening-jadvalim/:id', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, entityId } = req.user;
+  if (!entityId) return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
+
+  const ismParts = (ism || '').trim().split(' ');
+  const familiya = ismParts[0] || '';
+  const ismOnly  = ismParts.slice(1).join(' ') || '';
+
+  try {
+    const result = await pool.query(
+      `DELETE FROM dars_jadvali
+       WHERE id=$1 AND LOWER(TRIM(teacher_familiya))=LOWER($2) AND LOWER(TRIM(teacher_ism))=LOWER($3)`,
+      [req.params.id, familiya, ismOnly]
+    );
+    if (result.rowCount === 0)
+      return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('DELETE /jadval/mening-jadvalim xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+router.use(requireAuth(['admin']));
 // ─── GET /api/jadval ──────────────────────────────────────────────────────────
 router.get('/', async (req, res) => {
   const { targetMaktabId } = req.query;

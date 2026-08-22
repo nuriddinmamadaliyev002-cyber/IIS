@@ -36,6 +36,92 @@ router.get('/:teacherId/oquvchilar', requireAuth(['admin', 'oqituvchi']), async 
   }
 });
 
+// ─── GET /api/teachers/sinf-oquvchilar — sinf ichidagi o'quvchilar ────────────
+// ⚠️  Bu route ham router.use(requireAuth(['admin'])) DAN OLDIN turishi SHART!
+//     O'qituvchi o'zi guruh yaratishi uchun (faqat o'z teacherId'i bilan).
+router.get('/sinf-oquvchilar', requireAuth(['admin', 'oqituvchi']), async (req, res) => {
+  const { sinf, maktabId, teacherId } = req.query;
+  if (!sinf || !maktabId) return res.status(400).json({ ok: false, error: 'sinf va maktabId kerak' });
+
+  if (req.user.role === 'oqituvchi' && !req.user.isSuper) {
+    if (parseInt(teacherId) !== req.user.entityId) {
+      return res.status(403).json({ ok: false, error: "Faqat o'zingizga tegishli ma'lumotni ko'ra olasiz" });
+    }
+  }
+
+  try {
+    const result = await pool.query(`
+      SELECT
+        o.id, o.ism, o.familiya, o.sinf,
+        CASE WHEN oo.oquvchi_id IS NOT NULL THEN true ELSE false END AS biriktirilgan
+      FROM oquvchilar o
+      LEFT JOIN oqituvchi_oquvchilar oo
+        ON oo.oquvchi_id = o.id AND oo.oqituvchi_id = $3
+      WHERE o.maktab_id = $1 AND o.sinf = $2
+      ORDER BY o.familiya, o.ism
+    `, [parseInt(maktabId), sinf, parseInt(teacherId) || 0]);
+
+    res.json({ ok: true, oquvchilar: result.rows });
+  } catch (err) {
+    console.error('GET /sinf-oquvchilar xatolik:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  }
+});
+
+// ─── POST /api/teachers/oquvchi-birik — o'quvchilarni biriktirish ─────────────
+// body: { teacherId, oquvchiIds: [1, 2, 3, ...], sinf, maktabId }
+// Avvalgi birikmalari o'chirilib, yangi ro'yxat saqlanadi (upsert)
+// ⚠️  Bu route ham router.use(requireAuth(['admin'])) DAN OLDIN turishi SHART!
+//     O'qituvchi o'zi guruh yaratishi uchun (faqat o'z teacherId'i bilan).
+router.post('/oquvchi-birik', requireAuth(['admin', 'oqituvchi']), async (req, res) => {
+  const { teacherId, oquvchiIds, sinf, maktabId } = req.body;
+  if (!teacherId || !sinf || !maktabId)
+    return res.status(400).json({ ok: false, error: 'teacherId, sinf, maktabId kerak' });
+
+  if (req.user.role === 'oqituvchi' && !req.user.isSuper) {
+    if (parseInt(teacherId) !== req.user.entityId) {
+      return res.status(403).json({ ok: false, error: "Faqat o'zingizga o'quvchi biriktira olasiz" });
+    }
+  }
+
+  const tid  = parseInt(teacherId);
+  const mid  = parseInt(maktabId);
+  const ids  = Array.isArray(oquvchiIds) ? oquvchiIds.map(Number).filter(n => !isNaN(n)) : [];
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Shu sinf + maktab uchun avvalgi birikmalarni o'chirish
+    await client.query(`
+      DELETE FROM oqituvchi_oquvchilar
+      WHERE oqituvchi_id = $1
+        AND oquvchi_id IN (
+          SELECT id FROM oquvchilar WHERE sinf = $2 AND maktab_id = $3
+        )
+    `, [tid, sinf, mid]);
+
+    // Yangi birikmalarni qo'shish
+    if (ids.length > 0) {
+      const values = ids.map((_, i) => `($1, $${i + 2})`).join(', ');
+      await client.query(
+        `INSERT INTO oqituvchi_oquvchilar (oqituvchi_id, oquvchi_id) VALUES ${values}
+         ON CONFLICT (oqituvchi_id, oquvchi_id) DO NOTHING`,
+        [tid, ...ids]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, biriktirildi: ids.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('POST /oquvchi-birik xatolik:', err.message);
+    res.status(500).json({ ok: false, error: err.message });
+  } finally {
+    client.release();
+  }
+});
+
 router.use(requireAuth(['admin']));
 function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
 
@@ -430,77 +516,6 @@ router.post('/merge', async (req, res) => {
     await client.query('ROLLBACK');
     console.error('merge xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi: ' + err.message });
-  } finally {
-    client.release();
-  }
-});
-
-// ─── GET /api/teachers/sinf-oquvchilar?sinf=5&maktabId=2 ─────────────────────
-// Berilgan sinf va maktabdagi barcha o'quvchilar + ular biriktirilganmi
-router.get('/sinf-oquvchilar', async (req, res) => {
-  const { sinf, maktabId, teacherId } = req.query;
-  if (!sinf || !maktabId) return res.status(400).json({ ok: false, error: 'sinf va maktabId kerak' });
-
-  try {
-    const result = await pool.query(`
-      SELECT
-        o.id, o.ism, o.familiya, o.sinf,
-        CASE WHEN oo.oquvchi_id IS NOT NULL THEN true ELSE false END AS biriktirilgan
-      FROM oquvchilar o
-      LEFT JOIN oqituvchi_oquvchilar oo
-        ON oo.oquvchi_id = o.id AND oo.oqituvchi_id = $3
-      WHERE o.maktab_id = $1 AND o.sinf = $2
-      ORDER BY o.familiya, o.ism
-    `, [parseInt(maktabId), sinf, parseInt(teacherId) || 0]);
-
-    res.json({ ok: true, oquvchilar: result.rows });
-  } catch (err) {
-    console.error('GET /sinf-oquvchilar xatolik:', err.message);
-    res.status(500).json({ ok: false, error: err.message });
-  }
-});
-
-// ─── POST /api/teachers/oquvchi-birik — o'quvchilarni biriktirish ─────────────
-// body: { teacherId, oquvchiIds: [1, 2, 3, ...], sinf, maktabId }
-// Avvalgi birikmalari o'chirilib, yangi ro'yxat saqlanadi (upsert)
-router.post('/oquvchi-birik', async (req, res) => {
-  const { teacherId, oquvchiIds, sinf, maktabId } = req.body;
-  if (!teacherId || !sinf || !maktabId)
-    return res.status(400).json({ ok: false, error: 'teacherId, sinf, maktabId kerak' });
-
-  const tid  = parseInt(teacherId);
-  const mid  = parseInt(maktabId);
-  const ids  = Array.isArray(oquvchiIds) ? oquvchiIds.map(Number).filter(n => !isNaN(n)) : [];
-
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-
-    // Shu sinf + maktab uchun avvalgi birikmalarni o'chirish
-    await client.query(`
-      DELETE FROM oqituvchi_oquvchilar
-      WHERE oqituvchi_id = $1
-        AND oquvchi_id IN (
-          SELECT id FROM oquvchilar WHERE sinf = $2 AND maktab_id = $3
-        )
-    `, [tid, sinf, mid]);
-
-    // Yangi birikmalarni qo'shish
-    if (ids.length > 0) {
-      const values = ids.map((_, i) => `($1, $${i + 2})`).join(', ');
-      await client.query(
-        `INSERT INTO oqituvchi_oquvchilar (oqituvchi_id, oquvchi_id) VALUES ${values}
-         ON CONFLICT (oqituvchi_id, oquvchi_id) DO NOTHING`,
-        [tid, ...ids]
-      );
-    }
-
-    await client.query('COMMIT');
-    res.json({ ok: true, biriktirildi: ids.length });
-  } catch (err) {
-    await client.query('ROLLBACK');
-    console.error('POST /oquvchi-birik xatolik:', err.message);
-    res.status(500).json({ ok: false, error: err.message });
   } finally {
     client.release();
   }

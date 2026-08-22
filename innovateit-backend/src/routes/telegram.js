@@ -97,6 +97,9 @@ async function buildAuthResponse(tgUser, tgId) {
     tokenPayload.maktabIdlar = (entity.maktab_idlar || []).filter(Boolean);
     tokenPayload.maktabId    = tokenPayload.maktabIdlar[0] || null;
   }
+  if (rol === 'oqituvchi') {
+    tokenPayload.fan = entity.fan || '';
+  }
   if (rol === 'sales') {
     tokenPayload.id          = entity_id; // sales.js routelari req.user.id ga tayanadi
     tokenPayload.maktablar   = (entity.maktablar   || []).filter(Boolean);
@@ -115,7 +118,7 @@ async function buildAuthResponse(tgUser, tgId) {
   // ajralib turadigan nom qaytariladi; boshqa rollar uchun shaxsning ismi yetarli.
   const roleLabel = (rol === 'admin')
     ? (entity.maktab_nomi ? `${entity.maktab_nomi} admini` : `Admin — ${ism}`)
-    : null;
+    : ism;
 
   return {
     ok:    true,

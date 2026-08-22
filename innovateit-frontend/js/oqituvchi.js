@@ -90,6 +90,8 @@ function onMaktabChange() {
   closeSinfOquvchilar();
   loadSinflar();
   loadJadval();
+  clearGuruhForm();
+  if (g('tab-guruh').classList.contains('active')) initGuruhTab();
 }
 
 // ─── Tab almashtirish ─────────────────────────────
@@ -102,6 +104,229 @@ function switchTab(tab) {
   if (tab === 'sinflar') loadSinflar();
   if (tab === 'jadval')  loadJadval();
   if (tab === 'soat')    loadSoatStatistika();
+  if (tab === 'guruh')   initGuruhTab();
+}
+
+// ═══════════════════════════════════════════
+//  GURUH YARATISH (o'qituvchi o'zi sinflardan
+//  o'quvchi tanlab, dars kunlari/vaqtini belgilaydi)
+// ═══════════════════════════════════════════
+let activeGuruhSinf = null;
+let guruhOquvchilarMap = new Map(); // sinf -> Set(oquvchiId)
+let editingGuruhId = null;
+
+function initGuruhTab() {
+  const warn = g('guruh-maktab-warn'), form = g('guruh-form');
+  if (!TANLANGAN_MID) {
+    warn.style.display = 'block';
+    form.style.display = 'none';
+  } else {
+    warn.style.display = 'none';
+    form.style.display = 'block';
+  }
+}
+
+function applyGroup(sinflar, btn) {
+  const allSel = sinflar.every(s => {
+    const chip = document.querySelector(`#guruh-sinf-chips [data-s="${s}"]`);
+    return chip && chip.classList.contains('sel');
+  });
+  document.querySelectorAll('#guruh-groups .group-chip').forEach(c => c.classList.remove('sel'));
+  sinflar.forEach(s => {
+    const chip = document.querySelector(`#guruh-sinf-chips [data-s="${s}"]`);
+    if (chip) chip.classList.toggle('sel', !allSel);
+  });
+  if (!allSel) btn.classList.add('sel');
+
+  const selChips = [...document.querySelectorAll('#guruh-sinf-chips .sinf-chip.sel')];
+  if (selChips.length) {
+    activeGuruhSinf = selChips[selChips.length - 1].dataset.s;
+    loadGuruhOquvchilar(activeGuruhSinf);
+  } else {
+    g('guruh-oquvchilar-panel').style.display = 'none';
+    activeGuruhSinf = null;
+  }
+}
+
+function saveCurrentGuruhCheckboxState() {
+  if (!activeGuruhSinf) return;
+  const cbs = g('guruh-oquvchilar-list').querySelectorAll('.guruh-oq-cb');
+  if (!cbs.length) return;
+  const ids = new Set([...cbs].filter(cb => cb.checked).map(cb => parseInt(cb.dataset.id)));
+  guruhOquvchilarMap.set(activeGuruhSinf, ids);
+}
+
+async function toggleSinfChip(chipEl) {
+  const sinf = chipEl.dataset.s;
+  const isNowSel = !chipEl.classList.contains('sel');
+  saveCurrentGuruhCheckboxState();
+  chipEl.classList.toggle('sel', isNowSel);
+
+  if (isNowSel) {
+    activeGuruhSinf = sinf;
+    await loadGuruhOquvchilar(sinf);
+  } else {
+    guruhOquvchilarMap.delete(sinf);
+    const stillSel = [...document.querySelectorAll('#guruh-sinf-chips .sinf-chip.sel')];
+    if (stillSel.length) {
+      activeGuruhSinf = stillSel[stillSel.length - 1].dataset.s;
+      await loadGuruhOquvchilar(activeGuruhSinf);
+    } else {
+      activeGuruhSinf = null;
+      g('guruh-oquvchilar-panel').style.display = 'none';
+      g('guruh-oquvchilar-list').innerHTML = '';
+    }
+  }
+}
+
+async function loadGuruhOquvchilar(sinf) {
+  if (!TANLANGAN_MID || !TEACHER_ID) return;
+  g('guruh-sinf-label').textContent = sinf.replace(/-sinf$/i, '');
+  g('guruh-oquvchilar-panel').style.display = 'block';
+  const listEl = g('guruh-oquvchilar-list');
+  listEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:14px;"><div class="loading-spinner" style="width:20px;height:20px;"></div></div>';
+
+  try {
+    const data = await api.get('/api/teachers/sinf-oquvchilar', {
+      sinf, maktabId: TANLANGAN_MID, teacherId: TEACHER_ID,
+    });
+    if (!data || !data.ok) {
+      listEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#ef4444;padding:12px;">Xatolik yuz berdi</div>';
+      return;
+    }
+    if (!data.oquvchilar.length) {
+      listEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:var(--muted);padding:12px;">Bu sinfda o\'quvchi yo\'q</div>';
+      updateGuruhSelectedCount();
+      return;
+    }
+
+    const savedIds = guruhOquvchilarMap.get(sinf);
+    listEl.innerHTML = data.oquvchilar.map(o => {
+      const isChecked = savedIds !== undefined ? savedIds.has(o.id) : o.biriktirilgan;
+      return `
+        <label class="guruh-oquv-item ${isChecked ? 'checked' : ''}">
+          <input type="checkbox" class="guruh-oq-cb" data-id="${o.id}" ${isChecked ? 'checked' : ''} onchange="onGuruhCbChange(this)">
+          <span>${esc(o.familiya)} ${esc(o.ism)}</span>
+        </label>`;
+    }).join('');
+
+    if (!guruhOquvchilarMap.has(sinf)) {
+      const initIds = new Set(data.oquvchilar.filter(o => o.biriktirilgan).map(o => o.id));
+      guruhOquvchilarMap.set(sinf, initIds);
+    }
+    updateGuruhSelectedCount();
+  } catch (e) {
+    listEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#ef4444;padding:12px;">Server bilan aloqa yo\'q</div>';
+  }
+}
+
+function onGuruhCbChange(cb) {
+  if (!activeGuruhSinf) return;
+  if (!guruhOquvchilarMap.has(activeGuruhSinf)) guruhOquvchilarMap.set(activeGuruhSinf, new Set());
+  const id = parseInt(cb.dataset.id);
+  if (cb.checked) guruhOquvchilarMap.get(activeGuruhSinf).add(id);
+  else            guruhOquvchilarMap.get(activeGuruhSinf).delete(id);
+  cb.closest('.guruh-oquv-item')?.classList.toggle('checked', cb.checked);
+  updateGuruhSelectedCount();
+}
+
+function selectAllOquvchilar(val) {
+  const cbs = g('guruh-oquvchilar-list').querySelectorAll('.guruh-oq-cb');
+  cbs.forEach(cb => {
+    cb.checked = val;
+    cb.closest('.guruh-oquv-item')?.classList.toggle('checked', val);
+  });
+  if (activeGuruhSinf) {
+    if (!guruhOquvchilarMap.has(activeGuruhSinf)) guruhOquvchilarMap.set(activeGuruhSinf, new Set());
+    const set = guruhOquvchilarMap.get(activeGuruhSinf);
+    if (val) cbs.forEach(cb => set.add(parseInt(cb.dataset.id)));
+    else set.clear();
+  }
+  updateGuruhSelectedCount();
+}
+
+function updateGuruhSelectedCount() {
+  const cbs = g('guruh-oquvchilar-list').querySelectorAll('.guruh-oq-cb');
+  const checked = [...cbs].filter(cb => cb.checked).length;
+  const allSelected = [...guruhOquvchilarMap.values()].reduce((acc, s) => acc + s.size, 0);
+  const el = g('guruh-selected-count');
+  if (el) el.textContent = cbs.length ? `(${checked}/${cbs.length}, jami ${allSelected} ta)` : '';
+}
+
+function clearGuruhForm() {
+  document.querySelectorAll('#guruh-sinf-chips .sinf-chip').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('#guruh-groups .group-chip').forEach(c => c.classList.remove('sel'));
+  document.querySelectorAll('#guruh-kun-chips .kun-chip').forEach(c => c.classList.remove('sel'));
+  g('guruh-oquvchilar-panel').style.display = 'none';
+  g('guruh-oquvchilar-list').innerHTML = '';
+  g('guruh-bosh-s').value = '08'; g('guruh-bosh-m').value = '00';
+  g('guruh-tug-s').value  = '14'; g('guruh-tug-m').value  = '00';
+  g('guruh-msg').textContent = '';
+  activeGuruhSinf = null;
+  guruhOquvchilarMap.clear();
+  editingGuruhId = null;
+}
+
+function padZ(v) { return String(parseInt(v) || 0).padStart(2, '0'); }
+
+async function saveGuruh() {
+  const msgEl = g('guruh-msg');
+  msgEl.textContent = '';
+  msgEl.style.color = '';
+
+  if (!TANLANGAN_MID) { msgEl.style.color = '#ef4444'; msgEl.textContent = '❌ Avval maktab tanlang'; return; }
+
+  saveCurrentGuruhCheckboxState();
+
+  const sinflar = [...document.querySelectorAll('#guruh-sinf-chips .sinf-chip.sel')].map(c => c.dataset.s);
+  const kunlar  = [...document.querySelectorAll('#guruh-kun-chips .kun-chip.sel')].map(c => c.dataset.k);
+  const hasSinf = sinflar.length > 0 || guruhOquvchilarMap.size > 0;
+
+  if (!hasSinf)      { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Kamida 1 sinf tanlang'; return; }
+  if (!kunlar.length) { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Kamida 1 kun tanlang'; return; }
+
+  const effectiveSinflar = sinflar.length > 0 ? sinflar : [...guruhOquvchilarMap.keys()];
+  const boshlanish = padZ(g('guruh-bosh-s').value) + ':' + padZ(g('guruh-bosh-m').value);
+  const tugash     = padZ(g('guruh-tug-s').value)  + ':' + padZ(g('guruh-tug-m').value);
+
+  const btn = g('guruh-save-btn');
+  btn.disabled = true;
+  g('guruh-btn-txt').textContent = 'Saqlanmoqda…';
+
+  try {
+    const r = await api.post('/api/jadval/mening-jadvalim', {
+      id: editingGuruhId || undefined,
+      maktabId: TANLANGAN_MID,
+      sinflar: effectiveSinflar.join(','),
+      kunlar: kunlar.join(','),
+      boshlanish, tugash,
+    });
+    if (!r.ok) { msgEl.style.color = '#ef4444'; msgEl.textContent = '❌ ' + r.error; return; }
+
+    if (guruhOquvchilarMap.size > 0) {
+      saveCurrentGuruhCheckboxState();
+      const promises = [...guruhOquvchilarMap.entries()].map(([sinf, ids]) =>
+        api.post('/api/teachers/oquvchi-birik', {
+          teacherId: TEACHER_ID, oquvchiIds: [...ids], sinf, maktabId: TANLANGAN_MID,
+        })
+      );
+      await Promise.all(promises);
+    }
+
+    msgEl.style.color = '#10b981';
+    msgEl.textContent = '✅ Guruh muvaffaqiyatli saqlandi!';
+    setTimeout(() => {
+      clearGuruhForm();
+      loadSinflar();
+      if (document.getElementById('tab-jadval').classList.contains('active')) loadJadval();
+    }, 900);
+  } catch (e) {
+    msgEl.style.color = '#ef4444';
+    msgEl.textContent = '❌ Server bilan ulanib bo\'lmadi';
+  } finally {
+    btn.disabled = false;
+    g('guruh-btn-txt').textContent = '💾 Saqlash';
+  }
 }
 
 // ═══════════════════════════════════════════

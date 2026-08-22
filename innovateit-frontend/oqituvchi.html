@@ -59,6 +59,7 @@
   <!-- TAB NAV -->
   <div class="oq-tabnav">
     <button class="oq-tab-btn active" id="tab-btn-sinflar" onclick="switchTab('sinflar')">🎓 Sinflar</button>
+    <button class="oq-tab-btn" id="tab-btn-guruh" onclick="switchTab('guruh')">➕ Guruh yaratish</button>
     <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
     <button class="oq-tab-btn" id="tab-btn-soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
   </div>
@@ -83,6 +84,87 @@
     <!-- ══ JADVAL TAB ══ -->
     <div class="oq-tab-page" id="tab-jadval">
       <div id="jadval-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
+    </div>
+
+    <!-- ══ GURUH YARATISH TAB ══ -->
+    <div class="oq-tab-page" id="tab-guruh">
+      <div class="oq-section-title">➕ O'zingizga o'quvchi guruhi yarating</div>
+      <div id="guruh-maktab-warn" class="oq-empty" style="display:none;">⚠️ Avval maktab tanlang</div>
+
+      <div id="guruh-form">
+        <div class="field-group">
+          <label class="field-label">SINF GURUHINI TANLASH YOKI ALOHIDA SINFLARNI BELGILASH</label>
+          <div class="chip-row" id="guruh-groups">
+            <div class="group-chip" data-g="1-3" onclick="applyGroup(['1-sinf','2-sinf','3-sinf'],this)">1–3 sinf</div>
+            <div class="group-chip" data-g="4-6" onclick="applyGroup(['4-sinf','5-sinf','6-sinf'],this)">4–6 sinf</div>
+            <div class="group-chip" data-g="7-9" onclick="applyGroup(['7-sinf','8-sinf','9-sinf'],this)">7–9 sinf</div>
+            <div class="group-chip" data-g="all" onclick="applyGroup(['1-sinf','2-sinf','3-sinf','4-sinf','5-sinf','6-sinf','7-sinf','8-sinf','9-sinf','10-sinf','11-sinf'],this)">Barcha sinflar</div>
+          </div>
+          <div class="chip-row" id="guruh-sinf-chips">
+            <div class="sinf-chip" data-s="1-sinf" onclick="toggleSinfChip(this)">1</div>
+            <div class="sinf-chip" data-s="2-sinf" onclick="toggleSinfChip(this)">2</div>
+            <div class="sinf-chip" data-s="3-sinf" onclick="toggleSinfChip(this)">3</div>
+            <div class="sinf-chip" data-s="4-sinf" onclick="toggleSinfChip(this)">4</div>
+            <div class="sinf-chip" data-s="5-sinf" onclick="toggleSinfChip(this)">5</div>
+            <div class="sinf-chip" data-s="6-sinf" onclick="toggleSinfChip(this)">6</div>
+            <div class="sinf-chip" data-s="7-sinf" onclick="toggleSinfChip(this)">7</div>
+            <div class="sinf-chip" data-s="8-sinf" onclick="toggleSinfChip(this)">8</div>
+            <div class="sinf-chip" data-s="9-sinf" onclick="toggleSinfChip(this)">9</div>
+            <div class="sinf-chip" data-s="10-sinf" onclick="toggleSinfChip(this)">10</div>
+            <div class="sinf-chip" data-s="11-sinf" onclick="toggleSinfChip(this)">11</div>
+          </div>
+        </div>
+
+        <div id="guruh-oquvchilar-panel" style="display:none;" class="field-group">
+          <label class="field-label"><span id="guruh-sinf-label"></span>-sinf o'quvchilari <span id="guruh-selected-count" style="font-weight:400;color:var(--muted);"></span></label>
+          <div style="display:flex;gap:8px;margin-bottom:8px;">
+            <button type="button" class="btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="selectAllOquvchilar(true)">Barchasini belgilash</button>
+            <button type="button" class="btn-cancel" style="padding:5px 12px;font-size:12px;" onclick="selectAllOquvchilar(false)">Tozalash</button>
+          </div>
+          <div id="guruh-oquvchilar-list" class="guruh-oquv-grid"></div>
+        </div>
+
+        <div class="field-group">
+          <label class="field-label">DARS KUNLARI</label>
+          <div class="chip-row" id="guruh-kun-chips">
+            <div class="kun-chip" data-k="1">Du</div>
+            <div class="kun-chip" data-k="2">Se</div>
+            <div class="kun-chip" data-k="3">Cho</div>
+            <div class="kun-chip" data-k="4">Pay</div>
+            <div class="kun-chip" data-k="5">Ju</div>
+            <div class="kun-chip" data-k="6">Sha</div>
+          </div>
+        </div>
+
+        <div class="form-grid">
+          <div class="field-group">
+            <label class="field-label">Boshlanish</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input class="field-input" id="guruh-bosh-s" type="number" min="0" max="23" value="08" style="text-align:center;">
+              <span>:</span>
+              <input class="field-input" id="guruh-bosh-m" type="number" min="0" max="59" value="00" style="text-align:center;">
+            </div>
+          </div>
+          <div class="field-group">
+            <label class="field-label">Tugash</label>
+            <div style="display:flex;align-items:center;gap:4px;">
+              <input class="field-input" id="guruh-tug-s" type="number" min="0" max="23" value="14" style="text-align:center;">
+              <span>:</span>
+              <input class="field-input" id="guruh-tug-m" type="number" min="0" max="59" value="00" style="text-align:center;">
+            </div>
+          </div>
+        </div>
+
+        <div id="guruh-msg" style="font-size:13px;margin-bottom:10px;min-height:18px;"></div>
+
+        <div style="display:flex;gap:10px;">
+          <button class="btn-cancel" onclick="clearGuruhForm()">Tozalash</button>
+          <button class="oq-mark-btn" style="margin-top:0;" id="guruh-save-btn" onclick="saveGuruh()">
+            <span class="spinner" id="guruh-spinner"></span>
+            <span id="guruh-btn-txt">💾 Saqlash</span>
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- ══ DARS SOATLARI TAB ══ -->
