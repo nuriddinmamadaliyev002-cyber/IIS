@@ -116,9 +116,15 @@ async function buildAuthResponse(tgUser, tgId) {
   // Rol tanlash ekranida ko'rsatiladigan nom: bitta odam bir nechta maktabga
   // admin bo'lishi mumkin bo'lgani uchun, admin uchun "10-maktab admini" kabi
   // ajralib turadigan nom qaytariladi; boshqa rollar uchun shaxsning ismi yetarli.
-  const roleLabel = (rol === 'admin')
-    ? (entity.maktab_nomi ? `${entity.maktab_nomi} admini` : `Admin — ${ism}`)
-    : ism;
+   let roleLabel = ism;
+  if (rol === 'admin') {
+    roleLabel = entity.maktab_nomi ? `${entity.maktab_nomi} admini` : `Admin — ${ism}`;
+  } else if (rol === 'oqituvchi') {
+    const birinchiMaktab = (entity.maktablar || []).filter(Boolean)[0] || '';
+    const fan            = entity.fan || '';
+    roleLabel = [birinchiMaktab, fan].filter(Boolean).join(' ') + " o'qituvchisi";
+    if (!birinchiMaktab && !fan) roleLabel = "O'qituvchi — " + ism;
+  }
 
   return {
     ok:    true,
