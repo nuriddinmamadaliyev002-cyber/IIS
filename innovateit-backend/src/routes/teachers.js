@@ -50,7 +50,7 @@ router.get('/', async (req, res) => {
       const result = await pool.query(`
         SELECT
           o.id, o.ism, o.familiya, o.fan, o.telefon, o.telefon2,
-          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan,
+          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan, o.telegram_id,
           COALESCE(
             JSON_AGG(
               JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi)
@@ -70,7 +70,7 @@ router.get('/', async (req, res) => {
       const result = await pool.query(`
         SELECT
           o.id, o.ism, o.familiya, o.fan, o.telefon, o.telefon2,
-          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan,
+          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan, o.telegram_id,
           COALESCE(
             JSON_AGG(
               JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi)
@@ -102,6 +102,7 @@ router.get('/', async (req, res) => {
         boshlanish: r.boshlanish,
         tugash:     r.tugash,
         date:       r.qoshilgan,
+        telegram_id: r.telegram_id || null,
         maktablar:  Array.isArray(r.maktablar) ? r.maktablar : []
       }))
     });

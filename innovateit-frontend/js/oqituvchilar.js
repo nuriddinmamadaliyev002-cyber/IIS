@@ -192,9 +192,13 @@ function renderTable(d) {
         .join('');
       const hasFree = MAKTABLAR_LIST.some(m => !takenIds.has(m.id));
 
+      const tgLine = t.telegram_id
+        ? '<div style="font-size:10.5px;color:#059669;margin-top:2px;">📱 Web panel: bog\'langan</div>'
+        : '<div style="font-size:10.5px;color:#9ca3af;margin-top:2px;">📱 Web panelga biriktirilmagan</div>';
+
       return '<tr>'
         + '<td class="mono">' + (i+1) + '</td>'
-        + '<td><strong>' + esc2(t.familiya) + '</strong> ' + esc2(t.ism) + '</td>'
+        + '<td><strong>' + esc2(t.familiya) + '</strong> ' + esc2(t.ism) + tgLine + '</td>'
         + '<td><span class="fan-badge">' + (t.fan||'—') + '</span></td>'
         + '<td class="td-maktablar">'
           + '<div class="maktab-tags-wrap">' + (maktabBadges || '<span class="maktab-none">Biriktirilmagan</span>') + '</div>'
@@ -375,6 +379,23 @@ function injectSuperModals() {
       <input type="file" id="se-sert-file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" style="display:none;" onchange="uploadSeSert()">
     </label>
     <div style="font-size:11px;color:#9ca3af;margin-bottom:16px;">Maksimal 10 ta fayl, har biri max 10 MB</div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">📱 Telegram / Web panel kirishi</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div id="se-tg-status" style="font-size:12.5px;line-height:1.6;"></div>
+      <div class="field-group">
+        <label class="field-label">Botga /start yozganlar ro'yxatidan tanlash</label>
+        <select class="field-input" id="se-kandidatlar" onchange="if(this.value) setValue('se-tgid', this.value)">
+          <option value="">— Yuklanmoqda… —</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">yoki Telegram ID'ni qo'lda kiriting</label>
+        <input class="field-input" id="se-tgid" placeholder="masalan: 123456789" inputmode="numeric">
+      </div>
+      <div style="font-size:11px;color:#9ca3af;">
+        O'qituvchi shu Telegram ID orqali botga /start yozib, "O'qituvchi paneli" tugmasidan web panelga avtomatik kiradi. Maydonni bo'sh qoldirib saqlasangiz — biriktirma ajratiladi.
+      </div>
+    </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeSuperEdit()">Bekor</button>
       <button class="btn-submit" id="se-save-btn" onclick="saveSuperEdit()"><span class="spinner" id="se-spinner"></span><span id="se-btn-txt">Saqlash</span></button>
@@ -557,6 +578,18 @@ async function openSuperEdit(teacherId) {
       if (hint) { hint.textContent=''; hint.className='tel-hint'; }
       if (inp && inp.value) validateTel(inp,hint);
     });
+
+    setValue('se-tgid', t.telegram_id || '');
+    const sameTgOtherTeachers = t.telegram_id
+      ? T.filter(x => x.id !== t.id && String(x.telegram_id) === String(t.telegram_id))
+      : [];
+    g('se-tg-status').innerHTML = t.telegram_id
+      ? `<span style="color:#059669;">✅ Bog'langan (ID: ${t.telegram_id}) — o'qituvchi web panelga kira oladi</span>` +
+        (sameTgOtherTeachers.length
+          ? `<br><span style="color:#dc2626;">⚠️ Diqqat: shu Telegram ID yana ${sameTgOtherTeachers.length} ta o'qituvchiga ham biriktirilgan</span>`
+          : '')
+      : `<span style="color:#dc2626;">❌ Hali bog'lanmagan — o'qituvchi web panelga kira olmaydi</span>`;
+    loadTeacherKandidatlar();
   }
 
   // Portfolio va sertifikatlarni tozalash
@@ -589,6 +622,26 @@ async function openSuperEdit(teacherId) {
   } catch {}
 }
 
+async function loadTeacherKandidatlar() {
+  const sel = g('se-kandidatlar');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
+  try {
+    const r = await api.getKandidatlar();
+    if (!r.ok || !r.kandidatlar?.length) {
+      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
+      r.kandidatlar.map(k => {
+        const label = `${esc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
+        return `<option value="${k.telegram_id}">${label}</option>`;
+      }).join('');
+  } catch (e) {
+    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
+  }
+}
+
 function closeSuperEdit() {
   const m = g('super-edit-modal'); if(m) { m.style.display='none'; }
   SE_ID = null; SE_SERTS = [];
@@ -608,6 +661,11 @@ async function saveSuperEdit() {
   if (tel2 && !isTelOk(tel2)) { toast("⚠️ Qo'sh. telefon noto'g'ri",'error'); return; }
 
   const old = T.find(x => x.id === SE_ID);
+  const newTgId = (g('se-tgid')?.value || '').trim();
+  if (newTgId && !/^\d+$/.test(newTgId)) {
+    toast("⚠️ Telegram ID faqat raqamlardan iborat bo'lishi kerak",'error'); return;
+  }
+  const oldTgId = old?.telegram_id ? String(old.telegram_id) : '';
 
   setBtnLoading('se-save-btn','se-spinner','se-btn-txt',true,'Saqlanmoqda…');
   try {
@@ -632,6 +690,20 @@ async function saveSuperEdit() {
       sertifikatlar: (g('se-sert')?.value||'').trim(),
       ish_tajribasi: (g('se-tajriba')?.value||'').trim()
     }, SE_ID);
+
+    // 3. Telegram ID o'zgargan bo'lsa — biriktirish/ajratish
+    if (newTgId && newTgId !== oldTgId) {
+      if (oldTgId) await api.tgAjrat(oldTgId, 'oqituvchi', SE_ID);
+      const tr = await api.tgBirikdir({
+        telegramId: parseInt(newTgId),
+        telegramIsm: `${fam} ${ism}`.trim(),
+        rol: 'oqituvchi',
+        entityId: SE_ID,
+      });
+      if (!tr.ok) { toast('❌ Telegram biriktirishda xatolik: ' + tr.error,'error'); }
+    } else if (!newTgId && oldTgId) {
+      await api.tgAjrat(oldTgId, 'oqituvchi', SE_ID);
+    }
 
     toast("✅ O'qituvchi yangilandi!",'success');
     closeSuperEdit();

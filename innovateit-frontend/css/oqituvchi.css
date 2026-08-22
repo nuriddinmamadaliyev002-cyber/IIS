@@ -1,0 +1,198 @@
+/* ═══════════════════════════════════════════════════
+   InnovateIT School — O'qituvchi Panel stillari
+   ═══════════════════════════════════════════════════ */
+
+#app { max-width: 1100px; margin: 0 auto; padding-bottom: 40px; }
+
+#oq-maktab-selector {
+  padding: 7px 10px;
+  border: 1.5px solid var(--border);
+  border-radius: 8px;
+  font-size: 12.5px;
+  font-family: inherit;
+  background: #fff;
+  color: var(--text);
+  max-width: 160px;
+}
+
+/* ── Tab nav ── */
+.oq-tabnav {
+  display: flex;
+  gap: 6px;
+  padding: 14px 20px 0;
+  max-width: 1100px;
+  margin: 0 auto;
+  flex-wrap: wrap;
+}
+.oq-tab-btn {
+  padding: 9px 16px;
+  border: 1.5px solid var(--border);
+  background: #fff;
+  border-radius: 10px 10px 0 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  cursor: pointer;
+  font-family: inherit;
+  transition: background .15s, color .15s;
+}
+.oq-tab-btn.active {
+  background: #8b5cf6;
+  color: #fff;
+  border-color: #8b5cf6;
+}
+.oq-tab-btn:hover:not(.active) { background: #f3f4f6; color: var(--text); }
+
+.oq-content {
+  padding: 18px 20px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+.oq-tab-page { display: none; }
+.oq-tab-page.active { display: block; }
+
+.oq-loading { text-align: center; padding: 40px; }
+
+.oq-section-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--text);
+  margin: 4px 0 14px;
+}
+
+.oq-back-btn {
+  background: none;
+  border: none;
+  color: #8b5cf6;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 0 14px;
+  font-family: inherit;
+}
+.oq-back-btn:hover { text-decoration: underline; }
+
+.oq-empty { text-align: center; padding: 40px; color: var(--muted); font-size: 13.5px; }
+
+/* ── Sinflar grid ── */
+.sinflar-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+.sinf-card {
+  background: #fff;
+  border: 1.5px solid var(--border);
+  border-radius: 14px;
+  padding: 18px 16px;
+  cursor: pointer;
+  transition: box-shadow .15s, transform .1s;
+  text-align: center;
+}
+.sinf-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
+.sinf-card-badge {
+  width: 52px; height: 52px; margin: 0 auto 10px;
+  background: linear-gradient(135deg,#8b5cf6,#a78bfa);
+  border-radius: 14px;
+  display: flex; align-items: center; justify-content: center;
+  color: #fff; font-size: 18px; font-weight: 700;
+}
+.sinf-card-name { font-size: 14px; font-weight: 700; color: var(--text); }
+.sinf-card-count { font-size: 11.5px; color: var(--muted); margin-top: 3px; }
+
+/* ── O'quvchi ro'yxati ── */
+.oq-stu-row {
+  display: flex; align-items: center; gap: 12px;
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 8px;
+}
+.oq-stu-avatar {
+  width: 38px; height: 38px; border-radius: 50%;
+  background: linear-gradient(135deg,#6c63ff,#4ecdc4);
+  color: #fff; font-weight: 700; font-size: 15px;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+}
+.oq-stu-name { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.oq-stu-detail { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* ── Jadval ── */
+.jadval-kun-blok {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
+}
+.jadval-kun-blok.jadval-bugun { border-color: #8b5cf6; background: #faf5ff; }
+.jadval-kun-sarlavha { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
+.jadval-bugun-badge {
+  background: #8b5cf6; color: #fff; font-size: 10px; font-weight: 700;
+  padding: 2px 8px; border-radius: 20px; margin-left: 6px;
+}
+.jadval-dars-karta {
+  display: flex; gap: 14px; padding: 10px 0;
+  border-top: 1px solid #f0f0ee;
+}
+.jadval-dars-karta:first-of-type { border-top: none; }
+.jadval-vaqt-text { font-size: 13px; font-weight: 700; color: var(--text); }
+.jadval-vaqt-end { font-size: 11px; color: var(--muted); }
+.jadval-fan { font-size: 13.5px; font-weight: 600; color: var(--text); }
+.jadval-sinf { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+/* ── Dars soatlari statistika ── */
+.soat-info-karta {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 14px; padding: 16px 18px; margin-bottom: 16px;
+}
+.soat-info-row {
+  display: flex; justify-content: space-between; padding: 6px 0;
+  font-size: 13px; color: var(--muted);
+  border-bottom: 1px solid #f5f5f3;
+}
+.soat-info-row:last-child { border-bottom: none; }
+.soat-info-row strong { color: var(--text); }
+
+.soat-stats-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr));
+  gap: 10px; margin-bottom: 16px;
+}
+.soat-stat-karta {
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 14px; text-align: center;
+}
+.soat-stat-num { font-size: 22px; font-weight: 700; }
+.soat-stat-lbl { font-size: 11px; color: var(--muted); margin-top: 3px; }
+
+.soat-oylik-karta {
+  display: flex; justify-content: space-between; align-items: center;
+  background: #fff; border: 1.5px solid var(--border);
+  border-radius: 12px; padding: 12px 16px; margin-bottom: 8px;
+}
+.soat-oylik-oy { font-size: 13px; font-weight: 600; color: var(--text); }
+.soat-oylik-soat { font-size: 13px; font-weight: 700; color: #8b5cf6; text-align: right; }
+.soat-oylik-dars { font-size: 11px; color: var(--muted); text-align: right; }
+
+.oq-mark-btn {
+  display: block; width: 100%; margin-top: 6px;
+  background: #8b5cf6; color: #fff; border: none;
+  padding: 13px; border-radius: 10px; font-size: 14.5px; font-weight: 700;
+  cursor: pointer; font-family: inherit;
+}
+.oq-mark-btn:hover { opacity: .9; }
+
+/* ── Dars belgilash status tugmalari ── */
+.dars-status-row { display: flex; gap: 8px; }
+.dars-status-btn {
+  flex: 1; padding: 10px 6px; border-radius: 10px;
+  border: 1.5px solid var(--border); background: #fff;
+  font-size: 12.5px; font-weight: 600; color: var(--muted);
+  cursor: pointer; font-family: inherit;
+}
+.dars-status-btn.active {
+  border-color: var(--sc, #8b5cf6);
+  background: color-mix(in srgb, var(--sc, #8b5cf6) 12%, #fff);
+  color: var(--sc, #8b5cf6);
+}
+
+@media (max-width: 640px) {
+  .oq-tabnav { padding: 12px 14px 0; }
+  .oq-content { padding: 14px; }
+}

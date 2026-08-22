@@ -30,10 +30,6 @@ if (tg) {
 let TOKEN        = null;
 let ROL          = null;
 let USER_ISM     = null;
-let MAKTABLAR_RO = [];   // o'qituvchi maktablari (nomlar)
-let MAKTAB_ID_MAP = {};  // { '10-maktab': 3 } nom->id
-let TEACHER_ID   = null; // o'qituvchi entity_id
-let TANLANGAN_M  = null; // tanlangan maktab nomi
 let allItems     = [];
 let currentList  = null;
 
@@ -91,6 +87,18 @@ function handleAuthResult(data) {
       showAdminRedirect(salesUrl, { role: 'sales' });
     } else {
       window.location.href = salesUrl;
+    }
+    return;
+  }
+  // ─── O'qituvchi → to'liq o'qituvchi web paneliga redirect ───────────────
+  // Endi o'qituvchi mini-appda ishlamaydi — barcha funksiyalar (sinflar,
+  // dars jadvali, dars soatlari, davomat belgilash) oqituvchi.html'da.
+  if (ROL === 'oqituvchi') {
+    const oqUrl = `${WEB_PANEL_URL}/oqituvchi.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(oqUrl, { role: 'oqituvchi' });
+    } else {
+      window.location.href = oqUrl;
     }
     return;
   }
@@ -450,6 +458,11 @@ function showAdminRedirect(url, opts) {
       desc: "Sales paneli to'liq brauzerda ochiladi.<br>Arizalarni u yerda boshqaring.",
       btn: "🎯 Sales panelni ochish",
     },
+    oqituvchi: {
+      icon: '👩‍🏫', title: "Siz O'qituvchi sifatida kirdingiz",
+      desc: "O'qituvchi paneli to'liq brauzerda ochiladi.<br>Sinflar, dars jadvali va davomatni u yerda boshqaring.",
+      btn: "👩‍🏫 O'qituvchi panelni ochish",
+    },
   }[opts?.role || 'admin'];
 
   showPage('loadingPage');
@@ -501,46 +514,14 @@ function showDashboard(data) {
   document.getElementById('topbarName').textContent = USER_ISM || '—';
   document.getElementById('topbarRol').textContent  = rolLabels[ROL] || ROL;
 
-  // O'qituvchi — maktab tanlash va ID larini saqlash
-  if (ROL === 'oqituvchi') {
-    // Entity ID ni saqlash (sinf-oquvchilar so'rovi uchun kerak)
-    TEACHER_ID = data.entityId || null;
-    // Maktab nomi → ID xaritasini tuzish
-    const nomlar  = data.maktablar   || [];
-    const idlar   = data.maktabIdlar || [];
-    MAKTAB_ID_MAP = {};
-    nomlar.forEach((nom, i) => { if (nom) MAKTAB_ID_MAP[nom] = idlar[i] || null; });
-
-    if (nomlar.length > 1) {
-      MAKTABLAR_RO = nomlar;
-      const sel = document.getElementById('maktabSelector');
-      sel.innerHTML = nomlar.map(m => `<option value="${m}">${m}</option>`).join('');
-      TANLANGAN_M = nomlar[0];
-      sel.value = TANLANGAN_M;
-      document.getElementById('maktabSelectorWrap').style.display = 'flex';
-    } else if (nomlar.length === 1) {
-      TANLANGAN_M = nomlar[0];
-    }
-  }
-
   buildNavBar();
   buildCards();
-}
-
-function onMaktabChange() {
-  TANLANGAN_M = document.getElementById('maktabSelector').value;
-  buildCards();
-  // Agar sinflar sahifasida bo'lsa — yangilash
-  if (document.getElementById('sinflarPage')?.classList.contains('active')) {
-    openSinflar();
-  }
 }
 
 function buildNavBar() {
   const navMap = {
     admin:     ['students','teachers','davomat'],
     buxgalter: ['tolov'],
-    oqituvchi: [],
     oquvchi:   [],
   };
   const show = navMap[ROL] || [];
@@ -562,11 +543,6 @@ function buildCards() {
     buxgalter: [
       { icon:'💰', label:"To'lovlar", sub:'bu oy', color:'#f59e0b', action:"openList('tolov')" },
       { icon:'🎓', label:"O'quvchilar", sub:'jami', color:'#6c63ff', action:"openList('students')" },
-    ],
-    oqituvchi: [
-      { icon:'🎓', label:'Sinflar', sub:"o'quvchilar", color:'#6c63ff', action:"openSinflar()" },
-      { icon:'📅', label:'Dars jadvali', sub:'haftalik', color:'#8b5cf6', action:"openTeacherJadval()" },
-      { icon:'📊', label:'Dars soatlari', sub:'statistika', color:'#f59e0b', action:"openSoatStatistika()" },
     ],
     oquvchi: [
       { icon:'📋', label:'Davomatim', sub:'tarix', color:'#10b981', action:'openMyDavomat()' },
@@ -591,18 +567,6 @@ function showDash() {
 }
 
 function goBack() {
-  // Agar sinf ichidagi o'quvchilar ko'rinayotgan bo'lsa → sinflar sahifasiga
-  if (document.getElementById('sinf-okuv-page')?.classList.contains('active') ||
-      document.getElementById('sinf-oquv-page')?.classList.contains('active')) {
-    showPage('sinflarPage');
-    if (tg) tg.BackButton.show();
-    return;
-  }
-  // Dars belgilash → soat statistika
-  if (document.getElementById('darsBelgilashPage')?.classList.contains('active')) {
-    openSoatStatistika();
-    return;
-  }
   showDash();
 }
 
@@ -628,181 +592,6 @@ async function apiPost(path, body) {
   });
   if (res.status === 401) { showPage('loadingPage'); return null; }
   return res.json();
-}
-
-// ═══════════════════════════════════════════
-//  O'QITUVCHI SINFLAR
-// ═══════════════════════════════════════════
-async function openSinflar() {
-  showPage('sinflarPage');
-  if (tg) tg.BackButton.show();
-
-  const wrap = document.getElementById('sinflarContent');
-  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
-
-  if (!TEACHER_ID) {
-    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>O&#39;qituvchi ID topilmadi</div>';
-    return;
-  }
-
-  // Tanlangan maktab ID si
-  const maktabId = MAKTAB_ID_MAP[TANLANGAN_M] || null;
-
-  try {
-    // O'qituvchiga biriktirilgan barcha o'quvchilar (sinf bo'yicha guruhlab)
-    const data = await apiGet('/teachers/' + TEACHER_ID + '/oquvchilar');
-
-    if (!data || !data.ok) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma&#39;lumot yuklanmadi</div>';
-      return;
-    }
-
-    // Tanlangan maktab bo'yicha filtrlash (maktabId bo'lsa)
-    let oquvchilar = data.oquvchilar || [];
-    if (maktabId) {
-      oquvchilar = oquvchilar.filter(o => o.maktab_id === maktabId || String(o.maktab_id) === String(maktabId));
-    }
-
-    // Sinf bo'yicha guruhlash
-    const sinfMap = {};
-    oquvchilar.forEach(o => {
-      const s = o.sinf || '—';
-      if (!sinfMap[s]) sinfMap[s] = [];
-      sinfMap[s].push(o);
-    });
-
-    const sinflar = Object.keys(sinfMap).sort((a, b) => {
-      const na = parseInt(a) || 0, nb = parseInt(b) || 0;
-      return na - nb || a.localeCompare(b);
-    });
-
-    if (!sinflar.length) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>Biriktirilgan o&#39;quvchi yo&#39;q</div>';
-      return;
-    }
-
-    window._currentSinfMap = sinfMap;
-
-    wrap.innerHTML = sinflar.map(sinf => {
-      // "4-sinf" yoki "4" → "4-sinf", "9-B" → "9-B-sinf" emas, "9-B-sinf" → "9-B-sinf"
-      const clean   = sinf.replace(/-sinf$/i, '');
-      const parts   = clean.split('-');
-      const raqam   = parts[0] || sinf;
-      const harf    = parts[1] ? parts[1].toUpperCase() : '';
-      const sinfNomi = clean + '-sinf';
-      const badge   = harf
-        ? `<div class="sinf-num-badge">${raqam}<span class="sinf-harf">${harf}</span></div>`
-        : `<div class="sinf-num-badge">${raqam}</div>`;
-      return `
-      <div class="sinf-card" onclick="showSinfOquvchilar(decodeURIComponent('${encodeURIComponent(sinf)}'))">
-        ${badge}
-        <div class="sinf-card-info">
-          <div class="sinf-card-name">${sinfNomi}</div>
-          <div class="sinf-card-count">${sinfMap[sinf].length} ta o\u2019quvchi</div>
-        </div>
-        <div class="sinf-card-arrow">›</div>
-      </div>`;
-    }).join('');
-  } catch(e) {
-    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
-  }
-}
-
-// ═══════════════════════════════════════════
-//  O'QITUVCHI DAVOMATI (o'z davomatini ko'radi)
-// ═══════════════════════════════════════════
-
-const KUN_NOMLARI = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
-const STATUS_INFO = {
-  keldi:   { emoji: '✅', label: 'Keldi',      color: '#10b981' },
-  kelmadi: { emoji: '❌', label: 'Kelmadi',    color: '#ef4444' },
-  sababli: { emoji: '📋', label: 'Sababli',    color: '#f59e0b' },
-  kech:    { emoji: '⏰', label: 'Kech keldi', color: '#8b5cf6' },
-};
-
-async function openOqituvchiDavomat() {
-  showPage('sinflarPage');
-  if (tg) tg.BackButton.show();
-
-  const titleEl = document.querySelector('#sinflarPage .list-title');
-  if (titleEl) titleEl.textContent = '📋 Davomatim';
-
-  const wrap = document.getElementById('sinflarContent');
-  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
-
-  try {
-    const data = await apiGet('/davomat/mening-davomatim');
-
-    if (!data || !data.ok) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
-      return;
-    }
-
-    const records = data.records || [];
-    const kunlar  = data.kunlar  || '';
-    const fan     = data.fan     || '—';
-
-    const kunRaqamlari = kunlar.split(',').map(k => parseInt(k.trim())).filter(n => n >= 1 && n <= 6);
-    const kunNomlar    = kunRaqamlari.map(k => KUN_NOMLARI[k]).join(', ') || '—';
-
-    if (!records.length) {
-      wrap.innerHTML =
-        '<div class="davomat-info-card">' +
-          '<div class="davomat-info-row"><span>📚 Fan</span><strong>' + fan + '</strong></div>' +
-          '<div class="davomat-info-row"><span>📅 Dars kunlari</span><strong>' + kunNomlar + '</strong></div>' +
-        '</div>' +
-        '<div class="empty" style="margin-top:20px">' +
-          '<div class="empty-icon">📭</div>Hozircha davomat yozuvi yo\'q' +
-        '</div>';
-      return;
-    }
-
-    const stats = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
-    records.forEach(function(r) { if (stats[r.status] !== undefined) stats[r.status]++; });
-    const jami = records.length;
-    const foiz = jami > 0 ? Math.round((stats.keldi + stats.kech) / jami * 100) : 0;
-
-    let html =
-      '<div class="davomat-info-card">' +
-        '<div class="davomat-info-row"><span>📚 Fan</span><strong>' + fan + '</strong></div>' +
-        '<div class="davomat-info-row"><span>📅 Dars kunlari</span><strong>' + kunNomlar + '</strong></div>' +
-        '<div class="davomat-divider"></div>' +
-        '<div class="davomat-stats-row">' +
-          '<div class="dav-stat"><span class="dav-num" style="color:#10b981">' + stats.keldi + '</span><span class="dav-lbl">Keldi</span></div>' +
-          '<div class="dav-stat"><span class="dav-num" style="color:#ef4444">' + stats.kelmadi + '</span><span class="dav-lbl">Kelmadi</span></div>' +
-          '<div class="dav-stat"><span class="dav-num" style="color:#f59e0b">' + stats.sababli + '</span><span class="dav-lbl">Sababli</span></div>' +
-          '<div class="dav-stat"><span class="dav-num" style="color:#8b5cf6">' + stats.kech + '</span><span class="dav-lbl">Kech</span></div>' +
-        '</div>' +
-        '<div class="davomat-progress-wrap">' +
-          '<div class="davomat-progress-bar" style="width:' + foiz + '%"></div>' +
-        '</div>' +
-        '<div class="davomat-progress-label">' + foiz + '% davomat · ' + jami + ' kun</div>' +
-      '</div>' +
-      '<div class="davomat-list-title">Tarix</div>';
-
-    records.forEach(function(r) {
-      var si     = STATUS_INFO[r.status] || { emoji: '❓', label: r.status || '—', color: '#888' };
-      var dars   = (r.dars_soat > 0 || r.dars_daqiqa > 0) ? (r.dars_soat + 'h ' + r.dars_daqiqa + 'min dars') : '';
-      var kech   = r.kech_minut > 0 ? (r.kech_minut + ' min kech') : '';
-      var note   = r.izoh ? ('· ' + r.izoh) : '';
-      var detail = [dars, kech, note].filter(Boolean).join(' ');
-
-      html +=
-        '<div class="davomat-item">' +
-          '<div class="dav-status-dot" style="background:' + si.color + '">' + si.emoji + '</div>' +
-          '<div class="dav-item-body">' +
-            '<div class="dav-item-date">' + (r.sana || '—') + '</div>' +
-            '<div class="dav-item-status" style="color:' + si.color + '">' + si.label + '</div>' +
-            (detail ? '<div class="dav-item-detail">' + detail + '</div>' : '') +
-          '</div>' +
-        '</div>';
-    });
-
-    wrap.innerHTML = html;
-  } catch(e) {
-    console.error('openOqituvchiDavomat:', e);
-    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
-  }
 }
 
 // ═════════════════════════════
@@ -1030,131 +819,6 @@ function myDavNav(dir) {
 }
 
 
-// ─── Joriy sinf ma'lumotlari ─────────────────────────────────────────
-window._davomat_sinf   = null;  // tanlangan sinf
-window._davomat_sana   = null;  // tanlangan sana
-window._davomat_mid    = null;  // tanlangan maktab ID
-window._davomat_state  = {};    // { ism: status }
-
-function showSinfOquvchilar(sinf) {
-  const oquvchilar = (window._currentSinfMap && window._currentSinfMap[sinf]) || [];
-  window._davomat_sinf  = sinf;
-  window._davomat_mid   = MAKTAB_ID_MAP[TANLANGAN_M] || null;
-  window._davomat_state = {};
-
-  // Bugungi sana (YYYY-MM-DD)
-  const today = new Date();
-  const yyyy  = today.getFullYear();
-  const mm    = String(today.getMonth() + 1).padStart(2, '0');
-  const dd    = String(today.getDate()).padStart(2, '0');
-  window._davomat_sana = yyyy + '-' + mm + '-' + dd;
-
-  showPage('sinf-oquv-page');
-  if (tg) tg.BackButton.show();
-
-  const _cleanTitle = sinf.replace(/-sinf$/i, '');
-  document.getElementById('sinfOquvTitle').textContent = _cleanTitle + "-sinf";
-  const wrap = document.getElementById('sinfOquvContent');
-
-  if (!oquvchilar || !oquvchilar.length) {
-    wrap.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>O&#39;quvchi topilmadi</div>';
-    return;
-  }
-
-  // Bugungi mavjud davomatni yuklab, keyin render qilamiz
-  const mid  = window._davomat_mid;
-  const sana = window._davomat_sana;
-  const url  = '/davomat/sinf-davomat?maktabId=' + mid + '&sinf=' + encodeURIComponent(sinf) + '&sana=' + sana;
-
-  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
-
-  apiGet(url).then(data => {
-    // Mavjud davomatni state ga yozamiz
-    if (data && data.ok) {
-      (data.records || []).forEach(r => { window._davomat_state[r.oquvchi_ism] = r.status; });
-    }
-    renderSinfDavomat(oquvchilar, sinf, sana);
-  }).catch(() => {
-    renderSinfDavomat(oquvchilar, sinf, sana);
-  });
-}
-
-function renderSinfDavomat(oquvchilar, sinf, sana) {
-  const wrap = document.getElementById('sinfOquvContent');
-  const STATUS_LIST = [
-    { key: 'keldi',   label: 'Keldi',   color: '#10b981', icon: '✅' },
-    { key: 'kelmadi', label: 'Kelmadi', color: '#ef4444', icon: '❌' },
-    { key: 'kech',    label: 'Kech',    color: '#8b5cf6', icon: '⏰' },
-    { key: 'sababli', label: 'Sababli', color: '#f59e0b', icon: '📋' },
-  ];
-
-  let html = '<div class="dav-sana-wrap"><span class="dav-sana-lbl">📅 ' + sana + '</span></div>';
-
-  html += oquvchilar.map((o, idx) => {
-    const fullIsm = (o.familiya || '') + ' ' + (o.ism || '');
-    const ism     = fullIsm.trim();
-    const init    = (ism[0] || '?').toUpperCase();
-    const curSt   = window._davomat_state[ism] || '';
-
-    const btns = STATUS_LIST.map(s => {
-      const active = curSt === s.key ? 'dav-btn-active' : '';
-      return '<button class="dav-status-btn ' + active + '" style="' +
-        (curSt === s.key ? 'background:' + s.color + '22;border-color:' + s.color + ';color:' + s.color : '') +
-        '" onclick="setDavStatus(' + "'" + ism + "','" + s.key + "'" + ')">' +
-        s.icon + ' ' + s.label + '</button>';
-    }).join('');
-
-    return '<div class="dav-oquvchi-card" id="dav-card-' + idx + '">' +
-      '<div class="dav-oquv-header">' +
-        '<div class="avatar" style="background:linear-gradient(135deg,#6c63ff,#9b8fff)">' + init + '</div>' +
-        '<div class="dav-oquv-info">' +
-          '<div class="item-name">' + ism + '</div>' +
-          '<div class="item-detail">📚 ' + (o.sinf || '—') + '</div>' +
-        '</div>' +
-      '</div>' +
-      '<div class="dav-btn-row">' + btns + '</div>' +
-    '</div>';
-  }).join('');
-
-  html += '<button class="soat-dars-btn" onclick="saveSinfDavomat()">💾 Saqlash</button>';
-  wrap.innerHTML = html;
-}
-
-function setDavStatus(ism, status) {
-  window._davomat_state[ism] = status;
-  // Barcha kartochkalarni qayta render qilish
-  const sinf     = window._davomat_sinf;
-  const oquvchilar = (window._currentSinfMap && window._currentSinfMap[sinf]) || [];
-  renderSinfDavomat(oquvchilar, sinf, window._davomat_sana);
-}
-
-async function saveSinfDavomat() {
-  const sinf = window._davomat_sinf;
-  const sana = window._davomat_sana;
-  const mid  = window._davomat_mid;
-  const state = window._davomat_state;
-
-  const records = Object.entries(state)
-    .filter(([ism, st]) => st)
-    .map(([ism, st]) => ({ ism, status: st }));
-
-  if (!records.length) {
-    alert("Hech qanday status belgilanmadi!");
-    return;
-  }
-
-  try {
-    const res = await apiPost('/davomat/sinf-davomat', { maktabId: mid, sinf, sana, records });
-    if (res && res.ok) {
-      alert('✅ ' + res.saved + ' ta oquvchi davomati saqlandi!');
-    } else {
-      alert('❌ Xatolik: ' + (res && res.error || 'Noma\u02bclum'));
-    }
-  } catch(e) {
-    alert('❌ Server xatoligi');
-  }
-}
-
 // ═══════════════════════════════════════════
 //  DARS JADVALI (O'QUVCHI)
 // ═══════════════════════════════════════════
@@ -1268,304 +932,11 @@ async function openMyJadval() {
 }
 
 // ═══════════════════════════════════════════
-//  DARS JADVALI (O'QITUVCHI)
-// ═══════════════════════════════════════════
-async function openTeacherJadval() {
-  showPage('myJadvalPage');
-  if (tg) tg.BackButton.show();
-
-  const titleEl = document.querySelector('#myJadvalPage .list-title');
-  if (titleEl) titleEl.textContent = '📅 Dars jadvali';
-
-  const wrap = document.getElementById('myJadvalContent');
-  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
-
-  try {
-    const maktabId = MAKTAB_ID_MAP[TANLANGAN_M] || null;
-    const jadvalUrl = maktabId
-      ? `/jadval/mening-jadvalim-oqituvchi?maktabId=${maktabId}`
-      : '/jadval/mening-jadvalim-oqituvchi';
-    const data = await apiGet(jadvalUrl);
-
-    if (!data || !data.ok) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
-      return;
-    }
-
-    const jadvallar = data.jadvallar || [];
-
-    if (jadvallar.length === 0) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">📅</div>Dars jadvali hali kiritilmagan</div>';
-      return;
-    }
-
-    // Kunlar bo'yicha guruhlash
-    const byKun = {};
-    KUN_TARTIB.forEach(k => { byKun[k] = []; });
-
-    jadvallar.forEach(j => {
-      const kunStr = (j.kunlar || '').trim();
-      if (!kunStr) return;
-      const kunParts = kunStr.split(',').map(k => k.trim()).filter(Boolean);
-      kunParts.forEach(k => {
-        const kunNom = KUN_RAQAM_MAP[k] || k;
-        if (byKun[kunNom] !== undefined) {
-          const exists = byKun[kunNom].find(x => x.fan === j.fan && x.sinflar === j.sinflar);
-          if (!exists) byKun[kunNom].push(j);
-        }
-      });
-    });
-
-    const today = new Date();
-    const todayNom = KUN_RAQAM_MAP[String(today.getDay())] || '';
-
-    let html = '';
-    KUN_TARTIB.forEach(kun => {
-      const darslar = byKun[kun];
-      if (!darslar.length) return;
-
-      const isToday = kun === todayNom;
-      html += `
-        <div class="jadval-kun-blok ${isToday ? 'jadval-bugun' : ''}">
-          <div class="jadval-kun-sarlavha">
-            ${isToday ? '🟢 ' : ''}${kun}${isToday ? ' <span class="jadval-bugun-badge">bugun</span>' : ''}
-          </div>
-          ${darslar.map(d => `
-            <div class="jadval-dars-karta">
-              <div class="jadval-dars-ustun jadval-dars-vaqt">
-                <div class="jadval-vaqt-icon">🕐</div>
-                <div>
-                  <div class="jadval-vaqt-text">${d.boshlanish || '—'}</div>
-                  ${d.tugash ? `<div class="jadval-vaqt-end">${d.tugash}</div>` : ''}
-                </div>
-              </div>
-              <div class="jadval-dars-ustun jadval-dars-info">
-                <div class="jadval-fan">${d.fan || '—'}</div>
-                ${d.sinflar ? `<div class="jadval-teacher">📚 ${d.sinflar}</div>` : ''}
-              </div>
-            </div>
-          `).join('')}
-        </div>`;
-    });
-
-    wrap.innerHTML = html || '<div class="empty"><div class="empty-icon">📅</div>Jadval ma\'lumotlari mavjud emas</div>';
-  } catch (e) {
-    console.error('openTeacherJadval:', e);
-    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
-  }
-}
-
-// ═══════════════════════════════════════════
-//  DARS SOATLARI STATISTIKASI (O'QITUVCHI)
-// ═══════════════════════════════════════════
-const OY_NOMLARI = ['','Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-
-async function openSoatStatistika() {
-  showPage('soatStatPage');
-  if (tg) tg.BackButton.show();
-
-  const wrap = document.getElementById('soatStatContent');
-  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
-
-  try {
-    const data = await apiGet('/davomat/soat-statistika');
-
-    if (!data || !data.ok) {
-      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
-      return;
-    }
-
-    const t  = data.teacher    || {};
-    const st = data.statistika || {};
-    const oy = data.oylik      || [];
-
-    const KUN_TARTIB_LOCAL = ['1','2','3','4','5','6','0'];
-    const kunNomlar = (t.kunlar || '').split(',').map(k => KUN_RAQAM_MAP[k.trim()] || k.trim()).filter(Boolean).join(', ') || '—';
-
-    // Rejalangan haftalik soat
-    const rejaStr = t.rejaSoat || t.rejaDaqiqa
-      ? `${t.rejaSoat}h ${t.rejaDaqiqa}min`
-      : '—';
-
-    // Haqiqiy soat
-    const haqStr = `${st.haqSoat}h ${st.haqDaq}min`;
-
-    // Davomat foizi
-    const foiz = st.jamiDars > 0
-      ? Math.round((st.keldi + st.kech) / st.jamiDars * 100)
-      : 0;
-
-    let html = `
-      <!-- Info karta -->
-      <div class="soat-info-karta">
-        <div class="soat-info-row"><span>📚 Fan</span><strong>${t.fan}</strong></div>
-        <div class="soat-info-row"><span>📅 Dars kunlari</span><strong>${kunNomlar}</strong></div>
-        <div class="soat-info-row"><span>🕐 Dars vaqti</span><strong>${t.boshlanish || '—'} – ${t.tugash || '—'}</strong></div>
-        <div class="soat-info-row"><span>📚 Sinflar</span><strong>${t.sinflar || '—'}</strong></div>
-        <div class="soat-divider"></div>
-        <div class="soat-info-row"><span>⏱️ Kunlik reja</span><strong>${rejaStr}</strong></div>
-        <div class="soat-info-row"><span>📆 Dars kunlari soni</span><strong>${t.kunSoni} kun/hafta</strong></div>
-      </div>
-
-      <!-- Umumiy statistika -->
-      <div class="soat-section-title">📊 Umumiy statistika</div>
-      <div class="soat-stats-grid">
-        <div class="soat-stat-karta">
-          <div class="soat-stat-num" style="color:#10b981">${st.haqSoat}<span class="soat-unit">h</span></div>
-          <div class="soat-stat-lbl">O'tilgan soat</div>
-        </div>
-        <div class="soat-stat-karta">
-          <div class="soat-stat-num" style="color:#6c63ff">${st.jamiDars}</div>
-          <div class="soat-stat-lbl">Jami dars</div>
-        </div>
-        <div class="soat-stat-karta">
-          <div class="soat-stat-num" style="color:#10b981">${st.keldi}</div>
-          <div class="soat-stat-lbl">Keldi</div>
-        </div>
-        <div class="soat-stat-karta">
-          <div class="soat-stat-num" style="color:#ef4444">${st.kelmadi}</div>
-          <div class="soat-stat-lbl">Kelmadi</div>
-        </div>
-      </div>
-
-      <!-- Davomat foizi -->
-      <div class="soat-foiz-wrap">
-        <div class="soat-foiz-label">Davomat: ${foiz}%</div>
-        <div class="davomat-progress-wrap">
-          <div class="davomat-progress-bar" style="width:${foiz}%"></div>
-        </div>
-      </div>`;
-
-    // Oylik statistika
-    if (oy.length > 0) {
-      html += `<div class="soat-section-title">📆 Oylik ko'rsatkich</div>`;
-      oy.forEach(o => {
-        const oyNom = OY_NOMLARI[parseInt(o.oy)] || o.oy;
-        const soatJami = parseInt(o.soat || 0) + Math.floor(parseInt(o.daqiqa || 0) / 60);
-        const daqJami  = parseInt(o.daqiqa || 0) % 60;
-        html += `
-          <div class="soat-oylik-karta">
-            <div class="soat-oylik-oy">${oyNom} ${o.yil || ''}</div>
-            <div class="soat-oylik-right">
-              <div class="soat-oylik-soat">${soatJami}h ${daqJami}min</div>
-              <div class="soat-oylik-dars">${o.dars_soni} dars</div>
-            </div>
-          </div>`;
-      });
-    }
-
-    // Davomat belgilash tugmasi
-    html += `
-      <button class="soat-dars-btn" onclick="openDarsBelgilash()">
-        ✏️ Bugungi darsni belgilash
-      </button>`;
-
-    wrap.innerHTML = html;
-  } catch (e) {
-    console.error('openSoatStatistika:', e);
-    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
-  }
-}
-
-// ═══════════════════════════════════════════
-//  DARS BELGILASH (O'QITUVCHI O'ZI)
-// ═══════════════════════════════════════════
-function openDarsBelgilash() {
-  showPage('darsBelgilashPage');
-  if (tg) tg.BackButton.show();
-
-  // Bugungi sanani o'rnatish
-  const today = new Date();
-  const dd  = String(today.getDate()).padStart(2,'0');
-  const mm  = String(today.getMonth()+1).padStart(2,'0');
-  const yyyy = today.getFullYear();
-  document.getElementById('darsDate').value = `${dd}.${mm}.${yyyy}`;
-
-  // Soat maydonlarini boshlang'ich qiymat
-  document.getElementById('darsSoat').value    = '';
-  document.getElementById('darsDaqiqa').value  = '';
-  document.getElementById('kechMinut').value   = '';
-  document.getElementById('darsIzoh').value    = '';
-  document.getElementById('darsSaveMsg').textContent = '';
-
-  // Status tugmalarini reset
-  document.querySelectorAll('.dars-status-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('darsStatusKeldi')?.classList.add('active');
-  window._darsStatus = 'keldi';
-
-  // Kech soat maydonini yashirish
-  toggleKechMaydoni('keldi');
-}
-
-function selectDarsStatus(status) {
-  window._darsStatus = status;
-  document.querySelectorAll('.dars-status-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById('darsStatus' + status.charAt(0).toUpperCase() + status.slice(1))?.classList.add('active');
-  toggleKechMaydoni(status);
-}
-
-function toggleKechMaydoni(status) {
-  const kechWrap = document.getElementById('kechWrap');
-  if (kechWrap) kechWrap.style.display = status === 'kech' ? 'block' : 'none';
-}
-
-async function saveDarsBelgilash() {
-  const btn   = document.getElementById('darsSaveBtn');
-  const msgEl = document.getElementById('darsSaveMsg');
-  msgEl.textContent = '';
-
-  const sana      = document.getElementById('darsDate').value.trim();
-  const status    = window._darsStatus || 'keldi';
-  const dars_soat = parseInt(document.getElementById('darsSoat').value)   || 0;
-  const dars_daqiqa = parseInt(document.getElementById('darsDaqiqa').value) || 0;
-  const kech_minut  = parseInt(document.getElementById('kechMinut').value)  || 0;
-  const izoh        = document.getElementById('darsIzoh').value.trim();
-
-  if (!sana) { msgEl.textContent = '❌ Sanani kiriting'; return; }
-
-  btn.disabled = true;
-  btn.textContent = 'Saqlanmoqda...';
-
-  try {
-    const res = await fetch(`${API_BASE}/davomat/mening-darsim`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${TOKEN}`
-      },
-      body: JSON.stringify({ sana, status, dars_soat, dars_daqiqa, kech_minut, izoh })
-    });
-    const data = await res.json();
-
-    if (data.ok) {
-      msgEl.style.color = '#10b981';
-      msgEl.textContent = '✅ Muvaffaqiyatli saqlandi!';
-      setTimeout(() => {
-        openSoatStatistika();
-      }, 1200);
-    } else {
-      msgEl.style.color = '#ef4444';
-      msgEl.textContent = '❌ ' + (data.error || 'Xatolik');
-    }
-  } catch(e) {
-    msgEl.style.color = '#ef4444';
-    msgEl.textContent = '❌ Server bilan ulanib bo\'lmadi';
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '💾 Saqlash';
-  }
-}
-
-// ═══════════════════════════════════════════
 //  RO'YXATLAR
 // ═══════════════════════════════════════════
-// Nav Davomat — rol ga qarab toʻgʻri funksiyani chaqiradi
+// Nav Davomat
 function navDavomat() {
-  if (ROL === 'oqituvchi') {
-    openMyDavomat();
-  } else {
-    openList('davomat');
-  }
+  openList('davomat');
 }
 
 async function openList(type) {
@@ -1586,7 +957,7 @@ async function openList(type) {
     '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
 
   let data = null;
-  const maktab = TANLANGAN_M ? `&maktab=${encodeURIComponent(TANLANGAN_M)}` : '';
+  const maktab = '';
 
   try {
     if (type === 'students')  data = await apiGet('/students?limit=500' + maktab);
