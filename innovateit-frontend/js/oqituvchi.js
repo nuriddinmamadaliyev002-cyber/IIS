@@ -599,11 +599,15 @@ async function loadDavomatOquvchilarVaHolat(sinflarSet) {
     }
 
     window._davomat_state = {};
+    window._davomat_izoh  = {};
     const results = await Promise.all([...sinflarSet].map(s =>
       api.get('/api/davomat/sinf-davomat', { maktabId: TANLANGAN_MID, sinf: s, sana }).catch(() => null)
     ));
     results.forEach(r => {
-      if (r && r.ok) (r.records || []).forEach(rec => { window._davomat_state[rec.oquvchi_ism] = rec.status; });
+      if (r && r.ok) (r.records || []).forEach(rec => {
+        window._davomat_state[rec.oquvchi_ism] = rec.status;
+        if (rec.izoh) window._davomat_izoh[rec.oquvchi_ism] = rec.izoh;
+      });
     });
 
     renderGuruhDavomat();
@@ -658,7 +662,12 @@ function renderGuruhDavomat() {
                 <span class="dav-student-num">${i + 1}</span>
                 <span class="dav-student-name" title="${esc(fullIsm)}">${esc(fullIsm)}</span>
                 <div class="dav-status-btns">
-                  ${DAV_STATUS_LIST.map(s => `<button type="button" class="dav-s-btn${cur === s.key ? ' active-' + s.key : ''}" title="${s.label}" onclick="setGuruhDavStatus('${esc(fullIsm).replace(/'/g, "\\'")}','${s.key}')">${s.icon}</button>`).join('')}
+                  ${DAV_STATUS_LIST.map(s => {
+                    const active   = cur === s.key;
+                    const izohText = s.key === 'sababli' ? (window._davomat_izoh && window._davomat_izoh[fullIsm]) : '';
+                    const title    = izohText ? `${s.label}: ${izohText}` : s.label;
+                    return `<button type="button" class="dav-s-btn${active ? ' active-' + s.key : ''}" title="${esc(title)}" onclick="setGuruhDavStatus('${esc(fullIsm).replace(/'/g, "\\'")}','${s.key}')">${s.icon}</button>`;
+                  }).join('')}
                 </div>
               </div>`;
           }).join('')}
@@ -679,11 +688,51 @@ function updateDavomatStatsBar() {
   g('dav-st-total').textContent   = davomatOquvchilarList.length;
 }
 
+let pendingDavIzoh = null; // { ism }
+
 function setGuruhDavStatus(ism, status) {
+  if (status === 'sababli') {
+    // "Sababli" — izoh yozish majburiy, shuning uchun oyna ochamiz
+    pendingDavIzoh = { ism };
+    g('dav-izoh-input').value = (window._davomat_izoh && window._davomat_izoh[ism]) || '';
+    g('dav-izoh-err').textContent = '';
+    g('dav-izoh-modal').style.display = 'flex';
+    setTimeout(() => g('dav-izoh-input').focus(), 100);
+    return;
+  }
+  applyDavStatus(ism, status);
+}
+
+function applyDavStatus(ism, status) {
   // Xuddi shu statusga qayta bosilsa — belgini olib tashlaydi (admin panelidagi kabi)
-  if (window._davomat_state[ism] === status) delete window._davomat_state[ism];
-  else window._davomat_state[ism] = status;
+  if (window._davomat_state[ism] === status) {
+    delete window._davomat_state[ism];
+    if (window._davomat_izoh) delete window._davomat_izoh[ism];
+  } else {
+    window._davomat_state[ism] = status;
+    if (status !== 'sababli' && window._davomat_izoh) delete window._davomat_izoh[ism];
+  }
   renderGuruhDavomat();
+}
+
+function confirmDavIzoh() {
+  if (!pendingDavIzoh) return;
+  const izoh = g('dav-izoh-input').value.trim();
+  if (!izoh) {
+    g('dav-izoh-err').textContent = "⚠️ Sabab kiritish majburiy";
+    return;
+  }
+  const { ism } = pendingDavIzoh;
+  if (!window._davomat_izoh) window._davomat_izoh = {};
+  window._davomat_izoh[ism] = izoh;
+  window._davomat_state[ism] = 'sababli';
+  closeDavIzoh();
+  renderGuruhDavomat();
+}
+
+function closeDavIzoh() {
+  g('dav-izoh-modal').style.display = 'none';
+  pendingDavIzoh = null;
 }
 
 async function saveGuruhDavomat() {
@@ -706,7 +755,11 @@ async function saveGuruhDavomat() {
     const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
     if (state[fullIsm]) {
       if (!bySinf[o.sinf]) bySinf[o.sinf] = [];
-      bySinf[o.sinf].push({ ism: fullIsm, status: state[fullIsm] });
+      bySinf[o.sinf].push({
+        ism:    fullIsm,
+        status: state[fullIsm],
+        izoh:   (window._davomat_izoh && window._davomat_izoh[fullIsm]) || '',
+      });
     }
   });
 

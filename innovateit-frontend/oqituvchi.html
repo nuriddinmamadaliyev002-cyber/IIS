@@ -255,6 +255,26 @@
   </div>
 </div>
 
+<!-- ════════════ SABABLI — IZOH MODAL ════════════ -->
+<div class="modal-overlay" id="dav-izoh-modal" style="display:none;" onclick="if(event.target===this)closeDavIzoh()">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">📋 Sababli — izoh kiriting</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">O'quvchi kelmagan sababi (majburiy):</p>
+    <textarea id="dav-izoh-input"
+      class="field-input"
+      placeholder="Masalan: Kasalligi sababli..."
+      style="resize:none;height:80px;margin-bottom:6px;display:block;font-size:14px;"
+      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();confirmDavIzoh();}">
+    </textarea>
+    <div id="dav-izoh-err" style="color:#ef4444;font-size:12px;min-height:16px;margin-bottom:8px;"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeDavIzoh()">Bekor qilish</button>
+      <button class="btn-submit" onclick="confirmDavIzoh()">Tasdiqlash</button>
+    </div>
+  </div>
+</div>
+
 <div class="loading-overlay" id="loading-ov" style="display:none;"><div class="loading-spinner"></div></div>
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_teacher_token';</script>
