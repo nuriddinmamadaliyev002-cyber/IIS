@@ -691,6 +691,16 @@ async function saveGuruhDavomat() {
   const state = window._davomat_state || {};
   const sana  = dateStrLocal(window._davomat_curdate);
 
+  // Admin paneldagi kabi: sana ko'rinayotgan BARCHA o'quvchilar belgilanmaguncha saqlashga yo'l qo'yilmaydi
+  const total  = davomatOquvchilarList.length;
+  const marked = davomatOquvchilarList.filter(o => {
+    const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
+    return !!state[fullIsm];
+  }).length;
+
+  if (!marked) { alert('⚠️ Hech narsa belgilanmadi'); return; }
+  if (marked < total) { alert(`⚠️ Hali ${total - marked} ta o'quvchi belgilanmadi`); return; }
+
   const bySinf = {};
   davomatOquvchilarList.forEach(o => {
     const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
@@ -699,8 +709,6 @@ async function saveGuruhDavomat() {
       bySinf[o.sinf].push({ ism: fullIsm, status: state[fullIsm] });
     }
   });
-
-  if (!Object.keys(bySinf).length) { alert("Hech qanday status belgilanmadi!"); return; }
 
   try {
     const results = await Promise.all(Object.entries(bySinf).map(([sinf, records]) =>
