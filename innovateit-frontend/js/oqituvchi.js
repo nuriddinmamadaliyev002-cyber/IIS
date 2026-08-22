@@ -8,7 +8,6 @@ let U             = null;   // { ism, entityId, viaTelegram: true }
 let TEACHER_ID    = null;
 let MAKTABLAR_RO  = [];     // [{id, nomi}]
 let TANLANGAN_MID = null;   // tanlangan maktab id
-let CURRENT_SINF_MAP = {};  // { sinfNomi: [oquvchilar] }
 
 const g = id => document.getElementById(id);
 
@@ -82,13 +81,13 @@ function showApp() {
     TANLANGAN_MID = MAKTABLAR_RO[0].id;
   }
 
-  switchTab('sinflar');
+  switchTab('guruhlar');
 }
 
 function onMaktabChange() {
   TANLANGAN_MID = g('oq-maktab-selector').value;
-  closeSinfOquvchilar();
-  loadSinflar();
+  closeGuruhDavomat();
+  loadGuruhlarim();
   loadJadval();
   clearGuruhForm();
   if (g('tab-guruh').classList.contains('active')) initGuruhTab();
@@ -101,10 +100,10 @@ function switchTab(tab) {
   g('tab-btn-' + tab).classList.add('active');
   g('tab-' + tab).classList.add('active');
 
-  if (tab === 'sinflar') loadSinflar();
-  if (tab === 'jadval')  loadJadval();
-  if (tab === 'soat')    loadSoatStatistika();
-  if (tab === 'guruh')   initGuruhTab();
+  if (tab === 'guruhlar') loadGuruhlarim();
+  if (tab === 'jadval')   loadJadval();
+  if (tab === 'soat')     loadSoatStatistika();
+  if (tab === 'guruh')    initGuruhTab();
 }
 
 // ═══════════════════════════════════════════
@@ -178,7 +177,6 @@ async function toggleSinfChip(chipEl) {
     }
   }
 }
-
 
 function toggleKunChip(chipEl) {
   chipEl.classList.toggle('sel');
@@ -267,6 +265,8 @@ function clearGuruhForm() {
   g('guruh-bosh-s').value = '08'; g('guruh-bosh-m').value = '00';
   g('guruh-tug-s').value  = '14'; g('guruh-tug-m').value  = '00';
   g('guruh-msg').textContent = '';
+  g('guruh-form-title').textContent = "➕ O'zingizga o'quvchi guruhi yarating";
+  g('guruh-delete-wrap').style.display = 'none';
   activeGuruhSinf = null;
   guruhOquvchilarMap.clear();
   editingGuruhId = null;
@@ -322,8 +322,7 @@ async function saveGuruh() {
     msgEl.textContent = '✅ Guruh muvaffaqiyatli saqlandi!';
     setTimeout(() => {
       clearGuruhForm();
-      loadSinflar();
-      if (document.getElementById('tab-jadval').classList.contains('active')) loadJadval();
+      switchTab('guruhlar');
     }, 900);
   } catch (e) {
     msgEl.style.color = '#ef4444';
@@ -335,59 +334,48 @@ async function saveGuruh() {
 }
 
 // ═══════════════════════════════════════════
-//  SINFLAR
+//  GURUHLARIM (o'qituvchi yaratgan guruhlar ro'yxati)
 // ═══════════════════════════════════════════
-async function loadSinflar() {
-  closeSinfOquvchilar();
-  const wrap = g('sinflar-grid');
+let LAST_GURUHLAR = [];
+const KUN_QISQA = { '1':'Du', '2':'Se', '3':'Cho', '4':'Pay', '5':'Ju', '6':'Sha' };
+
+async function loadGuruhlarim() {
+  closeGuruhDavomat();
+  const wrap = g('guruhlar-list');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
 
-  if (!TEACHER_ID) {
-    wrap.innerHTML = '<div class="oq-empty">⚠️ O\'qituvchi ID topilmadi</div>';
+  if (!TANLANGAN_MID) {
+    wrap.innerHTML = '<div class="oq-empty">⚠️ Avval maktabni tanlang</div>';
     return;
   }
 
   try {
-    const data = await api.get(`/api/teachers/${TEACHER_ID}/oquvchilar`);
+    const data = await api.get('/api/jadval/mening-jadvalim-oqituvchi', { maktabId: TANLANGAN_MID });
     if (!data || !data.ok) {
       wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
       return;
     }
 
-    let oquvchilar = data.oquvchilar || [];
-    if (TANLANGAN_MID) {
-      oquvchilar = oquvchilar.filter(o => String(o.maktab_id) === String(TANLANGAN_MID));
-    }
-
-    const sinfMap = {};
-    oquvchilar.forEach(o => {
-      const s = o.sinf || '—';
-      if (!sinfMap[s]) sinfMap[s] = [];
-      sinfMap[s].push(o);
-    });
-    CURRENT_SINF_MAP = sinfMap;
-
-    const sinflar = Object.keys(sinfMap).sort((a, b) => {
-      const na = parseInt(a) || 0, nb = parseInt(b) || 0;
-      return na - nb || a.localeCompare(b);
-    });
-
-    if (!sinflar.length) {
-      wrap.innerHTML = '<div class="oq-empty">📭 Biriktirilgan o\'quvchi yo\'q</div>';
+    LAST_GURUHLAR = data.jadvallar || [];
+    if (!LAST_GURUHLAR.length) {
+      wrap.innerHTML = '<div class="oq-empty">📭 Hali guruh yaratmagansiz.<br>"➕ Guruh yaratish" bo\'limidan boshlang.</div>';
       return;
     }
 
-    wrap.innerHTML = sinflar.map(sinf => {
-      const clean = sinf.replace(/-sinf$/i, '');
-      const parts = clean.split('-');
-      const raqam = parts[0] || sinf;
-      const harf  = parts[1] ? parts[1].toUpperCase() : '';
-      const sinfNomi = clean + '-sinf';
+    wrap.innerHTML = LAST_GURUHLAR.map(j => {
+      const sinflar = (j.sinflar || '').split(',').filter(Boolean);
+      const sinflarText = sinflar.map(s => s.replace(/-sinf$/i, '')).join(', ') +
+        (sinflar.length ? ('-sinf' + (sinflar.length > 1 ? 'lar' : '')) : '');
+      const kunlar = (j.kunlar || '').split(',').map(k => KUN_QISQA[k.trim()] || k.trim()).filter(Boolean).join(', ');
+
       return `
-        <div class="sinf-card" onclick="openSinfOquvchilar('${esc(sinf).replace(/'/g, "\\'")}')">
-          <div class="sinf-card-badge">${raqam}${harf}</div>
-          <div class="sinf-card-name">${esc(sinfNomi)}</div>
-          <div class="sinf-card-count">${sinfMap[sinf].length} o'quvchi</div>
+        <div class="guruh-card">
+          <div class="guruh-card-top" onclick="editGuruh(${j.id})">
+            <div class="guruh-card-sinf">📚 ${esc(sinflarText || '—')}</div>
+            <div class="guruh-card-edit">✏️</div>
+          </div>
+          <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
+          <button type="button" class="oq-back-btn" style="padding:0;margin-top:8px;font-size:12px;" onclick="openGuruhDavomat(${j.id}, event)">📋 Davomat belgilash</button>
         </div>`;
     }).join('');
   } catch (e) {
@@ -395,37 +383,73 @@ async function loadSinflar() {
   }
 }
 
-function openSinfOquvchilar(sinf) {
-  const list = CURRENT_SINF_MAP[sinf] || [];
-  g('sinflar-grid').style.display = 'none';
-  g('sinf-oquvchilar-wrap').style.display = 'block';
-  g('sinf-oquv-title').textContent = `${sinf.replace(/-sinf$/i,'')}-sinf — davomat`;
+async function editGuruh(id) {
+  const j = LAST_GURUHLAR.find(x => x.id === id);
+  if (!j) return;
 
-  window._davomat_sinf  = sinf;
-  window._davomat_mid   = TANLANGAN_MID;
-  window._davomat_state = {};
+  switchTab('guruh');
+  clearGuruhForm();
+  editingGuruhId = id;
+  g('guruh-form-title').textContent = "✏️ Guruhni tahrirlash";
+  g('guruh-delete-wrap').style.display = 'block';
 
-  const today = new Date();
-  const sana = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
-  window._davomat_sana = sana;
-  g('dav-sana-wrap').innerHTML = `<span class="dav-sana-lbl">📅 ${sana}</span>`;
+  const [bs, bm] = (j.boshlanish || '08:00').split(':');
+  const [ts, tm] = (j.tugash || '14:00').split(':');
+  g('guruh-bosh-s').value = bs || '08'; g('guruh-bosh-m').value = bm || '00';
+  g('guruh-tug-s').value  = ts || '14'; g('guruh-tug-m').value  = tm || '00';
 
-  if (!list.length) {
-    g('sinf-oquv-list').innerHTML = '<div class="oq-empty">📭 O\'quvchi topilmadi</div>';
-    return;
+  (j.kunlar || '').split(',').map(k => k.trim()).filter(Boolean).forEach(k => {
+    document.querySelector(`#guruh-kun-chips [data-k="${k}"]`)?.classList.add('sel');
+  });
+
+  const sinflar = (j.sinflar || '').split(',').filter(Boolean);
+  sinflar.forEach(s => {
+    document.querySelector(`#guruh-sinf-chips [data-s="${s}"]`)?.classList.add('sel');
+  });
+  if (sinflar.length) {
+    activeGuruhSinf = sinflar[sinflar.length - 1];
+    await loadGuruhOquvchilar(activeGuruhSinf);
   }
-
-  g('sinf-oquv-list').innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
-
-  const url = `/api/davomat/sinf-davomat?maktabId=${TANLANGAN_MID}&sinf=${encodeURIComponent(sinf)}&sana=${sana}`;
-  api.get(url).then(data => {
-    if (data && data.ok) {
-      (data.records || []).forEach(r => { window._davomat_state[r.oquvchi_ism] = r.status; });
-    }
-    renderSinfDavomat(list);
-  }).catch(() => renderSinfDavomat(list));
 }
 
+async function deleteGuruh() {
+  if (!editingGuruhId) return;
+  if (!confirm("Guruhni butunlay o'chirmoqchimisiz? Unga biriktirilgan o'quvchilar ham guruhdan chiqariladi.")) return;
+
+  const j = LAST_GURUHLAR.find(x => x.id === editingGuruhId);
+  const btn = g('guruh-save-btn');
+  btn.disabled = true;
+
+  try {
+    const r = await api.del('/api/jadval/mening-jadvalim/' + editingGuruhId);
+    if (!r.ok) {
+      g('guruh-msg').style.color = '#ef4444';
+      g('guruh-msg').textContent = '❌ ' + r.error;
+      btn.disabled = false;
+      return;
+    }
+
+    if (j) {
+      const sinflar = (j.sinflar || '').split(',').filter(Boolean);
+      await Promise.all(sinflar.map(sinf =>
+        api.post('/api/teachers/oquvchi-birik', { teacherId: TEACHER_ID, oquvchiIds: [], sinf, maktabId: TANLANGAN_MID })
+      ));
+    }
+
+    clearGuruhForm();
+    switchTab('guruhlar');
+  } catch (e) {
+    g('guruh-msg').style.color = '#ef4444';
+    g('guruh-msg').textContent = "❌ Server bilan ulanib bo'lmadi";
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  GURUH DAVOMATI (guruhdagi barcha sinflar
+//  bo'yicha o'quvchilar davomatini belgilash)
+// ═══════════════════════════════════════════
 const DAV_STATUS_LIST = [
   { key: 'keldi',   label: 'Keldi',   color: '#10b981', icon: '✅' },
   { key: 'kelmadi', label: 'Kelmadi', color: '#ef4444', icon: '❌' },
@@ -433,17 +457,66 @@ const DAV_STATUS_LIST = [
   { key: 'sababli', label: 'Sababli', color: '#f59e0b', icon: '📋' },
 ];
 
-function renderSinfDavomat(list) {
-  const wrap = g('sinf-oquv-list');
-  wrap.innerHTML = list.map((o, idx) => {
-    const fullIsm = `${o.familiya||''} ${o.ism||''}`.trim();
-    const init  = (fullIsm[0] || '?').toUpperCase();
-    const curSt = window._davomat_state[fullIsm] || '';
+let activeDavomatGuruh   = null;
+let davomatOquvchilarList = [];
+
+async function openGuruhDavomat(guruhId, event) {
+  if (event) event.stopPropagation();
+  const j = LAST_GURUHLAR.find(x => x.id === guruhId);
+  if (!j) return;
+  activeDavomatGuruh = j;
+
+  g('guruhlar-list-wrap').style.display = 'none';
+  g('guruh-davomat-wrap').style.display = 'block';
+
+  const sinflarSet  = new Set((j.sinflar || '').split(',').filter(Boolean));
+  const sinflarText = [...sinflarSet].map(s => s.replace(/-sinf$/i, '')).join(', ');
+  g('guruh-dav-title').textContent = `📋 ${sinflarText}-sinf — davomat`;
+
+  const today = new Date();
+  const sana  = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+  window._davomat_sana = sana;
+  g('dav-sana-wrap').innerHTML = `<span class="dav-sana-lbl">📅 ${sana}</span>`;
+
+  g('guruh-dav-list').innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+
+  try {
+    const data = await api.get(`/api/teachers/${TEACHER_ID}/oquvchilar`);
+    let oquvchilar = (data && data.ok) ? (data.oquvchilar || []) : [];
+    if (TANLANGAN_MID) oquvchilar = oquvchilar.filter(o => String(o.maktab_id) === String(TANLANGAN_MID));
+    oquvchilar = oquvchilar.filter(o => sinflarSet.has(o.sinf));
+    davomatOquvchilarList = oquvchilar;
+
+    if (!oquvchilar.length) {
+      g('guruh-dav-list').innerHTML = '<div class="oq-empty">📭 Guruhga o\'quvchi biriktirilmagan</div>';
+      return;
+    }
+
+    window._davomat_state = {};
+    const results = await Promise.all([...sinflarSet].map(s =>
+      api.get('/api/davomat/sinf-davomat', { maktabId: TANLANGAN_MID, sinf: s, sana }).catch(() => null)
+    ));
+    results.forEach(r => {
+      if (r && r.ok) (r.records || []).forEach(rec => { window._davomat_state[rec.oquvchi_ism] = rec.status; });
+    });
+
+    renderGuruhDavomat();
+  } catch (e) {
+    g('guruh-dav-list').innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
+  }
+}
+
+function renderGuruhDavomat() {
+  const wrap = g('guruh-dav-list');
+  wrap.innerHTML = davomatOquvchilarList.map(o => {
+    const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
+    const init    = (fullIsm[0] || '?').toUpperCase();
+    const curSt   = window._davomat_state[fullIsm] || '';
 
     const btns = DAV_STATUS_LIST.map(s => {
       const active = curSt === s.key;
-      const style = active ? `background:${s.color}22;border-color:${s.color};color:${s.color};` : '';
-      return `<button type="button" class="dars-status-btn" style="${style}" onclick="setDavStatus('${esc(fullIsm).replace(/'/g,"\\'")}','${s.key}')">${s.icon} ${s.label}</button>`;
+      const style  = active ? `background:${s.color}22;border-color:${s.color};color:${s.color};` : '';
+      return `<button type="button" class="dars-status-btn" style="${style}" onclick="setGuruhDavStatus('${esc(fullIsm).replace(/'/g, "\\'")}','${s.key}')">${s.icon} ${s.label}</button>`;
     }).join('');
 
     return `
@@ -452,7 +525,7 @@ function renderSinfDavomat(list) {
           <div class="oq-stu-avatar">${init}</div>
           <div>
             <div class="oq-stu-name">${esc(fullIsm)}</div>
-            <div class="oq-stu-detail">📚 ${esc(o.sinf||'—')}</div>
+            <div class="oq-stu-detail">📚 ${esc(o.sinf || '—')}</div>
           </div>
         </div>
         <div class="dars-status-row">${btns}</div>
@@ -460,36 +533,43 @@ function renderSinfDavomat(list) {
   }).join('');
 }
 
-function setDavStatus(ism, status) {
+function setGuruhDavStatus(ism, status) {
   window._davomat_state[ism] = status;
-  const list = CURRENT_SINF_MAP[window._davomat_sinf] || [];
-  renderSinfDavomat(list);
+  renderGuruhDavomat();
 }
 
-async function saveSinfDavomat() {
-  const sinf  = window._davomat_sinf;
-  const sana  = window._davomat_sana;
-  const mid   = window._davomat_mid;
+async function saveGuruhDavomat() {
+  if (!activeDavomatGuruh) return;
   const state = window._davomat_state || {};
+  const sana  = window._davomat_sana;
 
-  const records = Object.entries(state).filter(([, st]) => st).map(([ism, st]) => ({ ism, status: st }));
-  if (!records.length) { alert("Hech qanday status belgilanmadi!"); return; }
+  const bySinf = {};
+  davomatOquvchilarList.forEach(o => {
+    const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
+    if (state[fullIsm]) {
+      if (!bySinf[o.sinf]) bySinf[o.sinf] = [];
+      bySinf[o.sinf].push({ ism: fullIsm, status: state[fullIsm] });
+    }
+  });
+
+  if (!Object.keys(bySinf).length) { alert("Hech qanday status belgilanmadi!"); return; }
 
   try {
-    const res = await api.post('/api/davomat/sinf-davomat', { maktabId: mid, sinf, sana, records });
-    if (res && res.ok) {
-      alert(`✅ ${res.saved} ta o'quvchi davomati saqlandi!`);
-    } else {
-      alert('❌ Xatolik: ' + (res && res.error || "Noma'lum"));
-    }
+    const results = await Promise.all(Object.entries(bySinf).map(([sinf, records]) =>
+      api.post('/api/davomat/sinf-davomat', { maktabId: TANLANGAN_MID, sinf, sana, records })
+    ));
+    const totalSaved = results.reduce((acc, r) => acc + (r && r.saved ? r.saved : 0), 0);
+    alert(`✅ ${totalSaved} ta o'quvchi davomati saqlandi!`);
   } catch (e) {
     alert('❌ Server xatoligi');
   }
 }
 
-function closeSinfOquvchilar() {
-  g('sinflar-grid').style.display = 'grid';
-  g('sinf-oquvchilar-wrap').style.display = 'none';
+function closeGuruhDavomat() {
+  const listWrap = g('guruhlar-list-wrap'), davWrap = g('guruh-davomat-wrap');
+  if (listWrap) listWrap.style.display = 'block';
+  if (davWrap)  davWrap.style.display  = 'none';
+  activeDavomatGuruh = null;
 }
 
 // ═══════════════════════════════════════════

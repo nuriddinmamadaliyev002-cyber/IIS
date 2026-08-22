@@ -58,26 +58,29 @@
 
   <!-- TAB NAV -->
   <div class="oq-tabnav">
-    <button class="oq-tab-btn active" id="tab-btn-sinflar" onclick="switchTab('sinflar')">🎓 Sinflar</button>
-    <button class="oq-tab-btn" id="tab-btn-guruh" onclick="switchTab('guruh')">➕ Guruh yaratish</button>
+    <button class="oq-tab-btn active" id="tab-btn-guruhlar" onclick="switchTab('guruhlar')">👥 Guruhlarim</button>
+    <button class="oq-tab-btn" id="tab-btn-guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
     <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
     <button class="oq-tab-btn" id="tab-btn-soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
   </div>
 
   <div class="oq-content">
 
-    <!-- ══ SINFLAR TAB ══ -->
-    <div class="oq-tab-page active" id="tab-sinflar">
-      <div id="sinflar-grid" class="sinflar-grid">
-        <div class="oq-loading"><div class="loading-spinner"></div></div>
+    <!-- ══ GURUHLARIM TAB ══ -->
+    <div class="oq-tab-page active" id="tab-guruhlar">
+      <div id="guruhlar-list-wrap">
+        <div class="oq-section-title">👥 Mening guruhlarim</div>
+        <div id="guruhlar-list">
+          <div class="oq-loading"><div class="loading-spinner"></div></div>
+        </div>
       </div>
-      <!-- Sinf ichidagi o'quvchilar (davomat belgilash) -->
-      <div id="sinf-oquvchilar-wrap" style="display:none;">
-        <button class="oq-back-btn" onclick="closeSinfOquvchilar()">← Sinflarga qaytish</button>
-        <div class="oq-section-title" id="sinf-oquv-title">O'quvchilar</div>
+      <!-- Guruh davomati -->
+      <div id="guruh-davomat-wrap" style="display:none;">
+        <button class="oq-back-btn" onclick="closeGuruhDavomat()">← Guruhlarga qaytish</button>
+        <div class="oq-section-title" id="guruh-dav-title">Davomat</div>
         <div class="dav-sana-wrap" id="dav-sana-wrap"></div>
-        <div id="sinf-oquv-list"></div>
-        <button class="oq-mark-btn" onclick="saveSinfDavomat()">💾 Davomatni saqlash</button>
+        <div id="guruh-dav-list"></div>
+        <button class="oq-mark-btn" onclick="saveGuruhDavomat()">💾 Davomatni saqlash</button>
       </div>
     </div>
 
@@ -88,17 +91,16 @@
 
     <!-- ══ GURUH YARATISH TAB ══ -->
     <div class="oq-tab-page" id="tab-guruh">
-      <div class="oq-section-title">➕ O'zingiz uchun o'quvchilar guruhini yarating</div>
-      <div id="guruh-maktab-warn" class="oq-empty" style="display:none;">⚠️ Avval maktabni tanlang</div>
+      <div class="oq-section-title" id="guruh-form-title">➕ O'zingizga o'quvchi guruhi yarating</div>
+      <div id="guruh-maktab-warn" class="oq-empty" style="display:none;">⚠️ Avval maktab tanlang</div>
 
       <div id="guruh-form">
         <div class="field-group">
           <label class="field-label">SINF GURUHINI TANLASH YOKI ALOHIDA SINFLARNI BELGILASH</label>
           <div class="chip-row" id="guruh-groups">
-            <div class="group-chip" data-g="1-4" onclick="applyGroup(['1-sinf','2-sinf','3-sinf','4-sinf'],this)">1–4-sinflar</div>
-            <div class="group-chip" data-g="5-7" onclick="applyGroup(['5-sinf','6-sinf','7-sinf'],this)">5–7-sinflar</div>
-            <div class="group-chip" data-g="8-9" onclick="applyGroup(['8-sinf','9-sinf'],this)">8–9-sinflar</div>
-            <div class="group-chip" data-g="10-11" onclick="applyGroup(['10-sinf','11-sinf'],this)">10–11-sinflar</div>
+            <div class="group-chip" data-g="1-3" onclick="applyGroup(['1-sinf','2-sinf','3-sinf'],this)">1–3 sinf</div>
+            <div class="group-chip" data-g="4-6" onclick="applyGroup(['4-sinf','5-sinf','6-sinf'],this)">4–6 sinf</div>
+            <div class="group-chip" data-g="7-9" onclick="applyGroup(['7-sinf','8-sinf','9-sinf'],this)">7–9 sinf</div>
             <div class="group-chip" data-g="all" onclick="applyGroup(['1-sinf','2-sinf','3-sinf','4-sinf','5-sinf','6-sinf','7-sinf','8-sinf','9-sinf','10-sinf','11-sinf'],this)">Barcha sinflar</div>
           </div>
           <div class="chip-row" id="guruh-sinf-chips">
@@ -127,14 +129,14 @@
 
         <div class="field-group">
           <label class="field-label">DARS KUNLARI</label>
-         <div class="chip-row" id="guruh-kun-chips">
-  <div class="kun-chip" data-k="1" onclick="toggleKunChip(this)">Du</div>
-  <div class="kun-chip" data-k="2" onclick="toggleKunChip(this)">Se</div>
-  <div class="kun-chip" data-k="3" onclick="toggleKunChip(this)">Cho</div>
-  <div class="kun-chip" data-k="4" onclick="toggleKunChip(this)">Pay</div>
-  <div class="kun-chip" data-k="5" onclick="toggleKunChip(this)">Ju</div>
-  <div class="kun-chip" data-k="6" onclick="toggleKunChip(this)">Sha</div>
-</div>
+          <div class="chip-row" id="guruh-kun-chips">
+            <div class="kun-chip" data-k="1" onclick="toggleKunChip(this)">Du</div>
+            <div class="kun-chip" data-k="2" onclick="toggleKunChip(this)">Se</div>
+            <div class="kun-chip" data-k="3" onclick="toggleKunChip(this)">Cho</div>
+            <div class="kun-chip" data-k="4" onclick="toggleKunChip(this)">Pay</div>
+            <div class="kun-chip" data-k="5" onclick="toggleKunChip(this)">Ju</div>
+            <div class="kun-chip" data-k="6" onclick="toggleKunChip(this)">Sha</div>
+          </div>
         </div>
 
         <div class="form-grid">
@@ -149,7 +151,7 @@
           <div class="field-group">
             <label class="field-label">Tugash</label>
             <div style="display:flex;align-items:center;gap:4px;">
-              <input class="field-input" id="guruh-tug-s" type="number" min="0" max="23" value="10" style="text-align:center;">
+              <input class="field-input" id="guruh-tug-s" type="number" min="0" max="23" value="14" style="text-align:center;">
               <span>:</span>
               <input class="field-input" id="guruh-tug-m" type="number" min="0" max="59" value="00" style="text-align:center;">
             </div>
@@ -157,6 +159,10 @@
         </div>
 
         <div id="guruh-msg" style="font-size:13px;margin-bottom:10px;min-height:18px;"></div>
+
+        <div id="guruh-delete-wrap" style="display:none;margin-bottom:10px;">
+          <button type="button" class="btn-cancel" style="color:#ef4444;border-color:#fecaca;width:100%;" onclick="deleteGuruh()">🗑️ Guruhni butunlay o'chirish</button>
+        </div>
 
         <div style="display:flex;gap:10px;">
           <button class="btn-cancel" onclick="clearGuruhForm()">Tozalash</button>
