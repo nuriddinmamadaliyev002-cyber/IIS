@@ -88,16 +88,17 @@
 
     <!-- ══ GURUH YARATISH TAB ══ -->
     <div class="oq-tab-page" id="tab-guruh">
-      <div class="oq-section-title">➕ O'zingizga o'quvchi guruhi yarating</div>
-      <div id="guruh-maktab-warn" class="oq-empty" style="display:none;">⚠️ Avval maktab tanlang</div>
+      <div class="oq-section-title">➕ O'zingiz uchun o'quvchilar guruhini yarating</div>
+      <div id="guruh-maktab-warn" class="oq-empty" style="display:none;">⚠️ Avval maktabni tanlang</div>
 
       <div id="guruh-form">
         <div class="field-group">
           <label class="field-label">SINF GURUHINI TANLASH YOKI ALOHIDA SINFLARNI BELGILASH</label>
           <div class="chip-row" id="guruh-groups">
-            <div class="group-chip" data-g="1-3" onclick="applyGroup(['1-sinf','2-sinf','3-sinf'],this)">1–3 sinf</div>
-            <div class="group-chip" data-g="4-6" onclick="applyGroup(['4-sinf','5-sinf','6-sinf'],this)">4–6 sinf</div>
-            <div class="group-chip" data-g="7-9" onclick="applyGroup(['7-sinf','8-sinf','9-sinf'],this)">7–9 sinf</div>
+            <div class="group-chip" data-g="1-4" onclick="applyGroup(['1-sinf','2-sinf','3-sinf','4-sinf'],this)">1–4-sinflar</div>
+            <div class="group-chip" data-g="5-7" onclick="applyGroup(['5-sinf','6-sinf','7-sinf'],this)">5–7-sinflar</div>
+            <div class="group-chip" data-g="8-9" onclick="applyGroup(['8-sinf','9-sinf'],this)">8–9-sinflar</div>
+            <div class="group-chip" data-g="10-11" onclick="applyGroup(['10-sinf','11-sinf'],this)">10–11-sinflar</div>
             <div class="group-chip" data-g="all" onclick="applyGroup(['1-sinf','2-sinf','3-sinf','4-sinf','5-sinf','6-sinf','7-sinf','8-sinf','9-sinf','10-sinf','11-sinf'],this)">Barcha sinflar</div>
           </div>
           <div class="chip-row" id="guruh-sinf-chips">
@@ -148,7 +149,7 @@
           <div class="field-group">
             <label class="field-label">Tugash</label>
             <div style="display:flex;align-items:center;gap:4px;">
-              <input class="field-input" id="guruh-tug-s" type="number" min="0" max="23" value="14" style="text-align:center;">
+              <input class="field-input" id="guruh-tug-s" type="number" min="0" max="23" value="10" style="text-align:center;">
               <span>:</span>
               <input class="field-input" id="guruh-tug-m" type="number" min="0" max="59" value="00" style="text-align:center;">
             </div>
