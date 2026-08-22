@@ -57,7 +57,14 @@ function doLogout() {
   U = null; TEACHER_ID = null;
   api.logout();
   localStorage.removeItem('iit_oq_u');
-  window.location.href = 'index.html';
+
+  // Bu panel faqat Telegram orqali kiriladi — "index.html" (admin login)ga
+  // qaytarish noto'g'ri. Shu sababli saytdan butunlay chiqib ketamiz:
+  // avval tabni yopishga harakat qilamiz, bo'lmasa botga qaytaramiz.
+  window.close();
+  setTimeout(() => {
+    window.location.href = 'https://t.me/InnovateIT_School_bot';
+  }, 150);
 }
 
 function showApp() {
