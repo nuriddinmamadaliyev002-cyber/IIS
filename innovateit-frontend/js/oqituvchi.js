@@ -179,6 +179,11 @@ async function toggleSinfChip(chipEl) {
   }
 }
 
+
+function toggleKunChip(chipEl) {
+  chipEl.classList.toggle('sel');
+}
+
 async function loadGuruhOquvchilar(sinf) {
   if (!TANLANGAN_MID || !TEACHER_ID) return;
   g('guruh-sinf-label').textContent = sinf.replace(/-sinf$/i, '');
