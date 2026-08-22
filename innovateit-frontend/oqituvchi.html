@@ -78,8 +78,28 @@
       <div id="guruh-davomat-wrap" style="display:none;">
         <button class="oq-back-btn" onclick="closeGuruhDavomat()">← Guruhlarga qaytish</button>
         <div class="oq-section-title" id="guruh-dav-title">Davomat</div>
-        <div class="dav-sana-wrap" id="dav-sana-wrap"></div>
-        <div id="guruh-dav-list"></div>
+
+        <!-- Sana navigatsiyasi: faqat guruhning dars kunlari, kelajakka o'tish yopiq -->
+        <div class="dav-date-bar">
+          <button class="dav-date-nav-btn" id="dav-prev-btn" onclick="changeDavomatDate(-1)">‹</button>
+          <div style="text-align:center;">
+            <div class="dav-date-display" id="dav-date-display">—</div>
+            <div class="dav-date-sub" id="dav-date-sub">—</div>
+          </div>
+          <button class="dav-date-nav-btn" id="dav-next-btn" onclick="changeDavomatDate(1)">›</button>
+          <input class="dav-date-input" type="date" id="dav-date-picker" onchange="onDavomatDatePick()">
+        </div>
+
+        <!-- Statistika paneli -->
+        <div class="dav-stats-bar">
+          <span class="dav-stat-pill k">✅ Keldi <b id="dav-st-keldi">0</b></span>
+          <span class="dav-stat-pill x">❌ Kelmadi <b id="dav-st-kelmadi">0</b></span>
+          <span class="dav-stat-pill s">📋 Sababli <b id="dav-st-sababli">0</b></span>
+          <span class="dav-stat-pill l">⏰ Kech <b id="dav-st-kech">0</b></span>
+          <span class="dav-stat-pill total" style="margin-left:auto;">Jami <b id="dav-st-total">0</b></span>
+        </div>
+
+        <div id="guruh-dav-list" class="dav-sinf-grid"></div>
         <button class="oq-mark-btn" onclick="saveGuruhDavomat()">💾 Davomatni saqlash</button>
       </div>
     </div>

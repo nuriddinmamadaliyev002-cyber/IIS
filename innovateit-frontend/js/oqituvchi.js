@@ -455,23 +455,62 @@ async function deleteGuruh() {
 
 // ═══════════════════════════════════════════
 //  GURUH DAVOMATI (guruhdagi barcha sinflar
-//  bo'yicha o'quvchilar davomatini belgilash)
+//  bo'yicha o'quvchilar davomatini belgilash —
+//  admin paneldagi davomat oynasi kabi: sinf
+//  bo'yicha kartalar, statistika paneli, va
+//  faqat guruhning dars kunlari bo'yicha sana
+//  navigatsiyasi)
 // ═══════════════════════════════════════════
 const DAV_STATUS_LIST = [
   { key: 'keldi',   label: 'Keldi',   color: '#10b981', icon: '✅' },
   { key: 'kelmadi', label: 'Kelmadi', color: '#ef4444', icon: '❌' },
-  { key: 'kech',    label: 'Kech',    color: '#8b5cf6', icon: '⏰' },
   { key: 'sababli', label: 'Sababli', color: '#f59e0b', icon: '📋' },
+  { key: 'kech',    label: 'Kech',    color: '#8b5cf6', icon: '⏰' },
 ];
 
-let activeDavomatGuruh   = null;
+let activeDavomatGuruh    = null;
 let davomatOquvchilarList = [];
+
+function dateStrLocal(d) {
+  const y = d.getFullYear(), m = String(d.getMonth() + 1).padStart(2, '0'), dd = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${dd}`;
+}
+
+// "1,3,5" -> Set{1,3,5}  (raqamlar JS Date.getDay() bilan mos: 0=Yakshanba...6=Shanba)
+function parseKunlarSet(kunlarStr) {
+  const set = new Set();
+  (kunlarStr || '').split(',').map(k => k.trim()).filter(Boolean).forEach(k => {
+    const n = parseInt(k, 10);
+    if (!isNaN(n)) set.add(n);
+  });
+  return set;
+}
+
+// Guruhning dars kuni belgilanmagan bo'lsa — cheklov qo'yilmaydi
+function isLessonDay(date) {
+  if (!window._davomat_kunlar || !window._davomat_kunlar.size) return true;
+  return window._davomat_kunlar.has(date.getDay());
+}
+
+// Berilgan sanadan boshlab dir yo'nalishida eng yaqin dars kunini topadi.
+// Kelajakka (bugungi sanadan keyingiga) chiqib ketishga umuman yo'l qo'ymaydi.
+function findLessonDate(fromDate, dir) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let d = new Date(fromDate); d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 14; i++) {
+    d.setDate(d.getDate() + dir);
+    if (dir > 0 && d > today) return null;
+    if (isLessonDay(d)) return new Date(d);
+  }
+  return null;
+}
 
 async function openGuruhDavomat(guruhId, event) {
   if (event) event.stopPropagation();
   const j = LAST_GURUHLAR.find(x => x.id === guruhId);
   if (!j) return;
   activeDavomatGuruh = j;
+  window._davomat_kunlar = parseKunlarSet(j.kunlar);
 
   g('guruhlar-list-wrap').style.display = 'none';
   g('guruh-davomat-wrap').style.display = 'block';
@@ -480,12 +519,71 @@ async function openGuruhDavomat(guruhId, event) {
   const sinflarText = [...sinflarSet].map(s => s.replace(/-sinf$/i, '')).join(', ');
   g('guruh-dav-title').textContent = `📋 ${sinflarText}-sinf — davomat`;
 
-  const today = new Date();
-  const sana  = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-  window._davomat_sana = sana;
-  g('dav-sana-wrap').innerHTML = `<span class="dav-sana-lbl">📅 ${sana}</span>`;
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let startDate = isLessonDay(today) ? today : findLessonDate(today, -1);
+  if (!startDate) startDate = today;
+  window._davomat_curdate = startDate;
 
-  g('guruh-dav-list').innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+  g('dav-date-picker').max = dateStrLocal(today);
+  setDavomatDateUI();
+  updateDavomatNavBtns();
+
+  await loadDavomatOquvchilarVaHolat(sinflarSet);
+}
+
+function setDavomatDateUI() {
+  const d = window._davomat_curdate;
+  g('dav-date-display').textContent = `${d.getDate()}-${OY_NOMLARI[d.getMonth() + 1]}, ${d.getFullYear()}`;
+  g('dav-date-sub').textContent     = KUN_NOMLARI_MAP[String(d.getDay())] || '';
+  g('dav-date-picker').value        = dateStrLocal(d);
+}
+
+function updateDavomatNavBtns() {
+  g('dav-prev-btn').disabled = !findLessonDate(window._davomat_curdate, -1);
+  g('dav-next-btn').disabled = !findLessonDate(window._davomat_curdate, 1);
+}
+
+function currentGuruhSinflarSet() {
+  return new Set(((activeDavomatGuruh && activeDavomatGuruh.sinflar) || '').split(',').filter(Boolean));
+}
+
+async function changeDavomatDate(dir) {
+  const nd = findLessonDate(window._davomat_curdate, dir);
+  if (!nd) return; // o'tmishda dars kuni qolmagan yoki kelajakka chiqib ketardi
+  window._davomat_curdate = nd;
+  setDavomatDateUI();
+  updateDavomatNavBtns();
+  await loadDavomatOquvchilarVaHolat(currentGuruhSinflarSet());
+}
+
+async function onDavomatDatePick() {
+  const val = g('dav-date-picker').value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  if (d > today) {
+    alert('⚠️ Kelajak sanani tanlash mumkin emas');
+    setDavomatDateUI();
+    return;
+  }
+  if (!isLessonDay(d)) {
+    alert("⚠️ Bu kun guruhingiz uchun dars kuni emas");
+    setDavomatDateUI();
+    return;
+  }
+
+  window._davomat_curdate = d;
+  setDavomatDateUI();
+  updateDavomatNavBtns();
+  await loadDavomatOquvchilarVaHolat(currentGuruhSinflarSet());
+}
+
+async function loadDavomatOquvchilarVaHolat(sinflarSet) {
+  const listEl = g('guruh-dav-list');
+  listEl.className = 'dav-sinf-grid';
+  listEl.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+  const sana = dateStrLocal(window._davomat_curdate);
 
   try {
     const data = await api.get(`/api/teachers/${TEACHER_ID}/oquvchilar`);
@@ -495,7 +593,8 @@ async function openGuruhDavomat(guruhId, event) {
     davomatOquvchilarList = oquvchilar;
 
     if (!oquvchilar.length) {
-      g('guruh-dav-list').innerHTML = '<div class="oq-empty">📭 Guruhga o\'quvchi biriktirilmagan</div>';
+      listEl.innerHTML = '<div class="oq-empty">📭 Guruhga o\'quvchi biriktirilmagan</div>';
+      updateDavomatStatsBar();
       return;
     }
 
@@ -509,46 +608,88 @@ async function openGuruhDavomat(guruhId, event) {
 
     renderGuruhDavomat();
   } catch (e) {
-    g('guruh-dav-list').innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
+    listEl.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
   }
+}
+
+function countDavomatStatuses(list) {
+  const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
+  list.forEach(o => {
+    const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
+    const st = window._davomat_state[fullIsm];
+    if (st && c[st] !== undefined) c[st]++;
+  });
+  return c;
 }
 
 function renderGuruhDavomat() {
   const wrap = g('guruh-dav-list');
-  wrap.innerHTML = davomatOquvchilarList.map(o => {
-    const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
-    const init    = (fullIsm[0] || '?').toUpperCase();
-    const curSt   = window._davomat_state[fullIsm] || '';
+  const groups = {};
+  davomatOquvchilarList.forEach(o => {
+    if (!groups[o.sinf]) groups[o.sinf] = [];
+    groups[o.sinf].push(o);
+  });
+  const sinflar = Object.keys(groups).sort((a, b) => parseInt(a) - parseInt(b));
 
-    const btns = DAV_STATUS_LIST.map(s => {
-      const active = curSt === s.key;
-      const style  = active ? `background:${s.color}22;border-color:${s.color};color:${s.color};` : '';
-      return `<button type="button" class="dars-status-btn" style="${style}" onclick="setGuruhDavStatus('${esc(fullIsm).replace(/'/g, "\\'")}','${s.key}')">${s.icon} ${s.label}</button>`;
-    }).join('');
-
+  wrap.className = 'dav-sinf-grid';
+  wrap.innerHTML = sinflar.map(sinf => {
+    const list = groups[sinf];
+    const c    = countDavomatStatuses(list);
     return `
-      <div class="oq-stu-row" style="flex-direction:column;align-items:stretch;gap:10px;">
-        <div style="display:flex;align-items:center;gap:12px;">
-          <div class="oq-stu-avatar">${init}</div>
-          <div>
-            <div class="oq-stu-name">${esc(fullIsm)}</div>
-            <div class="oq-stu-detail">📚 ${esc(o.sinf || '—')}</div>
+      <div class="dav-sinf-card">
+        <div class="dav-sinf-header">
+          <div class="dav-sinf-title">
+            <span class="sinf-badge">${esc(sinf.replace(/-sinf$/i, ''))}</span>
+            <span style="font-size:11px;color:var(--muted);font-weight:400;">${list.length} o'quvchi</span>
+          </div>
+          <div class="dav-sinf-mini-stats">
+            <span class="dav-mini-s k">✅ ${c.keldi}</span>
+            <span class="dav-mini-s x">❌ ${c.kelmadi}</span>
+            <span class="dav-mini-s s">📋 ${c.sababli}</span>
+            <span class="dav-mini-s l">⏰ ${c.kech}</span>
           </div>
         </div>
-        <div class="dars-status-row">${btns}</div>
+        <div class="dav-student-list">
+          ${list.map((o, i) => {
+            const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
+            const cur     = window._davomat_state[fullIsm] || '';
+            return `
+              <div class="dav-student-row">
+                <span class="dav-student-num">${i + 1}</span>
+                <span class="dav-student-name" title="${esc(fullIsm)}">${esc(fullIsm)}</span>
+                <div class="dav-status-btns">
+                  ${DAV_STATUS_LIST.map(s => `<button type="button" class="dav-s-btn${cur === s.key ? ' active-' + s.key : ''}" title="${s.label}" onclick="setGuruhDavStatus('${esc(fullIsm).replace(/'/g, "\\'")}','${s.key}')">${s.icon}</button>`).join('')}
+                </div>
+              </div>`;
+          }).join('')}
+        </div>
       </div>`;
   }).join('');
+
+  updateDavomatStatsBar();
+}
+
+function updateDavomatStatsBar() {
+  const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
+  Object.values(window._davomat_state || {}).forEach(s => { if (c[s] !== undefined) c[s]++; });
+  g('dav-st-keldi').textContent   = c.keldi;
+  g('dav-st-kelmadi').textContent = c.kelmadi;
+  g('dav-st-sababli').textContent = c.sababli;
+  g('dav-st-kech').textContent    = c.kech;
+  g('dav-st-total').textContent   = davomatOquvchilarList.length;
 }
 
 function setGuruhDavStatus(ism, status) {
-  window._davomat_state[ism] = status;
+  // Xuddi shu statusga qayta bosilsa — belgini olib tashlaydi (admin panelidagi kabi)
+  if (window._davomat_state[ism] === status) delete window._davomat_state[ism];
+  else window._davomat_state[ism] = status;
   renderGuruhDavomat();
 }
 
 async function saveGuruhDavomat() {
   if (!activeDavomatGuruh) return;
   const state = window._davomat_state || {};
-  const sana  = window._davomat_sana;
+  const sana  = dateStrLocal(window._davomat_curdate);
 
   const bySinf = {};
   davomatOquvchilarList.forEach(o => {
@@ -578,6 +719,7 @@ function closeGuruhDavomat() {
   if (davWrap)  davWrap.style.display  = 'none';
   activeDavomatGuruh = null;
 }
+
 
 // ═══════════════════════════════════════════
 //  DARS JADVALI
