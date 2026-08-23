@@ -269,76 +269,18 @@ async function loadDavomat(date) {
 }
 
 // ─────────────────────────────────────────────
-//  RENDER
+//  RENDER — admin uchun sinf kartalari endi
+//  ko'rsatilmaydi, faqat statistika yangilanadi
 // ─────────────────────────────────────────────
 function render() {
-  const grid   = g('sinf-grid');
-  const groups = {};
-
-  // Shu sanada ko'rinishi kerak bo'lgan o'quvchilar
   const visibleStudents = getStudentsForDate(currentDate);
-
-  visibleStudents.forEach(s => {
-    if (!groups[s.sinf]) groups[s.sinf] = [];
-    groups[s.sinf].push(s);
-  });
-
-  if (!Object.keys(groups).length) {
-    grid.innerHTML = `<div class="empty-state" style="grid-column:1/-1">
-      <div class="empty-state-icon">👨‍🎓</div>
-      <p>O'quvchilar topilmadi</p>
-    </div>`;
-    updateStats(visibleStudents);
-    return;
-  }
-
-  const sorted = Object.keys(groups).sort((a, b) => parseInt(a) - parseInt(b));
-
-  grid.innerHTML = sorted.map((sinf, si) => {
-    const list = groups[sinf];
-    const c    = countStatuses(list);
-    return `
-    <div class="sinf-card" style="animation-delay:${si * 0.05}s">
-      <div class="sinf-header">
-        <div class="sinf-title">
-          <span class="sinf-badge">${sinf}</span>
-          <span style="font-size:12px;color:var(--muted);font-weight:400">${list.length} o'quvchi</span>
-        </div>
-        <div class="sinf-mini-stats">
-          <span class="mini-s k">✅ ${c.keldi}</span>
-          <span class="mini-s x">❌ ${c.kelmadi}</span>
-          <span class="mini-s s">📋 ${c.sababli}</span>
-          <span class="mini-s l">⏰ ${c.kech}</span>
-        </div>
-      </div>
-      <div class="student-list">
-        ${list.map((s, i) => {
-          const key = s.ism + ' ' + s.familiya;
-          const cur = attendance[key] || '';
-          return `
-          <div class="student-row${cur ? ' done' : ''}" id="row-${safeId(key)}">
-            <span class="student-num">${i + 1}</span>
-            <span class="student-name" title="${s.familiya} ${s.ism}">${s.familiya} ${s.ism}</span>
-            <div class="status-btns">
-              ${STATUSES.map(st => `
-                <button class="s-btn${cur === st.key ? ' active-' + st.key : ''}"
-                  title="${st.title}"
-                  onclick="setStatus('${esc(key)}','${st.key}',this)"
-                >${st.emoji}</button>`).join('')}
-            </div>
-          </div>`;
-        }).join('')}
-      </div>
-    </div>`;
-  }).join('');
-
   updateStats(visibleStudents);
 }
 
 function countStatuses(list) {
   const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
   list.forEach(s => {
-    const key = s.ism + ' ' + s.familiya;
+    const key = s.familiya + ' ' + s.ism; // saqlanish tartibi: "Familiya Ism"
     const st  = attendance[key];
     if (st && c[st] !== undefined) c[st]++;
   });
@@ -355,60 +297,9 @@ function setStatus(key, status, btn) {
   toast('👁 Faqat ko\'rish rejimi — davomatni faqat o\'qituvchi o\'z panelida belgilaydi', 'error');
 }
 
-function applyStatus(key, status, btn) {
-  const row  = btn.closest('.student-row');
-  const btns = row.querySelectorAll('.s-btn');
-
-  if (attendance[key] === status) {
-    // Ikkinchi marta bossanda — o'chirish (toggle)
-    delete attendance[key];
-    if (status === 'sababli') delete izohlar[key];
-    btns.forEach(b => b.className = 's-btn');
-    row.classList.remove('done');
-  } else {
-    attendance[key] = status;
-    btns.forEach(b => b.className = 's-btn');
-    btn.className = `s-btn active-${status}`;
-    row.classList.add('done');
-  }
-
-  updateCardStats(btn);
-  updateStats();
-}
-
-// ─────────────────────────────────────────────
-//  IZOH MODAL
-// ─────────────────────────────────────────────
-function confirmIzoh() {
-  if (!pendingIzoh) return;
-  const { key, btn } = pendingIzoh;
-  const izoh = g('izoh-input').value.trim();
-  izohlar[key] = izoh;
-  closeIzoh();
-  applyStatus(key, 'sababli', btn);
-}
-function closeIzoh() {
-  g('izoh-modal').style.display = 'none';
-  pendingIzoh = null;
-}
-
 // ─────────────────────────────────────────────
 //  STATISTIKA
 // ─────────────────────────────────────────────
-function updateCardStats(el) {
-  const card  = el.closest('.sinf-card');
-  const rows  = card.querySelectorAll('.student-row');
-  const c     = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
-  rows.forEach(row => {
-    const a = row.querySelector('[class*="active-"]');
-    if (a) { const m = a.className.match(/active-(\w+)/); if (m && c[m[1]] !== undefined) c[m[1]]++; }
-  });
-  card.querySelector('.mini-s.k').textContent = '✅ ' + c.keldi;
-  card.querySelector('.mini-s.x').textContent = '❌ ' + c.kelmadi;
-  card.querySelector('.mini-s.s').textContent = '📋 ' + c.sababli;
-  card.querySelector('.mini-s.l').textContent = '⏰ ' + c.kech;
-}
-
 function updateStats(visibleList) {
   const list = visibleList || getStudentsForDate(currentDate);
   const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
@@ -436,8 +327,8 @@ function showStatusDetail(status) {
 
   // O'sha statusdagi o'quvchilarni yig'ish
   const list = getStudentsForDate(currentDate)
-    .filter(s => attendance[s.ism + ' ' + s.familiya] === status)
-    .map(s => ({ name: s.ism + ' ' + s.familiya, sinf: s.sinf, izoh: izohlar[s.ism + ' ' + s.familiya] || '' }));
+    .filter(s => attendance[s.familiya + ' ' + s.ism] === status)
+    .map(s => ({ name: s.familiya + ' ' + s.ism, sinf: s.sinf, izoh: izohlar[s.familiya + ' ' + s.ism] || '' }));
 
   g('sd-emoji').textContent  = meta.emoji;
   g('sd-title').textContent  = meta.title;

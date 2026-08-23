@@ -17,7 +17,6 @@
   <div class="topbar-brand">InnovateIT School · Davomat</div>
   <div class="topbar-right">
     <span class="admin-badge" id="dav-badge"></span>
-    <span style="background:#f3f4f6;color:#6b7280;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;">👁 Faqat ko'rish</span>
     <button class="btn-logout" onclick="goBack()">← Orqaga</button>
     <button class="btn-export" onclick="openExportModal()">📊 Excel</button>
   </div>
@@ -36,7 +35,7 @@
   <input class="date-input" type="date" id="date-picker" onchange="onDatePick()">
 </div>
 
-<!-- STATS BAR -->
+<!-- STATS BAR — admin shu tugmalarni bosib davomat holatini ko'radi -->
 <div class="stats-bar">
   <div class="stat-pill pill-keldi"   onclick="showStatusDetail('keldi')">  <span class="stat-dot keldi"></span>Keldi   <span class="stat-num" id="st-keldi">0</span></div>
   <div class="stat-pill pill-kelmadi" onclick="showStatusDetail('kelmadi')"><span class="stat-dot kelmadi"></span>Kelmadi <span class="stat-num" id="st-kelmadi">0</span></div>
@@ -45,12 +44,9 @@
   <div class="stat-pill pill-total" style="margin-left:auto;">Jami: <span class="stat-num" id="st-total">0</span></div>
 </div>
 
-<!-- SINF KARTALAR -->
-<div class="dav-main">
-  <div class="sinf-grid" id="sinf-grid">
-    <!-- JS tomonidan to'ldiriladi -->
-  </div>
-</div>
+<!-- Sinf kartalari admin uchun endi ko'rsatilmaydi — u faqat yuqoridagi
+     Keldi/Kelmadi/Sababli/Kech tugmalarini bosib, kimlar shu statusda
+     ekanini ro'yxat ko'rinishida ko'radi (status-detail-modal orqali) -->
 
 <!-- MODAL: Status detail (kim keldi/kelmadi/sababli/kech) -->
 <div class="status-detail-modal" id="status-detail-modal" onclick="if(event.target===this)closeStatusDetail()">
