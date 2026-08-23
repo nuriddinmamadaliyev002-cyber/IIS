@@ -666,7 +666,7 @@ function renderGuruhDavomat() {
                     const active   = cur === s.key;
                     const izohText = s.key === 'sababli' ? (window._davomat_izoh && window._davomat_izoh[fullIsm]) : '';
                     const title    = izohText ? `${s.label}: ${izohText}` : s.label;
-                    return `<button type="button" class="dav-s-btn${active ? ' active-' + s.key : ''}" title="${esc(title)}" onclick="setGuruhDavStatus('${esc(fullIsm).replace(/'/g, "\\'")}','${s.key}')">${s.icon}</button>`;
+                    return `<button type="button" class="dav-s-btn${active ? ' active-' + s.key : ''}" title="${esc(title)}" data-ism="${esc(fullIsm)}" data-status="${s.key}">${s.icon}</button>`;
                   }).join('')}
                 </div>
               </div>`;
@@ -689,6 +689,17 @@ function updateDavomatStatsBar() {
 }
 
 let pendingDavIzoh = null; // { ism }
+
+// Davomat status tugmalari uchun event delegation — ism ichida apostrof (')
+// yoki boshqa maxsus belgilar bo'lsa ham (masalan "No'monova Madina") xavfsiz
+// ishlaydi, chunki inline onclick ichiga ism satri endi umuman qo'shilmaydi.
+document.addEventListener('click', (e) => {
+  const btn = e.target.closest('.dav-s-btn');
+  if (!btn) return;
+  const ism    = btn.dataset.ism;
+  const status = btn.dataset.status;
+  if (ism && status) setGuruhDavStatus(ism, status);
+});
 
 function setGuruhDavStatus(ism, status) {
   if (status === 'sababli') {
