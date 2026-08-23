@@ -17,9 +17,9 @@
   <div class="topbar-brand">InnovateIT School · Davomat</div>
   <div class="topbar-right">
     <span class="admin-badge" id="dav-badge"></span>
+    <span style="background:#f3f4f6;color:#6b7280;font-size:12.5px;font-weight:600;padding:6px 12px;border-radius:20px;display:inline-flex;align-items:center;gap:5px;">👁 Faqat ko'rish</span>
     <button class="btn-logout" onclick="goBack()">← Orqaga</button>
     <button class="btn-export" onclick="openExportModal()">📊 Excel</button>
-    <button class="btn-davomat" id="btn-save" onclick="confirmSave()">💾 Saqlash</button>
   </div>
 </div>
 
@@ -64,42 +64,6 @@
       <button class="status-detail-close" onclick="closeStatusDetail()">×</button>
     </div>
     <div class="status-detail-body" id="sd-body"></div>
-  </div>
-</div>
-
-<!-- MODAL: Sababli uchun izoh -->
-<div class="modal-overlay" id="izoh-modal" onclick="if(event.target===this)closeIzoh()">
-  <div class="modal">
-    <div class="modal-drag"></div>
-    <div class="modal-title">📋 Sababli — izoh kiriting</div>
-    <p style="font-size:13px;color:var(--muted);margin-bottom:10px;">O'quvchi kelmagan sababi (ixtiyoriy):</p>
-    <textarea id="izoh-input"
-      class="field-input"
-      placeholder="Masalan: Kasalligi sababli..."
-      style="resize:none;height:80px;margin-bottom:16px;display:block;font-size:14px;"
-      onkeydown="if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();confirmIzoh();}">
-    </textarea>
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeIzoh()">Bekor qilish</button>
-      <button class="btn-submit" onclick="confirmIzoh()">Tasdiqlash</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL: Saqlashni tasdiqlash -->
-<div class="modal-overlay" id="confirm-modal" onclick="if(event.target===this)closeModal()">
-  <div class="modal">
-    <div class="modal-drag"></div>
-    <div class="modal-title" style="text-align:center;">💾 Davomatni saqlash</div>
-    <div class="modal-desc" id="modal-desc"></div>
-    <div class="dav-modal-stats" id="modal-stats"></div>
-    <div class="modal-footer">
-      <button class="btn-cancel"  onclick="closeModal()">Bekor qilish</button>
-      <button class="btn-submit"  id="btn-confirm" onclick="doSave()">
-        <span class="spinner" id="save-spinner"></span>
-        <span id="save-txt">Ha, saqlash</span>
-      </button>
-    </div>
   </div>
 </div>
 

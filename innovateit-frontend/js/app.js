@@ -900,6 +900,22 @@ function openTeachers() {
 }
 
 
+// Davomat sahifasiga o'tish — endi FAQAT KO'RISH rejimida (o'quvchi davomatini
+// tahrirlash/yozish imkoniyati o'qituvchi paneliga o'tkazilgan)
+function openDavomat() {
+  if (U.isSuper && !viewingAdmin) { toast('⚠️ Avval maktab tanlang!', 'error'); return; }
+  const isProxy = U.isSuper && viewingAdmin;
+  const davomatUser = {
+    ism:           isProxy ? viewingAdmin.ism      : U.ism,
+    maktabId:      isProxy ? viewingAdmin.maktab_id : U.maktabId,
+    isSuper:       false,
+    isSuperProxy:  isProxy,
+    superIsm:      U.ism
+  };
+  sessionStorage.setItem('iit_davomat_user', JSON.stringify(davomatUser));
+  window.location.href = 'davomat.html';
+}
+
 // Portfolio tabidan viewer uchun oqituvchilar sahifasiga o'tish
 function openTeachersFromViewer(viewerUsername, viewerIsm) {
   const teacherUser = {
@@ -916,19 +932,6 @@ function openTeachersFromViewer(viewerUsername, viewerIsm) {
   window.location.href = 'oqituvchilar.html';
 }
 window.openTeachersFromViewer = openTeachersFromViewer;
-function openDavomat() {
-  if (U.isSuper && !viewingAdmin) { toast('⚠️ Avval maktab tanlang!', 'error'); return; }
-  const isProxy = U.isSuper && viewingAdmin;
-  const davomatUser = {
-    ism:           isProxy ? viewingAdmin.ism      : U.ism,
-    maktabId:      isProxy ? viewingAdmin.maktab_id : U.maktabId,
-    isSuper:       false,
-    isSuperProxy:  isProxy,
-    superIsm:      U.ism
-  };
-  sessionStorage.setItem('iit_davomat_user', JSON.stringify(davomatUser));
-  window.location.href = 'davomat.html';
-}
 
 // ─────────────────────────────────────────────
 //  YORDAMCHI FUNKSIYALAR

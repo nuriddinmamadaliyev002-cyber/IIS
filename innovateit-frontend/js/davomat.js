@@ -346,17 +346,13 @@ function countStatuses(list) {
 }
 
 // ─────────────────────────────────────────────
-//  STATUS BELGILASH
+//  STATUS BELGILASH — FAQAT KO'RISH REJIMI
+//  (Endi davomatni o'qituvchilar o'z panelidan
+//  belgilaydi. Maktab admin faqat ko'ra oladi,
+//  tahrirlash/yozish imkoniyati yo'q.)
 // ─────────────────────────────────────────────
 function setStatus(key, status, btn) {
-  if (status === 'sababli') {
-    pendingIzoh = { key, btn };
-    g('izoh-input').value = izohlar[key] || '';
-    g('izoh-modal').style.display = 'flex';
-    setTimeout(() => g('izoh-input').focus(), 100);
-    return;
-  }
-  applyStatus(key, status, btn);
+  toast('👁 Faqat ko\'rish rejimi — davomatni faqat o\'qituvchi o\'z panelida belgilaydi', 'error');
 }
 
 function applyStatus(key, status, btn) {
