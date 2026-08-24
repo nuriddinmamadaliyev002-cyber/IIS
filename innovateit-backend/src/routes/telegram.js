@@ -459,15 +459,27 @@ router.get('/birikmalar', requireAuth(['admin']), async (req, res) => {
   }
 });
 
-// ─── POST /api/telegram/birikdir — telegramID biriktirish (superadmin) ────────
+// ─── POST /api/telegram/birikdir — telegramID biriktirish ────────────────────
+//  Superadmin — istalgan rol/entity.
+//  Oddiy maktab admini — FAQAT rol='oquvchi' va faqat o'z maktabidagi
+//  o'quvchiga (buni admin o'z panelidan qiladi).
 router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
-  if (!req.user.isSuper)
-    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
-
   const { telegramId, telegramIsm, rol, entityId } = req.body;
 
   if (!telegramId || !rol || !entityId)
     return res.status(400).json({ ok: false, error: "telegramId, rol, entityId majburiy" });
+
+  if (!req.user.isSuper) {
+    if (rol !== 'oquvchi')
+      return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+    // Maktab admini faqat o'z maktabidagi o'quvchini biriktira oladi
+    const ownCheck = await pool.query(
+      `SELECT id FROM oquvchilar WHERE id=$1 AND maktab_id=$2`,
+      [entityId, req.user.maktabId]
+    );
+    if (ownCheck.rowCount === 0)
+      return res.status(403).json({ ok: false, error: "Bu o'quvchi sizning maktabingizga tegishli emas" });
+  }
 
   const tableMappings = {
     admin:      'adminlar',
@@ -526,19 +538,29 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
   }
 });
 
-// ─── DELETE /api/telegram/birikdir/:tgId — ajratish (superadmin) ─────────────
+// ─── DELETE /api/telegram/birikdir/:tgId — ajratish ───────────────────────────
 //  ?rol=admin&entityId=5 kabi query bo'lsa — FAQAT o'sha aniq birikmani
 //  ajratadi (bitta odam bir nechta rolga, va bitta rol ichida bir nechta
 //  entity'ga bog'langan bo'lishi mumkinligi uchun). Faqat ?rol= berilsa —
 //  o'sha rolga tegishli BARCHA birikmalarni ajratadi. Hech narsa berilmasa —
 //  shu telegram_id ga tegishli BARCHA rollarni ajratadi.
+//  Oddiy maktab admini — FAQAT rol=oquvchi va entityId majburiy, va faqat
+//  o'z maktabidagi o'quvchidan ajrata oladi.
 router.delete('/birikdir/:tgId', requireAuth(['admin']), async (req, res) => {
-  if (!req.user.isSuper)
-    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
-
   const tgId     = parseInt(req.params.tgId);
   const rol      = req.query.rol || null;
   const entityId = req.query.entityId ? parseInt(req.query.entityId) : null;
+
+  if (!req.user.isSuper) {
+    if (rol !== 'oquvchi' || !entityId)
+      return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+    const ownCheck = await pool.query(
+      `SELECT id FROM oquvchilar WHERE id=$1 AND maktab_id=$2`,
+      [entityId, req.user.maktabId]
+    );
+    if (ownCheck.rowCount === 0)
+      return res.status(403).json({ ok: false, error: "Bu o'quvchi sizning maktabingizga tegishli emas" });
+  }
 
   try {
     let whereSql = 'telegram_id=$1';

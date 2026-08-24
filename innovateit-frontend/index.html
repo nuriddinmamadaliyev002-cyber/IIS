@@ -725,6 +725,23 @@
         <input class="field-input" type="date" id="e-boshlagan" max="">
       </div>
     </div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">📱 Telegram / Web panel kirishi</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div id="e-tg-status" style="font-size:12.5px;line-height:1.6;"></div>
+      <div class="field-group">
+        <label class="field-label">Botga /start yozganlar ro'yxatidan tanlash</label>
+        <select class="field-input" id="e-kandidatlar" onchange="if(this.value){document.getElementById('e-tgid').value=this.value;this.selectedIndex=0;}">
+          <option value="">— Yuklanmoqda… —</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">yoki Telegram ID'ni qo'lda kiriting</label>
+        <input class="field-input" id="e-tgid" placeholder="masalan: 123456789" inputmode="numeric">
+      </div>
+      <div style="font-size:11px;color:#9ca3af;">
+        O'quvchi shu Telegram ID orqali botga /start yozib, "O'quvchi paneli" tugmasidan web panelga avtomatik kiradi. Maydonni bo'sh qoldirib saqlasangiz — biriktirma ajratiladi.
+      </div>
+    </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeES()">Bekor qilish</button>
       <button class="btn-submit" id="es-save" onclick="saveES()">

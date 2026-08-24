@@ -500,7 +500,35 @@ function openES(idx) {
   } else {
     ['e-kun', 'e-oy', 'e-yil', 'e-tug'].forEach(id => g(id).value = '');
   }
+
+  // Telegram biriktirish holati
+  g('e-tgid').value = s.telegram_id || '';
+  g('e-tg-status').innerHTML = s.telegram_id
+    ? `<span style="color:#059669;">✅ Bog'langan (ID: ${s.telegram_id}) — o'quvchi web panelga kira oladi</span>`
+    : `<span style="color:#9ca3af;">◯ Hali biriktirilmagan</span>`;
+  loadStudentKandidatlar();
+
   g('es-modal').style.display = 'flex';
+}
+
+async function loadStudentKandidatlar() {
+  const sel = g('e-kandidatlar');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
+  try {
+    const r = await api.getKandidatlar();
+    if (!r.ok || !r.kandidatlar?.length) {
+      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
+      r.kandidatlar.map(k => {
+        const label = `${esc(k.telegram_ism || "Noma'lum")}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
+        return `<option value="${k.telegram_id}">${label}</option>`;
+      }).join('');
+  } catch (e) {
+    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
+  }
 }
 
 function closeES() {
@@ -544,6 +572,12 @@ async function saveES() {
   if (boshlagan && boshlagan > todayStr()) { toast("⚠️ Boshlagan sana bugundan kech bo'lmasligi kerak", 'error'); return; }
 
   const s = S[eIdx];
+  const newTgId = (g('e-tgid')?.value || '').trim();
+  if (newTgId && !/^\d+$/.test(newTgId)) {
+    toast("⚠️ Telegram ID faqat raqamlardan iborat bo'lishi kerak", 'error'); return;
+  }
+  const oldTgId = s.telegram_id ? String(s.telegram_id) : '';
+
   bl('es-save', 'es-spinner', 'es-btn-txt', true, 'Saqlanmoqda…');
   try {
     const r = await api.editStudent({
@@ -553,8 +587,23 @@ async function saveES() {
       telefon: tel, telefon2: tel2, manzil, tug, boshlagan,
       maktabInfo: maktab ? String(maktab) + '-maktab' : ''
     });
-    if (r.ok) { closeES(); await loadStudents(); toast("✅ O'quvchi yangilandi!", 'success'); }
-    else toast('❌ ' + r.error, 'error');
+    if (!r.ok) { toast('❌ ' + r.error, 'error'); bl('es-save', 'es-spinner', 'es-btn-txt', false, 'Saqlash'); return; }
+
+    // Telegram ID o'zgargan bo'lsa — biriktirish/ajratish
+    if (newTgId && newTgId !== oldTgId) {
+      if (oldTgId) await api.tgAjrat(oldTgId, 'oquvchi', s.id);
+      const tr = await api.tgBirikdir({
+        telegramId: parseInt(newTgId),
+        telegramIsm: `${fam} ${ism}`.trim(),
+        rol: 'oquvchi',
+        entityId: s.id,
+      });
+      if (!tr.ok) toast('❌ Telegram biriktirishda xatolik: ' + tr.error, 'error');
+    } else if (!newTgId && oldTgId) {
+      await api.tgAjrat(oldTgId, 'oquvchi', s.id);
+    }
+
+    closeES(); await loadStudents(); toast("✅ O'quvchi yangilandi!", 'success');
   } catch (e) { toast('❌ Xatolik', 'error'); }
   bl('es-save', 'es-spinner', 'es-btn-txt', false, 'Saqlash');
 }
