@@ -378,6 +378,22 @@ select.field-input option:not([value=""]) {
 @media (min-width: 640px) { .filter-sel { width: 130px; } }
 .filter-sel:focus { border-color: var(--accent); background-color: #fff; }
 
+.tg-badge { font-size: 13px; margin-left: 4px; display: inline-block; }
+.tg-badge.tg-on  { color: #059669; }
+.tg-badge.tg-off { color: #9ca3af; opacity: .45; }
+.tg-badge.tg-clickable { cursor: pointer; }
+
+.tg-filter-toggle {
+  display: flex; align-items: center; gap: 6px;
+  flex: none; padding: 9px 12px;
+  border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: 'DM Sans', sans-serif; font-size: 13px;
+  background: var(--bg); color: var(--text); cursor: pointer; user-select: none;
+  white-space: nowrap;
+}
+.tg-filter-toggle input { margin: 0; accent-color: var(--accent); }
+.tg-filter-toggle.active { border-color: var(--accent); background: #fff; }
+
 /* ══ DESKTOP JADVAL ══ */
 .tbl-wrap { overflow-x: auto; display: none; }
 @media (min-width: 768px) { .tbl-wrap { display: block; } }

@@ -328,13 +328,15 @@ function clearSearch() {
 }
 
 function applyFilters() {
-  const q  = (g('f-search').value || '').toLowerCase();
-  const fm = g('f-maktab-f').value;
-  const fs = g('f-sinf-f').value;
+  const q   = (g('f-search').value || '').toLowerCase();
+  const fm  = g('f-maktab-f').value;
+  const fs  = g('f-sinf-f').value;
+  const ftg = g('f-tg-f') && g('f-tg-f').checked;
   let d = S.filter(s =>
-    (!q  || (s.ism + ' ' + s.familiya + ' ' + s.telefon).toLowerCase().includes(q)) &&
-    (!fm || String(s.maktab) === String(fm)) &&
-    (!fs || s.sinf === fs)
+    (!q   || (s.ism + ' ' + s.familiya + ' ' + s.telefon).toLowerCase().includes(q)) &&
+    (!fm  || String(s.maktab) === String(fm)) &&
+    (!fs  || s.sinf === fs) &&
+    (!ftg || !s.telegram_id)
   );
 
   // ── Saralash (sort) ──
@@ -394,6 +396,23 @@ function updateSortHeaders() {
   });
 }
 
+// ── "Faqat bog'lanmaganlar" filtr tugmasining aktiv holati ──
+function toggleTgFilterActive() {
+  const box = g('f-tg-f'), lbl = g('f-tg-toggle');
+  if (box && lbl) lbl.classList.toggle('active', box.checked);
+}
+
+// ── Telegram bog'lanish indikatori ──
+// s.telegram_id bo'lsa — yashil, ulanmagan bo'lsa — xira ikon.
+// Super admin ko'rinishida bosish o'chirilgan (chunki u yerda tahrirlash tugmasi yo'q).
+function tgBadge(s, sup) {
+  const bound = !!s.telegram_id;
+  const title = bound ? `Telegram bog'langan (ID: ${s.telegram_id})` : "Telegram bog'lanmagan";
+  const cls = ['tg-badge', bound ? 'tg-on' : 'tg-off', !sup ? 'tg-clickable' : ''].filter(Boolean).join(' ');
+  const click = !sup ? ` onclick="event.stopPropagation();openES(${s.ri})"` : '';
+  return `<span class="${cls}" title="${title}"${click}>✈️</span>`;
+}
+
 function renderTbl(d) {
   const tb  = g('tbl-body');
   const sup = U && U.isSuper;
@@ -409,7 +428,7 @@ function renderTbl(d) {
       : (s.maktabInfo || s.maktab || '—');
     return `<tr>
     <td class="mono">${i + 1}</td>
-    <td><strong>${s.familiya}</strong> ${s.ism}</td>
+    <td><strong>${s.familiya}</strong> ${s.ism} ${tgBadge(s, sup)}</td>
     <td><span class="maktab-badge">${maktabKo}</span></td>
     <td><span class="sinf-badge">${s.sinf || '—'}</span></td>
     <td class="mono" style="white-space:nowrap;">${(s.telefon || '—').replace(/ /g, '\u00a0')}</td>
@@ -440,7 +459,7 @@ function renderMob(d) {
     <div class="sc">
       <div class="sc-header">
         <div>
-          <div class="sc-name">${s.familiya} ${s.ism}</div>
+          <div class="sc-name">${s.familiya} ${s.ism} ${tgBadge(s, sup)}</div>
           <div class="sc-num">#${i + 1}</div>
           <div class="sc-tags">
             <span class="maktab-badge">${(sup ? (s.maktab || '—') : (s.maktabInfo || s.maktab || '—'))}</span>
