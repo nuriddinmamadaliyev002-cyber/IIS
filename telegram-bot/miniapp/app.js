@@ -1,92 +1,1077 @@
-<!DOCTYPE html>
-<html lang="uz">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>InnovateIT School — O'quvchi Panel</title>
-  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/hover.css">
-  <link rel="stylesheet" href="css/oqituvchi.css?v=1">
-  <link rel="stylesheet" href="css/oquvchi.css?v=1">
-</head>
-<body>
+// ═══════════════════════════════════════════
+//  KONFIGURATSIYA
+// ═══════════════════════════════════════════
+// API_BASE — miniapp qayerdan ochilgan bo'lsa, o'sha serverga so'rov yuboradi
+// Local (ngrok): https://xxxx.ngrok-free.app/api
+// Production: https://innovateitschool.uz/api
+const API_BASE = window.location.origin + '/api';
 
-<!-- ════════════ LOGIN (Telegram orqali) ════════════ -->
-<div id="login-screen">
-  <div class="login-card">
-    <div class="login-logo">InnovateIT School</div>
-    <h1 class="login-title">O'quvchi Panel</h1>
-    <p class="login-sub">Bu panelga faqat Telegram orqali kirish mumkin</p>
+// ─── Frontend (Web panel) URL ─────────────────────────────────────────────────
+// MUHIM: Bu API_BASE dan FARQLI — frontend alohida manzilda ishlaydi!
+// Development: 'http://localhost' yoki 'http://localhost:5500' (VS Code Live Server)
+// Production:  'https://innovateitschool.uz'
+//  const WEB_PANEL_URL = 'http://localhost:5501';
+ const WEB_PANEL_URL = 'https://new.innovateitschool.uz';
 
-    <div style="text-align:center;padding:20px 0;">
-      <div style="width:76px;height:76px;margin:0 auto 16px;background:linear-gradient(135deg,#6c63ff,#8b83ff);
-                  border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:36px;">🎓</div>
-      <p style="font-size:13px;color:#6b7280;line-height:1.6;max-width:280px;margin:0 auto;">
-        Telegram botimizni oching va u yerdan <b>O'quvchi paneli</b> tugmasini bosing.
-        Maktab admini sizning Telegram hisobingizni oldindan tizimga biriktirgan bo'lishi kerak.
-      </p>
-    </div>
+// ═══════════════════════════════════════════
+//  TELEGRAM
+// ═══════════════════════════════════════════
+const tg     = window.Telegram?.WebApp;
+const tgUser = tg?.initDataUnsafe?.user;
 
-    <a href="#" id="bot-open-link" target="_blank" rel="noopener"
-      class="btn-primary"
-      style="display:block;text-align:center;width:100%;margin-top:8px;padding:13px;border-radius:10px;
-             background:#6c63ff;color:#fff;border:none;font-size:15px;
-             font-weight:600;cursor:pointer;font-family:inherit;text-decoration:none;
-             transition:opacity .15s;box-sizing:border-box;"
-      onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
-      🤖 Botni ochish
-    </a>
+if (tg) {
+  tg.ready();
+  tg.expand();
+}
 
-    <p style="text-align:center;margin-top:16px;font-size:12px;color:#9ca3af;">
-      Telegram'ingiz hali biriktirilmaganmi? Sinf rahbaringiz yoki maktab admini bilan bog'laning.
-    </p>
-  </div>
-</div>
+// ═══════════════════════════════════════════
+//  HOLAT
+// ═══════════════════════════════════════════
+let TOKEN        = null;
+let ROL          = null;
+let USER_ISM     = null;
+let allItems     = [];
+let currentList  = null;
 
-<!-- ════════════ APP ════════════ -->
-<div id="app" style="display:none;">
+// Anketa holati
+let anketaPoz      = null;
+let anketaFan      = null; // o'qituvchi uchun fan
+let anketaMaktablar = []; // tanlangan maktablar
+let STEP           = 1;
 
-  <!-- TOPBAR -->
-  <div class="topbar">
-    <div class="topbar-brand">🎓 InnovateIT — O'quvchi Panel</div>
-    <div class="topbar-right">
-      <span class="admin-badge" id="oq-badge"></span>
-      <button class="btn-logout" onclick="doLogout()">Chiqish</button>
-    </div>
-  </div>
+// ═══════════════════════════════════════════
+//  SAHIFA
+// ═══════════════════════════════════════════
+function showPage(id) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
 
-  <!-- TAB NAV -->
-  <div class="oq-tabnav">
-    <button class="oq-tab-btn active" id="tab-btn-davomat" onclick="switchTab('davomat')">📋 Davomatim</button>
-    <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvalim</button>
-  </div>
+// ═══════════════════════════════════════════
+//  INIT — Sahifa ochilganda
+// ═══════════════════════════════════════════
+// ─── Topilgan (found) natijani qayta ishlash — bir joydan chaqiriladi ────────
+// (dastlabki tekshiruvda ham, rol tanlangandan keyin ham ishlatiladi)
+function handleAuthResult(data) {
+  TOKEN    = data.token;
+  ROL      = data.rol;
+  USER_ISM = data.ism;
 
-  <div class="oq-content">
+  // ─── Admin → to'liq web panelga redirect ──────────────────────────────
+  // Admin Telegram Mini App emas, to'liq brauzer panelida ishlashi kerak
+  if (ROL === 'admin') {
+    const redirectUrl = `${WEB_PANEL_URL}?tg_token=${encodeURIComponent(data.token)}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(redirectUrl, { role: 'admin', maktabNomi: data.maktabNomi });
+    } else {
+      window.location.href = redirectUrl;
+    }
+    return;
+  }
+  // ─── Buxgalter → to'liq buxgalter web paneliga redirect ────────────────
+  // Buxgalter kirishi FAQAT shu yo'l orqali — bot faqat tekshiruv vositachisi,
+  // haqiqiy ish esa to'liq CRM (buxgalter.html) da davom etadi.
+  if (ROL === 'buxgalter') {
+    const buxUrl = `${WEB_PANEL_URL}/buxgalter.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(buxUrl, { role: 'buxgalter' });
+    } else {
+      window.location.href = buxUrl;
+    }
+    return;
+  }
+  // ─── Sales → to'liq sales web paneliga redirect ─────────────────────────
+  if (ROL === 'sales') {
+    const salesUrl = `${WEB_PANEL_URL}/sales.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(salesUrl, { role: 'sales' });
+    } else {
+      window.location.href = salesUrl;
+    }
+    return;
+  }
+  // ─── O'qituvchi → to'liq o'qituvchi web paneliga redirect ───────────────
+  // Endi o'qituvchi mini-appda ishlamaydi — barcha funksiyalar (sinflar,
+  // dars jadvali, dars soatlari, davomat belgilash) oqituvchi.html'da.
+  if (ROL === 'oqituvchi') {
+    const oqUrl = `${WEB_PANEL_URL}/oqituvchi.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(oqUrl, { role: 'oqituvchi' });
+    } else {
+      window.location.href = oqUrl;
+    }
+    return;
+  }
+  // ─── O'quvchi → to'liq o'quvchi web paneliga redirect ───────────────────
+  // Endi o'quvchi mini-appda ishlamaydi — davomat va dars jadvali
+  // oquvchi.html'da (faqat ko'rish, o'qituvchi/admin tomonidan belgilanadi).
+  if (ROL === 'oquvchi') {
+    const ouqUrl = `${WEB_PANEL_URL}/oquvchi.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
+    if (tg && tg.openLink) {
+      showAdminRedirect(ouqUrl, { role: 'oquvchi' });
+    } else {
+      window.location.href = ouqUrl;
+    }
+    return;
+  }
+  // ──────────────────────────────────────────────────────────────────────
 
-    <!-- ══ DAVOMATIM TAB ══ -->
-    <div class="oq-tab-page active" id="tab-davomat">
-      <div class="oq-section-title" id="ouq-dav-title">📋 Mening davomatim</div>
-      <div id="ouq-dav-stats" class="ouq-dav-stats"></div>
-      <div id="ouq-dav-list"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
-    </div>
+  showDashboard(data);
+}
 
-    <!-- ══ JADVAL TAB ══ -->
-    <div class="oq-tab-page" id="tab-jadval">
-      <div class="oq-section-title">📅 Dars jadvalim</div>
-      <div id="ouq-jadval-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
-    </div>
+// ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────
+function showRoleChooser(tgId, roles) {
+  const rolLabels = {
+    admin:     { icon: '🖥️', label: 'Admin' },
+    buxgalter: { icon: '💼', label: 'Buxgalter' },
+    sales:     { icon: '🎯', label: 'Sales xodimi' },
+    oqituvchi: { icon: '👩‍🏫', label: "O'qituvchi" },
+    oquvchi:   { icon: '🎓', label: "O'quvchi" },
+  };
 
-  </div>
-</div>
+  showPage('loadingPage');
+  const loadPage = document.getElementById('loadingPage');
+  loadPage.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 24px;text-align:center;">
+      <div style="font-size:18px;font-weight:700;">Qaysi sifatida kirasiz?</div>
+      <div style="font-size:13px;color:var(--hint);margin-bottom:8px;">
+        Siz bir nechta rolga bog'langansiz — birini tanlang
+      </div>
+      ${roles.map(r => `
+        <button onclick="chooseRole(${tgId}, '${r.rol}', ${r.entityId})" style="
+          display:flex;align-items:center;gap:12px;width:100%;max-width:300px;
+          background:var(--card-bg,#fff);border:1px solid var(--border,#e5e7eb);
+          border-radius:14px;padding:14px 18px;font-size:15px;font-weight:600;
+          cursor:pointer;text-align:left;
+        ">
+          <span style="font-size:22px;">${(rolLabels[r.rol] || {}).icon || '👤'}</span>
+          <span>
+            <div>${r.roleLabel || (rolLabels[r.rol] || {}).label || r.rol}</div>
+            <div style="font-size:12px;font-weight:400;color:var(--hint);">${r.ism}</div>
+          </span>
+        </button>
+      `).join('')}
+    </div>`;
+}
 
-<script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_student_token';</script>
-<script src="js/api.js"></script>
-<script src="js/oquvchi.js"></script>
-<script>
-// ⚠️ MUHIM: bu yerga haqiqiy bot username'ini kiriting
-const BOT_USERNAME = 'InnovateIT_School_bot';
-document.getElementById('bot-open-link').href = `https://t.me/${BOT_USERNAME}`;
-</script>
-</body>
-</html>
+async function chooseRole(tgId, rol, entityId) {
+  try {
+    const res  = await fetch(`${API_BASE}/telegram/check/${tgId}/${rol}/${entityId}`);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error);
+    handleAuthResult(data);
+  } catch (e) {
+    showKutish(tgId, 'xatolik');
+  }
+}
+
+window.addEventListener('DOMContentLoaded', async () => {
+  // TelegramID ni aniqlash
+  const tgId = tgUser?.id;
+
+  if (!tgId) {
+    // Test rejimi (brauzerda ochilganda)
+    showKutish(null, 'Bot orqali oching');
+    return;
+  }
+
+  try {
+    const res  = await fetch(`${API_BASE}/telegram/check/${tgId}`);
+    const data = await res.json();
+
+    if (!data.ok) throw new Error(data.error);
+
+    if (data.multiple) {
+      // Bir necha rolga bog'langan — tanlov ko'rsatamiz
+      showRoleChooser(tgId, data.roles);
+    } else if (data.found) {
+      handleAuthResult(data);
+    } else if (data.anketaHolat === 'kutilmoqda') {
+      // So'rov yuborilgan, kutilmoqda
+      showKutish(tgId, 'kutilmoqda');
+    } else if (data.anketaHolat === 'rad etildi') {
+      // Rad etilgan — kutish sahifasida xabar + qayta ariza berish tugmasi
+      showKutish(tgId, 'rad etildi');
+    } else {
+      // Yangi foydalanuvchi — anketa
+      await loadMaktablarAnketa();
+      showPage('anketaPage');
+      renderSteps();
+    }
+  } catch (e) {
+    console.error(e);
+    showPage('anketaPage');
+    renderSteps();
+  }
+});
+
+// ═══════════════════════════════════════════
+//  ANKETA — QADAM BOSHQARUVI
+// ═══════════════════════════════════════════
+function renderSteps() {
+  const ind = document.getElementById('stepIndicator');
+  ind.innerHTML = [1,2,3].map(i =>
+    `<div class="step-dot ${i === STEP ? 'active' : i < STEP ? 'done' : ''}"></div>`
+  ).join('');
+}
+
+function goStep(n) {
+  document.getElementById('step' + STEP).style.display = 'none';
+  STEP = n;
+  document.getElementById('step' + STEP).style.display = 'block';
+  renderSteps();
+}
+
+// Pozitsiya tanlash
+function selectPoz(val) {
+  anketaPoz = val;
+  document.querySelectorAll('.poz-card').forEach(c => c.classList.remove('selected'));
+  document.getElementById('poz-' + val)?.classList.add('selected');
+
+  // Fan tanlash maydonini faqat o'qituvchi uchun ko'rsatish
+  const fanWrap = document.getElementById('fan-wrap');
+  if (fanWrap) fanWrap.style.display = val === 'oqituvchi' ? 'block' : 'none';
+
+  // O'quvchi tanlaganda fan reset
+  if (val !== 'oqituvchi') {
+    anketaFan = null;
+    document.querySelectorAll('.fan-card').forEach(c => c.classList.remove('selected'));
+  }
+}
+
+// Fan tanlash (o'qituvchi uchun)
+function selectFan(fan) {
+  anketaFan = fan;
+  document.querySelectorAll('.fan-card').forEach(c => c.classList.remove('selected'));
+  // ID da bo'sh joy o'rniga '-' ishlatilgan
+  const fanId = 'fan-' + fan.replace(/ /g, '-');
+  document.getElementById(fanId)?.classList.add('selected');
+}
+
+// Qadam 1 → 2
+function step1Next() {
+  const fish = document.getElementById('a-fish').value.trim();
+  const err  = document.getElementById('err1');
+  err.classList.remove('show');
+
+  if (!anketaPoz) { err.textContent = '❌ Pozitsiyani tanlang'; err.classList.add('show'); return; }
+  if (anketaPoz === 'oqituvchi' && !anketaFan) {
+    err.textContent = '❌ Qaysi fandan dars berishingizni tanlang';
+    err.classList.add('show');
+    return;
+  }
+  if (!fish) { err.textContent = '❌ Familiya va ismni kiriting'; err.classList.add('show'); return; }
+
+  // Sinf maydonini pozitsiyaga qarab ko'rsatish
+  document.getElementById('sinf-wrap').style.display =
+    anketaPoz === 'oquvchi' ? 'block' : 'none';
+
+  goStep(2);
+  loadMaktablarAnketa();
+}
+
+// Maktab tanlash
+function toggleMaktab(nomi) {
+  const idx = anketaMaktablar.indexOf(nomi);
+  if (idx === -1) anketaMaktablar.push(nomi);
+  else anketaMaktablar.splice(idx, 1);
+
+  document.querySelectorAll('.maktab-item').forEach(el => {
+    const n = el.dataset.nomi;
+    el.classList.toggle('selected', anketaMaktablar.includes(n));
+    const chk = el.querySelector('.maktab-check');
+    if (chk) chk.textContent = anketaMaktablar.includes(n) ? '✓' : '';
+  });
+}
+
+// Qadam 2 → 3
+function step2Next() {
+  const boshqaEl = document.getElementById('a-maktab-boshqa');
+  const boshqa   = boshqaEl.value.trim();
+  const err      = document.getElementById('err2');
+  err.classList.remove('show');
+
+  // Maktablar to'plami
+  let maktabStr = anketaMaktablar.join(', ');
+  if (boshqa) maktabStr = maktabStr ? maktabStr + ', ' + boshqa : boshqa;
+
+  if (!maktabStr) { err.textContent = '❌ Kamida bitta maktab tanlang yoki kiriting'; err.classList.add('show'); return; }
+
+  const sinf = document.getElementById('a-sinf').value.trim();
+  const pozLabels = { oqituvchi:"O'qituvchi", oquvchi:"O'quvchi", xodim:"Xodim", boshqa:"Boshqa" };
+
+  // Yakuniy ko'rib chiqish
+  document.getElementById('s-poz').textContent   = pozLabels[anketaPoz] || anketaPoz;
+  document.getElementById('s-fish').textContent  = document.getElementById('a-fish').value.trim();
+  document.getElementById('s-maktab').textContent = maktabStr;
+  if (sinf) {
+    document.getElementById('s-sinf').textContent = sinf;
+    document.getElementById('s-sinf-row').style.display = 'block';
+  }
+
+  goStep(3);
+}
+
+// So'rov yuborish
+async function submitAnketa() {
+  const btn   = document.getElementById('submitBtn');
+  const err   = document.getElementById('err3');
+  err.classList.remove('show');
+
+  const telefon = document.getElementById('a-telefon').value.trim();
+  if (!telefon) { err.textContent = '❌ Telefon raqamini kiriting'; err.classList.add('show'); return; }
+
+  const boshqa  = document.getElementById('a-maktab-boshqa').value.trim();
+  let maktabStr = anketaMaktablar.join(', ');
+  if (boshqa) maktabStr = maktabStr ? maktabStr + ', ' + boshqa : boshqa;
+
+  btn.disabled = true;
+  btn.textContent = 'Yuborilmoqda...';
+
+  try {
+    const res = await fetch(`${API_BASE}/telegram/anketa`, {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        telegramId:  tgUser?.id,
+        telegramIsm: tgUser ? `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() : '',
+        pozitsiya:   anketaPoz,
+        fan:         anketaFan || '',
+        fish:        document.getElementById('a-fish').value.trim(),
+        maktablar:   maktabStr,
+        sinf:        document.getElementById('a-sinf').value.trim() || '-',
+        telefon
+      })
+    });
+    const data = await res.json();
+
+    if (data.ok) {
+      showKutish(tgUser?.id, 'kutilmoqda');
+    } else {
+      err.textContent = '❌ ' + (data.error || 'Xatolik yuz berdi');
+      err.classList.add('show');
+    }
+  } catch(e) {
+    err.textContent = '❌ Server bilan ulanib bo\'lmadi';
+    err.classList.add('show');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📨 So\'rov yuborish';
+  }
+}
+
+// Maktablarni anketa uchun yuklash
+async function loadMaktablarAnketa() {
+  const container = document.getElementById('maktablar-list');
+  try {
+    const res  = await fetch(`${API_BASE}/maktablar`);
+    if (!res.ok) throw new Error('Server xatoligi: ' + res.status);
+    const data = await res.json();
+    const list = data.maktablar || [];
+
+    if (!list.length) {
+      container.innerHTML = '<div style="color:var(--hint);font-size:14px">Maktablar mavjud emas. Quyida yozing.</div>';
+      document.getElementById('a-maktab-boshqa').style.display = 'block';
+      return;
+    }
+    container.innerHTML = list.map(m => `
+      <div class="maktab-item" data-nomi="${m.nomi}" onclick="toggleMaktab('${m.nomi}')">
+        <div class="maktab-check"></div>
+        <div class="maktab-name">${m.nomi}</div>
+      </div>`).join('') +
+      '<div class="maktab-item" data-nomi="__boshqa__" onclick="toggleBoshqa()" id="boshqa-item"><div class="maktab-check" id="boshqa-chk"></div><div class="maktab-name">Boshqa...</div></div>';
+  } catch(e) {
+    console.error('loadMaktablarAnketa xatolik:', e);
+    container.innerHTML = '<div style="color:#f87171;font-size:14px">⚠️ Maktablar yuklanmadi. Quyida qo\'lda kiriting.</div>';
+    document.getElementById('a-maktab-boshqa').style.display = 'block';
+  }
+}
+
+function toggleBoshqa() {
+  const el = document.getElementById('a-maktab-boshqa');
+  el.style.display = el.style.display === 'none' ? 'block' : 'none';
+  document.getElementById('boshqa-item').classList.toggle('selected');
+}
+
+// ═══════════════════════════════════════════
+//  KUTISH SAHIFASI
+// ═══════════════════════════════════════════
+function showKutish(tgId, holat) {
+  showPage('kutishPage');
+
+  document.getElementById('kutishId').textContent = tgId || '—';
+
+  const holatEl  = document.getElementById('kutishHolat');
+  const iconEl   = document.getElementById('kutishIcon');
+  const titleEl  = document.getElementById('kutishTitle');
+  const subEl    = document.getElementById('kutishSub');
+  const btnEl    = document.getElementById('kutishBtn');
+
+  if (holat === 'kutilmoqda') {
+    holatEl.textContent  = '⏳ Kutilmoqda';
+    holatEl.className    = 'status-badge status-pending';
+    iconEl.textContent   = '⏳';
+    titleEl.textContent  = 'So\'rovingiz yuborildi!';
+    subEl.textContent    = 'Superadmin ko\'rib chiqadi va tez orada tasdiqlaydi. Tasdiqlangandan so\'ng bildirishnoma keladi.';
+    btnEl.textContent    = 'Tushundim';
+    btnEl.style.display  = 'block';
+    btnEl.onclick        = () => { if (tg) tg.close(); };
+  } else if (holat === 'rad etildi') {
+    holatEl.textContent  = '❌ Rad etildi';
+    holatEl.className    = 'status-badge status-no';
+    iconEl.textContent   = '❌';
+    titleEl.textContent  = 'So\'rovingiz rad etildi';
+    subEl.innerHTML      = 'Qo\'shimcha ma\'lumot uchun <a href="https://t.me/InnovateIT_School_Manager" style="color:var(--accent2)">@InnovateIT_School_Manager</a> ga murojaat qiling.';
+    btnEl.textContent    = 'Qaytadan ariza berish';
+    btnEl.style.display  = 'block';
+    btnEl.onclick        = async () => {
+      anketaPoz = null; anketaFan = null; anketaMaktablar = []; STEP = 1;
+      // Maktablar ro'yxatini spinner holatiga qaytarish
+      const container = document.getElementById('maktablar-list');
+      if (container) container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
+      document.getElementById('a-maktab-boshqa').style.display = 'none';
+      document.getElementById('a-maktab-boshqa').value = '';
+      showPage('anketaPage');
+      renderSteps();
+      goStep(1);
+      await loadMaktablarAnketa();
+    };
+  } else {
+    holatEl.textContent  = holat || '—';
+    btnEl.style.display  = 'none';
+  }
+}
+
+// Kutish sahifasini yopish
+function kutishClose() {
+  if (tg) tg.close();
+}
+
+// ═══════════════════════════════════════════
+//  ADMIN / BUXGALTER — WEB PANELGA YO'NALTIRISH
+// ═══════════════════════════════════════════
+function showAdminRedirect(url, opts) {
+  const cfg = {
+    admin: {
+      icon: '🖥️',
+      title: opts?.maktabNomi
+        ? `Siz ${opts.maktabNomi} admini sifatida kirdingiz`
+        : 'Siz Admin sifatida kirdingiz',
+      desc: "Admin paneli to'liq brauzerda ochiladi.<br>O'quvchilar va davomatni u yerda boshqaring.",
+      btn: "🌐 Admin panelni ochish",
+    },
+    buxgalter: {
+      icon: '💼', title: 'Siz Buxgalter sifatida kirdingiz',
+      desc: "Buxgalter paneli to'liq brauzerda ochiladi.<br>To'lovlarni u yerda boshqaring.",
+      btn: "💼 Buxgalter panelni ochish",
+    },
+    sales: {
+      icon: '🎯', title: 'Siz Sales xodimi sifatida kirdingiz',
+      desc: "Sales paneli to'liq brauzerda ochiladi.<br>Arizalarni u yerda boshqaring.",
+      btn: "🎯 Sales panelni ochish",
+    },
+    oqituvchi: {
+      icon: '👩‍🏫', title: "Siz O'qituvchi sifatida kirdingiz",
+      desc: "O'qituvchi paneli to'liq brauzerda ochiladi.<br>Sinflar, dars jadvali va davomatni u yerda boshqaring.",
+      btn: "👩‍🏫 O'qituvchi panelni ochish",
+    },
+    oquvchi: {
+      icon: '🎓', title: "Siz O'quvchi sifatida kirdingiz",
+      desc: "O'quvchi paneli to'liq brauzerda ochiladi.<br>Davomatingiz va dars jadvalingizni u yerda ko'ring.",
+      btn: "🎓 O'quvchi panelni ochish",
+    },
+  }[opts?.role || 'admin'];
+
+  showPage('loadingPage');
+  const loadPage = document.getElementById('loadingPage');
+  loadPage.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 24px;text-align:center;">
+      <div style="width:88px;height:88px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:42px;">${cfg.icon}</div>
+      <div>
+        <div style="font-size:20px;font-weight:700;margin-bottom:8px;">${cfg.title}</div>
+        <div style="font-size:14px;color:var(--hint);line-height:1.5;">${cfg.desc}</div>
+      </div>
+      <button onclick="openAdminPanel()" style="
+        background:linear-gradient(135deg,#6c63ff,#a78bfa);
+        color:#fff;border:none;border-radius:16px;
+        padding:16px 32px;font-size:16px;font-weight:600;
+        cursor:pointer;width:100%;max-width:280px;
+        box-shadow:0 4px 20px rgba(108,99,255,0.4);
+      ">${cfg.btn}</button>
+      <div style="font-size:12px;color:var(--hint);">
+        Brauzerda avtomatik kirasiz
+      </div>
+    </div>`;
+  // URL ni global ga saqlaymiz
+  window._adminPanelUrl = url;
+}
+
+function openAdminPanel() {
+  if (tg && tg.openLink) {
+    tg.openLink(window._adminPanelUrl);
+  } else {
+    window.location.href = window._adminPanelUrl;
+  }
+}
+
+// ═══════════════════════════════════════════
+//  DASHBOARD
+// ═══════════════════════════════════════════
+function showDashboard(data) {
+  showPage('dashPage');
+  document.getElementById('bottomNav').style.display = (ROL === 'oquvchi' || ROL === 'oqituvchi') ? 'none' : 'flex';
+  if (tg) tg.BackButton.hide();
+
+  const rolLabels = {
+    admin:     '👤 Admin',
+    buxgalter: '💼 Buxgalter',
+    oqituvchi: "👩‍🏫 O'qituvchi",
+    oquvchi:   '🎓 O\'quvchi',
+  };
+  document.getElementById('topbarName').textContent = USER_ISM || '—';
+  document.getElementById('topbarRol').textContent  = rolLabels[ROL] || ROL;
+
+  buildNavBar();
+  buildCards();
+}
+
+function buildNavBar() {
+  const navMap = {
+    admin:     ['students','teachers','davomat'],
+    buxgalter: ['tolov'],
+    oquvchi:   [],
+  };
+  const show = navMap[ROL] || [];
+  ['students','teachers','davomat','tolov'].forEach(id => {
+    const el = document.getElementById('nav-' + id);
+    if (el) el.style.display = show.includes(id) ? 'flex' : 'none';
+  });
+}
+
+function buildCards() {
+  const grid = document.getElementById('cardsGrid');
+  const cardDefs = {
+    admin: [
+      { icon:'🎓', label:"O'quvchilar", sub:'jami', color:'#6c63ff', action:"openList('students')" },
+      { icon:'👩‍🏫', label:"O'qituvchilar", sub:'jami', color:'#8b5cf6', action:"openList('teachers')" },
+      { icon:'📋', label:'Davomat', sub:'bugun', color:'#10b981', action:"openList('davomat')" },
+      { icon:'💰', label:"To'lovlar", sub:'bu oy', color:'#f59e0b', action:"openList('tolov')" },
+    ],
+    buxgalter: [
+      { icon:'💰', label:"To'lovlar", sub:'bu oy', color:'#f59e0b', action:"openList('tolov')" },
+      { icon:'🎓', label:"O'quvchilar", sub:'jami', color:'#6c63ff', action:"openList('students')" },
+    ],
+    oquvchi: [
+      { icon:'📋', label:'Davomatim', sub:'tarix', color:'#10b981', action:'openMyDavomat()' },
+      { icon:'📅', label:'Dars jadvali', sub:'haftalik', color:'#6c63ff', action:'openMyJadval()' },
+    ],
+  };
+  const defs = cardDefs[ROL] || [];
+  grid.innerHTML = defs.map(c => `
+    <div class="stat-card" style="--card-color:${c.color}" onclick="${c.action}">
+      <div class="stat-icon">${c.icon}</div>
+      <div class="stat-num" id="stat-${c.action.replace(/[^a-z]/g,'')}">—</div>
+      <div class="stat-label">${c.label}</div>
+      <div class="stat-sub">${c.sub}</div>
+    </div>`).join('');
+}
+
+function showDash() {
+  showPage('dashPage');
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('nav-home')?.classList.add('active');
+  if (tg) tg.BackButton.hide();
+}
+
+function goBack() {
+  showDash();
+}
+
+// ═══════════════════════════════════════════
+//  API SO'ROV
+// ═══════════════════════════════════════════
+async function apiGet(path) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    headers: { 'Authorization': `Bearer ${TOKEN}` }
+  });
+  if (res.status === 401) { showPage('loadingPage'); return null; }
+  return res.json();
+}
+
+async function apiPost(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${TOKEN}`,
+      'Content-Type': 'application/json'
+    },
+    body: JSON.stringify(body)
+  });
+  if (res.status === 401) { showPage('loadingPage'); return null; }
+  return res.json();
+}
+
+// ═════════════════════════════
+//  O‘QITUVCHI O‘Z DAVOMATI (dars kunlari bo‘yicha)
+// ═════════════════════════════
+// State for carousel navigation
+let MY_DAV_RECORDS = [];
+let MY_DAV_KUN_KEYS = [];  // dars kunlari nomlari (tartibli)
+let MY_DAV_FAN = '';
+let MY_DAV_ISM = '';
+let MY_DAV_GROUPED = {};   // { kunNom: [records sorted by date desc] }
+let MY_DAV_ALL_DATES = []; // barcha sana (YYYY-MM-DD yoki DD.MM.YYYY) sorted desc
+let MY_DAV_CUR_IDX = 0;   // carousel: joriy sana indeksi
+
+async function openMyDavomat() {
+  showPage('myDavomatPage');
+  if (tg) tg.BackButton.show();
+
+  const wrap = document.getElementById('myDavomatContent');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
+
+  try {
+    const data = await apiGet('/davomat/mening-davomatim');
+
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+
+    MY_DAV_RECORDS = data.records || [];
+    const kunlar   = data.kunlar  || '';
+    MY_DAV_FAN     = data.fan     || '—';
+    MY_DAV_ISM     = data.ism     || USER_ISM || '—';
+
+    const KUN_NOMLARI_MAP = {'1':'Dushanba','2':'Seshanba','3':'Chorshanba','4':'Payshanba','5':'Juma','6':'Shanba','0':'Yakshanba'};
+    const kunRaqamlari    = kunlar.split(',').map(k => k.trim()).filter(Boolean);
+    MY_DAV_KUN_KEYS       = kunRaqamlari.map(k => KUN_NOMLARI_MAP[k] || k);
+
+    // Barcha unique sanalarni yig'ib sort qilish (yangi → eski)
+    const dateSet = new Set(MY_DAV_RECORDS.map(r => r.sana).filter(Boolean));
+    MY_DAV_ALL_DATES = Array.from(dateSet).sort((a, b) => {
+      // DD.MM.YYYY formatini parse qilish
+      const parse = s => {
+        const p = s.split('.');
+        if (p.length === 3) return new Date(p[2], p[1]-1, p[0]).getTime();
+        return new Date(s).getTime();
+      };
+      return parse(b) - parse(a); // yangi birinchi
+    });
+
+    // Dars kunlari bo'yicha guruhlash
+    MY_DAV_GROUPED = {};
+    MY_DAV_KUN_KEYS.forEach(kn => { MY_DAV_GROUPED[kn] = []; });
+
+    MY_DAV_RECORDS.forEach(r => {
+      if (!r.sana) return;
+      const p = r.sana.split('.');
+      const date = p.length === 3 ? new Date(p[2], p[1]-1, p[0]) : new Date(r.sana);
+      const jsDay = date.getDay();
+      const myKey = KUN_NOMLARI_MAP[String(jsDay === 0 ? 0 : jsDay)] || '—';
+      if (MY_DAV_GROUPED[myKey] !== undefined) {
+        MY_DAV_GROUPED[myKey].push(r);
+      }
+    });
+
+    // Har kun uchun sanani yangi → eskiga sort
+    const parseDate = s => {
+      const p = s.split ? s.split('.') : [];
+      return p.length === 3 ? new Date(p[2], p[1]-1, p[0]).getTime() : new Date(s).getTime();
+    };
+    Object.keys(MY_DAV_GROUPED).forEach(k => {
+      MY_DAV_GROUPED[k].sort((a, b) => parseDate(b.sana) - parseDate(a.sana));
+    });
+
+    // Oxirgi sana (index 0 = eng yangi)
+    MY_DAV_CUR_IDX = 0;
+
+    renderMyDavomat();
+  } catch(e) {
+    console.error('openMyDavomat:', e);
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
+  }
+}
+
+function renderMyDavomat() {
+  const wrap = document.getElementById('myDavomatContent');
+  const stats = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
+  MY_DAV_RECORDS.forEach(r => { if (stats[r.status] !== undefined) stats[r.status]++; });
+  const jami = MY_DAV_RECORDS.length;
+  const foiz = jami > 0 ? Math.round((stats.keldi + stats.kech) / jami * 100) : 0;
+
+  // ── Info kartasi ──
+  let html = '<div class="my-dav-header-card">';
+  html += '<div class="my-dav-teacher-name">👩‍🏫 ' + MY_DAV_ISM + '</div>';
+  html += '<div class="my-dav-meta-row"><span>📚 Fan</span><strong>' + MY_DAV_FAN + '</strong></div>';
+  const kunNomlar = MY_DAV_KUN_KEYS.join(', ') || '—';
+  html += '<div class="my-dav-meta-row"><span>📅 Dars kunlari</span><strong>' + kunNomlar + '</strong></div>';
+  html += '<div class="my-dav-meta-row"><span>🗓️ Jami yozuv</span><strong>' + jami + ' kun</strong></div>';
+
+  if (jami > 0) {
+    html += '<div class="davomat-divider"></div>';
+    html += '<div class="davomat-stats-row">';
+    html += '<div class="dav-stat"><span class="dav-num" style="color:#10b981">' + stats.keldi + '</span><span class="dav-lbl">Keldi</span></div>';
+    html += '<div class="dav-stat"><span class="dav-num" style="color:#ef4444">' + stats.kelmadi + '</span><span class="dav-lbl">Kelmadi</span></div>';
+    html += '<div class="dav-stat"><span class="dav-num" style="color:#f59e0b">' + stats.sababli + '</span><span class="dav-lbl">Sababli</span></div>';
+    html += '<div class="dav-stat"><span class="dav-num" style="color:#8b5cf6">' + stats.kech + '</span><span class="dav-lbl">Kech</span></div>';
+    html += '</div>';
+    html += '<div class="davomat-progress-wrap"><div class="davomat-progress-bar" style="width:' + foiz + '%"></div></div>';
+    html += '<div class="davomat-progress-label">' + foiz + '% davomat · ' + jami + ' yozuv</div>';
+  }
+  html += '</div>';
+
+  // ── Bo'sh holat ──
+  if (!MY_DAV_RECORDS.length) {
+    html += '<div class="empty" style="margin-top:16px"><div class="empty-icon">📭</div>Hozircha davomat yozuvi yo\'q</div>';
+    wrap.innerHTML = html;
+    return;
+  }
+
+  // ── Carousel — sana navigatsiya ──
+  const totalDates = MY_DAV_ALL_DATES.length;
+  const curSana    = MY_DAV_ALL_DATES[MY_DAV_CUR_IDX] || '';
+  const hasPrev    = MY_DAV_CUR_IDX < totalDates - 1;  // eskiga = indeks oshadi
+  const hasNext    = MY_DAV_CUR_IDX > 0;               // yangi = indeks kamayadi
+
+  // Sana formatlash
+  const fmtSana = s => {
+    if (!s) return '—';
+    const p = s.split('.');
+    if (p.length === 3) {
+      const OYLAR_SHORT = ['','Yan','Fev','Mar','Apr','May','Iyun','Iyul','Avg','Sen','Okt','Noy','Dek'];
+      const KUN_NOMLARI_LOCAL = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
+      const d = new Date(p[2], p[1]-1, p[0]);
+      return p[0] + '-' + OYLAR_SHORT[parseInt(p[1])] + ', ' + p[2] + ' — ' + KUN_NOMLARI_LOCAL[d.getDay()];
+    }
+    return s;
+  };
+
+  html += '<div class="my-dav-carousel">';
+  html += '<button class="my-dav-nav-btn" onclick="myDavNav(-1)" ' + (!hasPrev ? 'disabled' : '') + '>‹</button>';
+  html += '<div class="my-dav-carousel-center">';
+  html += '<div class="my-dav-carousel-date">' + fmtSana(curSana) + '</div>';
+  html += '<div class="my-dav-carousel-pos">' + (totalDates - MY_DAV_CUR_IDX) + ' / ' + totalDates + '</div>';
+  html += '</div>';
+  html += '<button class="my-dav-nav-btn" onclick="myDavNav(1)" ' + (!hasNext ? 'disabled' : '') + '>›</button>';
+  html += '</div>';
+
+  // ── Joriy sanadagi davomatlar (barcha dars kunlari uchun) ──
+  // Joriy sanaga tegishli recordlar
+  const curRecords = MY_DAV_RECORDS.filter(r => r.sana === curSana);
+
+  if (!curRecords.length) {
+    html += '<div class="empty" style="margin-top:8px"><div class="empty-icon">📭</div>Bu kun uchun yozuv yo\'q</div>';
+  } else {
+    html += '<div class="davomat-list-title">Dars kunlari bo\'yicha</div>';
+
+    // Dars kunlari bo'yicha guruhlash (joriy sana ichida)
+    const kunGroups = {};
+    MY_DAV_KUN_KEYS.forEach(kn => { kunGroups[kn] = []; });
+
+    curRecords.forEach(r => {
+      const p = (r.sana || '').split('.');
+      const d = p.length === 3 ? new Date(p[2], p[1]-1, p[0]) : new Date(r.sana);
+      const KUN_NOMLARI_MAP2 = {'0':'Yakshanba','1':'Dushanba','2':'Seshanba','3':'Chorshanba','4':'Payshanba','5':'Juma','6':'Shanba'};
+      const kn = KUN_NOMLARI_MAP2[String(d.getDay())] || '—';
+      if (kunGroups[kn] !== undefined) kunGroups[kn].push(r);
+      else { if (!kunGroups['—']) kunGroups['—'] = []; kunGroups['—'].push(r); }
+    });
+
+    // Bir sana odatda bitta yozuv, lekin barcha record larni ko'rsat
+    curRecords.forEach(r => {
+      var si = STATUS_INFO[r.status] || { emoji: '❓', label: r.status || '—', color: '#888' };
+      var dars = (r.dars_soat > 0 || r.dars_daqiqa > 0) ? (r.dars_soat + 'h ' + r.dars_daqiqa + 'min dars') : '';
+      var kech = r.kech_minut > 0 ? (r.kech_minut + ' min kech') : '';
+      var note = r.izoh ? ('· ' + r.izoh) : '';
+      var detail = [dars, kech, note].filter(Boolean).join(' ');
+
+      html += '<div class="davomat-item">';
+      html += '<div class="dav-status-dot" style="background:' + si.color + '">' + si.emoji + '</div>';
+      html += '<div class="dav-item-body">';
+      html += '<div class="dav-item-date">' + (r.fan || MY_DAV_FAN) + '</div>';
+      html += '<div class="dav-item-status" style="color:' + si.color + '">' + si.label + '</div>';
+      if (detail) html += '<div class="dav-item-detail">' + detail + '</div>';
+      html += '</div></div>';
+    });
+  }
+
+  // ── Barcha dars kunlari bo'yicha umumiy ko'rinish ──
+  html += '<div class="davomat-list-title" style="margin-top:20px">Dars kunlari statistikasi</div>';
+  MY_DAV_KUN_KEYS.forEach(kunNom => {
+    const recs = MY_DAV_GROUPED[kunNom] || [];
+    const ks = { keldi:0, kelmadi:0, sababli:0, kech:0 };
+    recs.forEach(r => { if(ks[r.status]!==undefined) ks[r.status]++; });
+    const kFoiz = recs.length > 0 ? Math.round((ks.keldi + ks.kech) / recs.length * 100) : 0;
+
+    html += '<div class="my-dav-kun-section">';
+    html += '<div class="my-dav-kun-header">';
+    html += '<span class="my-dav-kun-name">📌 ' + kunNom + '</span>';
+    html += '<span class="my-dav-kun-count">' + recs.length + ' yozuv</span>';
+    html += '</div>';
+    if (!recs.length) {
+      html += '<div class="my-dav-empty-kun">Yozuv yo\'q</div>';
+    } else {
+      html += '<div style="display:flex;gap:12px;font-size:12px;margin-bottom:6px;">';
+      html += '<span style="color:#10b981">✅ ' + ks.keldi + '</span>';
+      html += '<span style="color:#ef4444">❌ ' + ks.kelmadi + '</span>';
+      html += '<span style="color:#f59e0b">📋 ' + ks.sababli + '</span>';
+      html += '<span style="color:#8b5cf6">⏰ ' + ks.kech + '</span>';
+      html += '</div>';
+      html += '<div class="my-dav-kun-progress-wrap"><div class="davomat-progress-bar" style="width:' + kFoiz + '%"></div></div>';
+      html += '<div class="my-dav-kun-foiz">' + kFoiz + '% davomat</div>';
+    }
+    html += '</div>';
+  });
+
+  wrap.innerHTML = html;
+}
+
+// Carousel navigatsiya: dir = -1 (eskiga), +1 (yangiga)
+function myDavNav(dir) {
+  const newIdx = MY_DAV_CUR_IDX - dir; // dir=+1 → yangi (indeks kamayadi)
+  if (newIdx < 0 || newIdx >= MY_DAV_ALL_DATES.length) return;
+  MY_DAV_CUR_IDX = newIdx;
+  renderMyDavomat();
+}
+
+
+// ═══════════════════════════════════════════
+//  DARS JADVALI (O'QUVCHI)
+// ═══════════════════════════════════════════
+const KUN_RAQAM_MAP = {
+  '1': 'Dushanba', '2': 'Seshanba', '3': 'Chorshanba',
+  '4': 'Payshanba', '5': 'Juma', '6': 'Shanba', '0': 'Yakshanba'
+};
+const KUN_TARTIB = ['Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba','Yakshanba'];
+
+async function openMyJadval() {
+  showPage('myJadvalPage');
+  if (tg) tg.BackButton.show();
+
+  const wrap = document.getElementById('myJadvalContent');
+  wrap.innerHTML = '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
+
+  try {
+    const data = await apiGet('/jadval/mening-jadvalim');
+
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+
+    const jadvallar = data.jadvallar || [];
+    const oqituvchilar = data.oqituvchilar || [];
+
+    if (jadvallar.length === 0) {
+      wrap.innerHTML = `
+        <div class="empty">
+          <div class="empty-icon">📅</div>
+          <div>${data.xabar || "Dars jadvali hali kiritilmagan"}</div>
+          ${oqituvchilar.length > 0
+            ? `<div style="margin-top:8px;font-size:13px;color:var(--hint);">O'qituvchilar: ${oqituvchilar.map(t=>t.familiya+' '+t.ism).join(', ')}</div>`
+            : ''}
+        </div>`;
+      return;
+    }
+
+    // Kunlar bo'yicha guruhlash
+    // Har bir jadval yozuvi uchun kunlar (vergul bilan ajratilgan raqamlar yoki nomlar)
+    const byKun = {};
+    KUN_TARTIB.forEach(k => { byKun[k] = []; });
+
+    jadvallar.forEach(j => {
+      const kunStr = (j.kunlar || '').trim();
+      if (!kunStr) return;
+
+      // Kunlarni ajratish: "1,3,5" yoki "Dushanba,Chorshanba" formatida bo'lishi mumkin
+      const kunParts = kunStr.split(',').map(k => k.trim()).filter(Boolean);
+      kunParts.forEach(k => {
+        // Raqam yoki nom — ikkalasini ham qabul qilish
+        const kunNom = KUN_RAQAM_MAP[k] || k;
+        if (byKun[kunNom] !== undefined) {
+          // Bir xil o'qituvchining bir xil fanini bir marta ko'rsatamiz
+          const exists = byKun[kunNom].find(x =>
+            x.teacher_ism === j.teacher_ism &&
+            x.teacher_familiya === j.teacher_familiya &&
+            x.fan === j.fan
+          );
+          if (!exists) byKun[kunNom].push(j);
+        }
+      });
+    });
+
+    // Bugungi kunni aniqlash
+    const today = new Date();
+    const todayIdx = today.getDay(); // 0=Yakshanba
+    const todayNom = KUN_RAQAM_MAP[String(todayIdx)] || '';
+
+    let html = '';
+
+    KUN_TARTIB.forEach(kun => {
+      const darslar = byKun[kun];
+      if (darslar.length === 0) return;
+
+      const isToday = kun === todayNom;
+      html += `
+        <div class="jadval-kun-blok ${isToday ? 'jadval-bugun' : ''}">
+          <div class="jadval-kun-sarlavha">
+            ${isToday ? '🟢 ' : ''}${kun}${isToday ? ' <span class="jadval-bugun-badge">bugun</span>' : ''}
+          </div>
+          ${darslar.map(d => `
+            <div class="jadval-dars-karta">
+              <div class="jadval-dars-ustun jadval-dars-vaqt">
+                <div class="jadval-vaqt-icon">🕐</div>
+                <div>
+                  <div class="jadval-vaqt-text">${d.boshlanish || '—'}</div>
+                  ${d.tugash ? `<div class="jadval-vaqt-end">${d.tugash}</div>` : ''}
+                </div>
+              </div>
+              <div class="jadval-dars-ustun jadval-dars-info">
+                <div class="jadval-fan">${d.fan || 'Fan ko\'rsatilmagan'}</div>
+                <div class="jadval-teacher">👩‍🏫 ${d.teacher_familiya || ''} ${d.teacher_ism || ''}</div>
+                ${d.sinflar ? `<div class="jadval-sinf">📚 ${d.sinflar}</div>` : ''}
+              </div>
+            </div>
+          `).join('')}
+        </div>`;
+    });
+
+    if (!html) {
+      html = '<div class="empty"><div class="empty-icon">📅</div>Jadval ma\'lumotlari mavjud emas</div>';
+    }
+
+    wrap.innerHTML = html;
+  } catch (e) {
+    console.error('openMyJadval:', e);
+    wrap.innerHTML = '<div class="empty"><div class="empty-icon">⚠️</div>Xatolik yuz berdi</div>';
+  }
+}
+
+// ═══════════════════════════════════════════
+//  RO'YXATLAR
+// ═══════════════════════════════════════════
+// Nav Davomat
+function navDavomat() {
+  openList('davomat');
+}
+
+async function openList(type) {
+  currentList = type;
+  allItems    = [];
+  document.getElementById('searchInput').value = '';
+  showPage('listPage');
+  if (tg) tg.BackButton.show();
+
+  const titles = {
+    students: "🎓 O'quvchilar",
+    teachers: "👩‍🏫 O'qituvchilar",
+    davomat:  '📋 Davomat',
+    tolov:    "💰 To'lovlar",
+  };
+  document.getElementById('listTitle').textContent = titles[type] || type;
+  document.getElementById('listContent').innerHTML =
+    '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
+
+  let data = null;
+  const maktab = '';
+
+  try {
+    if (type === 'students')  data = await apiGet('/students?limit=500' + maktab);
+    if (type === 'teachers')  data = await apiGet('/teachers' + (maktab ? '?' + maktab.slice(1) : ''));
+    if (type === 'davomat') {
+      const today = new Date().toLocaleDateString('ru-RU');
+      data = await apiGet(`/davomat?sana=${today}` + maktab);
+    }
+    if (type === 'tolov') {
+      const now   = new Date();
+      const oy    = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
+      data = await apiGet(`/buxgalter/tolovlar?oy=${oy}`);
+    }
+  } catch(e) { /* tarmoq xatoligi */ }
+
+  if (!data) {
+    document.getElementById('listContent').innerHTML =
+      '<div class="empty"><div class="empty-icon">⚠️</div>Ma\'lumot yuklanmadi</div>';
+    return;
+  }
+
+  allItems = data.students || data.teachers || data.tolovlar || data.davomatlar || data.rows || [];
+  renderList(allItems, type);
+}
+
+function renderList(items, type) {
+  if (!items?.length) {
+    document.getElementById('listContent').innerHTML =
+      '<div class="empty"><div class="empty-icon">📭</div>Ma\'lumot topilmadi</div>';
+    return;
+  }
+
+  let html = '';
+  if (type === 'students') {
+    items.forEach(s => {
+      const init = ((s.familiya||s.ism||'?')[0]).toUpperCase();
+      html += `<div class="list-item">
+        <div class="avatar">${init}</div>
+        <div class="item-info">
+          <div class="item-name">${s.familiya||''} ${s.ism||'—'}</div>
+          <div class="item-detail">📚 ${s.sinf||'—'} · 📞 ${s.telefon||'—'}</div>
+        </div>
+      </div>`;
+    });
+  } else if (type === 'teachers') {
+    items.forEach(t => {
+      const init = ((t.familiya||t.ism||'?')[0]).toUpperCase();
+      html += `<div class="list-item">
+        <div class="avatar" style="background:linear-gradient(135deg,#8b5cf6,#a78bfa)">${init}</div>
+        <div class="item-info">
+          <div class="item-name">${t.familiya||''} ${t.ism||'—'}</div>
+          <div class="item-detail">📚 ${t.fan||'—'} · 📞 ${t.telefon||'—'}</div>
+        </div>
+        <span class="badge badge-blue">O'qituvchi</span>
+      </div>`;
+    });
+  } else if (type === 'davomat') {
+    items.forEach(d => {
+      const keldi = d.status === 'keldi';
+      html += `<div class="list-item">
+        <div class="avatar" style="background:${keldi?'#10b981':'#ef4444'}">${d.oquvchi_ism?d.oquvchi_ism[0].toUpperCase():'?'}</div>
+        <div class="item-info">
+          <div class="item-name">${d.oquvchi_ism||'—'}</div>
+          <div class="item-detail">📚 ${d.sinf||'—'} · ${d.sana||''}</div>
+        </div>
+        <span class="badge ${keldi?'badge-green':'badge-red'}">${keldi?'✅ Keldi':'❌ Kelmadi'}</span>
+      </div>`;
+    });
+  } else if (type === 'tolov') {
+    items.forEach(p => {
+      const sum = p.tolov_qildi ? Number(p.tolov_qildi).toLocaleString('uz-UZ') : '0';
+      const to  = p.tolov_kerak ? Number(p.tolov_kerak).toLocaleString('uz-UZ') : '0';
+      const ok  = p.tolov_qildi >= p.tolov_kerak;
+      html += `<div class="list-item">
+        <div class="avatar" style="background:${ok?'#10b981':'#f59e0b'}">${(p.oquvchi_familiya||p.oquvchi_ism||'?')[0].toUpperCase()}</div>
+        <div class="item-info">
+          <div class="item-name">${p.oquvchi_familiya||''} ${p.oquvchi_ism||'—'}</div>
+          <div class="item-detail">💸 ${sum} / ${to} so'm · ${p.sinf||'—'}</div>
+        </div>
+        <span class="badge ${ok?'badge-green':'badge-orange'}">${ok?'✅':'⏳'}</span>
+      </div>`;
+    });
+  }
+
+  document.getElementById('listContent').innerHTML = html;
+}
+
+function filterList() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  if (!q) { renderList(allItems, currentList); return; }
+  const filtered = allItems.filter(item => JSON.stringify(item).toLowerCase().includes(q));
+  renderList(filtered, currentList);
+}
+
+// ─── Telegram back button ───
+if (tg) {
+  tg.BackButton.onClick(() => {
+    if (document.getElementById('listPage').classList.contains('active')) goBack();
+  });
+}
