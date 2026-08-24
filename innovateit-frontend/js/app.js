@@ -410,7 +410,11 @@ function tgBadge(s, sup) {
   const title = bound ? `Telegram bog'langan (ID: ${s.telegram_id})` : "Telegram bog'lanmagan";
   const cls = ['tg-badge', bound ? 'tg-on' : 'tg-off', !sup ? 'tg-clickable' : ''].filter(Boolean).join(' ');
   const click = !sup ? ` onclick="event.stopPropagation();openES(${s.ri})"` : '';
-  return `<span class="${cls}" title="${title}"${click}>✈️</span>`;
+  const icon = `<svg viewBox="0 0 240 240" width="16" height="16" aria-hidden="true">
+    <circle cx="120" cy="120" r="120" fill="#229ED9"/>
+    <path fill="#fff" d="M181.585 71.9563L155.478 189.6C153.516 198.114 148.495 200.225 141.436 196.245L102.98 167.898L84.4183 185.783C82.3057 187.895 80.5382 189.663 76.5568 189.663L79.3121 150.474L150.171 86.4441C153.267 83.6889 149.494 82.1552 145.36 84.9105L57.8047 141.056L19.8676 129.169C11.5019 126.535 11.3494 120.809 21.6033 116.828L170.845 59.5711C177.789 57.0027 183.865 61.1462 181.585 71.9563Z"/>
+  </svg>`;
+  return `<span class="${cls}" title="${title}"${click}>${icon}</span>`;
 }
 
 function renderTbl(d) {

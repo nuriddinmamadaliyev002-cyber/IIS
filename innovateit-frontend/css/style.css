@@ -378,10 +378,12 @@ select.field-input option:not([value=""]) {
 @media (min-width: 640px) { .filter-sel { width: 130px; } }
 .filter-sel:focus { border-color: var(--accent); background-color: #fff; }
 
-.tg-badge { font-size: 13px; margin-left: 4px; display: inline-block; }
-.tg-badge.tg-on  { color: #059669; }
-.tg-badge.tg-off { color: #9ca3af; opacity: .45; }
+.tg-badge { font-size: 13px; margin-left: 4px; display: inline-flex; vertical-align: -3px; }
+.tg-badge svg { display: block; }
+.tg-badge.tg-on  { opacity: 1; }
+.tg-badge.tg-off { opacity: .35; filter: grayscale(1); }
 .tg-badge.tg-clickable { cursor: pointer; }
+.tg-badge.tg-clickable:hover { opacity: .8; }
 
 .tg-filter-toggle {
   display: flex; align-items: center; gap: 6px;
