@@ -125,6 +125,8 @@ async function buildAuthResponse(tgUser, tgId) {
     const fan            = entity.fan || '';
     roleLabel = [birinchiMaktab, fan].filter(Boolean).join(' ') + " o'qituvchisi";
     if (!birinchiMaktab && !fan) roleLabel = "O'qituvchi — " + ism;
+  } else if (rol === 'oquvchi') {
+    roleLabel = entity.maktab ? `${entity.maktab} o'quvchisi` : "O'quvchi — " + ism;
   }
 
   return {

@@ -478,8 +478,11 @@ function openES(idx) {
   const s = S[idx]; if (!s) return; eIdx = idx;
   g('e-ism').value      = s.ism      || '';
   g('e-familiya').value = s.familiya || '';
-  // Maktab raqamini maktabInfo dan ham olish mumkin (masalan "15-maktab" → 15)
-  const maktabRaqam = s.maktab || (s.maktabInfo ? parseInt(s.maktabInfo) || '' : '');
+  // Maktab raqami: s.maktab (masalan "10-maktab") yoki s.maktabInfo dan
+  // faqat RAQAM qismini ajratib olamiz — chunki #e-maktab type="number",
+  // ichiga matn kelsa brauzer uni jim-jimgina bo'shatib qo'yadi.
+  const extractNum = str => { const m = String(str || '').match(/\d+/); return m ? m[0] : ''; };
+  const maktabRaqam = extractNum(s.maktab) || extractNum(s.maktabInfo) || (s.maktabId ?? '');
   g('e-maktab').value   = maktabRaqam;
   g('e-sinf').value     = s.sinf     || '';
   g('e-tel').value      = s.telefon  ? fmtTel(s.telefon)  : '';
