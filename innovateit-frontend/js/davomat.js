@@ -22,6 +22,35 @@ let INACTIVE_STUDENTS = []; // Nofaol o'quvchilar
 let attendance = {}; // { "Ism Familiya": "keldi"|"kelmadi"|"sababli"|"kech" }
 let izohlar    = {}; // { "Ism Familiya": "izoh matni" }
 
+// Dars jadvali — sinf (guruh) yonida shu kunning fanini ko'rsatish uchun
+// [{ fan, sinflar:[...], kunlar:[1..6] }]
+let JADVALLAR = [];
+
+function parseSinflarList(str) {
+  if (!str) return [];
+  return String(str).split(',').map(s => s.trim()).filter(Boolean);
+}
+function parseKunlarList(str) {
+  if (!str) return [];
+  return String(str).split(',').map(Number).filter(n => n >= 1 && n <= 6);
+}
+// "8-sinf" → "8" ko'rinishiga keltirib solishtirish uchun
+function normalizeSinf(s) {
+  return String(s || '').toLowerCase().replace(/-?sinf$/i, '').trim();
+}
+
+// Berilgan sinf uchun berilgan sanadagi (hafta kuni bo'yicha) biriktirilgan fan(lar)ni topadi
+function getFanForSinf(sinf, date) {
+  const weekday = date.getDay(); // 1=Dushanba ... 6=Shanba (Yakshanba bu yerga kelmaydi)
+  if (weekday < 1 || weekday > 6) return '';
+  const sinfNorm = normalizeSinf(sinf);
+  const fans = JADVALLAR
+    .filter(j => j.kunlar.includes(weekday) && j.sinflar.some(s => normalizeSinf(s) === sinfNorm))
+    .map(j => j.fan)
+    .filter(Boolean);
+  return [...new Set(fans)].join(' + ');
+}
+
 // Jadval filter/qidiruv holati
 let activeFilter = null; // null | 'keldi' | 'kelmadi' | 'sababli' | 'kech'
 
@@ -140,8 +169,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   setDateUI(currentDate);
   updateNextBtn();
 
-  // O'quvchilarni yuklash
-  await loadStudents();
+  // O'quvchilarni va dars jadvalini parallel yuklash
+  await Promise.all([loadStudents(), loadJadval()]);
   // Shu sananing mavjud davomatini yuklash
   await loadDavomat(currentDate);
 });
@@ -247,6 +276,20 @@ async function loadStudents() {
   g('loading-ov').style.display = 'none';
 }
 
+async function loadJadval() {
+  try {
+    const d = await api.getJadvallar({ username: U.username, parol: U.parol });
+    if (d.ok) {
+      JADVALLAR = d.jadvallar.map(j => ({
+        fan:     j.fan,
+        sinflar: parseSinflarList(j.sinflar),
+        kunlar:  parseKunlarList(j.kunlar),
+      }));
+      render();
+    }
+  } catch (e) {}
+}
+
 async function loadDavomat(date) {
   try {
     const params = {
@@ -300,34 +343,88 @@ function renderTable() {
   const list = getStudentsForDate(currentDate)
     .map(s => {
       const key = s.familiya + ' ' + s.ism;
-      return { sinf: s.sinf, name: key, status: attendance[key] || '', izoh: izohlar[key] || '' };
+      const sinfLabel = s.sinf && s.sinf.toLowerCase().includes('sinf') ? s.sinf : (s.sinf ? s.sinf + '-sinf' : '—');
+      return { sinf: sinfLabel, name: key, status: attendance[key] || '', izoh: izohlar[key] || '' };
     })
     .filter(r => (!activeFilter || r.status === activeFilter))
     .filter(r => !q || r.name.toLowerCase().includes(q))
     .sort((a, b) => a.name.localeCompare(b.name));
 
-  const tbody = g('dav-tbody');
+  const tbody   = g('dav-tbody');
+  const mobWrap = g('dav-mobile-list');
 
   if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="4"><div class="dav-empty">
+    tbody.innerHTML = `<tr><td colspan="3"><div class="dav-empty">
       <div class="dav-empty-icon">📋</div>
       <p>Mos yozuv topilmadi</p>
     </div></td></tr>`;
+    mobWrap.innerHTML = `<div class="dav-empty">
+      <div class="dav-empty-icon">📋</div>
+      <p>Mos yozuv topilmadi</p>
+    </div>`;
     return;
   }
 
-  tbody.innerHTML = list.map(r => {
-    const meta = STATUS_META[r.status];
-    const sinfLabel = r.sinf && r.sinf.toLowerCase().includes('sinf') ? r.sinf : (r.sinf ? r.sinf + '-sinf' : '—');
-    const badge = meta
+  // ─── Sinf (guruh) bo'yicha guruhlash ───
+  const groups = new Map(); // sinf -> [rows]
+  list.forEach(r => {
+    if (!groups.has(r.sinf)) groups.set(r.sinf, []);
+    groups.get(r.sinf).push(r);
+  });
+  // Sinflarni raqam bo'yicha saralash (4-sinf, 6-sinf, 8-sinf, 9-sinf ...)
+  const sinfOrder = [...groups.keys()].sort((a, b) => {
+    const na = parseInt(a), nb = parseInt(b);
+    if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+    return a.localeCompare(b);
+  });
+
+  const badgeHtml = (status) => {
+    const meta = STATUS_META[status];
+    return meta
       ? `<span class="dav-badge ${meta.badge}">${meta.label}</span>`
       : `<span style="color:var(--muted);font-size:12px;">Belgilanmagan</span>`;
-    return `<tr>
-      <td class="dav-td-sinf">${esc(sinfLabel)}</td>
-      <td class="dav-td-name">${esc(r.name)}</td>
-      <td>${badge}</td>
-      <td class="dav-td-izoh">${r.izoh ? esc(r.izoh) : '—'}</td>
-    </tr>`;
+  };
+
+  // ─── Desktop jadval ───
+  tbody.innerHTML = sinfOrder.map(sinf => {
+    const rows = groups.get(sinf);
+    const fan  = getFanForSinf(sinf, currentDate);
+    const fanHtml = fan
+      ? `<span class="dav-group-fan">${esc(fan)}</span>`
+      : `<span class="dav-group-fan dav-group-fan-empty">Fan belgilanmagan</span>`;
+    const head = `<tr class="dav-group-row"><td colspan="3">
+        <span class="dav-group-sinf">${esc(sinf)}</span>
+        ${fanHtml}
+        <span class="dav-group-count">${rows.length} ta o'quvchi</span>
+      </td></tr>`;
+    const body = rows.map(r => `<tr>
+        <td class="dav-td-name">${esc(r.name)}</td>
+        <td>${badgeHtml(r.status)}</td>
+        <td class="dav-td-izoh">${r.izoh ? esc(r.izoh) : '—'}</td>
+      </tr>`).join('');
+    return head + body;
+  }).join('');
+
+  // ─── Mobil kartalar ───
+  mobWrap.innerHTML = sinfOrder.map(sinf => {
+    const rows = groups.get(sinf);
+    const fan  = getFanForSinf(sinf, currentDate);
+    const fanHtml = fan
+      ? `<span class="dav-group-fan">${esc(fan)}</span>`
+      : `<span class="dav-group-fan dav-group-fan-empty">Fan belgilanmagan</span>`;
+    const cards = rows.map(r => `<div class="dav-mcard">
+        <div class="dav-mcard-name">${esc(r.name)}</div>
+        <div class="dav-mcard-row">${badgeHtml(r.status)}</div>
+        ${r.izoh ? `<div class="dav-mcard-izoh">${esc(r.izoh)}</div>` : ''}
+      </div>`).join('');
+    return `<div class="dav-mgroup">
+        <div class="dav-mgroup-head">
+          <span class="dav-group-sinf">${esc(sinf)}</span>
+          ${fanHtml}
+          <span class="dav-group-count">${rows.length} ta o'quvchi</span>
+        </div>
+        <div class="dav-mgroup-body">${cards}</div>
+      </div>`;
   }).join('');
 }
 

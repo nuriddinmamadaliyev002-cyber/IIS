@@ -131,6 +131,47 @@
 }
 .dav-empty-icon { font-size: 26px; margin-bottom: 8px; opacity: .6; }
 
+/* == GURUH (SINF) SARLAVHA QATORI == */
+.dav-group-row td {
+  background: var(--bg);
+  padding: 10px 14px;
+  display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+}
+.dav-group-sinf {
+  font-size: 13px; font-weight: 700; color: var(--text);
+}
+.dav-group-fan {
+  display: inline-flex; align-items: center;
+  padding: 3px 10px; border-radius: 20px;
+  font-size: 11.5px; font-weight: 600;
+  background: var(--accent-soft); color: var(--accent);
+}
+.dav-group-fan-empty { background: var(--bg); color: var(--muted); border: 1px dashed var(--border); }
+.dav-group-count { margin-left: auto; font-size: 11.5px; color: var(--muted); }
+
+/* == MOBIL KARTALAR == */
+/* .dav-main allaqachon gorizontal padding beradi — .mobile-list ni qo'shimcha padding'siz qilamiz */
+#dav-mobile-list { padding: 0; gap: 12px; }
+
+.dav-mgroup {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 14px; overflow: hidden;
+}
+.dav-mgroup-head {
+  padding: 10px 14px; background: var(--bg);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+}
+.dav-mgroup-body { display: flex; flex-direction: column; }
+.dav-mcard {
+  padding: 12px 14px; border-bottom: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 6px;
+}
+.dav-mgroup-body .dav-mcard:last-child { border-bottom: none; }
+.dav-mcard-name { font-weight: 600; font-size: 13.5px; color: var(--text); }
+.dav-mcard-row { display: flex; align-items: center; }
+.dav-mcard-izoh { font-size: 12px; color: var(--muted); }
+
 /* == EXPORT BUTTON == */
 .btn-export {
   padding: 7px 14px; border-radius: 8px; font-size: 13px; font-weight: 600;
