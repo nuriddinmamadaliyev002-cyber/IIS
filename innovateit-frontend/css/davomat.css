@@ -147,6 +147,14 @@
   background: var(--accent-soft); color: var(--accent);
 }
 .dav-group-fan-empty { background: var(--bg); color: var(--muted); border: 1px dashed var(--border); }
+.dav-group-vaqt {
+  display: inline-flex; align-items: center; gap: 3px;
+  font-size: 11.5px; font-weight: 600; color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+.dav-group-teacher {
+  font-size: 11.5px; color: var(--muted); font-style: italic;
+}
 .dav-group-count { margin-left: auto; font-size: 11.5px; color: var(--muted); }
 
 /* == MOBIL KARTALAR == */

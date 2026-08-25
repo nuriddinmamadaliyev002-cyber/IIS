@@ -22,8 +22,9 @@ let INACTIVE_STUDENTS = []; // Nofaol o'quvchilar
 let attendance = {}; // { "Ism Familiya": "keldi"|"kelmadi"|"sababli"|"kech" }
 let izohlar    = {}; // { "Ism Familiya": "izoh matni" }
 
-// Dars jadvali — sinf (guruh) yonida shu kunning fanini ko'rsatish uchun
-// [{ fan, sinflar:[...], kunlar:[1..6] }]
+// Dars jadvali — bitta yozuv = bitta o'qituvchi darsi/guruhi
+// (bir nechta sinf birgalikda bitta guruhda o'qishi mumkin, masalan "6-sinf,8-sinf")
+// [{ fan, sinflar:[...], kunlar:[1..6], boshlanish, tugash, teacher }]
 let JADVALLAR = [];
 
 function parseSinflarList(str) {
@@ -39,16 +40,20 @@ function normalizeSinf(s) {
   return String(s || '').toLowerCase().replace(/-?sinf$/i, '').trim();
 }
 
-// Berilgan sinf uchun berilgan sanadagi (hafta kuni bo'yicha) biriktirilgan fan(lar)ni topadi
-function getFanForSinf(sinf, date) {
-  const weekday = date.getDay(); // 1=Dushanba ... 6=Shanba (Yakshanba bu yerga kelmaydi)
-  if (weekday < 1 || weekday > 6) return '';
-  const sinfNorm = normalizeSinf(sinf);
-  const fans = JADVALLAR
-    .filter(j => j.kunlar.includes(weekday) && j.sinflar.some(s => normalizeSinf(s) === sinfNorm))
-    .map(j => j.fan)
-    .filter(Boolean);
-  return [...new Set(fans)].join(' + ');
+// Berilgan sanada (hafta kuniga qarab) o'tkaziladigan darslar (guruhlar) ro'yxati
+function getSessionsForDate(date) {
+  const weekday = date.getDay(); // 1=Dushanba ... 6=Shanba
+  if (weekday < 1 || weekday > 6) return [];
+  return JADVALLAR
+    .filter(j => j.kunlar.includes(weekday))
+    .sort((a, b) => (a.boshlanish || '').localeCompare(b.boshlanish || ''));
+}
+
+// Vaqt oralig'ini "08:00–08:45" ko'rinishida qaytaradi
+function formatVaqt(j) {
+  if (j.boshlanish && j.tugash) return `${j.boshlanish}–${j.tugash}`;
+  if (j.boshlanish) return j.boshlanish;
+  return '';
 }
 
 // Jadval filter/qidiruv holati
@@ -281,9 +286,12 @@ async function loadJadval() {
     const d = await api.getJadvallar({ username: U.username, parol: U.parol });
     if (d.ok) {
       JADVALLAR = d.jadvallar.map(j => ({
-        fan:     j.fan,
-        sinflar: parseSinflarList(j.sinflar),
-        kunlar:  parseKunlarList(j.kunlar),
+        fan:        j.fan,
+        sinflar:    parseSinflarList(j.sinflar),
+        kunlar:     parseKunlarList(j.kunlar),
+        boshlanish: j.boshlanish || '',
+        tugash:     j.tugash || '',
+        teacher:    [j.teacher_familiya, j.teacher_ism].filter(Boolean).join(' '),
       }));
       render();
     }
@@ -365,18 +373,43 @@ function renderTable() {
     return;
   }
 
-  // ─── Sinf (guruh) bo'yicha guruhlash ───
-  const groups = new Map(); // sinf -> [rows]
-  list.forEach(r => {
-    if (!groups.has(r.sinf)) groups.set(r.sinf, []);
-    groups.get(r.sinf).push(r);
+  // ─── Guruhlash: haqiqiy dars guruhlariga (dars_jadvali yozuvlariga) qarab ───
+  // Bir guruh bir nechta sinfni birlashtirishi mumkin (masalan "6-sinf,8-sinf" — bitta
+  // o'qituvchi ikkala sinfni birga o'qitadi). Shu kunga to'g'ri keladigan har bir dars
+  // — alohida guruh sifatida ko'rsatiladi, sinf esa faqat shu darsda ishtirok etadi.
+  const sessions = getSessionsForDate(currentDate);
+  const usedIdx  = new Set(); // list ichidagi qaysi indekslar allaqachon biror guruhga tushdi
+
+  const sessionGroups = sessions.map(session => {
+    const sinfNormSet = new Set(session.sinflar.map(normalizeSinf));
+    const rows = [];
+    list.forEach((r, i) => {
+      if (sinfNormSet.has(normalizeSinf(r.sinf))) { rows.push(r); usedIdx.add(i); }
+    });
+    const label = [...new Set(session.sinflar.map(s => normalizeSinf(s)))]
+      .sort((a, b) => (parseInt(a) - parseInt(b)) || a.localeCompare(b))
+      .join(', ') + '-sinf';
+    return { label, fan: session.fan, vaqt: formatVaqt(session), teacher: session.teacher, rows };
+  }).filter(g => g.rows.length); // hech kim yo'q guruhlarni ko'rsatmaymiz
+
+  // Hech qanday darsga tushmagan o'quvchilar — o'z sinfi bo'yicha alohida (eski xulq)
+  const leftover = new Map(); // sinf -> rows
+  list.forEach((r, i) => {
+    if (usedIdx.has(i)) return;
+    if (!leftover.has(r.sinf)) leftover.set(r.sinf, []);
+    leftover.get(r.sinf).push(r);
   });
-  // Sinflarni raqam bo'yicha saralash (4-sinf, 6-sinf, 8-sinf, 9-sinf ...)
-  const sinfOrder = [...groups.keys()].sort((a, b) => {
+  const leftoverOrder = [...leftover.keys()].sort((a, b) => {
     const na = parseInt(a), nb = parseInt(b);
     if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
     return a.localeCompare(b);
   });
+  const leftoverGroups = leftoverOrder.map(sinf => ({
+    label: sinf, fan: '', vaqt: '', teacher: '', rows: leftover.get(sinf)
+  }));
+
+  // Dars vaqti borlar avval (vaqt bo'yicha allaqachon saralangan), keyin fansiz qolganlar
+  const allGroups = [...sessionGroups, ...leftoverGroups];
 
   const badgeHtml = (status) => {
     const meta = STATUS_META[status];
@@ -385,19 +418,23 @@ function renderTable() {
       : `<span style="color:var(--muted);font-size:12px;">Belgilanmagan</span>`;
   };
 
-  // ─── Desktop jadval ───
-  tbody.innerHTML = sinfOrder.map(sinf => {
-    const rows = groups.get(sinf);
-    const fan  = getFanForSinf(sinf, currentDate);
-    const fanHtml = fan
-      ? `<span class="dav-group-fan">${esc(fan)}</span>`
+  const headChips = (grp) => {
+    const fanHtml = grp.fan
+      ? `<span class="dav-group-fan">${esc(grp.fan)}</span>`
       : `<span class="dav-group-fan dav-group-fan-empty">Fan belgilanmagan</span>`;
+    const vaqtHtml = grp.vaqt ? `<span class="dav-group-vaqt">🕒 ${esc(grp.vaqt)}</span>` : '';
+    const teacherHtml = grp.teacher ? `<span class="dav-group-teacher">${esc(grp.teacher)}</span>` : '';
+    return fanHtml + vaqtHtml + teacherHtml;
+  };
+
+  // ─── Desktop jadval ───
+  tbody.innerHTML = allGroups.map(grp => {
     const head = `<tr class="dav-group-row"><td colspan="3">
-        <span class="dav-group-sinf">${esc(sinf)}</span>
-        ${fanHtml}
-        <span class="dav-group-count">${rows.length} ta o'quvchi</span>
+        <span class="dav-group-sinf">${esc(grp.label)}</span>
+        ${headChips(grp)}
+        <span class="dav-group-count">${grp.rows.length} ta o'quvchi</span>
       </td></tr>`;
-    const body = rows.map(r => `<tr>
+    const body = grp.rows.map(r => `<tr>
         <td class="dav-td-name">${esc(r.name)}</td>
         <td>${badgeHtml(r.status)}</td>
         <td class="dav-td-izoh">${r.izoh ? esc(r.izoh) : '—'}</td>
@@ -406,22 +443,17 @@ function renderTable() {
   }).join('');
 
   // ─── Mobil kartalar ───
-  mobWrap.innerHTML = sinfOrder.map(sinf => {
-    const rows = groups.get(sinf);
-    const fan  = getFanForSinf(sinf, currentDate);
-    const fanHtml = fan
-      ? `<span class="dav-group-fan">${esc(fan)}</span>`
-      : `<span class="dav-group-fan dav-group-fan-empty">Fan belgilanmagan</span>`;
-    const cards = rows.map(r => `<div class="dav-mcard">
+  mobWrap.innerHTML = allGroups.map(grp => {
+    const cards = grp.rows.map(r => `<div class="dav-mcard">
         <div class="dav-mcard-name">${esc(r.name)}</div>
         <div class="dav-mcard-row">${badgeHtml(r.status)}</div>
         ${r.izoh ? `<div class="dav-mcard-izoh">${esc(r.izoh)}</div>` : ''}
       </div>`).join('');
     return `<div class="dav-mgroup">
         <div class="dav-mgroup-head">
-          <span class="dav-group-sinf">${esc(sinf)}</span>
-          ${fanHtml}
-          <span class="dav-group-count">${rows.length} ta o'quvchi</span>
+          <span class="dav-group-sinf">${esc(grp.label)}</span>
+          ${headChips(grp)}
+          <span class="dav-group-count">${grp.rows.length} ta o'quvchi</span>
         </div>
         <div class="dav-mgroup-body">${cards}</div>
       </div>`;
