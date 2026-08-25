@@ -2,16 +2,15 @@
 //  InnovateIT School — Davomat  (davomat.js)
 // ═══════════════════════════════════════════════════
 
-
 const OYLAR  = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
 const KUNLAR = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
 
-const STATUSES = [
-  { key: 'keldi',   emoji: '✅', title: 'Keldi'     },
-  { key: 'kelmadi', emoji: '❌', title: 'Kelmadi'   },
-  { key: 'sababli', emoji: '📋', title: 'Sababli'   },
-  { key: 'kech',    emoji: '⏰', title: 'Kech keldi' },
-];
+const STATUS_META = {
+  keldi:   { label: 'Keldi',      badge: 'keldi'   },
+  kelmadi: { label: 'Kelmadi',    badge: 'kelmadi' },
+  sababli: { label: 'Sababli',    badge: 'sababli' },
+  kech:    { label: 'Kech keldi', badge: 'kech'    },
+};
 
 // Foydalanuvchi ma'lumotlari (app.js dan sessionStorage orqali keladi)
 let U  = null; // { username, parol, ism, isSuper, viewingUsername, viewingIsm }
@@ -22,6 +21,9 @@ let STUDENTS          = []; // Faol o'quvchilar
 let INACTIVE_STUDENTS = []; // Nofaol o'quvchilar
 let attendance = {}; // { "Ism Familiya": "keldi"|"kelmadi"|"sababli"|"kech" }
 let izohlar    = {}; // { "Ism Familiya": "izoh matni" }
+
+// Jadval filter/qidiruv holati
+let activeFilter = null; // null | 'keldi' | 'kelmadi' | 'sababli' | 'kech'
 
 // ─── Sana yordamchi funksiyalari ───
 // "DD.MM.YYYY" → Date
@@ -95,8 +97,6 @@ function getStudentsForDate(date) {
 const TODAY = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
 let currentDate = skipSunday(new Date(TODAY));
 
-let pendingIzoh = null; // { key, btnEl }
-
 // ─────────────────────────────────────────────
 //  YUKLANGANDA
 // ─────────────────────────────────────────────
@@ -104,11 +104,9 @@ let pendingIzoh = null; // { key, btnEl }
 function updateStickyHeights() {
   const topbar  = document.querySelector('.topbar');
   const datebar = document.querySelector('.date-bar');
-  const statsbar = document.querySelector('.stats-bar');
   const root = document.documentElement;
   if (topbar)   root.style.setProperty('--topbar-h',   topbar.offsetHeight   + 'px');
   if (datebar)  root.style.setProperty('--datebar-h',  datebar.offsetHeight  + 'px');
-  if (statsbar) root.style.setProperty('--statsbar-h', statsbar.offsetHeight + 'px');
 }
 window.addEventListener('resize', updateStickyHeights);
 
@@ -263,45 +261,22 @@ async function loadDavomat(date) {
         if (r.izoh) izohlar[r.ism] = r.izoh;
       });
       render();
-      // Toast faqat birinchi yuklanganda, sana o'zgartirish vaqtida emas
     }
   } catch (e) {}
 }
 
 // ─────────────────────────────────────────────
-//  RENDER — admin uchun sinf kartalari endi
-//  ko'rsatilmaydi, faqat statistika yangilanadi
+//  RENDER — statistika kartalari + davomat jadvali
+//  (Faqat ko'rish rejimi: davomatni o'qituvchi
+//  o'z panelidan belgilaydi, admin bu yerda o'zgartira olmaydi.)
 // ─────────────────────────────────────────────
 function render() {
-  const visibleStudents = getStudentsForDate(currentDate);
-  updateStats(visibleStudents);
+  updateStats();
+  renderTable();
 }
 
-function countStatuses(list) {
-  const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
-  list.forEach(s => {
-    const key = s.familiya + ' ' + s.ism; // saqlanish tartibi: "Familiya Ism"
-    const st  = attendance[key];
-    if (st && c[st] !== undefined) c[st]++;
-  });
-  return c;
-}
-
-// ─────────────────────────────────────────────
-//  STATUS BELGILASH — FAQAT KO'RISH REJIMI
-//  (Endi davomatni o'qituvchilar o'z panelidan
-//  belgilaydi. Maktab admin faqat ko'ra oladi,
-//  tahrirlash/yozish imkoniyati yo'q.)
-// ─────────────────────────────────────────────
-function setStatus(key, status, btn) {
-  toast('👁 Faqat ko\'rish rejimi — davomatni faqat o\'qituvchi o\'z panelida belgilaydi', 'error');
-}
-
-// ─────────────────────────────────────────────
-//  STATISTIKA
-// ─────────────────────────────────────────────
-function updateStats(visibleList) {
-  const list = visibleList || getStudentsForDate(currentDate);
+function updateStats() {
+  const list = getStudentsForDate(currentDate);
   const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
   Object.values(attendance).forEach(s => { if (s && c[s] !== undefined) c[s]++; });
   g('st-keldi').textContent   = c.keldi;
@@ -311,117 +286,49 @@ function updateStats(visibleList) {
   g('st-total').textContent   = list.length;
 }
 
-// ─────────────────────────────────────────────
-//  STATUS DETAIL MODAL
-// ─────────────────────────────────────────────
-const STATUS_META = {
-  keldi:   { emoji: '✅', title: 'Keldi',      cls: 'k', color: '#15803d' },
-  kelmadi: { emoji: '❌', title: 'Kelmadi',    cls: 'x', color: '#dc2626' },
-  sababli: { emoji: '📋', title: 'Sababli',    cls: 's', color: '#d97706' },
-  kech:    { emoji: '⏰', title: 'Kech keldi', cls: 'l', color: '#7c3aed' },
-};
+// Stat kartani bosish — jadvalni shu statusga filtrlaydi (qayta bossa — bekor qiladi)
+function toggleFilter(status) {
+  activeFilter = activeFilter === status ? null : status;
+  ['keldi','kelmadi','sababli','kech'].forEach(s => {
+    g('card-' + s).classList.toggle('active', activeFilter === s);
+  });
+  renderTable();
+}
 
-function showStatusDetail(status) {
-  const meta = STATUS_META[status];
-  if (!meta) return;
-
-  // O'sha statusdagi o'quvchilarni yig'ish
+function renderTable() {
+  const q = (g('dav-search').value || '').trim().toLowerCase();
   const list = getStudentsForDate(currentDate)
-    .filter(s => attendance[s.familiya + ' ' + s.ism] === status)
-    .map(s => ({ name: s.familiya + ' ' + s.ism, sinf: s.sinf, izoh: izohlar[s.familiya + ' ' + s.ism] || '' }));
+    .map(s => {
+      const key = s.familiya + ' ' + s.ism;
+      return { sinf: s.sinf, name: key, status: attendance[key] || '', izoh: izohlar[key] || '' };
+    })
+    .filter(r => (!activeFilter || r.status === activeFilter))
+    .filter(r => !q || r.name.toLowerCase().includes(q))
+    .sort((a, b) => a.name.localeCompare(b.name));
 
-  g('sd-emoji').textContent  = meta.emoji;
-  g('sd-title').textContent  = meta.title;
-
-  const badge = g('sd-badge');
-  badge.textContent  = list.length + ' nafar';
-  badge.className    = 'status-detail-badge ' + meta.cls;
+  const tbody = g('dav-tbody');
 
   if (!list.length) {
-    g('sd-body').innerHTML = `<div class="status-detail-empty">Hozircha hech kim ${meta.title.toLowerCase()} emas</div>`;
-  } else {
-    g('sd-body').innerHTML = list.map((item, i) => `
-      <div class="status-detail-item">
-        <span class="status-detail-num">${i + 1}</span>
-        <div class="status-detail-info">
-          <div class="status-detail-name">${item.name}</div>
-          <div class="status-detail-sinf">${item.sinf.toLowerCase().includes('sinf') ? item.sinf : item.sinf + '-sinf'}</div>
-          ${item.izoh ? `<div class="status-detail-izoh">💬 ${item.izoh}</div>` : ''}
-        </div>
-      </div>`).join('');
-  }
-
-  const modal = g('status-detail-modal');
-  modal.classList.add('open');
-  modal.style.display = 'flex';
-}
-
-function closeStatusDetail() {
-  const modal = g('status-detail-modal');
-  modal.style.display = 'none';
-  modal.classList.remove('open');
-}
-
-// ─────────────────────────────────────────────
-//  SAQLASH
-// ─────────────────────────────────────────────
-function confirmSave() {
-  const visibleStudents = getStudentsForDate(currentDate);
-  const total  = visibleStudents.length;
-  const marked = Object.keys(attendance).filter(k => {
-    return attendance[k] && visibleStudents.some(s => s.ism + ' ' + s.familiya === k);
-  }).length;
-
-  if (!marked) { toast('⚠️ Hech narsa belgilanmadi', 'error'); return; }
-  if (marked < total) {
-    toast(`⚠️ Hali ${total - marked} ta o'quvchi belgilanmadi`, 'error');
+    tbody.innerHTML = `<tr><td colspan="4"><div class="dav-empty">
+      <div class="dav-empty-icon">📋</div>
+      <p>Mos yozuv topilmadi</p>
+    </div></td></tr>`;
     return;
   }
 
-  const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
-  visibleStudents.forEach(s => {
-    const st = attendance[s.ism + ' ' + s.familiya];
-    if (st && c[st] !== undefined) c[st]++;
-  });
-
-  g('modal-desc').innerHTML = `
-    <span style="font-weight:600">${formatDateDisplay(currentDate)}</span> — ${KUNLAR[currentDate.getDay()]}<br>
-    <span style="color:var(--muted);font-size:12px">${marked} / ${total} o'quvchi belgilangan</span>`;
-
-  g('modal-stats').innerHTML = `
-    <span class="dav-modal-stat k">✅ Keldi: ${c.keldi}</span>
-    <span class="dav-modal-stat x">❌ Kelmadi: ${c.kelmadi}</span>
-    <span class="dav-modal-stat s">📋 Sababli: ${c.sababli}</span>
-    <span class="dav-modal-stat l">⏰ Kech: ${c.kech}</span>`;
-
-  g('confirm-modal').style.display = 'flex';
-}
-
-function closeModal() { g('confirm-modal').style.display = 'none'; }
-
-async function doSave() {
-  // Shu sanada ko'rinishi kerak bo'lgan o'quvchilar
-  const visibleStudents = getStudentsForDate(currentDate);
-  const records = visibleStudents.map(s => {
-    const key    = s.ism + ' ' + s.familiya;
-    const status = attendance[key] || '';
-    return { sinf: s.sinf, ism: key, status, izoh: izohlar[key] || '' };
-  }).filter(r => r.status); // Faqat belgilanganlari
-
-  bl('btn-confirm', 'save-spinner', 'save-txt', true, 'Saqlanmoqda…');
-  try {
-    const r = await api.saveDavomat({
-      username: U.username,
-      parol:    U.parol,
-      sana:     dateStr(currentDate),
-      records:  JSON.stringify(records)
-    });
-    if (r.ok) {
-      closeModal();
-      toast(`✅ ${r.saved} ta yozuv saqlandi!`, 'success');
-    } else toast('❌ ' + r.error, 'error');
-  } catch (e) { toast('❌ Xatolik yuz berdi', 'error'); }
-  bl('btn-confirm', 'save-spinner', 'save-txt', false, 'Ha, saqlash');
+  tbody.innerHTML = list.map(r => {
+    const meta = STATUS_META[r.status];
+    const sinfLabel = r.sinf && r.sinf.toLowerCase().includes('sinf') ? r.sinf : (r.sinf ? r.sinf + '-sinf' : '—');
+    const badge = meta
+      ? `<span class="dav-badge ${meta.badge}">${meta.label}</span>`
+      : `<span style="color:var(--muted);font-size:12px;">Belgilanmagan</span>`;
+    return `<tr>
+      <td class="dav-td-sinf">${esc(sinfLabel)}</td>
+      <td class="dav-td-name">${esc(r.name)}</td>
+      <td>${badge}</td>
+      <td class="dav-td-izoh">${r.izoh ? esc(r.izoh) : '—'}</td>
+    </tr>`;
+  }).join('');
 }
 
 // ─────────────────────────────────────────────
@@ -525,7 +432,6 @@ function updateBugunPreview() {
 
 async function doExport() {
   let from, to, filename;
-  const now = new Date();
 
   if (exportType === 'bugun') {
     from = dateStr(currentDate);
@@ -576,12 +482,12 @@ async function doExport() {
 
   if (!records.length) { toast('⚠️ Bu davr uchun ma\'lumot topilmadi', 'error'); return; }
 
-  buildExcel(records, filename, from, to);
+  buildExcel(records, filename);
   closeExportModal();
   toast('✅ Excel fayl yuklab olindi!', 'success');
 }
 
-function buildExcel(records, filename, from, to) {
+function buildExcel(records, filename) {
   const wb = XLSX.utils.book_new();
   const STATUS_LABEL = { keldi:'Keldi', kelmadi:'Kelmadi', sababli:'Sababli', kech:'Kech keldi' };
 
@@ -691,8 +597,7 @@ function bl(btnId, spId, txtId, loading, txt) {
 }
 
 function g(id)      { return document.getElementById(id); }
-function esc(s)     { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
-function safeId(s)  { return s.replace(/[^a-zA-Z0-9]/g, '_'); }
+function esc(s)     { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
 let toastT;
 function toast(msg, type = '') {

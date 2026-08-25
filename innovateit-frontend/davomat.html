@@ -35,32 +35,52 @@
   <input class="date-input" type="date" id="date-picker" onchange="onDatePick()">
 </div>
 
-<!-- STATS BAR — admin shu tugmalarni bosib davomat holatini ko'radi -->
-<div class="stats-bar">
-  <div class="stat-pill pill-keldi"   onclick="showStatusDetail('keldi')">  <span class="stat-dot keldi"></span>Keldi   <span class="stat-num" id="st-keldi">0</span></div>
-  <div class="stat-pill pill-kelmadi" onclick="showStatusDetail('kelmadi')"><span class="stat-dot kelmadi"></span>Kelmadi <span class="stat-num" id="st-kelmadi">0</span></div>
-  <div class="stat-pill pill-sababli" onclick="showStatusDetail('sababli')"><span class="stat-dot sababli"></span>Sababli <span class="stat-num" id="st-sababli">0</span></div>
-  <div class="stat-pill pill-kech"    onclick="showStatusDetail('kech')">   <span class="stat-dot kech"></span>Kech    <span class="stat-num" id="st-kech">0</span></div>
-  <div class="stat-pill pill-total" style="margin-left:auto;">Jami: <span class="stat-num" id="st-total">0</span></div>
-</div>
+<div class="dav-main">
 
-<!-- Sinf kartalari admin uchun endi ko'rsatilmaydi — u faqat yuqoridagi
-     Keldi/Kelmadi/Sababli/Kech tugmalarini bosib, kimlar shu statusda
-     ekanini ro'yxat ko'rinishida ko'radi (status-detail-modal orqali) -->
-
-<!-- MODAL: Status detail (kim keldi/kelmadi/sababli/kech) -->
-<div class="status-detail-modal" id="status-detail-modal" onclick="if(event.target===this)closeStatusDetail()">
-  <div class="status-detail-sheet">
-    <div class="status-detail-header">
-      <div class="status-detail-title">
-        <span id="sd-emoji"></span>
-        <span id="sd-title"></span>
-        <span class="status-detail-badge" id="sd-badge"></span>
-      </div>
-      <button class="status-detail-close" onclick="closeStatusDetail()">×</button>
+  <!-- STAT KARTALAR — admin shu kartalarni bosib pastdagi jadvalni filtrlaydi -->
+  <div class="stat-grid">
+    <div class="stat-card keldi"   id="card-keldi"   onclick="toggleFilter('keldi')">
+      <div class="stat-card-lbl"><span class="stat-card-dot"></span>Keldi</div>
+      <div class="stat-card-num" id="st-keldi">0</div>
     </div>
-    <div class="status-detail-body" id="sd-body"></div>
+    <div class="stat-card kelmadi" id="card-kelmadi" onclick="toggleFilter('kelmadi')">
+      <div class="stat-card-lbl"><span class="stat-card-dot"></span>Kelmadi</div>
+      <div class="stat-card-num" id="st-kelmadi">0</div>
+    </div>
+    <div class="stat-card sababli" id="card-sababli" onclick="toggleFilter('sababli')">
+      <div class="stat-card-lbl"><span class="stat-card-dot"></span>Sababli</div>
+      <div class="stat-card-num" id="st-sababli">0</div>
+    </div>
+    <div class="stat-card kech"    id="card-kech"    onclick="toggleFilter('kech')">
+      <div class="stat-card-lbl"><span class="stat-card-dot"></span>Kech</div>
+      <div class="stat-card-num" id="st-kech">0</div>
+    </div>
+    <div class="stat-card total">
+      <div class="stat-card-lbl">Jami</div>
+      <div class="stat-card-num" id="st-total">0</div>
+    </div>
   </div>
+
+  <!-- QIDIRUV -->
+  <div class="dav-toolbar">
+    <input class="dav-search" type="text" id="dav-search" placeholder="O'quvchi qidirish…" oninput="renderTable()">
+  </div>
+
+  <!-- DAVOMAT JADVALI — standart holatda barcha o'quvchilar ko'rinadi -->
+  <div class="dav-table-wrap">
+    <table class="dav-table">
+      <thead>
+        <tr>
+          <th>Sinf</th>
+          <th>Ism familiya</th>
+          <th>Holat</th>
+          <th>Izoh</th>
+        </tr>
+      </thead>
+      <tbody id="dav-tbody"></tbody>
+    </table>
+  </div>
+
 </div>
 
 <!-- MODAL: Excel yuklab olish -->
