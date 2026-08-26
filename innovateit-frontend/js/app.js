@@ -1063,6 +1063,8 @@ function getM(id) {
 
 function g(id)  { return document.getElementById(id); }
 function esc(s) { return String(s).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+function esc2(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function setValue(id,val) { const el=g(id); if(el) el.value=val; }
 
 // ─── Telefon mask va validatsiya ───
 function fmtTel(val) {
@@ -2043,30 +2045,460 @@ function applyTeacherFilter() {
   renderTeachersTab(TEACHERS_TAB);
 }
 
-// O'qituvchilar tabidagi ✏️ tugmasi — oqituvchilar.html ga o'tib tahrirlash modalini ochish
-function openTeacherEditFromTab(teacherId) {
-  const teacherUser = {
-    username: U.username, parol: U.parol, ism: U.ism,
-    isSuper: U.isSuper,
-    adminsMap: JSON.stringify((ADMINS || []).map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))),
-    openEditId: teacherId,   // ← oqituvchilar.html bu ID ni ko'rib modalni ochadi
-    fromPortfolioTab: false
-  };
-  sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
-  window.location.href = 'oqituvchilar.html';
+// O'qituvchilar tabidagi ✏️ tugmasi — endi sahifadan chiqmasdan, shu yerning
+// o'zida (index.html ichida) tahrirlash oynasini ochadi.
+let SE_ID    = null;  // tahrirlanayotgan o'qituvchi id
+let SE_SERTS = [];    // tahrirlash oynasidagi sertifikatlar
+
+async function openTeacherEditFromTab(teacherId) {
+  if (!U || !U.isSuper) return;
+  injectSuperModals();
+  SE_ID    = teacherId;
+  SE_SERTS = [];
+
+  const t = (TEACHERS_TAB || []).find(x => x.id === teacherId);
+  if (t) {
+    setValue('se-id',       t.id);
+    setValue('se-ism',      t.ism||'');
+    setValue('se-familiya', t.familiya||'');
+    setValue('se-fan',      t.fan||'');
+    setValue('se-tel',      t.telefon||'');
+    setValue('se-tel2',     t.telefon2||'');
+    ['se-tel','se-tel2'].forEach(id => {
+      const inp=g(id), hint=g(id+'-hint');
+      if (inp) inp.className='field-input tel-input';
+      if (hint) { hint.textContent=''; hint.className='tel-hint'; }
+      if (inp && inp.value) validateTel(inp,hint);
+    });
+
+    setValue('se-tgid', t.telegram_id || '');
+    selectSeAvatar(t.avatar || '');
+    const sameTgOtherTeachers = t.telegram_id
+      ? (TEACHERS_TAB || []).filter(x => x.id !== t.id && String(x.telegram_id) === String(t.telegram_id))
+      : [];
+    g('se-tg-status').innerHTML = t.telegram_id
+      ? `<span style="color:#059669;">✅ Bog'langan (ID: ${t.telegram_id}) — o'qituvchi web panelga kira oladi</span>` +
+        (sameTgOtherTeachers.length
+          ? `<br><span style="color:#dc2626;">⚠️ Diqqat: shu Telegram ID yana ${sameTgOtherTeachers.length} ta o'qituvchiga ham biriktirilgan</span>`
+          : '')
+      : `<span style="color:#dc2626;">❌ Hali bog'lanmagan — o'qituvchi web panelga kira olmaydi</span>`;
+    loadTeacherKandidatlar();
+  }
+
+  setValue('se-fish',''); setValue('se-univ','');
+  setValue('se-sert',''); setValue('se-tajriba','');
+  g('se-sert-gallery').innerHTML = '';
+  updateSeCount(0);
+
+  const modal = g('super-edit-modal'); if(modal) { modal.style.display='flex'; }
+
+  try {
+    const r = await api.getPortfolioTeacher({ username: U.username, parol: U.parol }, teacherId);
+    if (r.ok) {
+      const p = r.portfolio;
+      if (p) {
+        const fishVal = p.fish || '';
+        setValue('se-fish',    fishVal || ((t ? t.familiya+' '+t.ism : '')).trim());
+        setValue('se-univ',    p.universitet||'');
+        setValue('se-sert',    p.sertifikatlar||'');
+        setValue('se-tajriba', p.ish_tajribasi||'');
+      } else if (t) {
+        setValue('se-fish', (t.familiya+' '+t.ism).trim());
+      }
+      SE_SERTS = r.sertifikatlar || [];
+      renderSeGallery();
+    }
+  } catch {}
 }
 
-// ⇄ Birlashtirish tugmasi
+async function loadTeacherKandidatlar() {
+  const sel = g('se-kandidatlar');
+  if (!sel) return;
+  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
+  try {
+    const r = await api.getKandidatlar();
+    if (!r.ok || !r.kandidatlar?.length) {
+      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
+      return;
+    }
+    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
+      r.kandidatlar.map(k => {
+        const label = `${esc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
+        return `<option value="${k.telegram_id}">${label}</option>`;
+      }).join('');
+  } catch (e) {
+    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
+  }
+}
+
+function closeSuperEdit() {
+  const m = g('super-edit-modal'); if(m) { m.style.display='none'; }
+  SE_ID = null; SE_SERTS = [];
+}
+
+// ── Avatar tanlash: 'erkak' | 'ayol' | '' (tanlanmagan) ──
+function selectSeAvatar(val) {
+  setValue('se-avatar', val || '');
+  document.querySelectorAll('.se-avatar-opt').forEach(el => {
+    const on = el.getAttribute('data-val') === val;
+    el.style.borderColor = on ? '#7c3aed' : '#e5e7eb';
+    el.style.background  = on ? '#f5f3ff' : '';
+  });
+}
+
+async function saveSuperEdit() {
+  const ism  = (g('se-ism')?.value||'').trim();
+  const fam  = (g('se-familiya')?.value||'').trim();
+  const fan  = g('se-fan')?.value||'';
+  const tel  = (g('se-tel')?.value||'').trim();
+  const tel2 = (g('se-tel2')?.value||'').trim();
+
+  if (!ism||!fam)    { toast('⚠️ Ism va familiya kiriting','error'); return; }
+  if (!fan)          { toast('⚠️ Fan tanlang','error'); return; }
+  if (!tel)          { toast('⚠️ Telefon kiriting','error'); return; }
+  if (!isTelOk(tel)) { toast("⚠️ Telefon formati noto'g'ri",'error'); return; }
+  if (tel2 && !isTelOk(tel2)) { toast("⚠️ Qo'sh. telefon noto'g'ri",'error'); return; }
+
+  const old = (TEACHERS_TAB || []).find(x => x.id === SE_ID);
+  const newTgId = (g('se-tgid')?.value || '').trim();
+  if (newTgId && !/^\d+$/.test(newTgId)) {
+    toast("⚠️ Telegram ID faqat raqamlardan iborat bo'lishi kerak",'error'); return;
+  }
+  const oldTgId = old?.telegram_id ? String(old.telegram_id) : '';
+
+  setBtnLoading('se-save-btn','se-spinner','se-btn-txt',true,'Saqlanmoqda…');
+  try {
+    const r = await api.editTeacher({
+      username: U.username, parol: U.parol,
+      id: SE_ID,
+      oldIsm: old?.ism||ism, oldFamiliya: old?.familiya||fam,
+      ism, familiya: fam, fan,
+      telefon: tel, telefon2: tel2||'',
+      kunlar: old?.kunlar||'', sinflar: old?.sinflar||'',
+      boshlanish: old?.boshlanish||'', tugash: old?.tugash||'',
+      avatar: (g('se-avatar')?.value || '')
+    });
+    if (!r.ok) { toast('❌ ' + r.error,'error'); return; }
+
+    await api.savePortfolioTeacher({
+      username:      U.username,
+      parol:         U.parol,
+      fish:          (g('se-fish')?.value||'').trim(),
+      universitet:   (g('se-univ')?.value||'').trim(),
+      sertifikatlar: (g('se-sert')?.value||'').trim(),
+      ish_tajribasi: (g('se-tajriba')?.value||'').trim()
+    }, SE_ID);
+
+    if (newTgId && newTgId !== oldTgId) {
+      if (oldTgId) await api.tgAjrat(oldTgId, 'oqituvchi', SE_ID);
+      const tr = await api.tgBirikdir({
+        telegramId: parseInt(newTgId),
+        telegramIsm: `${fam} ${ism}`.trim(),
+        rol: 'oqituvchi',
+        entityId: SE_ID,
+      });
+      if (!tr.ok) { toast('❌ Telegram biriktirishda xatolik: ' + tr.error,'error'); }
+    } else if (!newTgId && oldTgId) {
+      await api.tgAjrat(oldTgId, 'oqituvchi', SE_ID);
+    }
+
+    toast("✅ O'qituvchi yangilandi!",'success');
+    closeSuperEdit();
+    await loadTeachersTab();
+  } catch { toast('❌ Xatolik','error'); }
+  setBtnLoading('se-save-btn','se-spinner','se-btn-txt',false,'Saqlash');
+}
+
+// Sertifikat gallery (edit modal uchun)
+function renderSeGallery() {
+  const el = g('se-sert-gallery'); if (!el) return;
+  updateSeCount(SE_SERTS.length);
+  if (!SE_SERTS.length) { el.innerHTML=''; return; }
+
+  const BASE_URL = (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1' || window.location.hostname === '')
+    ? 'http://127.0.0.1:3001' : '';
+
+  el.innerHTML = SE_SERTS.map(s => {
+    const url   = BASE_URL + '/uploads/' + encodeURIComponent(s.fayl_nomi);
+    const isPdf = s.fayl_nomi.endsWith('.pdf');
+    const thumb = isPdf
+      ? '<div style="height:75px;display:flex;align-items:center;justify-content:center;font-size:28px;background:#fee2e2;border-radius:8px;">📄</div>'
+      : '<img src="' + url + '" style="width:100%;height:75px;object-fit:cover;border-radius:8px;" onerror="this.parentElement.innerHTML=\'<div style=\\\"height:75px;display:flex;align-items:center;justify-content:center;font-size:24px;background:#f3f4f6;border-radius:8px;\\\">🖼️</div>\'">';
+    return '<div style="position:relative;border:1.5px solid #e5e7eb;border-radius:10px;padding:6px;">'
+      + thumb
+      + '<div style="font-size:10px;color:#6b7280;margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;" title="' + esc2(s.asl_nomi||s.fayl_nomi) + '">' + esc2(s.asl_nomi||s.fayl_nomi) + '</div>'
+      + '<button onclick="deleteSeSeert(\'' + esc(s.fayl_nomi) + '\')" style="position:absolute;top:3px;right:3px;background:#ef4444;color:#fff;border:none;border-radius:50%;width:20px;height:20px;cursor:pointer;font-size:11px;display:flex;align-items:center;justify-content:center;padding:0;">✕</button>'
+      + '</div>';
+  }).join('');
+}
+
+function updateSeCount(n) {
+  const el = g('se-sert-count'); if(el) { el.textContent='('+n+'/10)'; el.style.color=n>=10?'#ef4444':'#6b7280'; }
+  const lbl = g('se-upload-label'); if(lbl) lbl.style.opacity = n>=10?'.4':'1';
+  const inp = g('se-sert-file');    if(inp) inp.disabled = n>=10;
+}
+
+async function uploadSeSert() {
+  if (SE_SERTS.length >= 10) { toast('❗ Maksimal 10 ta sertifikat','error'); return; }
+  const fileInput = g('se-sert-file');
+  const file = fileInput?.files?.[0]; if(!file) return;
+
+  const fd = new FormData();
+  fd.append('file', file);
+  fd.append('username', U.username);
+  fd.append('parol', U.parol);
+  fileInput.value = '';
+  toast('⏳ Yuklanmoqda...');
+
+  const r = await api.uploadSertifikat(SE_ID, fd);
+  if (!r.ok) { toast('❌ ' + r.error,'error'); return; }
+
+  SE_SERTS.push({ fayl_nomi: r.filename, asl_nomi: r.asl_nomi, yuklangan: new Date().toLocaleDateString('ru-RU') });
+  renderSeGallery();
+  toast('✅ Sertifikat yuklandi','success');
+}
+
+async function deleteSeSeert(filename) {
+  if (!confirm("Bu sertifikatni o'chirmoqchimisiz?")) return;
+  const r = await api.deleteSertifikat({ username: U.username, parol: U.parol }, SE_ID, filename);
+  if (!r.ok) { toast('❌ ' + r.error,'error'); return; }
+  SE_SERTS = SE_SERTS.filter(s => s.fayl_nomi !== filename);
+  renderSeGallery();
+  toast("✅ Sertifikat o'chirildi");
+}
+
+// ⇄ Birlashtirish tugmasi — endi shu yerning o'zida ochiladi (ID asosida,
+// oqituvchilar.js dagi index-asoslangan (.ri) mantiqdan farqli)
+let MG_KEEP_ID   = null;
+let MG_REMOVE_ID = null;
+
 function openTeacherMergeFromTab(teacherId) {
-  const teacherUser = {
-    username: U.username, parol: U.parol, ism: U.ism,
-    isSuper: U.isSuper,
-    adminsMap: JSON.stringify((ADMINS || []).map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))),
-    openMergeId: teacherId,  // ← oqituvchilar.html bu ID ni ko'rib merge modalini ochadi
-    fromPortfolioTab: false
-  };
-  sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
-  window.location.href = 'oqituvchilar.html';
+  if (!U || !U.isSuper) return;
+  injectSuperModals();
+  const keep = (TEACHERS_TAB || []).find(x => x.id === teacherId);
+  if (!keep) return;
+
+  const sameNameCandidates = (TEACHERS_TAB || []).filter(t =>
+    t.id !== keep.id &&
+    (t.ism||'').trim().toLowerCase() === (keep.ism||'').trim().toLowerCase() &&
+    (t.familiya||'').trim().toLowerCase() === (keep.familiya||'').trim().toLowerCase()
+  );
+
+  const candidates = sameNameCandidates.length > 0 ? sameNameCandidates : (TEACHERS_TAB || []).filter(t => t.id !== keep.id);
+
+  if (candidates.length === 0) {
+    toast("⚠️ Birlashtirish uchun boshqa o'qituvchi yo'q", 'error');
+    return;
+  }
+
+  let removeId;
+  if (sameNameCandidates.length === 1) {
+    removeId = sameNameCandidates[0].id;
+  } else {
+    const lines = candidates.map((c, i) =>
+      `${i+1}. ${c.familiya} ${c.ism} — ${c.fan||"Fan yo'q"} — Maktablar: ${(c.maktablar||[]).map(m => m.nomi||m).join(', ')||'Biriktirilmagan'}`
+    );
+    const choice = prompt(
+      "🔀 Qaysi o'qituvchini o'chirish (birlashtirish) kerak?\n\nSaqlanadigan: " + keep.familiya + ' ' + keep.ism +
+      "\n\nO'chirish uchun raqam kiriting:\n" + lines.join('\n')
+    );
+    if (!choice) return;
+    const pickIdx = parseInt(choice.trim()) - 1;
+    if (isNaN(pickIdx) || pickIdx < 0 || pickIdx >= candidates.length) {
+      toast("❌ Noto'g'ri raqam", 'error'); return;
+    }
+    removeId = candidates[pickIdx].id;
+  }
+
+  MG_KEEP_ID   = keep.id;
+  MG_REMOVE_ID = removeId;
+  renderMergeModal();
+}
+
+function renderMergeModal() {
+  const keep   = (TEACHERS_TAB || []).find(x => x.id === MG_KEEP_ID);
+  const remove = (TEACHERS_TAB || []).find(x => x.id === MG_REMOVE_ID);
+  if (!keep || !remove) return;
+
+  g('mg-keep-name').textContent   = keep.familiya + ' ' + keep.ism;
+  g('mg-keep-fan').textContent    = keep.fan || "Fan ko'rsatilmagan";
+  g('mg-keep-maktab').textContent = (keep.maktablar||[]).map(m => m.nomi||m).join(', ') || 'Maktab biriktirilmagan';
+
+  g('mg-remove-name').textContent   = remove.familiya + ' ' + remove.ism;
+  g('mg-remove-fan').textContent    = remove.fan || "Fan ko'rsatilmagan";
+  g('mg-remove-maktab').textContent = (remove.maktablar||[]).map(m => m.nomi||m).join(', ') || 'Maktab biriktirilmagan';
+
+  const keepName   = keep.ism   + ' ' + keep.familiya;
+  const removeName = remove.familiya + ' ' + remove.ism;
+  const sameNames  = keepName.toLowerCase() === removeName.toLowerCase();
+
+  const nameOpts = g('mg-name-options');
+  nameOpts.innerHTML = '';
+  if (!sameNames) {
+    nameOpts.innerHTML =
+      mkChoiceBtn('mg-name', 'keep',   keep.ism   + ' ' + keep.familiya,   true)  +
+      mkChoiceBtn('mg-name', 'remove', remove.familiya + ' ' + remove.ism, false) +
+      mkChoiceBtn('mg-name', 'custom', '✳ Boshqa kiriting…',               false);
+  } else {
+    nameOpts.innerHTML = '<span style="font-size:13px;color:#374151;padding:6px 0;">' + esc2(keepName) + ' <span style="color:#6b7280;">(ikkalasida bir xil)</span></span>';
+  }
+  g('mg-ism').value      = keep.ism;
+  g('mg-familiya').value = keep.familiya;
+  toggleMgNameInputs();
+
+  const telOpts   = g('mg-tel-options');
+  telOpts.innerHTML = '';
+  const keepTel   = (keep.telefon  ||'').trim();
+  const removeTel = (remove.telefon||'').trim();
+  const sameTels  = keepTel.toLowerCase() === removeTel.toLowerCase();
+
+  if (!sameTels && (keepTel || removeTel)) {
+    if (keepTel)   telOpts.innerHTML += mkChoiceBtn('mg-tel', 'keep',   keepTel,               true);
+    if (removeTel) telOpts.innerHTML += mkChoiceBtn('mg-tel', 'remove', removeTel,             false);
+                   telOpts.innerHTML += mkChoiceBtn('mg-tel', 'custom', '✳ Boshqa kiriting…',  false);
+  } else {
+    const showTel = keepTel || removeTel || '—';
+    telOpts.innerHTML = '<span style="font-size:13px;color:#374151;padding:6px 0;">' + esc2(showTel) + ' <span style="color:#6b7280;">(bir xil)</span></span>';
+  }
+  g('mg-tel').value  = keepTel;
+  g('mg-tel2').value = (keep.telefon2||'').trim() || (remove.telefon2||'').trim();
+  toggleMgTelInputs();
+
+  document.querySelectorAll('[data-mg-group]').forEach(btn => {
+    btn.onclick = function() { mgChoicePick(this); };
+  });
+
+  const modal = g('merge-modal');
+  if (modal) modal.style.display = 'flex';
+}
+
+function mkChoiceBtn(group, value, label, active) {
+  const border = active ? '#8b5cf6' : '#e5e7eb';
+  const bg     = active ? '#ede9fe' : '#f9fafb';
+  const color  = active ? '#5b21b6' : '#374151';
+  return `<button type="button" data-mg-group="${group}" data-mg-val="${value}" `
+    + `style="padding:7px 12px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;transition:all .15s;`
+    + `border:2px solid ${border};background:${bg};color:${color};">`
+    + esc2(label)
+    + `</button>`;
+}
+
+function mgChoicePick(btn) {
+  const group = btn.dataset.mgGroup;
+  document.querySelectorAll(`[data-mg-group="${group}"]`).forEach(b => {
+    b.style.borderColor = '#e5e7eb';
+    b.style.background  = '#f9fafb';
+    b.style.color       = '#374151';
+  });
+  btn.style.borderColor = '#8b5cf6';
+  btn.style.background  = '#ede9fe';
+  btn.style.color       = '#5b21b6';
+
+  if (group === 'mg-name') toggleMgNameInputs();
+  if (group === 'mg-tel')  toggleMgTelInputs();
+}
+
+function getMgChoice(group) {
+  const active = [...document.querySelectorAll(`[data-mg-group="${group}"]`)]
+    .find(b => b.style.borderColor === 'rgb(139, 92, 246)' || b.style.borderColor === '#8b5cf6');
+  return active ? active.dataset.mgVal : null;
+}
+
+function toggleMgNameInputs() {
+  const choice = getMgChoice('mg-name');
+  const show = choice === 'custom';
+  g('mg-ism').style.display      = show ? '' : 'none';
+  g('mg-familiya').style.display = show ? '' : 'none';
+  if (choice === 'keep') {
+    const k = (TEACHERS_TAB || []).find(x => x.id === MG_KEEP_ID); if(k){ g('mg-ism').value=k.ism; g('mg-familiya').value=k.familiya; }
+  } else if (choice === 'remove') {
+    const r = (TEACHERS_TAB || []).find(x => x.id === MG_REMOVE_ID); if(r){ g('mg-ism').value=r.ism; g('mg-familiya').value=r.familiya; }
+  }
+}
+
+function toggleMgTelInputs() {
+  const choice = getMgChoice('mg-tel');
+  const show = choice === 'custom';
+  const w1 = g('mg-tel-custom-wrap'),  w2 = g('mg-tel2-custom-wrap');
+  if(w1) w1.style.display = show ? '' : 'none';
+  if(w2) w2.style.display = show ? '' : 'none';
+  if (choice === 'keep') {
+    const k = (TEACHERS_TAB || []).find(x => x.id === MG_KEEP_ID); if(k){ g('mg-tel').value=k.telefon||''; g('mg-tel2').value=k.telefon2||''; }
+  } else if (choice === 'remove') {
+    const r = (TEACHERS_TAB || []).find(x => x.id === MG_REMOVE_ID); if(r){ g('mg-tel').value=r.telefon||''; g('mg-tel2').value=r.telefon2||''; }
+  }
+}
+
+function closeMergeModal() {
+  const m = g('merge-modal'); if(m) m.style.display='none';
+  MG_KEEP_ID = null; MG_REMOVE_ID = null;
+}
+
+async function confirmMerge() {
+  if (MG_KEEP_ID === null || MG_REMOVE_ID === null) return;
+  const keep   = (TEACHERS_TAB || []).find(x => x.id === MG_KEEP_ID);
+  const remove = (TEACHERS_TAB || []).find(x => x.id === MG_REMOVE_ID);
+  if (!keep || !remove) return;
+
+  let ism, familiya;
+  const nameChoice = getMgChoice('mg-name');
+  if (!nameChoice || nameChoice === 'keep') {
+    ism = keep.ism; familiya = keep.familiya;
+  } else if (nameChoice === 'remove') {
+    ism = remove.ism; familiya = remove.familiya;
+  } else {
+    ism      = (g('mg-ism').value||'').trim();
+    familiya = (g('mg-familiya').value||'').trim();
+    if (!ism || !familiya) { toast("❌ Ism va familiya kiritilmagan", 'error'); return; }
+  }
+
+  let telefon, telefon2;
+  const telChoice = getMgChoice('mg-tel');
+  if (!telChoice || telChoice === 'keep') {
+    telefon  = keep.telefon  || '';
+    telefon2 = keep.telefon2 || '';
+  } else if (telChoice === 'remove') {
+    telefon  = remove.telefon  || '';
+    telefon2 = remove.telefon2 || '';
+  } else {
+    telefon  = (g('mg-tel').value||'').trim();
+    telefon2 = (g('mg-tel2').value||'').trim();
+  }
+
+  if (!confirm(
+    `🔀 Birlashtirish tasdiqlandi?\n\n` +
+    `✅ Saqlanadigan: ${keep.ism} ${keep.familiya}\n` +
+    `🗑️ O'chiriladigan: ${remove.ism} ${remove.familiya}\n\n` +
+    `Natijadagi ism: ${ism} ${familiya}\n` +
+    `Telefon: ${telefon||'—'}\n\n` +
+    `Barcha maktablar, davomat va portfolio birlashtiriladi.`
+  )) return;
+
+  const btn = g('mg-save-btn');
+  const sp  = g('mg-spinner');
+  const tx  = g('mg-btn-txt');
+  btn.disabled = true; sp.style.display='inline-block'; tx.textContent='Birlashtirilyapti...';
+
+  try {
+    const d = await api.mergeTeachers({
+      username: U.username,
+      parol:    U.parol,
+      keepId:   keep.id,
+      removeId: remove.id,
+      ism, familiya, telefon, telefon2
+    });
+    if (d.ok) {
+      closeMergeModal();
+      toast('🔀 Muvaffaqiyatli birlashtirildi!', 'success');
+      await loadTeachersTab();
+    } else {
+      toast('❌ ' + (d.error||'Xatolik'), 'error');
+    }
+  } catch(e) {
+    toast('❌ Server xatoligi', 'error');
+  } finally {
+    btn.disabled = false; sp.style.display='none'; tx.textContent="🔀 Birlashtirish";
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -2141,9 +2573,154 @@ function injectSuperModals() {
 </div>`;
 
   document.body.insertAdjacentHTML('beforeend', addHtml);
+
+  const editHtml = `
+<div class="modal-overlay" id="super-edit-modal" style="display:none;" onclick="if(event.target===this)closeSuperEdit()">
+  <div class="modal" style="max-width:660px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-drag"></div>
+    <div class="modal-title">✏️ O'qituvchini tahrirlash</div>
+    <input type="hidden" id="se-id">
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">📋 Asosiy ma'lumotlar</div>
+    <div class="form-grid" style="margin-bottom:16px;">
+      <div class="field-group"><label class="field-label">Familiya *</label><input class="field-input" id="se-familiya"></div>
+      <div class="field-group"><label class="field-label">Ism *</label><input class="field-input" id="se-ism"></div>
+      <div class="field-group"><label class="field-label">Fan *</label><select class="field-input" id="se-fan">${fanOptions}</select></div>
+      <div class="field-group"><label class="field-label">Telefon *</label><div class="tel-wrap"><input class="field-input tel-input" id="se-tel" maxlength="17" inputmode="tel"><div class="tel-hint" id="se-tel-hint"></div></div></div>
+      <div class="field-group"><label class="field-label">Qo'sh. telefon</label><div class="tel-wrap"><input class="field-input tel-input" id="se-tel2" maxlength="17" inputmode="tel"><div class="tel-hint" id="se-tel2-hint"></div></div></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">📂 Portfolio ma'lumotlari</div>
+    <div style="display:flex;flex-direction:column;gap:12px;margin-bottom:16px;">
+      <div class="field-group"><label class="field-label">F.I.SH. (To'liq ism)</label><input class="field-input" id="se-fish" placeholder="Yusupova Nodira Karimovna"></div>
+      <div class="field-group"><label class="field-label">O'qiyotgan yoki bitirgan universiteti(lari)</label><input class="field-input" id="se-univ" placeholder="Toshkent Davlat Pedagogika Universiteti"></div>
+      <div class="field-group"><label class="field-label">Olgan sertifikatlari (matn)</label><textarea class="field-input" id="se-sert" rows="3" style="resize:vertical;font-family:inherit;"></textarea></div>
+      <div class="field-group"><label class="field-label">Ish joylari va Ish tajribasi</label><textarea class="field-input" id="se-tajriba" rows="3" style="resize:vertical;font-family:inherit;"></textarea></div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">
+      📎 Sertifikat rasmlari <span id="se-sert-count" style="font-weight:400;color:#6b7280;text-transform:none;font-size:11px;margin-left:6px;">(0/10)</span>
+    </div>
+    <div id="se-sert-gallery" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-bottom:12px;"></div>
+    <label id="se-upload-label" style="display:inline-flex;align-items:center;gap:8px;padding:9px 16px;background:#f3f4f6;border:2px dashed #d1d5db;border-radius:10px;cursor:pointer;font-size:13px;color:#374151;font-weight:500;margin-bottom:4px;">
+      📎 Fayl qo'shish (PDF, JPG, PNG)
+      <input type="file" id="se-sert-file" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf" style="display:none;" onchange="uploadSeSert()">
+    </label>
+    <div style="font-size:11px;color:#9ca3af;margin-bottom:16px;">Maksimal 10 ta fayl, har biri max 10 MB</div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">📱 Telegram / Web panel kirishi</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;">
+      <div id="se-tg-status" style="font-size:12.5px;line-height:1.6;"></div>
+      <div class="field-group">
+        <label class="field-label">Botga /start yozganlar ro'yxatidan tanlash</label>
+        <select class="field-input" id="se-kandidatlar" onchange="if(this.value) setValue('se-tgid', this.value)">
+          <option value="">— Yuklanmoqda… —</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">yoki Telegram ID'ni qo'lda kiriting</label>
+        <input class="field-input" id="se-tgid" placeholder="masalan: 123456789" inputmode="numeric">
+      </div>
+      <div style="font-size:11px;color:#9ca3af;">
+        O'qituvchi shu Telegram ID orqali botga /start yozib, "O'qituvchi paneli" tugmasidan web panelga avtomatik kiradi. Maydonni bo'sh qoldirib saqlasangiz — biriktirma ajratiladi.
+      </div>
+    </div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">🖼️ Avatar (rasm)</div>
+    <input type="hidden" id="se-avatar" value="">
+    <div style="display:flex;gap:14px;margin-bottom:16px;">
+      <div class="se-avatar-opt" data-val="erkak" onclick="selectSeAvatar('erkak')"
+           style="cursor:pointer;text-align:center;padding:10px;border:2px solid #e5e7eb;border-radius:12px;width:100px;transition:border-color .15s,background .15s;">
+        <img src="img/oqituvchi-icon-erkak.png" alt="Erkak" style="width:60px;height:60px;object-fit:contain;border-radius:8px;display:block;margin:0 auto;">
+        <div style="font-size:12px;margin-top:6px;color:#374151;font-weight:500;">Erkak</div>
+      </div>
+      <div class="se-avatar-opt" data-val="ayol" onclick="selectSeAvatar('ayol')"
+           style="cursor:pointer;text-align:center;padding:10px;border:2px solid #e5e7eb;border-radius:12px;width:100px;transition:border-color .15s,background .15s;">
+        <img src="img/oqituvchi-icon-ayol.png" alt="Ayol" style="width:60px;height:60px;object-fit:contain;border-radius:8px;display:block;margin:0 auto;">
+        <div style="font-size:12px;margin-top:6px;color:#374151;font-weight:500;">Ayol</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:-10px;margin-bottom:16px;">
+      Tanlangan rasm o'qituvchining Telegram Mini App va o'z web panelida ko'rinadi. Xohlagan vaqtda o'zgartirish mumkin.
+    </div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeSuperEdit()">Bekor</button>
+      <button class="btn-submit" id="se-save-btn" onclick="saveSuperEdit()"><span class="spinner" id="se-spinner"></span><span id="se-btn-txt">Saqlash</span></button>
+    </div>
+  </div>
+</div>`;
+
+  document.body.insertAdjacentHTML('beforeend', editHtml);
+
+  const mergeHtml = `
+<div class="modal-overlay" id="merge-modal" style="display:none;" onclick="if(event.target===this)closeMergeModal()">
+  <div class="modal" style="max-width:640px;max-height:92vh;overflow-y:auto;">
+    <div class="modal-drag"></div>
+    <div class="modal-title">🔀 O'qituvchilarni birlashtirish</div>
+
+    <div style="background:#faf5ff;border:1px solid #e9d5ff;border-radius:10px;padding:12px 14px;margin-bottom:16px;font-size:13px;color:#6b21a8;line-height:1.6;">
+      ⚠️ Birlashtirilgandan so'ng <strong>o'chirilgan o'qituvchi qayta tiklanmaydi.</strong><br>
+      Uning barcha davomatlari, dars jadvali, maktablari va portfoliosi <strong>saqlanadigan o'qituvchiga</strong> o'tkaziladi.
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
+      <div style="padding:12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;">
+        <div style="font-size:11px;font-weight:700;color:#166534;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+          ✅ Saqlanadigan
+        </div>
+        <div id="mg-keep-name" style="font-size:15px;font-weight:600;color:#111827;"></div>
+        <div id="mg-keep-fan"  style="font-size:12px;color:#6b7280;margin-top:2px;"></div>
+        <div id="mg-keep-maktab" style="font-size:11px;color:#059669;margin-top:4px;"></div>
+      </div>
+      <div style="padding:12px;background:#fff7ed;border:1px solid #fed7aa;border-radius:10px;">
+        <div style="font-size:11px;font-weight:700;color:#9a3412;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">
+          🗑️ O'chiriladigan
+        </div>
+        <div id="mg-remove-name" style="font-size:15px;font-weight:600;color:#111827;"></div>
+        <div id="mg-remove-fan"  style="font-size:12px;color:#6b7280;margin-top:2px;"></div>
+        <div id="mg-remove-maktab" style="font-size:11px;color:#ea580c;margin-top:4px;"></div>
+      </div>
+    </div>
+
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">
+      📋 Qaysi ma'lumotni saqlash kerak?
+    </div>
+
+    <div style="display:grid;gap:12px;margin-bottom:20px;">
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Ism va familiya</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="mg-name-options"></div>
+        <input class="field-input" id="mg-ism" placeholder="Ism" style="margin-top:8px;display:none;" autocomplete="off">
+        <input class="field-input" id="mg-familiya" placeholder="Familiya" style="margin-top:6px;display:none;" autocomplete="off">
+      </div>
+      <div>
+        <div style="font-size:12px;font-weight:600;color:#374151;margin-bottom:6px;">Telefon raqam</div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;" id="mg-tel-options"></div>
+        <div class="tel-wrap" style="margin-top:8px;display:none;" id="mg-tel-custom-wrap">
+          <input class="field-input tel-input" id="mg-tel" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel">
+          <div class="tel-hint" id="mg-tel-hint"></div>
+        </div>
+        <div class="tel-wrap" style="margin-top:6px;display:none;" id="mg-tel2-custom-wrap">
+          <input class="field-input tel-input" id="mg-tel2" placeholder="Qo'shimcha telefon (ixtiyoriy)" maxlength="17" inputmode="tel">
+          <div class="tel-hint" id="mg-tel2-hint"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeMergeModal()">Bekor</button>
+      <button class="btn-submit" id="mg-save-btn" onclick="confirmMerge()" style="background:#8b5cf6;">
+        <span class="spinner" id="mg-spinner"></span>
+        <span id="mg-btn-txt">🔀 Birlashtirish</span>
+      </button>
+    </div>
+  </div>
+</div>`;
+
+  document.body.insertAdjacentHTML('beforeend', mergeHtml);
+
   if (typeof setupTel === 'function') {
     setupTel('sa-tel',  'sa-tel-hint');
     setupTel('sa-tel2', 'sa-tel2-hint');
+    setupTel('se-tel',  'se-tel-hint');
+    setupTel('se-tel2', 'se-tel2-hint');
+    setupTel('mg-tel',  'mg-tel-hint');
+    setupTel('mg-tel2', 'mg-tel2-hint');
   }
 }
 
