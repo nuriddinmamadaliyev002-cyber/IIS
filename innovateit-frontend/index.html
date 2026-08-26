@@ -615,10 +615,13 @@
           <label class="field-label">📱 Telegram ID <span style="color:#9ca3af;font-weight:400;">(asosiy kirish usuli)</span></label>
           <input class="field-input" id="edit-sl-tgid" type="text" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
         </div>
-        <select id="edit-sl-kandidatlar" onchange="if(this.value){document.getElementById('edit-sl-tgid').value=this.value;this.selectedIndex=0;}"
-          class="field-input" style="margin-bottom:6px;">
-          <option value="">— yoki botga /start yozganlar ro'yxatidan tanlang —</option>
-        </select>
+        <div class="kandidat-picker" id="edit-sl-kandidatlar">
+          <button type="button" class="kandidat-picker-trigger field-input" onclick="toggleKandidatPicker('edit-sl-kandidatlar')">
+            <span class="kandidat-picker-label">— yoki botga /start yozganlar ro'yxatidan tanlang —</span>
+            <span class="kandidat-picker-arrow">▾</span>
+          </button>
+          <div class="kandidat-picker-panel"></div>
+        </div>
         <p style="font-size:12px;color:#9ca3af;margin:-2px 0 4px;">
           Sales xodimi botga <b>/start</b> yozsa, shu ro'yxatda avtomatik paydo bo'ladi.
         </p>
@@ -661,10 +664,13 @@
         <input class="field-input" id="ae-tgid" type="text" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
       </div>
       <div class="field-group" style="grid-column:1/-1;margin-top:-8px;">
-        <select id="ae-kandidatlar" onchange="if(this.value){document.getElementById('ae-tgid').value=this.value;this.selectedIndex=0;}"
-          class="field-input" style="margin-bottom:6px;">
-          <option value="">— yoki botga /start yozganlar ro'yxatidan tanlang —</option>
-        </select>
+        <div class="kandidat-picker" id="ae-kandidatlar">
+          <button type="button" class="kandidat-picker-trigger field-input" onclick="toggleKandidatPicker('ae-kandidatlar')">
+            <span class="kandidat-picker-label">— yoki botga /start yozganlar ro'yxatidan tanlang —</span>
+            <span class="kandidat-picker-arrow">▾</span>
+          </button>
+          <div class="kandidat-picker-panel"></div>
+        </div>
         <p style="font-size:12px;color:#9ca3af;margin:-2px 0 4px;">
           Admin botga <b>/start</b> yozsa, shu ro'yxatda avtomatik paydo bo'ladi.
         </p>
@@ -735,9 +741,13 @@
       <div id="e-tg-status" style="font-size:12.5px;line-height:1.6;"></div>
       <div class="field-group">
         <label class="field-label">Botga /start yozganlar ro'yxatidan tanlash</label>
-        <select class="field-input" id="e-kandidatlar" onchange="if(this.value){document.getElementById('e-tgid').value=this.value;this.selectedIndex=0;}">
-          <option value="">— Yuklanmoqda… —</option>
-        </select>
+        <div class="kandidat-picker" id="e-kandidatlar">
+          <button type="button" class="kandidat-picker-trigger field-input" onclick="toggleKandidatPicker('e-kandidatlar')">
+            <span class="kandidat-picker-label">— botga /start yozganlar ro'yxatidan tanlang —</span>
+            <span class="kandidat-picker-arrow">▾</span>
+          </button>
+          <div class="kandidat-picker-panel"></div>
+        </div>
       </div>
       <div class="field-group">
         <label class="field-label">yoki Telegram ID'ni qo'lda kiriting</label>
@@ -817,10 +827,13 @@
       <label class="field-label">📱 Telegram ID <span style="color:#9ca3af;font-weight:400;">(asosiy kirish usuli)</span></label>
       <input class="field-input" id="edit-bux-tgid" type="text" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
     </div>
-    <select id="edit-bux-kandidatlar" onchange="if(this.value){document.getElementById('edit-bux-tgid').value=this.value;this.selectedIndex=0;}"
-      class="field-input" style="margin-bottom:6px;">
-      <option value="">— yoki botga /start yozganlar ro'yxatidan tanlang —</option>
-    </select>
+    <div class="kandidat-picker" id="edit-bux-kandidatlar">
+      <button type="button" class="kandidat-picker-trigger field-input" onclick="toggleKandidatPicker('edit-bux-kandidatlar')">
+        <span class="kandidat-picker-label">— yoki botga /start yozganlar ro'yxatidan tanlang —</span>
+        <span class="kandidat-picker-arrow">▾</span>
+      </button>
+      <div class="kandidat-picker-panel"></div>
+    </div>
     <p style="font-size:12px;color:#9ca3af;margin:-2px 0 4px;">
       Buxgalter botga <b>/start</b> yozsa, shu ro'yxatda avtomatik paydo bo'ladi.
     </p>

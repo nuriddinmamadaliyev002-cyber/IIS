@@ -315,6 +315,7 @@ const api = {
 
   // ─── Telegram kandidatlar (botga /start yozganlar ro'yxati) ───
   getKandidatlar: () => api.get('/api/telegram/kandidatlar'),
+  deleteKandidat: (telegramId) => api.del(`/api/telegram/kandidatlar/${telegramId}`),
 
   // ─── Telegram birikmalar ───
   getTgBirikmalar:  ()  => api.get('/api/telegram/birikmalar'),

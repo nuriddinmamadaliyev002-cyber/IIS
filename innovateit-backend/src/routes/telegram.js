@@ -430,6 +430,30 @@ router.get('/kandidatlar', requireAuth(['admin']), async (req, res) => {
   }
 });
 
+// ─── DELETE /api/telegram/kandidatlar/:telegramId — kandidatni ro'yxatdan o'chirish ──
+// (faqat "botga /start yozganlar" ro'yxatidan olib tashlaydi; agar shu odam allaqachon
+//  biror rolga biriktirilgan bo'lsa (telegram_users), unga tegmaydi — faqat kandidat yozuvi o'chadi)
+router.delete('/kandidatlar/:telegramId', requireAuth(['admin']), async (req, res) => {
+  if (!req.user.isSuper)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+
+  const telegramId = parseInt(req.params.telegramId);
+  if (!telegramId) return res.status(400).json({ ok: false, error: 'telegramId noto\'g\'ri' });
+
+  try {
+    const result = await pool.query(
+      'DELETE FROM telegram_kandidatlar WHERE telegram_id=$1',
+      [telegramId]
+    );
+    if (result.rowCount === 0)
+      return res.status(404).json({ ok: false, error: 'Kandidat topilmadi' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 // ─── GET /api/telegram/birikmalar — barcha birikmalar (superadmin) ────────────
 router.get('/birikmalar', requireAuth(['admin']), async (req, res) => {
   if (!req.user.isSuper)

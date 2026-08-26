@@ -195,23 +195,8 @@ function closeEditSales() {
 }
 
 async function loadSalesKandidatlar() {
-  const sel = g('edit-sl-kandidatlar');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
-  try {
-    const r = await api.getKandidatlar();
-    if (!r.ok || !r.kandidatlar?.length) {
-      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
-      return;
-    }
-    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
-      r.kandidatlar.map(k => {
-        const label = `${slEsc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + slEsc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
-        return `<option value="${k.telegram_id}">${label}</option>`;
-      }).join('');
-  } catch (e) {
-    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
-  }
+  // app.js dagi umumiy kandidat-picker (tanlash + o'chirish imkoniyati bilan)
+  return loadKandidatPicker('edit-sl-kandidatlar', 'edit-sl-tgid');
 }
 
 async function saveEditSales() {

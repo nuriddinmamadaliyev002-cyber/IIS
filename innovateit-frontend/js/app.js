@@ -537,24 +537,84 @@ function openES(idx) {
   g('es-modal').style.display = 'flex';
 }
 
-async function loadStudentKandidatlar() {
-  const sel = g('e-kandidatlar');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
+// ═══════════════════════════════════════════════════════════════════════
+//  Kandidat picker — "botga /start yozganlar" ro'yxati
+//  Tanlash uchun bosiladi, har bir yozuvni o'ng chetdagi ✕ orqali o'chirish
+//  mumkin (superadmin, tasdiqlash so'rovi bilan). Bir nechta modal/joyda
+//  qayta ishlatiladi (o'quvchi, admin, buxgalter, o'qituvchi, sales).
+// ═══════════════════════════════════════════════════════════════════════
+function toggleKandidatPicker(pickerId, forceClose) {
+  document.querySelectorAll('.kandidat-picker.open').forEach(el => {
+    if (el.id !== pickerId) el.classList.remove('open');
+  });
+  const el = g(pickerId);
+  if (!el) return;
+  if (forceClose) { el.classList.remove('open'); return; }
+  el.classList.toggle('open');
+}
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.kandidat-picker')) {
+    document.querySelectorAll('.kandidat-picker.open').forEach(el => el.classList.remove('open'));
+  }
+});
+
+function pickKandidat(pickerId, hiddenInputId, telegramId) {
+  const hidden = g(hiddenInputId);
+  if (hidden) hidden.value = telegramId;
+  toggleKandidatPicker(pickerId, true);
+}
+
+function renderKandidatPanel(pickerId, hiddenInputId, kandidatlar) {
+  const picker = g(pickerId);
+  if (!picker) return;
+  const panel = picker.querySelector('.kandidat-picker-panel');
+  if (!panel) return;
+  if (!kandidatlar || !kandidatlar.length) {
+    panel.innerHTML = `<div class="kandidat-row-empty">— hozircha hech kim botga /start yozmagan —</div>`;
+    return;
+  }
+  panel.innerHTML = kandidatlar.map(k => {
+    const label = `${esc2(k.telegram_ism || "Noma'lum")}${k.telegram_username ? ' (@' + esc2(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
+    return `<div class="kandidat-row" onclick="pickKandidat('${pickerId}','${hiddenInputId}','${k.telegram_id}')">
+      <span class="kandidat-row-label" title="${label}">${label}</span>
+      <button type="button" class="kandidat-row-del" title="O'chirish" onclick="event.stopPropagation();deleteKandidatRow(this,'${k.telegram_id}')">✕</button>
+    </div>`;
+  }).join('');
+}
+
+async function deleteKandidatRow(btn, telegramId) {
+  if (!confirm("Haqiqatan ham bu Telegram foydalanuvchisini ro'yxatdan o'chirmoqchimisiz?")) return;
+  const row = btn.closest('.kandidat-row');
+  try {
+    const r = await api.deleteKandidat(telegramId);
+    if (!r.ok) { toast('❌ ' + (r.error || 'Xatolik'), 'error'); return; }
+    if (row) row.remove();
+    toast("🗑️ Kandidat ro'yxatdan o'chirildi", 'success');
+  } catch (e) {
+    toast('❌ Server bilan aloqa yo\'q', 'error');
+  }
+}
+
+// Barcha kandidat picker'lar uchun umumiy yuklovchi
+async function loadKandidatPicker(pickerId, hiddenInputId) {
+  const picker = g(pickerId);
+  if (!picker) return;
+  const panel = picker.querySelector('.kandidat-picker-panel');
+  if (panel) panel.innerHTML = `<div class="kandidat-row-empty">⏳ Yuklanmoqda…</div>`;
   try {
     const r = await api.getKandidatlar();
-    if (!r.ok || !r.kandidatlar?.length) {
-      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
+    if (!r.ok) {
+      if (panel) panel.innerHTML = `<div class="kandidat-row-empty">❌ Yuklashda xatolik</div>`;
       return;
     }
-    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
-      r.kandidatlar.map(k => {
-        const label = `${esc(k.telegram_ism || "Noma'lum")}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
-        return `<option value="${k.telegram_id}">${label}</option>`;
-      }).join('');
+    renderKandidatPanel(pickerId, hiddenInputId, r.kandidatlar || []);
   } catch (e) {
-    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
+    if (panel) panel.innerHTML = `<div class="kandidat-row-empty">❌ Yuklashda xatolik</div>`;
   }
+}
+
+async function loadStudentKandidatlar() {
+  return loadKandidatPicker('e-kandidatlar', 'e-tgid');
 }
 
 function closeES() {
@@ -867,23 +927,7 @@ function openEditAdmin(id) {
 }
 
 async function loadAdminKandidatlar() {
-  const sel = g('ae-kandidatlar');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
-  try {
-    const r = await api.getKandidatlar();
-    if (!r.ok || !r.kandidatlar?.length) {
-      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
-      return;
-    }
-    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
-      r.kandidatlar.map(k => {
-        const label = `${esc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
-        return `<option value="${k.telegram_id}">${label}</option>`;
-      }).join('');
-  } catch (e) {
-    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
-  }
+  return loadKandidatPicker('ae-kandidatlar', 'ae-tgid');
 }
 
 function closeAE() { g('ae-modal').style.display = 'none'; _editAdminId = null; }
@@ -1358,23 +1402,7 @@ function openEditBux(id) {
 }
 
 async function loadBuxKandidatlar() {
-  const sel = g('edit-bux-kandidatlar');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
-  try {
-    const r = await api.getKandidatlar();
-    if (!r.ok || !r.kandidatlar?.length) {
-      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
-      return;
-    }
-    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
-      r.kandidatlar.map(k => {
-        const label = `${esc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
-        return `<option value="${k.telegram_id}">${label}</option>`;
-      }).join('');
-  } catch (e) {
-    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
-  }
+  return loadKandidatPicker('edit-bux-kandidatlar', 'edit-bux-tgid');
 }
 function closeEditBux() {
   g('edit-bux-modal').style.display = 'none';
@@ -2127,23 +2155,7 @@ async function openTeacherEditFromTab(teacherId) {
 }
 
 async function loadTeacherKandidatlar() {
-  const sel = g('se-kandidatlar');
-  if (!sel) return;
-  sel.innerHTML = `<option value="">⏳ Yuklanmoqda…</option>`;
-  try {
-    const r = await api.getKandidatlar();
-    if (!r.ok || !r.kandidatlar?.length) {
-      sel.innerHTML = `<option value="">— hozircha hech kim botga /start yozmagan —</option>`;
-      return;
-    }
-    sel.innerHTML = `<option value="">— botga /start yozganlar ro'yxatidan tanlang —</option>` +
-      r.kandidatlar.map(k => {
-        const label = `${esc(k.telegram_ism || 'Noma\'lum')}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${k.telegram_id}`;
-        return `<option value="${k.telegram_id}">${label}</option>`;
-      }).join('');
-  } catch (e) {
-    sel.innerHTML = `<option value="">❌ Yuklashda xatolik</option>`;
-  }
+  return loadKandidatPicker('se-kandidatlar', 'se-tgid');
 }
 
 function closeSuperEdit() {
@@ -2624,9 +2636,13 @@ function injectSuperModals() {
       <div id="se-tg-status" style="font-size:12.5px;line-height:1.6;"></div>
       <div class="field-group">
         <label class="field-label">Botga /start yozganlar ro'yxatidan tanlash</label>
-        <select class="field-input" id="se-kandidatlar" onchange="if(this.value) setValue('se-tgid', this.value)">
-          <option value="">— Yuklanmoqda… —</option>
-        </select>
+        <div class="kandidat-picker" id="se-kandidatlar">
+          <button type="button" class="kandidat-picker-trigger field-input" onclick="toggleKandidatPicker('se-kandidatlar')">
+            <span class="kandidat-picker-label">— botga /start yozganlar ro'yxatidan tanlang —</span>
+            <span class="kandidat-picker-arrow">▾</span>
+          </button>
+          <div class="kandidat-picker-panel"></div>
+        </div>
       </div>
       <div class="field-group">
         <label class="field-label">yoki Telegram ID'ni qo'lda kiriting</label>
