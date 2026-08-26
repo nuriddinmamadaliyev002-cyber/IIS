@@ -29,7 +29,7 @@
   <div style="display:flex;gap:4px;padding-top:8px;">
     <button id="tab-btn-teachers" onclick="switchOqTab('teachers')"
       style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:600;color:#6c63ff;border-bottom:3px solid #6c63ff;margin-bottom:-2px;font-family:inherit;transition:all .2s;">
-      👨‍🏫 O'qituvchilar
+      <img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O'qituvchilar
     </button>
     <button id="tab-btn-portfolio" onclick="switchOqTab('portfolio')"
       style="padding:10px 20px;border:none;background:none;cursor:pointer;font-size:14px;font-weight:600;color:#9ca3af;border-bottom:3px solid transparent;margin-bottom:-2px;font-family:inherit;transition:all .2s;">
@@ -209,7 +209,7 @@
   <div id="oq-vt2-modal2" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:10001;align-items:center;justify-content:center;padding:20px;box-sizing:border-box;" onclick="oqCloseVTModal2(event)">
     <div style="background:#fff;border-radius:18px;width:100%;max-width:580px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,.25);" onclick="event.stopPropagation()">
       <div style="padding:22px 26px 16px;border-bottom:1px solid #f3f4f6;">
-        <div id="oq-vt2-title" style="font-weight:700;font-size:15px;color:#111827;margin-bottom:4px;">👨‍🏫 O'qituvchilarni biriktirish</div>
+        <div id="oq-vt2-title" style="font-weight:700;font-size:15px;color:#111827;margin-bottom:4px;"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O'qituvchilarni biriktirish</div>
         <div style="font-size:12px;color:#6b7280;">Belgilangan o'qituvchilarni viewer ko'radi, belgilanmaganlarni ko'rmaydi</div>
         <input id="oq-vt2-search" type="text" placeholder="🔍 Ism, familiya yoki fan bo'yicha…"
           oninput="oqRenderVT2List()"

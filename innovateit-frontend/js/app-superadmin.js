@@ -137,7 +137,7 @@ function renderTgBirikmalar(list) {
     tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;opacity:.5">Birikma yo\'q</td></tr>';
     return;
   }
-  const rolLabels = { admin:'👤 Admin', buxgalter:'💼 Buxgalter', oqituvchi:'👩‍🏫 O\'qituvchi', oquvchi:'🎓 O\'quvchi', sales:'🎯 Sales' };
+  const rolLabels = { admin:'👤 Admin', buxgalter:'💼 Buxgalter', oqituvchi:'<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi', oquvchi:'🎓 O\'quvchi', sales:'🎯 Sales' };
   tb.innerHTML = list.map(b => `
     <tr>
       <td><code>${b.telegram_id}</code></td>
@@ -260,7 +260,7 @@ function renderSorovlar(list) {
   };
 
   const pozLabels = {
-    oqituvchi: "👩‍🏫 O'qituvchi",
+    oqituvchi: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi',
     oquvchi:   "🎓 O'quvchi",
     xodim:     "🏢 Xodim",
     boshqa:    "👤 Boshqa",

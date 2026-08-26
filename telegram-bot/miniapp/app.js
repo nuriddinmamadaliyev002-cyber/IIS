@@ -125,7 +125,7 @@ function showRoleChooser(tgId, roles) {
     admin:     { icon: '🖥️', label: 'Admin' },
     buxgalter: { icon: '💼', label: 'Buxgalter' },
     sales:     { icon: '🎯', label: 'Sales xodimi' },
-    oqituvchi: { icon: '👩‍🏫', label: "O'qituvchi" },
+    oqituvchi: { icon: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;">', label: "O'qituvchi" },
     oquvchi:   { icon: '🎓', label: "O'quvchi" },
   };
 
@@ -471,9 +471,9 @@ function showAdminRedirect(url, opts) {
       btn: "🎯 Sales panelni ochish",
     },
     oqituvchi: {
-      icon: '👩‍🏫', title: "Siz O'qituvchi sifatida kirdingiz",
+      icon: '<img src="img/oqituvchi-icon.png" alt="" style="width:100%;height:100%;object-fit:contain;">', title: "Siz O'qituvchi sifatida kirdingiz",
       desc: "O'qituvchi paneli to'liq brauzerda ochiladi.<br>Sinflar, dars jadvali va davomatni u yerda boshqaring.",
-      btn: "👩‍🏫 O'qituvchi panelni ochish",
+      btn: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi panelni ochish',
     },
     oquvchi: {
       icon: '🎓', title: "Siz O'quvchi sifatida kirdingiz",
@@ -525,11 +525,11 @@ function showDashboard(data) {
   const rolLabels = {
     admin:     '👤 Admin',
     buxgalter: '💼 Buxgalter',
-    oqituvchi: "👩‍🏫 O'qituvchi",
+    oqituvchi: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi',
     oquvchi:   '🎓 O\'quvchi',
   };
   document.getElementById('topbarName').textContent = USER_ISM || '—';
-  document.getElementById('topbarRol').textContent  = rolLabels[ROL] || ROL;
+  document.getElementById('topbarRol').innerHTML  = rolLabels[ROL] || ROL;
 
   buildNavBar();
   buildCards();
@@ -553,7 +553,7 @@ function buildCards() {
   const cardDefs = {
     admin: [
       { icon:'🎓', label:"O'quvchilar", sub:'jami', color:'#6c63ff', action:"openList('students')" },
-      { icon:'👩‍🏫', label:"O'qituvchilar", sub:'jami', color:'#8b5cf6', action:"openList('teachers')" },
+      { icon:'<img src="img/oqituvchi-icon.png" alt="" style="width:1em;height:1em;object-fit:contain;">', label:"O'qituvchilar", sub:'jami', color:'#8b5cf6', action:"openList('teachers')" },
       { icon:'📋', label:'Davomat', sub:'bugun', color:'#10b981', action:"openList('davomat')" },
       { icon:'💰', label:"To'lovlar", sub:'bu oy', color:'#f59e0b', action:"openList('tolov')" },
     ],
@@ -702,7 +702,7 @@ function renderMyDavomat() {
 
   // ── Info kartasi ──
   let html = '<div class="my-dav-header-card">';
-  html += '<div class="my-dav-teacher-name">👩‍🏫 ' + MY_DAV_ISM + '</div>';
+  html += '<div class="my-dav-teacher-name"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> ' + MY_DAV_ISM + '</div>';
   html += '<div class="my-dav-meta-row"><span>📚 Fan</span><strong>' + MY_DAV_FAN + '</strong></div>';
   const kunNomlar = MY_DAV_KUN_KEYS.join(', ') || '—';
   html += '<div class="my-dav-meta-row"><span>📅 Dars kunlari</span><strong>' + kunNomlar + '</strong></div>';
@@ -929,7 +929,7 @@ async function openMyJadval() {
               </div>
               <div class="jadval-dars-ustun jadval-dars-info">
                 <div class="jadval-fan">${d.fan || 'Fan ko\'rsatilmagan'}</div>
-                <div class="jadval-teacher">👩‍🏫 ${d.teacher_familiya || ''} ${d.teacher_ism || ''}</div>
+                <div class="jadval-teacher"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> ${d.teacher_familiya || ''} ${d.teacher_ism || ''}</div>
                 ${d.sinflar ? `<div class="jadval-sinf">📚 ${d.sinflar}</div>` : ''}
               </div>
             </div>
@@ -965,11 +965,11 @@ async function openList(type) {
 
   const titles = {
     students: "🎓 O'quvchilar",
-    teachers: "👩‍🏫 O'qituvchilar",
+    teachers: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchilar',
     davomat:  '📋 Davomat',
     tolov:    "💰 To'lovlar",
   };
-  document.getElementById('listTitle').textContent = titles[type] || type;
+  document.getElementById('listTitle').innerHTML = titles[type] || type;
   document.getElementById('listContent').innerHTML =
     '<div class="loading"><div class="spinner"></div><div class="loading-text">Yuklanmoqda...</div></div>';
 

@@ -176,7 +176,7 @@ function renderOqPortfolio() {
   const el = g('oq-pt-list');
   if (!el) return;
   if (OQ_PT_DATA.length === 0) {
-    el.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af;font-size:15px;">👨‍🏫 O\'qituvchilar yo\'q</div>';
+    el.innerHTML = '<div style="text-align:center;padding:60px;color:#9ca3af;font-size:15px;"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchilar yo\'q</div>';
     return;
   }
 
@@ -556,7 +556,7 @@ async function openVTModalFromOq() {
   if (!modal) return;
 
   const titleEl = g('oq-vt-title');
-  if (titleEl) titleEl.textContent = `👨‍🏫 "${U.viewerIsm || U.viewerUsername}" uchun o'qituvchilar`;
+  if (titleEl) titleEl.innerHTML = `<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> "${esc(U.viewerIsm || U.viewerUsername)}" uchun o'qituvchilar`;
 
   const listEl = g('oq-vt-list');
   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#9ca3af;">⏳ Yuklanmoqda…</div>';
@@ -686,7 +686,7 @@ function renderOqViewers() {
       </div>
       <button onclick="oqOpenVT2Modal('${esc(v.username)}','${esc(v.ism)}')"
         style="padding:7px 14px;background:#ede9fe;border:1.5px solid #c4b5fd;border-radius:8px;font-size:12px;cursor:pointer;color:#5b21b6;font-weight:600;white-space:nowrap;">
-        👨‍🏫 O\'qituvchilar
+        <img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchilar
       </button>
       <button onclick="oqOpenPVEdit('${esc(v.username)}','${esc(v.ism)}')"
         style="padding:7px 14px;background:#f3f4f6;border:none;border-radius:8px;font-size:12px;cursor:pointer;color:#374151;font-weight:500;">
@@ -763,7 +763,7 @@ async function oqOpenVT2Modal(viewerUsername, viewerIsm) {
   const searchEl = g('oq-vt2-search');
   const listEl   = g('oq-vt2-list');
 
-  if (titleEl)  titleEl.textContent = `👨‍🏫 "${viewerIsm}" uchun o'qituvchilar`;
+  if (titleEl)  titleEl.innerHTML = `<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> "${esc(viewerIsm)}" uchun o'qituvchilar`;
   if (searchEl) searchEl.value = '';
   if (listEl)   listEl.innerHTML = '<div style="text-align:center;padding:24px;color:#9ca3af;font-size:13px;">⏳ Yuklanmoqda…</div>';
 

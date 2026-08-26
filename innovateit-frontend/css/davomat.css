@@ -99,22 +99,26 @@
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 14px; overflow: hidden;
 }
-.dav-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.dav-table { width: 100%; table-layout: fixed; border-collapse: collapse; font-size: 13px; }
+.dav-table th:nth-child(1), .dav-table td:nth-child(1) { width: 50%; }
+.dav-table th:nth-child(2), .dav-table td:nth-child(2) { width: 28%; }
+.dav-table th:nth-child(3), .dav-table td:nth-child(3) { width: 22%; }
 .dav-table th {
   padding: 10px 14px; background: var(--bg);
   border-bottom: 1px solid var(--border);
   font-size: 11px; font-weight: 700; text-transform: uppercase;
   letter-spacing: .04em; color: var(--muted); text-align: left;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
 .dav-table td {
   padding: 10px 14px; border-bottom: 1px solid var(--border);
-  vertical-align: middle;
+  vertical-align: middle; overflow-wrap: break-word;
 }
 .dav-table tbody tr:last-child td { border-bottom: none; }
 .dav-table tbody tr:hover td { background: var(--bg); }
 .dav-td-sinf { color: var(--muted); white-space: nowrap; }
-.dav-td-name { font-weight: 600; }
-.dav-td-izoh { color: var(--muted); font-size: 12px; }
+.dav-td-name { font-weight: 600; overflow-wrap: break-word; }
+.dav-td-izoh { color: var(--muted); font-size: 12px; overflow-wrap: break-word; }
 
 .dav-badge {
   display: inline-flex; align-items: center; gap: 5px;

@@ -747,7 +747,7 @@ function renderTeachers(list, animate = false) {
   }
 
   if (list.length === 0) {
-    el.innerHTML = `<div class="empty-state"><div class="empty-icon">👨‍🏫</div><div class="empty-text">Bu fan bo'yicha o'qituvchilar topilmadi</div></div>`;
+    el.innerHTML = `<div class="empty-state"><div class="empty-icon"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;"></div><div class="empty-text">Bu fan bo'yicha o'qituvchilar topilmadi</div></div>`;
     return;
   }
 

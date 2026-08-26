@@ -1501,7 +1501,7 @@ function renderPortfolioViewers() {
       <div style="font-size:12px;color:#9ca3af;flex-shrink:0;">${esc(v.yaratilgan||'')}</div>
       <button onclick="openTeachersFromViewer('${esc(v.username)}','${esc(v.ism)}')"
               style="padding:7px 14px;background:#ede9fe;border:1.5px solid #c4b5fd;border-radius:8px;font-size:13px;cursor:pointer;color:#5b21b6;font-weight:600;white-space:nowrap;">
-        👨‍🏫 O'qituvchilar
+        <img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O'qituvchilar
       </button>
       <button onclick="openPVEdit('${esc(v.username)}','${esc(v.ism)}','${esc(v.parol)}')"
               style="padding:7px 14px;background:#f3f4f6;border:none;border-radius:8px;font-size:13px;cursor:pointer;color:#374151;font-weight:500;">
@@ -1580,7 +1580,7 @@ let VT_ASSIGNED_IDS   = [];   // biriktirilgan teacher_id lar
 
 async function openViewerTeachersModal(viewerUsername, viewerIsm) {
   VT_VIEWER_USERNAME = viewerUsername;
-  document.getElementById('vt-modal-title').textContent = `👨‍🏫 "${viewerIsm}" uchun o'qituvchilar`;
+  document.getElementById('vt-modal-title').innerHTML = `<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> "${esc(viewerIsm)}" uchun o'qituvchilar`;
   document.getElementById('vt-modal').style.display = 'flex';
   document.getElementById('vt-list').innerHTML = '<div style="text-align:center;padding:30px;color:#9ca3af;">Yuklanmoqda...</div>';
 
@@ -1672,7 +1672,7 @@ function renderPortfolioTeachers() {
   const list = PORTFOLIO_DATA.teachers;
 
   if (list.length === 0) {
-    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon">👨‍🏫</div><p>O\'qituvchilar yo\'q</p></div>';
+    el.innerHTML = '<div class="empty-state"><div class="empty-state-icon"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"></div><p>O\'qituvchilar yo\'q</p></div>';
     return;
   }
 
