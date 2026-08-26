@@ -1924,6 +1924,21 @@ async function loadTeachersTab() {
   g('loading-oq') && (g('loading-oq').style.display = 'none');
 }
 
+// ── Telegram bog'lanish indikatori (o'qituvchilar tabida, o'quvchilar ro'yxatidagi bilan bir xil) ──
+// t.telegram_id bo'lsa — yorqin, ulanmagan bo'lsa — xira ikon.
+// Superadmin uchun bosilganda tahrirlash oynasi ochiladi.
+function tgBadgeTeacherTab(t, sup) {
+  const bound = !!t.telegram_id;
+  const title = bound ? `Telegram bog'langan (ID: ${t.telegram_id})` : "Telegram bog'lanmagan";
+  const cls = ['tg-badge', bound ? 'tg-on' : 'tg-off', sup ? 'tg-clickable' : ''].filter(Boolean).join(' ');
+  const click = sup ? ` onclick="event.stopPropagation();openTeacherEditFromTab(${t.id})"` : '';
+  const icon = `<svg viewBox="0 0 240 240" width="16" height="16" aria-hidden="true">
+    <circle cx="120" cy="120" r="120" fill="#229ED9"/>
+    <path fill="#fff" d="M181.585 71.9563L155.478 189.6C153.516 198.114 148.495 200.225 141.436 196.245L102.98 167.898L84.4183 185.783C82.3057 187.895 80.5382 189.663 76.5568 189.663L79.3121 150.474L150.171 86.4441C153.267 83.6889 149.494 82.1552 145.36 84.9105L57.8047 141.056L19.8676 129.169C11.5019 126.535 11.3494 120.809 21.6033 116.828L170.845 59.5711C177.789 57.0027 183.865 61.1462 181.585 71.9563Z"/>
+  </svg>`;
+  return `<span class="${cls}" title="${title}"${click}>${icon}</span>`;
+}
+
 function renderTeachersTab(list) {
   const tbody = g('tbl-body-oq');
   if (!tbody) return;
@@ -1963,7 +1978,7 @@ function renderTeachersTab(list) {
 
       return `<tr>
         <td>${i + 1}</td>
-        <td><strong>${esc(t.familiya || '')}</strong> ${esc(t.ism || '')}</td>
+        <td><strong>${esc(t.familiya || '')}</strong> ${esc(t.ism || '')} ${tgBadgeTeacherTab(t, isSup)}</td>
         <td><span class="sinf-badge">${esc(t.fan || '—')}</span></td>
         <td style="min-width:260px;">
           <div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:6px;">${maktabBadges}</div>
@@ -1992,7 +2007,7 @@ function renderTeachersTab(list) {
     const maktabText = maktablarRaw.map(m => m.nomi || m).join(', ') || '<i style="color:#9ca3af">Biriktirilmagan</i>';
     return `<tr>
       <td>${i + 1}</td>
-      <td><strong>${esc(t.familiya || '')}</strong> ${esc(t.ism || '')}</td>
+      <td><strong>${esc(t.familiya || '')}</strong> ${esc(t.ism || '')} ${tgBadgeTeacherTab(t, isSup)}</td>
       <td><span class="sinf-badge">${esc(t.fan || '—')}</span></td>
       <td style="font-size:12px;color:#6b7280;">${maktabText}</td>
       <td>${esc(t.telefon || '—')}</td>
