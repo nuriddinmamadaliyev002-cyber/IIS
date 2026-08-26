@@ -156,6 +156,20 @@ function applyFilter() {
   renderMobile(d);
 }
 
+// ── Telegram bog'lanish indikatori (o'quvchilar ro'yxatidagi bilan bir xil) ──
+// t.telegram_id bo'lsa — yorqin, ulanmagan bo'lsa — xira ikon.
+// Bosilganda Telegram ID ni tahrirlash/biriktirish oynasi ochiladi (faqat superadmin uchun).
+function tgBadgeTeacher(t) {
+  const bound = !!t.telegram_id;
+  const title = bound ? `Telegram bog'langan (ID: ${t.telegram_id})` : "Telegram bog'lanmagan — bosib biriktiring";
+  const cls = ['tg-badge', bound ? 'tg-on' : 'tg-off', 'tg-clickable'].join(' ');
+  const icon = `<svg viewBox="0 0 240 240" width="16" height="16" aria-hidden="true">
+    <circle cx="120" cy="120" r="120" fill="#229ED9"/>
+    <path fill="#fff" d="M181.585 71.9563L155.478 189.6C153.516 198.114 148.495 200.225 141.436 196.245L102.98 167.898L84.4183 185.783C82.3057 187.895 80.5382 189.663 76.5568 189.663L79.3121 150.474L150.171 86.4441C153.267 83.6889 149.494 82.1552 145.36 84.9105L57.8047 141.056L19.8676 129.169C11.5019 126.535 11.3494 120.809 21.6033 116.828L170.845 59.5711C177.789 57.0027 183.865 61.1462 181.585 71.9563Z"/>
+  </svg>`;
+  return `<span class="${cls}" title="${title}" onclick="event.stopPropagation();openSuperEdit(${t.id})">${icon}</span>`;
+}
+
 function renderTable(d) {
   const tb      = g('tbl-body');
   const isSuper = U && U.isSuper;
@@ -192,13 +206,9 @@ function renderTable(d) {
         .join('');
       const hasFree = MAKTABLAR_LIST.some(m => !takenIds.has(m.id));
 
-      const tgLine = t.telegram_id
-        ? '<div style="font-size:10.5px;color:#059669;margin-top:2px;">📱 Web panel: bog\'langan</div>'
-        : '<div style="font-size:10.5px;color:#9ca3af;margin-top:2px;">📱 Web panelga biriktirilmagan</div>';
-
       return '<tr>'
         + '<td class="mono">' + (i+1) + '</td>'
-        + '<td><strong>' + esc2(t.familiya) + '</strong> ' + esc2(t.ism) + tgLine + '</td>'
+        + '<td><strong>' + esc2(t.familiya) + '</strong> ' + esc2(t.ism) + tgBadgeTeacher(t) + '</td>'
         + '<td><span class="fan-badge">' + (t.fan||'—') + '</span></td>'
         + '<td class="td-maktablar">'
           + '<div class="maktab-tags-wrap">' + (maktabBadges || '<span class="maktab-none">Biriktirilmagan</span>') + '</div>'
@@ -251,7 +261,7 @@ function renderMobile(d) {
     return '<div class="tc">'
       + '<div class="tc-head">'
         + '<div>'
-          + '<div class="tc-name">' + esc2(t.familiya) + ' ' + esc2(t.ism) + '</div>'
+          + '<div class="tc-name">' + esc2(t.familiya) + ' ' + esc2(t.ism) + (isSuper ? tgBadgeTeacher(t) : '') + '</div>'
           + '<div class="tc-sub">#' + (i+1) + ' · <span class="fan-badge">' + (t.fan||'—') + '</span></div>'
         + '</div>'
         + (isSuper
