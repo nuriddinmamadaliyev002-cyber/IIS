@@ -406,6 +406,23 @@ function injectSuperModals() {
         O'qituvchi shu Telegram ID orqali botga /start yozib, "O'qituvchi paneli" tugmasidan web panelga avtomatik kiradi. Maydonni bo'sh qoldirib saqlasangiz — biriktirma ajratiladi.
       </div>
     </div>
+    <div style="font-size:11px;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px;padding-bottom:6px;border-bottom:1px solid #e5e7eb;">🖼️ Avatar (rasm)</div>
+    <input type="hidden" id="se-avatar" value="">
+    <div style="display:flex;gap:14px;margin-bottom:16px;">
+      <div class="se-avatar-opt" data-val="erkak" onclick="selectSeAvatar('erkak')"
+           style="cursor:pointer;text-align:center;padding:10px;border:2px solid #e5e7eb;border-radius:12px;width:100px;transition:border-color .15s,background .15s;">
+        <img src="img/oqituvchi-icon-erkak.png" alt="Erkak" style="width:60px;height:60px;object-fit:contain;border-radius:8px;display:block;margin:0 auto;">
+        <div style="font-size:12px;margin-top:6px;color:#374151;font-weight:500;">Erkak</div>
+      </div>
+      <div class="se-avatar-opt" data-val="ayol" onclick="selectSeAvatar('ayol')"
+           style="cursor:pointer;text-align:center;padding:10px;border:2px solid #e5e7eb;border-radius:12px;width:100px;transition:border-color .15s,background .15s;">
+        <img src="img/oqituvchi-icon-ayol.png" alt="Ayol" style="width:60px;height:60px;object-fit:contain;border-radius:8px;display:block;margin:0 auto;">
+        <div style="font-size:12px;margin-top:6px;color:#374151;font-weight:500;">Ayol</div>
+      </div>
+    </div>
+    <div style="font-size:11px;color:#9ca3af;margin-top:-10px;margin-bottom:16px;">
+      Tanlangan rasm o'qituvchining Telegram Mini App va o'z web panelida ko'rinadi. Xohlagan vaqtda o'zgartirish mumkin.
+    </div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeSuperEdit()">Bekor</button>
       <button class="btn-submit" id="se-save-btn" onclick="saveSuperEdit()"><span class="spinner" id="se-spinner"></span><span id="se-btn-txt">Saqlash</span></button>
@@ -590,6 +607,7 @@ async function openSuperEdit(teacherId) {
     });
 
     setValue('se-tgid', t.telegram_id || '');
+    selectSeAvatar(t.avatar || '');
     const sameTgOtherTeachers = t.telegram_id
       ? T.filter(x => x.id !== t.id && String(x.telegram_id) === String(t.telegram_id))
       : [];
@@ -657,6 +675,16 @@ function closeSuperEdit() {
   SE_ID = null; SE_SERTS = [];
 }
 
+// ── Avatar tanlash: 'erkak' | 'ayol' | '' (tanlanmagan) ──
+function selectSeAvatar(val) {
+  setValue('se-avatar', val || '');
+  document.querySelectorAll('.se-avatar-opt').forEach(el => {
+    const on = el.getAttribute('data-val') === val;
+    el.style.borderColor = on ? '#7c3aed' : '#e5e7eb';
+    el.style.background  = on ? '#f5f3ff' : '';
+  });
+}
+
 async function saveSuperEdit() {
   const ism  = (g('se-ism')?.value||'').trim();
   const fam  = (g('se-familiya')?.value||'').trim();
@@ -687,7 +715,8 @@ async function saveSuperEdit() {
       ism, familiya: fam, fan,
       telefon: tel, telefon2: tel2||'',
       kunlar: old?.kunlar||'', sinflar: old?.sinflar||'',
-      boshlanish: old?.boshlanish||'', tugash: old?.tugash||''
+      boshlanish: old?.boshlanish||'', tugash: old?.tugash||'',
+      avatar: (g('se-avatar')?.value || '')
     });
     if (!r.ok) { toast('❌ ' + r.error,'error'); return; }
 
@@ -1128,7 +1157,8 @@ async function saveEdit() {
       ism, familiya: fam, fan,
       telefon: tel, telefon2: tel2||'',
       kunlar: old.kunlar||'', sinflar: old.sinflar||'',
-      boshlanish: old.boshlanish||'', tugash: old.tugash||''
+      boshlanish: old.boshlanish||'', tugash: old.tugash||'',
+      avatar: old.avatar || ''
     });
     if (r.ok) { closeEdit(); await loadTeachers(); toast("✅ O'qituvchi yangilandi!",'success'); }
     else toast('❌ ' + r.error,'error');

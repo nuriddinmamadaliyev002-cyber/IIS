@@ -40,7 +40,7 @@ async function buildAuthResponse(tgUser, tgId) {
     );
   } else if (entity_table === 'oqituvchilar') {
     entityRes = await pool.query(
-      `SELECT o.id, o.ism, o.familiya, o.fan,
+      `SELECT o.id, o.ism, o.familiya, o.fan, o.avatar,
               COALESCE(ARRAY_AGG(m.nomi) FILTER (WHERE m.id IS NOT NULL), '{}') AS maktablar,
               COALESCE(ARRAY_AGG(m.id)   FILTER (WHERE m.id IS NOT NULL), '{}') AS maktab_idlar
        FROM oqituvchilar o
@@ -99,6 +99,7 @@ async function buildAuthResponse(tgUser, tgId) {
   }
   if (rol === 'oqituvchi') {
     tokenPayload.fan = entity.fan || '';
+    tokenPayload.avatar = entity.avatar || null;
   }
   if (rol === 'sales') {
     tokenPayload.id          = entity_id; // sales.js routelari req.user.id ga tayanadi
@@ -138,7 +139,7 @@ async function buildAuthResponse(tgUser, tgId) {
     entityId: entity_id,
     token,
     ...(rol === 'admin'      && { maktabId: entity.maktab_id, maktabNomi: entity.maktab_nomi }),
-    ...(rol === 'oqituvchi'  && { maktablar: tokenPayload.maktablar, maktabIdlar: tokenPayload.maktabIdlar }),
+    ...(rol === 'oqituvchi'  && { maktablar: tokenPayload.maktablar, maktabIdlar: tokenPayload.maktabIdlar, avatar: entity.avatar || null }),
     ...(rol === 'buxgalter'  && { maktablar: tokenPayload.maktablar }),
     ...(rol === 'sales'      && { maktablar: tokenPayload.maktablar }),
     ...(rol === 'oquvchi'    && { maktab: entity.maktab, sinf: entity.sinf }),

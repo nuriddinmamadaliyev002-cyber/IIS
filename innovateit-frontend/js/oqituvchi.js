@@ -35,6 +35,7 @@ window.addEventListener('DOMContentLoaded', () => {
       entityId:    payload?.entityId || null,
       maktablar:   payload?.maktablar   || [],
       maktabIdlar: payload?.maktabIdlar || [],
+      avatar:      payload?.avatar || null,
     };
     localStorage.setItem('iit_oq_u', JSON.stringify(U));
     window.history.replaceState({}, '', window.location.pathname);
@@ -72,6 +73,14 @@ function showApp() {
   g('app').style.display = 'block';
   g('oq-badge').textContent = U.ism;
   TEACHER_ID = U.entityId;
+
+  // Topbardagi belgi — o'qituvchi tanlagan avatarga qarab
+  const topbarImg = document.querySelector('.topbar-brand img');
+  if (topbarImg) {
+    topbarImg.src = U.avatar === 'ayol' ? 'img/oqituvchi-icon-ayol.png'
+                   : U.avatar === 'erkak' ? 'img/oqituvchi-icon-erkak.png'
+                   : 'img/oqituvchi-icon.png';
+  }
 
   // Bir nechta maktabga biriktirilgan bo'lsa — tanlash
   const nomlar = U.maktablar || [];

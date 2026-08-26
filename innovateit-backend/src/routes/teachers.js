@@ -136,7 +136,7 @@ router.get('/', async (req, res) => {
       const result = await pool.query(`
         SELECT
           o.id, o.ism, o.familiya, o.fan, o.telefon, o.telefon2,
-          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan, o.telegram_id,
+          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan, o.telegram_id, o.avatar,
           COALESCE(
             JSON_AGG(
               JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi)
@@ -156,7 +156,7 @@ router.get('/', async (req, res) => {
       const result = await pool.query(`
         SELECT
           o.id, o.ism, o.familiya, o.fan, o.telefon, o.telefon2,
-          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan, o.telegram_id,
+          o.kunlar, o.sinflar, o.boshlanish, o.tugash, o.qoshilgan, o.telegram_id, o.avatar,
           COALESCE(
             JSON_AGG(
               JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi)
@@ -189,6 +189,7 @@ router.get('/', async (req, res) => {
         tugash:     r.tugash,
         date:       r.qoshilgan,
         telegram_id: r.telegram_id || null,
+        avatar:      r.avatar || null,
         maktablar:  Array.isArray(r.maktablar) ? r.maktablar : []
       }))
     });
@@ -236,20 +237,23 @@ router.put('/', async (req, res) => {
   const { username, isSuper } = req.user;
   if (!isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin o'qituvchini tahrirlay oladi" });
 
+  // Avatar faqat 'erkak' yoki 'ayol' bo'lishi mumkin, aks holda tozalanadi (NULL)
+  const avatarVal = ['erkak', 'ayol'].includes(p.avatar) ? p.avatar : null;
+
   let whereClause, params;
   if (p.id) {
-    whereClause = 'WHERE id=$10';
+    whereClause = 'WHERE id=$11';
     params = [p.ism, p.familiya, p.fan, p.telefon, p.telefon2||'',
-              p.kunlar||'', p.sinflar||'', p.boshlanish||'', p.tugash||'', p.id];
+              p.kunlar||'', p.sinflar||'', p.boshlanish||'', p.tugash||'', avatarVal, p.id];
   } else {
-    whereClause = 'WHERE ism=$10 AND familiya=$11';
+    whereClause = 'WHERE ism=$11 AND familiya=$12';
     params = [p.ism, p.familiya, p.fan, p.telefon, p.telefon2||'',
-              p.kunlar||'', p.sinflar||'', p.boshlanish||'', p.tugash||'', p.oldIsm, p.oldFamiliya];
+              p.kunlar||'', p.sinflar||'', p.boshlanish||'', p.tugash||'', avatarVal, p.oldIsm, p.oldFamiliya];
   }
 
   try {
     const result = await pool.query(
-      `UPDATE oqituvchilar SET ism=$1,familiya=$2,fan=$3,telefon=$4,telefon2=$5,kunlar=$6,sinflar=$7,boshlanish=$8,tugash=$9 ${whereClause}`,
+      `UPDATE oqituvchilar SET ism=$1,familiya=$2,fan=$3,telefon=$4,telefon2=$5,kunlar=$6,sinflar=$7,boshlanish=$8,tugash=$9,avatar=$10 ${whereClause}`,
       params
     );
     if (result.rowCount === 0) return res.status(404).json({ ok: false, error: "O'qituvchi topilmadi" });

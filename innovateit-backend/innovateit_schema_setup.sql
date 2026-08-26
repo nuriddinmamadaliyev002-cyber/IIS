@@ -174,7 +174,8 @@ CREATE TABLE IF NOT EXISTS oqituvchilar (
     boshlanish  TEXT,       -- dars boshlanish vaqti
     tugash      TEXT,       -- dars tugash vaqti
     qoshilgan   TEXT,
-    telegram_id BIGINT UNIQUE
+    telegram_id BIGINT UNIQUE,
+    avatar      TEXT CHECK (avatar IS NULL OR avatar IN ('erkak', 'ayol'))  -- web panel/mini app'da ko'rsatiladigan rasm
 );
 
 
@@ -634,6 +635,13 @@ CREATE INDEX IF NOT EXISTS idx_blog_posts_holat        ON blog_posts(holat);
 CREATE INDEX IF NOT EXISTS idx_blog_posts_slug         ON blog_posts(slug);
 CREATE INDEX IF NOT EXISTS idx_blog_posts_kategoriya   ON blog_posts(kategoriya_id);
 CREATE INDEX IF NOT EXISTS idx_blog_posts_chopvaqti    ON blog_posts(chop_vaqti DESC);
+
+
+-- ─── O'qituvchi avatar (rasm) — mavjud bazalarga xavfsiz qo'shish ────────────
+ALTER TABLE oqituvchilar ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE oqituvchilar DROP CONSTRAINT IF EXISTS oqituvchilar_avatar_check;
+ALTER TABLE oqituvchilar ADD CONSTRAINT oqituvchilar_avatar_check
+  CHECK (avatar IS NULL OR avatar IN ('erkak', 'ayol'));
 
 
 -- ════════════════════════════════════════════════════════════════════════════
