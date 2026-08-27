@@ -36,3 +36,14 @@ yozuvi yonida logotip ko'rinmay, bo'sh joy qolayotgan edi.
    menyusidagi faol tugma, "Saqlash" turidagi asosiy tugmalar va
    sinf/kun/guruh chip'lari endi yuqori bannerdagi bilan **bir xil gradient**
    rangda chiqadi (avval boshqacha ko'k — indigo rangda edi).
+
+4. **Topbar joylashuvi almashtirildi** — endi chap tomonda logotip +
+   "InnovateIT School" yozuvi, o'ng tomonda esa avatar, o'qituvchining
+   ismi-familiyasi, maktab selektori va "Chiqish" tugmasi turadi (standart
+   UX konventsiyasi: brend chapda, foydalanuvchi/sessiya ma'lumoti o'ngda —
+   bu blog frontend bilan ham izchil bo'ldi).
+
+5. **"Chiqish" tugmasi hover effekti** — sichqoncha ustiga kelganda fon
+   qizil rangga o'zgaradi (avval hover deyarli sezilmasdi, chunki topbar'ga
+   xos qoida umumiy hover.css qoidasidan ustun kelib, uni bekor qilib
+   qo'ygan edi).

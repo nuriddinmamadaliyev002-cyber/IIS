@@ -67,6 +67,10 @@
 
 .topbar.oq-topbar .btn-logout {
   color: #fff; border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.08);
+  transition: background .15s, border-color .15s;
+}
+.topbar.oq-topbar .btn-logout:hover {
+  background: var(--danger, #dc2626); border-color: var(--danger, #dc2626); color: #fff;
 }
 .topbar.oq-topbar .btn-logout:active { color: #ffe4e4; border-color: #fff; }
 
