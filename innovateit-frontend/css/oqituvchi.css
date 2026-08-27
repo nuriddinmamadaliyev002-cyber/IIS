@@ -11,10 +11,11 @@
   --iit-indigo-deep:  #0F5493;  /* hover/bosilgan holat */
   --iit-indigo-tint:  #EAF3FC;  /* och fon (tanlangan/hover holatlar uchun) */
   --iit-indigo-tint2: #DCEAF9;
+  --iit-brand-grad: linear-gradient(90deg, var(--iit-cyan) 0%, var(--iit-cyan) 22%, var(--iit-sky-deep) 62%, var(--iit-sky-darker) 100%);
   --font-display: 'Space Grotesk', sans-serif;
 }
 
-#app { max-width: 1100px; margin: 0 auto; padding-bottom: 40px; }
+#app { padding-bottom: 40px; }
 
 /* ── TOPBAR — InnovateIT brend gradienti ── */
 .topbar.oq-topbar {
@@ -100,9 +101,9 @@
   transition: background .15s, color .15s;
 }
 .oq-tab-btn.active {
-  background: var(--iit-indigo);
+  background: var(--iit-brand-grad);
   color: #fff;
-  border-color: var(--iit-indigo);
+  border-color: var(--iit-sky-darker);
 }
 .oq-tab-btn:hover:not(.active) { background: #f3f4f6; color: var(--text); }
 
@@ -235,7 +236,7 @@
 
 .oq-mark-btn {
   display: block; width: 100%; margin-top: 6px;
-  background: var(--iit-indigo); color: #fff; border: none;
+  background: var(--iit-brand-grad); color: #fff; border: none;
   padding: 13px; border-radius: 10px; font-size: 14.5px; font-weight: 700;
   cursor: pointer; font-family: inherit;
 }
@@ -260,6 +261,16 @@
   .oq-content { padding: 14px; }
 }
 
+/* ── Shu panel ichidagi modal Saqlash/Tasdiqlash tugmalari — banner rangida ── */
+#dars-modal .btn-submit,
+#dav-izoh-modal .btn-submit {
+  background: var(--iit-brand-grad);
+}
+#dars-modal .btn-submit:active,
+#dav-izoh-modal .btn-submit:active {
+  background: var(--iit-indigo-deep);
+}
+
 /* ── Guruh yaratish — chip'lar ── */
 .chip-row { display: flex; flex-wrap: wrap; gap: 7px; margin-bottom: 10px; }
 .group-chip, .sinf-chip, .kun-chip {
@@ -271,7 +282,7 @@
 .sinf-chip { min-width: 34px; text-align: center; border-radius: 10px; }
 .group-chip:hover, .sinf-chip:hover, .kun-chip:hover { border-color: var(--iit-indigo); }
 .group-chip.sel, .sinf-chip.sel, .kun-chip.sel {
-  background: var(--iit-indigo); border-color: var(--iit-indigo); color: #fff;
+  background: var(--iit-brand-grad); border-color: var(--iit-sky-darker); color: #fff;
 }
 
 .guruh-oquv-grid {
