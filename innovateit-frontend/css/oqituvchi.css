@@ -394,3 +394,16 @@
   .dav-date-bar { justify-content: center; }
   .dav-date-input { margin-left: 0; }
 }
+/* ═══ Guruh yaratishni tasdiqlash oynasi (confirm modal) ═══ */
+.guruh-confirm-body { max-height: 55vh; overflow-y: auto; margin-bottom: 4px; }
+.guruh-confirm-sinf { margin-bottom: 14px; padding-bottom: 12px; border-bottom: 1px solid var(--border); }
+.guruh-confirm-sinf:last-of-type { border-bottom: none; }
+.guruh-confirm-sinf-title { font-size: 13.5px; font-weight: 600; margin-bottom: 8px; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.guruh-confirm-count { font-weight: 400; color: var(--muted); font-size: 12px; }
+.guruh-confirm-names { display: flex; flex-wrap: wrap; gap: 6px; }
+.guruh-confirm-name-chip {
+  background: #eff6ff; color: #1d4ed8; border: 1px solid #dbeafe;
+  border-radius: 999px; padding: 4px 10px; font-size: 12px; font-weight: 500;
+}
+.guruh-confirm-row { font-size: 13px; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
+.guruh-confirm-row b { font-weight: 600; }

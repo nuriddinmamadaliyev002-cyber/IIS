@@ -258,6 +258,22 @@
   </div>
 </div>
 
+<!-- ════════════ GURUH YARATISHNI TASDIQLASH MODAL ════════════ -->
+<div class="modal-overlay" id="guruh-confirm-modal" style="display:none;" onclick="if(event.target===this)closeGuruhConfirmModal()">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">❓ Guruh yaratishni tasdiqlang</div>
+    <div style="font-size:13px;color:var(--muted);margin-bottom:12px;">Quyidagi ma'lumotlarga ega guruhni rostan yaratishni xohlaysizmi?</div>
+
+    <div id="guruh-confirm-body" class="guruh-confirm-body"></div>
+
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeGuruhConfirmModal()">Bekor</button>
+      <button class="btn-submit" onclick="confirmSaveGuruh()">✅ Ha, yaratish</button>
+    </div>
+  </div>
+</div>
+
 <!-- ════════════ SABABLI — IZOH MODAL ════════════ -->
 <div class="modal-overlay" id="dav-izoh-modal" style="display:none;" onclick="if(event.target===this)closeDavIzoh()">
   <div class="modal">

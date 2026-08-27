@@ -128,7 +128,11 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════
 let activeGuruhSinf = null;
 let guruhOquvchilarMap = new Map(); // sinf -> Set(oquvchiId)
+let guruhOquvchilarNames = new Map(); // sinf -> Map(oquvchiId -> "Familiya Ism") — tasdiqlash oynasi uchun
 let editingGuruhId = null;
+let pendingGuruhData = null; // tasdiqlash oynasi kutayotgan ma'lumotlar
+
+const GURUH_KUN_NOMLARI = { 1: 'Dushanba', 2: 'Seshanba', 3: 'Chorshanba', 4: 'Payshanba', 5: 'Juma', 6: 'Shanba' };
 
 function initGuruhTab() {
   const warn = g('guruh-maktab-warn'), form = g('guruh-form');
@@ -154,18 +158,21 @@ async function toggleSinfChip(chipEl) {
   const alreadySel = chipEl.classList.contains('sel');
   saveCurrentGuruhCheckboxState();
 
-  // Bir vaqtda faqat bitta sinf tanlanishi mumkin — avvalgi belgini tozalaymiz
+  // Faqat bitta sinf bir vaqtda EKRANDA ko'rsatiladi (vizual holat),
+  // lekin boshqa sinflarda belgilangan o'quvchilar guruhOquvchilarMap'da
+  // saqlanib qoladi — shuning uchun map'dan hech narsani o'chirmaymiz,
+  // faqat vizual "sel" klassini tozalaymiz.
   document.querySelectorAll('#guruh-sinf-chips .sinf-chip.sel').forEach(c => {
-    if (c !== chipEl) guruhOquvchilarMap.delete(c.dataset.s);
     c.classList.remove('sel');
   });
 
   if (alreadySel) {
-    // Xuddi shu sinf qayta bosilsa — belgi butunlay olib tashlanadi
+    // Xuddi shu sinf qayta bosilsa — faqat shu sinfning belgisi olib tashlanadi
     guruhOquvchilarMap.delete(sinf);
     activeGuruhSinf = null;
     g('guruh-oquvchilar-panel').style.display = 'none';
     g('guruh-oquvchilar-list').innerHTML = '';
+    updateGuruhSelectedCount();
     return;
   }
 
@@ -198,6 +205,9 @@ async function loadGuruhOquvchilar(sinf) {
       updateGuruhSelectedCount();
       return;
     }
+
+    // Ism-familiyalarni keshlab qo'yamiz — tasdiqlash oynasida ko'rsatish uchun kerak bo'ladi
+    guruhOquvchilarNames.set(sinf, new Map(data.oquvchilar.map(o => [o.id, `${o.familiya} ${o.ism}`])));
 
     const savedIds = guruhOquvchilarMap.get(sinf);
     listEl.innerHTML = data.oquvchilar.map(o => {
@@ -264,12 +274,14 @@ function clearGuruhForm() {
   g('guruh-delete-wrap').style.display = 'none';
   activeGuruhSinf = null;
   guruhOquvchilarMap.clear();
+  guruhOquvchilarNames.clear();
+  pendingGuruhData = null;
   editingGuruhId = null;
 }
 
 function padZ(v) { return String(parseInt(v) || 0).padStart(2, '0'); }
 
-async function saveGuruh() {
+function saveGuruh() {
   const msgEl = g('guruh-msg');
   msgEl.textContent = '';
   msgEl.style.color = '';
@@ -285,10 +297,63 @@ async function saveGuruh() {
   if (!hasSinf)      { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Kamida 1 sinf tanlang'; return; }
   if (!kunlar.length) { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Kamida 1 kun tanlang'; return; }
 
-  const effectiveSinflar = sinflar.length > 0 ? sinflar : [...guruhOquvchilarMap.keys()];
+  // Bir nechta sinfda o'quvchi belgilangan bo'lishi mumkin (guruhOquvchilarMap),
+  // shuning uchun faqat hozir ekranda ko'ringan sinfni emas, balki
+  // barcha belgilangan sinflarni birlashtirib yuboramiz.
+  const effectiveSinflar = [...new Set([...sinflar, ...guruhOquvchilarMap.keys()])];
+
+  const totalOquvchi = [...guruhOquvchilarMap.values()].reduce((acc, s) => acc + s.size, 0);
+  if (totalOquvchi === 0) { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Kamida 1 o\'quvchi tanlang'; return; }
+
   const boshlanish = padZ(g('guruh-bosh-s').value) + ':' + padZ(g('guruh-bosh-m').value);
   const tugash     = padZ(g('guruh-tug-s').value)  + ':' + padZ(g('guruh-tug-m').value);
 
+  pendingGuruhData = { effectiveSinflar, kunlar, boshlanish, tugash };
+  openGuruhConfirmModal();
+}
+
+function openGuruhConfirmModal() {
+  if (!pendingGuruhData) return;
+  const { effectiveSinflar, kunlar, boshlanish, tugash } = pendingGuruhData;
+
+  const kunlarText = kunlar.map(k => GURUH_KUN_NOMLARI[k] || k).join(', ');
+
+  const sinflarHtml = effectiveSinflar.map(sinf => {
+    const ids = [...(guruhOquvchilarMap.get(sinf) || [])];
+    const namesMap = guruhOquvchilarNames.get(sinf) || new Map();
+    const sinfLabel = sinf.replace(/-sinf$/i, '') + '-sinf';
+    if (!ids.length) return '';
+    const chips = ids.map(id => `<span class="guruh-confirm-name-chip">${esc(namesMap.get(id) || ('#' + id))}</span>`).join('');
+    return `
+      <div class="guruh-confirm-sinf">
+        <div class="guruh-confirm-sinf-title">📚 ${esc(sinfLabel)} <span class="guruh-confirm-count">(${ids.length} ta o'quvchi)</span></div>
+        <div class="guruh-confirm-names">${chips}</div>
+      </div>`;
+  }).join('');
+
+  g('guruh-confirm-body').innerHTML = `
+    ${sinflarHtml}
+    <div class="guruh-confirm-row">🗓️ <b>Dars kunlari:</b> ${esc(kunlarText)}</div>
+    <div class="guruh-confirm-row">🕐 <b>Vaqti:</b> ${esc(boshlanish)} – ${esc(tugash)}</div>
+  `;
+
+  g('guruh-confirm-modal').style.display = 'flex';
+}
+
+function closeGuruhConfirmModal() {
+  g('guruh-confirm-modal').style.display = 'none';
+}
+
+async function confirmSaveGuruh() {
+  closeGuruhConfirmModal();
+  if (!pendingGuruhData) return;
+  const data = pendingGuruhData;
+  pendingGuruhData = null;
+  await actuallySaveGuruh(data);
+}
+
+async function actuallySaveGuruh({ effectiveSinflar, kunlar, boshlanish, tugash }) {
+  const msgEl = g('guruh-msg');
   const btn = g('guruh-save-btn');
   btn.disabled = true;
   g('guruh-btn-txt').textContent = 'Saqlanmoqda…';
