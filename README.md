@@ -47,3 +47,13 @@ yozuvi yonida logotip ko'rinmay, bo'sh joy qolayotgan edi.
    qizil rangga o'zgaradi (avval hover deyarli sezilmasdi, chunki topbar'ga
    xos qoida umumiy hover.css qoidasidan ustun kelib, uni bekor qilib
    qo'ygan edi).
+
+6. **Logo/"InnovateIT School" yozuvi olib tashlandi** — endi topbar'ning
+   chap tomonida avatar + o'qituvchining familiya-ismi turadi (avvalgi
+   holatga qaytarildi), o'ng tomonda esa faqat maktab selektori va
+   "Chiqish" tugmasi qoladi.
+
+7. **Uzun ism-familiya mobil ekranda** — endi kesib (`...`) ko'rsatish
+   o'rniga, agar joy yetmasa, avtomatik ikki qatorga bo'linadi: yuqori
+   qatorda familiya, pastki qatorda ism (chunki matn oddiy so'z bo'sh
+   joyidan tabiiy tarzda o'raladi).

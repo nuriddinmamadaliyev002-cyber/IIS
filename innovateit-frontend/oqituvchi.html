@@ -53,18 +53,14 @@
 
   <!-- TOPBAR -->
   <div class="topbar oq-topbar">
-    <div class="oq-brand">
-      <img class="oq-brand-logo" src="img/logo-mark.png" alt="InnovateIT School logotipi">
-      <span class="oq-brand-text">InnovateIT School</span>
+    <div class="oq-topbar-user">
+      <div class="oq-topbar-avatar-wrap"><img id="oq-avatar-img" src="img/oqituvchi-icon.png" alt=""></div>
+      <div class="oq-topbar-user-info">
+        <span class="oq-topbar-name" id="oq-badge"></span>
+        <span class="oq-topbar-role">O'qituvchi</span>
+      </div>
     </div>
     <div class="topbar-right">
-      <div class="oq-topbar-user">
-        <div class="oq-topbar-avatar-wrap"><img id="oq-avatar-img" src="img/oqituvchi-icon.png" alt=""></div>
-        <div class="oq-topbar-user-info">
-          <span class="oq-topbar-name" id="oq-badge"></span>
-          <span class="oq-topbar-role">O'qituvchi</span>
-        </div>
-      </div>
       <select id="oq-maktab-selector" onchange="onMaktabChange()" style="display:none;"></select>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
