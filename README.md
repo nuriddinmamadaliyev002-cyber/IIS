@@ -5,6 +5,7 @@ xuddi shu yo'ldagi faylning o'rniga almashtiring:
 
 - innovateit-frontend/oqituvchi.html
 - innovateit-frontend/css/oqituvchi.css
+- innovateit-frontend/js/oqituvchi.js               ← YANGI o'zgargan fayl
 - innovateit-frontend/img/logo-mark.png          ← YANGI fayl
 - innovateit-frontend/img/logo-mark-cyan.svg      ← YANGI fayl
 - innovateit-frontend/img/logo-mark-cyan.png      ← YANGI fayl (zaxira)
@@ -65,3 +66,14 @@ yozuvi yonida logotip ko'rinmay, bo'sh joy qolayotgan edi.
    Endi mobil kenglikda tab menyu **doim 2 ustunli izchil grid** ko'rinishda
    chiqadi — qaysi tab faol bo'lishidan qat'i nazar, tugmalar joyi hech
    qachon o'zgarmaydi.
+
+9. **"Guruh yaratish" tabi qayta ishlandi:**
+   - Sarlavha: "O'zingizga o'quvchi guruhi yarating" →
+     "Sinf o'quvchilaridan o'zingiz uchun guruh yarating"
+   - Diapazon tanlash bloki ("1–3 sinf / 4–6 sinf / 7–9 sinf / Barcha
+     sinflar") butunlay olib tashlandi
+   - Sinf raqamlari (1–11) endi **bitta tanlov** tarzida ishlaydi: yangi
+     sinf bosilsa, avvalgi tanlangan sinf avtomatik bekor bo'ladi; xuddi shu
+     sinf ustiga qayta bosilsa, uning belgisi olib tashlanadi
+   - "Boshlanish" → "Boshlanish vaqti", "Tugash" → "Tugash vaqti"
+   - Standart tugash vaqti 14:00 dan **10:00** ga o'zgartirildi

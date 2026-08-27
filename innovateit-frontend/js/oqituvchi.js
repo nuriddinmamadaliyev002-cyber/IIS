@@ -141,28 +141,6 @@ function initGuruhTab() {
   }
 }
 
-function applyGroup(sinflar, btn) {
-  const allSel = sinflar.every(s => {
-    const chip = document.querySelector(`#guruh-sinf-chips [data-s="${s}"]`);
-    return chip && chip.classList.contains('sel');
-  });
-  document.querySelectorAll('#guruh-groups .group-chip').forEach(c => c.classList.remove('sel'));
-  sinflar.forEach(s => {
-    const chip = document.querySelector(`#guruh-sinf-chips [data-s="${s}"]`);
-    if (chip) chip.classList.toggle('sel', !allSel);
-  });
-  if (!allSel) btn.classList.add('sel');
-
-  const selChips = [...document.querySelectorAll('#guruh-sinf-chips .sinf-chip.sel')];
-  if (selChips.length) {
-    activeGuruhSinf = selChips[selChips.length - 1].dataset.s;
-    loadGuruhOquvchilar(activeGuruhSinf);
-  } else {
-    g('guruh-oquvchilar-panel').style.display = 'none';
-    activeGuruhSinf = null;
-  }
-}
-
 function saveCurrentGuruhCheckboxState() {
   if (!activeGuruhSinf) return;
   const cbs = g('guruh-oquvchilar-list').querySelectorAll('.guruh-oq-cb');
@@ -173,25 +151,27 @@ function saveCurrentGuruhCheckboxState() {
 
 async function toggleSinfChip(chipEl) {
   const sinf = chipEl.dataset.s;
-  const isNowSel = !chipEl.classList.contains('sel');
+  const alreadySel = chipEl.classList.contains('sel');
   saveCurrentGuruhCheckboxState();
-  chipEl.classList.toggle('sel', isNowSel);
 
-  if (isNowSel) {
-    activeGuruhSinf = sinf;
-    await loadGuruhOquvchilar(sinf);
-  } else {
+  // Bir vaqtda faqat bitta sinf tanlanishi mumkin — avvalgi belgini tozalaymiz
+  document.querySelectorAll('#guruh-sinf-chips .sinf-chip.sel').forEach(c => {
+    if (c !== chipEl) guruhOquvchilarMap.delete(c.dataset.s);
+    c.classList.remove('sel');
+  });
+
+  if (alreadySel) {
+    // Xuddi shu sinf qayta bosilsa — belgi butunlay olib tashlanadi
     guruhOquvchilarMap.delete(sinf);
-    const stillSel = [...document.querySelectorAll('#guruh-sinf-chips .sinf-chip.sel')];
-    if (stillSel.length) {
-      activeGuruhSinf = stillSel[stillSel.length - 1].dataset.s;
-      await loadGuruhOquvchilar(activeGuruhSinf);
-    } else {
-      activeGuruhSinf = null;
-      g('guruh-oquvchilar-panel').style.display = 'none';
-      g('guruh-oquvchilar-list').innerHTML = '';
-    }
+    activeGuruhSinf = null;
+    g('guruh-oquvchilar-panel').style.display = 'none';
+    g('guruh-oquvchilar-list').innerHTML = '';
+    return;
   }
+
+  chipEl.classList.add('sel');
+  activeGuruhSinf = sinf;
+  await loadGuruhOquvchilar(sinf);
 }
 
 function toggleKunChip(chipEl) {
@@ -274,14 +254,13 @@ function updateGuruhSelectedCount() {
 
 function clearGuruhForm() {
   document.querySelectorAll('#guruh-sinf-chips .sinf-chip').forEach(c => c.classList.remove('sel'));
-  document.querySelectorAll('#guruh-groups .group-chip').forEach(c => c.classList.remove('sel'));
   document.querySelectorAll('#guruh-kun-chips .kun-chip').forEach(c => c.classList.remove('sel'));
   g('guruh-oquvchilar-panel').style.display = 'none';
   g('guruh-oquvchilar-list').innerHTML = '';
   g('guruh-bosh-s').value = '08'; g('guruh-bosh-m').value = '00';
-  g('guruh-tug-s').value  = '14'; g('guruh-tug-m').value  = '00';
+  g('guruh-tug-s').value  = '10'; g('guruh-tug-m').value  = '00';
   g('guruh-msg').textContent = '';
-  g('guruh-form-title').textContent = "➕ O'zingizga o'quvchi guruhi yarating";
+  g('guruh-form-title').textContent = "➕ Sinf o'quvchilaridan o'zingiz uchun guruh yarating";
   g('guruh-delete-wrap').style.display = 'none';
   activeGuruhSinf = null;
   guruhOquvchilarMap.clear();
