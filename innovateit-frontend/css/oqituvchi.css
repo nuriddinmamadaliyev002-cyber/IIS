@@ -2,17 +2,80 @@
    InnovateIT School — O'qituvchi Panel stillari
    ═══════════════════════════════════════════════════ */
 
+/* ── Brend ranglari (blog sayti bilan bir xil — InnovateIT School) ── */
+:root {
+  --iit-cyan:        #05BFF6;  /* logotipdagi asosiy rang — header/logo uchun */
+  --iit-sky-deep:     #5CB6F5;
+  --iit-sky-darker:   #3E9BDC;
+  --iit-indigo:       #1670C4;  /* asosiy interaktiv aksent (tugma, aktiv tab) */
+  --iit-indigo-deep:  #0F5493;  /* hover/bosilgan holat */
+  --iit-indigo-tint:  #EAF3FC;  /* och fon (tanlangan/hover holatlar uchun) */
+  --iit-indigo-tint2: #DCEAF9;
+  --font-display: 'Space Grotesk', sans-serif;
+}
+
 #app { max-width: 1100px; margin: 0 auto; padding-bottom: 40px; }
 
+/* ── TOPBAR — InnovateIT brend gradienti ── */
+.topbar.oq-topbar {
+  background-image: linear-gradient(90deg, var(--iit-cyan) 0%, var(--iit-cyan) 22%, var(--iit-sky-deep) 62%, var(--iit-sky-darker) 100%);
+  border-bottom: none;
+  gap: 12px;
+}
+
+.oq-topbar-user { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.oq-topbar-avatar-wrap {
+  width: 42px; height: 42px; border-radius: 50%; flex-shrink: 0;
+  background: rgba(255,255,255,.94);
+  border: 2px solid rgba(255,255,255,.55);
+  display: flex; align-items: center; justify-content: center;
+  overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.15);
+}
+.oq-topbar-avatar-wrap img { width: 78%; height: 78%; object-fit: contain; }
+.oq-topbar-user-info { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
+.oq-topbar-name {
+  font-family: var(--font-display); font-weight: 700; font-size: 14px;
+  color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 46vw;
+}
+.oq-topbar-role {
+  font-family: 'DM Mono', monospace; font-size: 10px; font-weight: 500;
+  color: rgba(255,255,255,.85); text-transform: uppercase; letter-spacing: .06em;
+}
+
+.oq-brand { display: flex; align-items: center; gap: 7px; flex-shrink: 0; }
+.oq-brand-logo { width: 24px; height: 24px; object-fit: contain; flex-shrink: 0; }
+.oq-brand-text {
+  font-family: var(--font-display); font-weight: 700; font-size: 13.5px;
+  color: #fff; white-space: nowrap;
+}
+
 #oq-maktab-selector {
-  padding: 7px 10px;
-  border: 1.5px solid var(--border);
+  padding: 7px 26px 7px 10px;
+  border: 1.5px solid rgba(255,255,255,.55);
   border-radius: 8px;
   font-size: 12.5px;
   font-family: inherit;
-  background: #fff;
+  background-color: rgba(255,255,255,.94);
   color: var(--text);
-  max-width: 160px;
+  max-width: 150px;
+  -webkit-appearance: none; appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231670C4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 8px center;
+}
+
+.topbar.oq-topbar .btn-logout {
+  color: #fff; border-color: rgba(255,255,255,.55); background: rgba(255,255,255,.08);
+}
+.topbar.oq-topbar .btn-logout:active { color: #ffe4e4; border-color: #fff; }
+
+@media (max-width: 640px) {
+  .oq-brand-text { display: none; }
+  .oq-topbar-name { max-width: 30vw; font-size: 13px; }
+  .oq-topbar-avatar-wrap { width: 36px; height: 36px; }
+}
+@media (max-width: 420px) {
+  .oq-topbar-role { display: none; }
 }
 
 /* ── Tab nav ── */
@@ -37,9 +100,9 @@
   transition: background .15s, color .15s;
 }
 .oq-tab-btn.active {
-  background: #8b5cf6;
+  background: var(--iit-indigo);
   color: #fff;
-  border-color: #8b5cf6;
+  border-color: var(--iit-indigo);
 }
 .oq-tab-btn:hover:not(.active) { background: #f3f4f6; color: var(--text); }
 
@@ -63,7 +126,7 @@
 .oq-back-btn {
   background: none;
   border: none;
-  color: #8b5cf6;
+  color: var(--iit-indigo);
   font-weight: 600;
   font-size: 13px;
   cursor: pointer;
@@ -92,7 +155,7 @@
 .sinf-card:hover { box-shadow: var(--shadow); transform: translateY(-1px); }
 .sinf-card-badge {
   width: 52px; height: 52px; margin: 0 auto 10px;
-  background: linear-gradient(135deg,#8b5cf6,#a78bfa);
+  background: linear-gradient(135deg, var(--iit-indigo), var(--iit-sky-deep));
   border-radius: 14px;
   display: flex; align-items: center; justify-content: center;
   color: #fff; font-size: 18px; font-weight: 700;
@@ -108,7 +171,7 @@
 }
 .oq-stu-avatar {
   width: 38px; height: 38px; border-radius: 50%;
-  background: linear-gradient(135deg,#6c63ff,#4ecdc4);
+  background: linear-gradient(135deg, var(--iit-indigo), var(--iit-cyan));
   color: #fff; font-weight: 700; font-size: 15px;
   display: flex; align-items: center; justify-content: center;
   flex-shrink: 0;
@@ -121,10 +184,10 @@
   background: #fff; border: 1.5px solid var(--border);
   border-radius: 14px; padding: 14px 16px; margin-bottom: 12px;
 }
-.jadval-kun-blok.jadval-bugun { border-color: #8b5cf6; background: #faf5ff; }
+.jadval-kun-blok.jadval-bugun { border-color: var(--iit-indigo); background: var(--iit-indigo-tint); }
 .jadval-kun-sarlavha { font-size: 13.5px; font-weight: 700; color: var(--text); margin-bottom: 10px; }
 .jadval-bugun-badge {
-  background: #8b5cf6; color: #fff; font-size: 10px; font-weight: 700;
+  background: var(--iit-indigo); color: #fff; font-size: 10px; font-weight: 700;
   padding: 2px 8px; border-radius: 20px; margin-left: 6px;
 }
 .jadval-dars-karta {
@@ -167,12 +230,12 @@
   border-radius: 12px; padding: 12px 16px; margin-bottom: 8px;
 }
 .soat-oylik-oy { font-size: 13px; font-weight: 600; color: var(--text); }
-.soat-oylik-soat { font-size: 13px; font-weight: 700; color: #8b5cf6; text-align: right; }
+.soat-oylik-soat { font-size: 13px; font-weight: 700; color: var(--iit-indigo); text-align: right; }
 .soat-oylik-dars { font-size: 11px; color: var(--muted); text-align: right; }
 
 .oq-mark-btn {
   display: block; width: 100%; margin-top: 6px;
-  background: #8b5cf6; color: #fff; border: none;
+  background: var(--iit-indigo); color: #fff; border: none;
   padding: 13px; border-radius: 10px; font-size: 14.5px; font-weight: 700;
   cursor: pointer; font-family: inherit;
 }
@@ -187,9 +250,9 @@
   cursor: pointer; font-family: inherit;
 }
 .dars-status-btn.active {
-  border-color: var(--sc, #8b5cf6);
-  background: color-mix(in srgb, var(--sc, #8b5cf6) 12%, #fff);
-  color: var(--sc, #8b5cf6);
+  border-color: var(--sc, var(--iit-indigo));
+  background: color-mix(in srgb, var(--sc, var(--iit-indigo)) 12%, #fff);
+  color: var(--sc, var(--iit-indigo));
 }
 
 @media (max-width: 640px) {
@@ -206,9 +269,9 @@
   transition: background .12s, color .12s, border-color .12s;
 }
 .sinf-chip { min-width: 34px; text-align: center; border-radius: 10px; }
-.group-chip:hover, .sinf-chip:hover, .kun-chip:hover { border-color: #8b5cf6; }
+.group-chip:hover, .sinf-chip:hover, .kun-chip:hover { border-color: var(--iit-indigo); }
 .group-chip.sel, .sinf-chip.sel, .kun-chip.sel {
-  background: #8b5cf6; border-color: #8b5cf6; color: #fff;
+  background: var(--iit-indigo); border-color: var(--iit-indigo); color: #fff;
 }
 
 .guruh-oquv-grid {
@@ -220,9 +283,9 @@
   display: flex; align-items: center; gap: 8px;
   padding: 6px 8px; border-radius: 8px; cursor: pointer; font-size: 12.5px;
 }
-.guruh-oquv-item:hover { background: #f6f3ff; }
-.guruh-oquv-item.checked { background: #f3edff; }
-.guruh-oquv-item input { width: 15px; height: 15px; accent-color: #8b5cf6; cursor: pointer; }
+.guruh-oquv-item:hover { background: var(--iit-indigo-tint); }
+.guruh-oquv-item.checked { background: var(--iit-indigo-tint2); }
+.guruh-oquv-item input { width: 15px; height: 15px; accent-color: var(--iit-indigo); cursor: pointer; }
 
 /* ── Guruhlarim ro'yxati ── */
 .guruh-card {
@@ -230,7 +293,7 @@
   padding: 14px 16px; margin-bottom: 10px; cursor: pointer;
   transition: box-shadow .15s, border-color .15s;
 }
-.guruh-card:hover { box-shadow: var(--shadow); border-color: #8b5cf6; }
+.guruh-card:hover { box-shadow: var(--shadow); border-color: var(--iit-indigo); }
 .guruh-card-top { display: flex; align-items: center; justify-content: space-between; }
 .guruh-card-sinf { font-size: 14px; font-weight: 700; color: var(--text); }
 .guruh-card-edit { font-size: 15px; opacity: .6; }
@@ -248,7 +311,7 @@
   cursor: pointer; font-size: 16px; color: var(--muted);
   display: flex; align-items: center; justify-content: center; transition: all .15s;
 }
-.dav-date-nav-btn:hover:not(:disabled) { border-color: #8b5cf6; color: #8b5cf6; }
+.dav-date-nav-btn:hover:not(:disabled) { border-color: var(--iit-indigo); color: var(--iit-indigo); }
 .dav-date-nav-btn:disabled { opacity: .35; cursor: not-allowed; }
 .dav-date-display { font-size: 14px; font-weight: 700; color: var(--text); min-width: 130px; }
 .dav-date-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }

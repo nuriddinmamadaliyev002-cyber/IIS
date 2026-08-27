@@ -74,8 +74,8 @@ function showApp() {
   g('oq-badge').textContent = U.ism;
   TEACHER_ID = U.entityId;
 
-  // Topbardagi belgi — o'qituvchi tanlagan avatarga qarab
-  const topbarImg = document.querySelector('.topbar-brand img');
+  // Topbardagi avatar — o'qituvchi tanlagan avatarga qarab
+  const topbarImg = g('oq-avatar-img');
   if (topbarImg) {
     topbarImg.src = U.avatar === 'ayol' ? 'img/oqituvchi-icon-ayol.png'
                    : U.avatar === 'erkak' ? 'img/oqituvchi-icon-erkak.png'
