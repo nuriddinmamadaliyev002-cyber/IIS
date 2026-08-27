@@ -57,3 +57,11 @@ yozuvi yonida logotip ko'rinmay, bo'sh joy qolayotgan edi.
    o'rniga, agar joy yetmasa, avtomatik ikki qatorga bo'linadi: yuqori
    qatorda familiya, pastki qatorda ism (chunki matn oddiy so'z bo'sh
    joyidan tabiiy tarzda o'raladi).
+
+8. **Tab menyu joylashuvi mobilda beqaror edi** — sababi: tugmalar oddiy
+   `flex-wrap` bilan joylashtirilgan edi, shu tufayli faol tab qalinroq
+   (bold) bo'lgani uchun eni o'zgarib, qaysi tugma qaysi qatorga tushishini
+   har safar boshqacha qilib qo'yardi (masalan, ba'zida 3+1, ba'zida 2+2).
+   Endi mobil kenglikda tab menyu **doim 2 ustunli izchil grid** ko'rinishda
+   chiqadi — qaysi tab faol bo'lishidan qat'i nazar, tugmalar joyi hech
+   qachon o'zgarmaydi.

@@ -253,7 +253,23 @@
 }
 
 @media (max-width: 640px) {
-  .oq-tabnav { padding: 12px 14px 0; }
+  .oq-tabnav {
+    padding: 12px 14px 0;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  .oq-tab-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    border-radius: 10px;
+  }
   .oq-content { padding: 14px; }
 }
 
