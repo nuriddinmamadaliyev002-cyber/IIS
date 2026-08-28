@@ -47,11 +47,16 @@
 <!-- ════════════ APP ════════════ -->
 <div id="app" style="display:none;">
 
-  <!-- TOPBAR -->
-  <div class="topbar">
-    <div class="topbar-brand">🎓 InnovateIT — O'quvchi Panel</div>
+  <!-- TOPBAR — InnovateIT School brend rangida -->
+  <div class="topbar oq-topbar">
+    <div class="oq-topbar-user">
+      <div class="oq-topbar-avatar-wrap"><span style="font-size:20px;line-height:1;">🧑‍🎓</span></div>
+      <div class="oq-topbar-user-info">
+        <span class="oq-topbar-role" id="ouq-role"></span>
+        <span class="oq-topbar-name" id="oq-badge"></span>
+      </div>
+    </div>
     <div class="topbar-right">
-      <span class="admin-badge" id="oq-badge"></span>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
   </div>

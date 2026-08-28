@@ -77,8 +77,10 @@ function showApp() {
   g('login-screen').style.display = 'none';
   g('app').style.display = 'block';
 
-  const sinfLbl = U.sinf ? (U.sinf.toLowerCase().includes('sinf') ? U.sinf : U.sinf + '-sinf') : '';
-  g('oq-badge').textContent = [U.ism, sinfLbl].filter(Boolean).join(' · ');
+  const sinfLbl  = U.sinf ? (U.sinf.toLowerCase().includes('sinf') ? U.sinf : U.sinf + '-sinf') : '';
+  const roleLine = [U.maktab, sinfLbl ? (sinfLbl + " o'quvchisi") : ''].filter(Boolean).join(', ');
+  g('ouq-role').textContent = roleLine;
+  g('oq-badge').textContent = U.ism || '';
 
   loadDavomatim();
   loadJadvalim();
