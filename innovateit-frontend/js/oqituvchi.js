@@ -21,6 +21,11 @@ function esc(s) {
   }[c]));
 }
 
+// "6-sinf", "11-sinf" kabi qiymatlarni sonlar bo'yicha o'sish tartibida saralaydi
+function sortSinflar(arr) {
+  return [...arr].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
+}
+
 // ─── Kirish ──────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   const params  = new URLSearchParams(window.location.search);
@@ -134,6 +139,26 @@ let pendingGuruhData = null; // tasdiqlash oynasi kutayotgan ma'lumotlar
 
 const GURUH_KUN_NOMLARI = { 1: 'Dushanba', 2: 'Seshanba', 3: 'Chorshanba', 4: 'Payshanba', 5: 'Juma', 6: 'Shanba' };
 
+// Boshlanish/tugash vaqti uchun ruxsat etilgan qiymatlar
+const GURUH_SOAT_VARIANTLARI = ['06','07','08','09','10','11','12','13','14','15','16','17','18'];
+const GURUH_DAQIQA_VARIANTLARI = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+function populateGuruhTimeSelect(id, options, placeholder, reset = false) {
+  const el = g(id);
+  if (!el) return;
+  const prevVal = reset ? '' : el.value;
+  el.innerHTML = `<option value="" disabled ${prevVal ? '' : 'selected'}>${placeholder}</option>` +
+    options.map(v => `<option value="${v}">${v}</option>`).join('');
+  if (prevVal && options.includes(prevVal)) el.value = prevVal;
+}
+
+function initGuruhTimeSelects() {
+  populateGuruhTimeSelect('guruh-bosh-s', GURUH_SOAT_VARIANTLARI, 'Soat');
+  populateGuruhTimeSelect('guruh-bosh-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa');
+  populateGuruhTimeSelect('guruh-tug-s', GURUH_SOAT_VARIANTLARI, 'Soat');
+  populateGuruhTimeSelect('guruh-tug-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa');
+}
+
 function initGuruhTab() {
   const warn = g('guruh-maktab-warn'), form = g('guruh-form');
   if (!TANLANGAN_MID) {
@@ -143,6 +168,7 @@ function initGuruhTab() {
     warn.style.display = 'none';
     form.style.display = 'block';
   }
+  initGuruhTimeSelects();
 }
 
 function saveCurrentGuruhCheckboxState() {
@@ -267,9 +293,10 @@ function clearGuruhForm() {
   document.querySelectorAll('#guruh-kun-chips .kun-chip').forEach(c => c.classList.remove('sel'));
   g('guruh-oquvchilar-panel').style.display = 'none';
   g('guruh-oquvchilar-list').innerHTML = '';
-  g('guruh-bosh-s').value = '08'; g('guruh-bosh-m').value = '00';
-  g('guruh-tug-s').value  = '10'; g('guruh-tug-m').value  = '00';
-  g('guruh-msg').textContent = '';
+  populateGuruhTimeSelect('guruh-bosh-s', GURUH_SOAT_VARIANTLARI, 'Soat', true);
+  populateGuruhTimeSelect('guruh-bosh-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa', true);
+  populateGuruhTimeSelect('guruh-tug-s', GURUH_SOAT_VARIANTLARI, 'Soat', true);
+  populateGuruhTimeSelect('guruh-tug-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa', true);
   g('guruh-form-title').textContent = "➕ Sinf o'quvchilaridan o'zingiz uchun guruh yarating";
   g('guruh-delete-wrap').style.display = 'none';
   activeGuruhSinf = null;
@@ -278,8 +305,6 @@ function clearGuruhForm() {
   pendingGuruhData = null;
   editingGuruhId = null;
 }
-
-function padZ(v) { return String(parseInt(v) || 0).padStart(2, '0'); }
 
 function saveGuruh() {
   const msgEl = g('guruh-msg');
@@ -299,14 +324,20 @@ function saveGuruh() {
 
   // Bir nechta sinfda o'quvchi belgilangan bo'lishi mumkin (guruhOquvchilarMap),
   // shuning uchun faqat hozir ekranda ko'ringan sinfni emas, balki
-  // barcha belgilangan sinflarni birlashtirib yuboramiz.
-  const effectiveSinflar = [...new Set([...sinflar, ...guruhOquvchilarMap.keys()])];
+  // barcha belgilangan sinflarni birlashtirib, o'sish tartibida yuboramiz.
+  const effectiveSinflar = sortSinflar([...new Set([...sinflar, ...guruhOquvchilarMap.keys()])]);
 
   const totalOquvchi = [...guruhOquvchilarMap.values()].reduce((acc, s) => acc + s.size, 0);
   if (totalOquvchi === 0) { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Kamida 1 o\'quvchi tanlang'; return; }
 
-  const boshlanish = padZ(g('guruh-bosh-s').value) + ':' + padZ(g('guruh-bosh-m').value);
-  const tugash     = padZ(g('guruh-tug-s').value)  + ':' + padZ(g('guruh-tug-m').value);
+  const boshS = g('guruh-bosh-s').value, boshM = g('guruh-bosh-m').value;
+  const tugS  = g('guruh-tug-s').value,  tugM  = g('guruh-tug-m').value;
+  if (!boshS || !boshM || !tugS || !tugM) {
+    msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Boshlanish va tugash vaqtini to\'liq tanlang'; return;
+  }
+
+  const boshlanish = boshS + ':' + boshM;
+  const tugash     = tugS  + ':' + tugM;
 
   pendingGuruhData = { effectiveSinflar, kunlar, boshlanish, tugash };
   openGuruhConfirmModal();
@@ -423,7 +454,7 @@ async function loadGuruhlarim() {
     }
 
     wrap.innerHTML = LAST_GURUHLAR.map(j => {
-      const sinflar = (j.sinflar || '').split(',').filter(Boolean);
+      const sinflar = sortSinflar((j.sinflar || '').split(',').filter(Boolean));
       const sinflarText = sinflar.map(s => s.replace(/-sinf$/i, '')).join(', ') +
         (sinflar.length ? ('-sinf' + (sinflar.length > 1 ? 'lar' : '')) : '');
       const kunlar = (j.kunlar || '').split(',').map(k => KUN_QISQA[k.trim()] || k.trim()).filter(Boolean).join(', ');
