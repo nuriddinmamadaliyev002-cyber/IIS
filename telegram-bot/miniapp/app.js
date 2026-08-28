@@ -476,9 +476,9 @@ function showAdminRedirect(url, opts) {
       btn: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi panelni ochish',
     },
     oquvchi: {
-      icon: '🎓', title: "Siz O'quvchi sifatida kirdingiz",
+      icon: '<img src="img/oquvchi-icon-erkak.png" alt="" style="width:100%;height:100%;object-fit:contain;">', title: "Siz O'quvchi sifatida kirdingiz",
       desc: "O'quvchi paneli to'liq brauzerda ochiladi.<br>Davomatingiz va dars jadvalingizni u yerda ko'ring.",
-      btn: "🎓 O'quvchi panelni ochish",
+      btn: '<img src="img/oquvchi-icon-erkak.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'quvchi panelni ochish',
     },
   }[opts?.role || 'admin'];
 
