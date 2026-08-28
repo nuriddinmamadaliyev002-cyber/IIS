@@ -152,6 +152,21 @@ function populateGuruhTimeSelect(id, options, placeholder, reset = false) {
   if (prevVal && options.includes(prevVal)) el.value = prevVal;
 }
 
+// Boshlanish/tugash vaqti maydonlaridagi xatolik belgisini tozalaydi
+// (foydalanuvchi qiymatni qayta o'zgartirganda chaqiriladi)
+function clearGuruhTimeErr() {
+  ['guruh-bosh-s', 'guruh-bosh-m', 'guruh-tug-s', 'guruh-tug-m'].forEach(id => g(id)?.classList.remove('err'));
+  const msgEl = g('guruh-msg');
+  if (msgEl && msgEl.dataset.type === 'vaqt-err') { msgEl.textContent = ''; delete msgEl.dataset.type; }
+}
+
+// Boshlanish vaqti tugash vaqtidan oldin ekanini tekshiradi
+function isGuruhVaqtValid(boshS, boshM, tugS, tugM) {
+  const bosh = parseInt(boshS, 10) * 60 + parseInt(boshM, 10);
+  const tug  = parseInt(tugS, 10)  * 60 + parseInt(tugM, 10);
+  return tug > bosh;
+}
+
 function initGuruhTimeSelects() {
   populateGuruhTimeSelect('guruh-bosh-s', GURUH_SOAT_VARIANTLARI, 'Soat');
   populateGuruhTimeSelect('guruh-bosh-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa');
@@ -297,6 +312,8 @@ function clearGuruhForm() {
   populateGuruhTimeSelect('guruh-bosh-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa', true);
   populateGuruhTimeSelect('guruh-tug-s', GURUH_SOAT_VARIANTLARI, 'Soat', true);
   populateGuruhTimeSelect('guruh-tug-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa', true);
+  clearGuruhTimeErr();
+  g('guruh-msg').textContent = '';
   g('guruh-form-title').textContent = "➕ Sinf o'quvchilaridan o'zingiz uchun guruh yarating";
   g('guruh-delete-wrap').style.display = 'none';
   activeGuruhSinf = null;
@@ -334,6 +351,14 @@ function saveGuruh() {
   const tugS  = g('guruh-tug-s').value,  tugM  = g('guruh-tug-m').value;
   if (!boshS || !boshM || !tugS || !tugM) {
     msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Boshlanish va tugash vaqtini to\'liq tanlang'; return;
+  }
+
+  if (!isGuruhVaqtValid(boshS, boshM, tugS, tugM)) {
+    msgEl.style.color = '#ef4444';
+    msgEl.textContent = '⚠️ Boshlanish vaqti tugash vaqtidan oldin bo\'lishi kerak';
+    msgEl.dataset.type = 'vaqt-err';
+    ['guruh-bosh-s', 'guruh-bosh-m', 'guruh-tug-s', 'guruh-tug-m'].forEach(id => g(id)?.classList.add('err'));
+    return;
   }
 
   const boshlanish = boshS + ':' + boshM;
@@ -935,7 +960,7 @@ async function loadJadval() {
               </div>
               <div>
                 <div class="jadval-fan">${esc(d.fan || '—')}</div>
-                ${d.sinflar ? `<div class="jadval-sinf">📚 ${esc(d.sinflar)}</div>` : ''}
+                ${d.sinflar ? `<div class="jadval-sinf">📚 ${esc(sortSinflar(d.sinflar.split(',').filter(Boolean)).join(', '))}</div>` : ''}
               </div>
             </div>`).join('')}
         </div>`;
