@@ -650,6 +650,19 @@ function setDavomatDateUI() {
   g('dav-date-picker-text').textContent = `${dd}/${mm}/${d.getFullYear()}`;
 }
 
+// Ko'rinadigan DD/MM/YYYY qatlamiga bosilganda, orqadagi yashirin
+// <input type="date"> ning kalendarini dasturiy ravishda ochamiz —
+// bu shunchaki bosishga tayanishdan ko'ra ishonchliroq ishlaydi.
+function openDavomatDatePicker() {
+  const inp = g('dav-date-picker');
+  if (!inp) return;
+  if (typeof inp.showPicker === 'function') {
+    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
+  }
+  inp.focus();
+  inp.click();
+}
+
 function updateDavomatNavBtns() {
   g('dav-prev-btn').disabled = !findLessonDate(window._davomat_curdate, -1);
   g('dav-next-btn').disabled = !findLessonDate(window._davomat_curdate, 1);
@@ -755,7 +768,7 @@ function renderGuruhDavomat() {
       <div class="dav-sinf-card">
         <div class="dav-sinf-header">
           <div class="dav-sinf-title">
-            <span class="sinf-badge">${esc(sinf.replace(/-sinf$/i, ''))}</span>
+            <span class="sinf-badge">${esc(sinf.replace(/-sinf$/i, '') + '-sinf')}</span>
             <span style="font-size:11px;color:var(--muted);font-weight:400;">${list.length} o'quvchi</span>
           </div>
           <div class="dav-sinf-mini-stats">
