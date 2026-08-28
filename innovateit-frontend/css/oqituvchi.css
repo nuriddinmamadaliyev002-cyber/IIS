@@ -339,8 +339,21 @@
 .dav-date-display { font-size: 14px; font-weight: 700; color: var(--text); min-width: 130px; }
 .dav-date-sub { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
 .dav-date-input {
-  margin-left: auto; padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+  padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 8px;
   font-family: inherit; font-size: 12.5px; background: var(--bg); color: var(--text); cursor: pointer;
+}
+/* Native <input type="date"> ko'rinishi brauzer tiliga qarab MM/DD/YYYY bo'lib chiqishi mumkin.
+   Shuning uchun uni ko'rinmas holda ustiga qo'yib, o'zimiz DD/MM/YYYY formatida matn chiqaramiz,
+   lekin bosilganda baribir asl sana tanlagich (kalendar) ochiladi. */
+.dav-date-input-wrap { position: relative; margin-left: auto; }
+.dav-date-input-text {
+  padding: 6px 10px; border: 1.5px solid var(--border); border-radius: 8px;
+  font-family: 'DM Mono', monospace; font-size: 12.5px; background: var(--bg); color: var(--text);
+  cursor: pointer; white-space: nowrap;
+}
+.dav-date-input-wrap .dav-date-input {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  margin: 0; padding: 0; border: 0; opacity: 0; cursor: pointer;
 }
 
 /* ── Guruh davomati: statistika paneli ── */
@@ -392,7 +405,7 @@
 
 @media (max-width: 640px) {
   .dav-date-bar { justify-content: center; }
-  .dav-date-input { margin-left: 0; }
+  .dav-date-input-wrap { margin-left: 0; }
 }
 /* ═══ Guruh yaratishni tasdiqlash oynasi (confirm modal) ═══ */
 .guruh-confirm-body { max-height: 55vh; overflow-y: auto; margin-bottom: 4px; }

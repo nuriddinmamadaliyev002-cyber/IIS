@@ -625,8 +625,8 @@ async function openGuruhDavomat(guruhId, event) {
   g('guruh-davomat-wrap').style.display = 'block';
 
   const sinflarSet  = new Set((j.sinflar || '').split(',').filter(Boolean));
-  const sinflarText = [...sinflarSet].map(s => s.replace(/-sinf$/i, '')).join(', ');
-  g('guruh-dav-title').textContent = `📋 ${sinflarText}-sinf — davomat`;
+  const sinflarText = sortSinflar([...sinflarSet]).map(s => s.replace(/-sinf$/i, '') + '-sinf').join(', ');
+  g('guruh-dav-title').textContent = `📋 ${sinflarText} — davomat`;
 
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let startDate = isLessonDay(today) ? today : findLessonDate(today, -1);
@@ -645,6 +645,9 @@ function setDavomatDateUI() {
   g('dav-date-display').textContent = `${d.getDate()}-${OY_NOMLARI[d.getMonth() + 1]}, ${d.getFullYear()}`;
   g('dav-date-sub').textContent     = KUN_NOMLARI_MAP[String(d.getDay())] || '';
   g('dav-date-picker').value        = dateStrLocal(d);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  g('dav-date-picker-text').textContent = `${dd}/${mm}/${d.getFullYear()}`;
 }
 
 function updateDavomatNavBtns() {
