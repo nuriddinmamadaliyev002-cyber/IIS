@@ -189,7 +189,7 @@ router.get('/check/:telegramId', async (req, res) => {
     const roles = [];
     for (const row of tgRes.rows) {
       const info = await buildAuthResponse(row, tgId);
-      if (info) roles.push({ rol: info.rol, ism: info.ism, roleLabel: info.roleLabel, entityId: info.entityId });
+      if (info) roles.push({ rol: info.rol, ism: info.ism, roleLabel: info.roleLabel, entityId: info.entityId, avatar: info.avatar || null });
     }
     if (roles.length === 0)
       return res.status(404).json({ ok: false, error: "Foydalanuvchi ma'lumoti topilmadi" });

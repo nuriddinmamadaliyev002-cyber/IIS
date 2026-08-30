@@ -125,9 +125,25 @@ function showRoleChooser(tgId, roles) {
     admin:     { icon: '🖥️', label: 'Admin' },
     buxgalter: { icon: '💼', label: 'Buxgalter' },
     sales:     { icon: '🎯', label: 'Sales xodimi' },
-    oqituvchi: { icon: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;">', label: "O'qituvchi" },
-    oquvchi:   { icon: '🎓', label: "O'quvchi" },
+    oqituvchi: { label: "O'qituvchi" },
+    oquvchi:   { label: "O'quvchi" },
   };
+
+  // Har bir yozuv uchun ikonkani aniqlaymiz — o'qituvchi/o'quvchi uchun
+  // ularning o'z jinsiga (avatar) mos rasm, boshqalar uchun statik emoji
+  function iconFor(r) {
+    if (r.rol === 'oqituvchi') {
+      const file = r.avatar === 'ayol'  ? 'img/oqituvchi-icon-ayol.png'
+                 : r.avatar === 'erkak' ? 'img/oqituvchi-icon-erkak.png'
+                 : 'img/oqituvchi-icon.png';
+      return `<img src="${file}" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;">`;
+    }
+    if (r.rol === 'oquvchi') {
+      const file = r.avatar === 'ayol' ? 'img/oquvchi-icon-ayol.png' : 'img/oquvchi-icon-erkak.png';
+      return `<img src="${file}" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;">`;
+    }
+    return (rolLabels[r.rol] || {}).icon || '👤';
+  }
 
   showPage('loadingPage');
   const loadPage = document.getElementById('loadingPage');
@@ -144,7 +160,7 @@ function showRoleChooser(tgId, roles) {
           border-radius:14px;padding:14px 18px;font-size:15px;font-weight:600;
           cursor:pointer;text-align:left;
         ">
-          <span style="font-size:22px;">${(rolLabels[r.rol] || {}).icon || '👤'}</span>
+          <span style="font-size:22px;">${iconFor(r)}</span>
           <span>
             <div>${r.roleLabel || (rolLabels[r.rol] || {}).label || r.rol}</div>
             <div style="font-size:12px;font-weight:400;color:var(--hint);">${r.ism}</div>
