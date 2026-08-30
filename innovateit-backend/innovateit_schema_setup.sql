@@ -123,7 +123,8 @@ CREATE TABLE IF NOT EXISTS oquvchilar (
     manzil      TEXT,
     qoshilgan   TEXT,       -- qo'shilgan sana
     boshlagan   TEXT,       -- o'qishni boshlagan sana
-    telegram_id BIGINT UNIQUE
+    telegram_id BIGINT UNIQUE,
+    avatar      TEXT CHECK (avatar IS NULL OR avatar IN ('erkak', 'ayol'))  -- web panel/mini app'da ko'rsatiladigan avatar (jinsi)
 );
 
 
@@ -641,6 +642,12 @@ CREATE INDEX IF NOT EXISTS idx_blog_posts_chopvaqti    ON blog_posts(chop_vaqti 
 ALTER TABLE oqituvchilar ADD COLUMN IF NOT EXISTS avatar TEXT;
 ALTER TABLE oqituvchilar DROP CONSTRAINT IF EXISTS oqituvchilar_avatar_check;
 ALTER TABLE oqituvchilar ADD CONSTRAINT oqituvchilar_avatar_check
+  CHECK (avatar IS NULL OR avatar IN ('erkak', 'ayol'));
+
+-- ─── O'quvchi avatar (jinsi) — mavjud bazalarga xavfsiz qo'shish ─────────────
+ALTER TABLE oquvchilar ADD COLUMN IF NOT EXISTS avatar TEXT;
+ALTER TABLE oquvchilar DROP CONSTRAINT IF EXISTS oquvchilar_avatar_check;
+ALTER TABLE oquvchilar ADD CONSTRAINT oquvchilar_avatar_check
   CHECK (avatar IS NULL OR avatar IN ('erkak', 'ayol'));
 
 

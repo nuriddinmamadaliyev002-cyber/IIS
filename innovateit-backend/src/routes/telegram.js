@@ -52,7 +52,7 @@ async function buildAuthResponse(tgUser, tgId) {
     );
   } else if (entity_table === 'oquvchilar') {
     entityRes = await pool.query(
-      `SELECT o.id, o.ism, o.familiya, m.nomi AS maktab, o.sinf, o.maktab_id
+      `SELECT o.id, o.ism, o.familiya, m.nomi AS maktab, o.sinf, o.maktab_id, o.avatar
        FROM oquvchilar o
        LEFT JOIN maktablar m ON m.id = o.maktab_id
        WHERE o.id=$1`,
@@ -110,6 +110,7 @@ async function buildAuthResponse(tgUser, tgId) {
     tokenPayload.maktabId = entity.maktab_id || null;
     tokenPayload.maktab   = entity.maktab    || '';
     tokenPayload.sinf     = entity.sinf      || '';
+    tokenPayload.avatar   = entity.avatar    || null;
   }
 
   const token = generateToken(tokenPayload);
@@ -142,7 +143,7 @@ async function buildAuthResponse(tgUser, tgId) {
     ...(rol === 'oqituvchi'  && { maktablar: tokenPayload.maktablar, maktabIdlar: tokenPayload.maktabIdlar, avatar: entity.avatar || null }),
     ...(rol === 'buxgalter'  && { maktablar: tokenPayload.maktablar }),
     ...(rol === 'sales'      && { maktablar: tokenPayload.maktablar }),
-    ...(rol === 'oquvchi'    && { maktab: entity.maktab, sinf: entity.sinf }),
+    ...(rol === 'oquvchi'    && { maktab: entity.maktab, sinf: entity.sinf, avatar: entity.avatar || null }),
   };
 }
 

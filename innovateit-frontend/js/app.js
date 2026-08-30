@@ -264,6 +264,7 @@ async function addStudent() {
   const fam      = g('f-familiya').value.trim();
   const maktab   = getM('f-maktab');
   const sinf     = g('f-sinf').value;
+  const jins     = g('f-jins').value;
   const tel      = g('f-tel').value.trim();
   const tel2     = g('f-tel2').value.trim();
   const manzil   = g('f-manzil').value.trim();
@@ -300,7 +301,7 @@ async function addStudent() {
   try {
     const r = await api.addStudent({
       username: actingUser, parol: actingParol,
-      ism, familiya: fam, maktab, sinf,
+      ism, familiya: fam, maktab, sinf, avatar: jins,
       telefon: tel, telefon2: tel2, manzil, tug, boshlagan,
       maktabInfo: maktab ? String(maktab) + '-maktab' : '',
       date: new Date().toLocaleDateString('uz-UZ')
@@ -508,6 +509,7 @@ function openES(idx) {
   const maktabRaqam = extractNum(s.maktab) || extractNum(s.maktabInfo) || (s.maktabId ?? '');
   g('e-maktab').value   = maktabRaqam;
   g('e-sinf').value     = s.sinf     || '';
+  g('e-jins').value     = s.avatar   || '';
   g('e-tel').value      = s.telefon  ? fmtTel(s.telefon)  : '';
   g('e-tel2').value     = s.telefon2 ? fmtTel(s.telefon2) : '';
   validateTel(g('e-tel'),  g('e-tel-hint'));
@@ -628,6 +630,7 @@ async function saveES() {
   const fam      = g('e-familiya').value.trim();
   const maktab   = getM('e-maktab');
   const sinf     = g('e-sinf').value;
+  const jins     = g('e-jins').value;
   const tel      = g('e-tel').value.trim();
   const tel2     = g('e-tel2').value.trim();
   const manzil   = g('e-manzil').value.trim();
@@ -669,7 +672,7 @@ async function saveES() {
     const r = await api.editStudent({
       username: U.username, parol: U.parol,
       oldIsm: s.ism, oldFamiliya: s.familiya,
-      ism, familiya: fam, maktab, sinf,
+      ism, familiya: fam, maktab, sinf, avatar: jins,
       telefon: tel, telefon2: tel2, manzil, tug, boshlagan,
       maktabInfo: maktab ? String(maktab) + '-maktab' : ''
     });
@@ -1068,7 +1071,7 @@ function clearF() {
   ['f-ism','f-familiya','f-maktab','f-tel','f-tel2','f-manzil','f-tug','f-kun','f-yil','f-boshlagan'].forEach(id => {
     const e = g(id); e.value = ''; e.classList && e.classList.remove('err', 'tel-ok', 'tel-err');
   });
-  g('f-oy').value = ''; g('f-sinf').value = '';
+  g('f-oy').value = ''; g('f-sinf').value = ''; g('f-jins').value = '';
   ['f-tel-hint','f-tel2-hint'].forEach(id => {
     const el = g(id); if (el) { el.textContent = ''; el.className = 'tel-hint'; }
   });

@@ -41,6 +41,7 @@ window.addEventListener('DOMContentLoaded', () => {
       maktabId: payload?.maktabId || null,
       maktab:   payload?.maktab   || '',
       sinf:     payload?.sinf     || '',
+      avatar:   payload?.avatar   || null,
     };
     localStorage.setItem('iit_ouq_u', JSON.stringify(U));
     window.history.replaceState({}, '', window.location.pathname);
@@ -81,6 +82,13 @@ function showApp() {
   const roleLine = [U.maktab, sinfLbl ? (sinfLbl + " o'quvchisi") : ''].filter(Boolean).join(', ');
   g('ouq-role').textContent = roleLine;
   g('oq-badge').textContent = U.ism || '';
+
+  // Jinsiga qarab avatar — admin panelda belgilangan bo'lsa shunga mos,
+  // aks holda standart sifatida o'g'il bola rasmi ko'rsatiladi
+  const avatarImg = g('ouq-avatar-img');
+  if (avatarImg) {
+    avatarImg.src = U.avatar === 'ayol' ? 'img/oquvchi-icon-ayol.png' : 'img/oquvchi-icon-erkak.png';
+  }
 
   loadDavomatim();
   loadJadvalim();

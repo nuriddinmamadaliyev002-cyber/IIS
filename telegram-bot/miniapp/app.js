@@ -108,7 +108,7 @@ function handleAuthResult(data) {
   if (ROL === 'oquvchi') {
     const ouqUrl = `${WEB_PANEL_URL}/oquvchi.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
     if (tg && tg.openLink) {
-      showAdminRedirect(ouqUrl, { role: 'oquvchi' });
+      showAdminRedirect(ouqUrl, { role: 'oquvchi', avatar: data.avatar });
     } else {
       window.location.href = ouqUrl;
     }
@@ -482,13 +482,19 @@ function showAdminRedirect(url, opts) {
     },
   }[opts?.role || 'admin'];
 
-  // O'qituvchi tanlagan avatarga qarab belgini almashtiramiz
+  // O'qituvchi/o'quvchi tanlagan (yoki admin belgilagan) jinsiga qarab
+  // belgini almashtiramiz — standart holatda o'g'il bola rasmi ko'rsatiladi
   if (opts?.role === 'oqituvchi') {
     const iconFile = opts.avatar === 'ayol'  ? 'img/oqituvchi-icon-ayol.png'
                     : opts.avatar === 'erkak' ? 'img/oqituvchi-icon-erkak.png'
                     : 'img/oqituvchi-icon.png';
     cfg.icon = `<img src="${iconFile}" alt="" style="width:100%;height:100%;object-fit:contain;">`;
     cfg.btn  = `<img src="${iconFile}" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O'qituvchi panelni ochish`;
+  }
+  if (opts?.role === 'oquvchi') {
+    const iconFile = opts.avatar === 'ayol' ? 'img/oquvchi-icon-ayol.png' : 'img/oquvchi-icon-erkak.png';
+    cfg.icon = `<img src="${iconFile}" alt="" style="width:100%;height:100%;object-fit:contain;">`;
+    cfg.btn  = `<img src="${iconFile}" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O'quvchi panelni ochish`;
   }
 
   showPage('loadingPage');

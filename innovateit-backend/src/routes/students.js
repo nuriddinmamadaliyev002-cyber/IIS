@@ -64,6 +64,7 @@ router.get('/', async (req, res) => {
         date:        r.qoshilgan,
         boshlagan:   r.boshlagan,
         telegram_id: r.telegram_id,
+        avatar:      r.avatar || null,
       }))
     });
   } catch (err) {
@@ -86,8 +87,8 @@ router.post('/', async (req, res) => {
     await pool.query(
       `INSERT INTO oquvchilar
          (ism, familiya, sinf, telefon, telefon2, tug, manzil,
-          qoshilgan, boshlagan, maktab_id, maktab_info)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
+          qoshilgan, boshlagan, maktab_id, maktab_info, avatar)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
       [
         p.ism, p.familiya,
         p.sinf,
@@ -97,6 +98,7 @@ router.post('/', async (req, res) => {
         p.boshlagan || '',
         targetMaktabId,
         p.maktabInfo || '',
+        (p.avatar === 'erkak' || p.avatar === 'ayol') ? p.avatar : null,
       ]
     );
     res.json({ ok: true });
@@ -120,6 +122,9 @@ router.put('/', async (req, res) => {
   }
 
   try {
+    // Faqat 'erkak' yoki 'ayol' qiymatlari qabul qilinadi, aks holda NULL
+    const avatarVal = (p.avatar === 'erkak' || p.avatar === 'ayol') ? p.avatar : null;
+
     // Agar id yo'q bo'lsa ism+familiya orqali topamiz
     let targetId = hasId ? parseInt(p.id) : null;
     if (!targetId) {
@@ -167,22 +172,22 @@ router.put('/', async (req, res) => {
           `UPDATE oquvchilar
              SET ism=$1, familiya=$2, sinf=$3,
                  telefon=$4, telefon2=$5, tug=$6, manzil=$7, boshlagan=$8,
-                 maktab_id=$10, maktab_info=$11
+                 maktab_id=$10, maktab_info=$11, avatar=$12
            WHERE id=$9`,
           [p.ism, p.familiya, p.sinf, p.telefon, p.telefon2 || '',
            p.tug || null, p.manzil || '', p.boshlagan || '', targetId, maktabIdNew,
-           p.maktabInfo || '']
+           p.maktabInfo || '', avatarVal]
         );
       } else {
         result = await pool.query(
           `UPDATE oquvchilar
              SET ism=$1, familiya=$2, sinf=$3,
                  telefon=$4, telefon2=$5, tug=$6, manzil=$7, boshlagan=$8,
-                 maktab_info=$10
+                 maktab_info=$10, avatar=$11
            WHERE id=$9`,
           [p.ism, p.familiya, p.sinf, p.telefon, p.telefon2 || '',
            p.tug || null, p.manzil || '', p.boshlagan || '', targetId,
-           p.maktabInfo || '']
+           p.maktabInfo || '', avatarVal]
         );
       }
     } else {
@@ -190,11 +195,11 @@ router.put('/', async (req, res) => {
         `UPDATE oquvchilar
            SET ism=$1, familiya=$2, sinf=$3,
                telefon=$4, telefon2=$5, tug=$6, manzil=$7, boshlagan=$8,
-               maktab_info=$10
+               maktab_info=$10, avatar=$12
          WHERE id=$9 AND maktab_id=$11`,
         [p.ism, p.familiya, p.sinf, p.telefon, p.telefon2 || '',
          p.tug || null, p.manzil || '', p.boshlagan || '', targetId,
-         p.maktabInfo || '', maktabId]
+         p.maktabInfo || '', maktabId, avatarVal]
       );
     }
     if (result.rowCount === 0)
