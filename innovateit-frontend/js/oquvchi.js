@@ -104,14 +104,25 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════
 //  DAVOMATIM
 // ═══════════════════════════════════════════
+let davomatimSana = new Date(); // joriy ko'rib turilgan oy/yil
+
+function changeDavomatimOy(delta) {
+  davomatimSana.setMonth(davomatimSana.getMonth() + delta);
+  loadDavomatim();
+}
+
 async function loadDavomatim() {
   const wrap  = g('ouq-dav-list');
   const stats = g('ouq-dav-stats');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
   stats.innerHTML = '';
 
+  const oy  = davomatimSana.getMonth() + 1;
+  const yil = davomatimSana.getFullYear();
+  g('ouq-oy-label').textContent = `${OY_NOMLARI[oy]} ${yil}`;
+
   try {
-    const data = await api.get('/api/davomat/mening-davomatim');
+    const data = await api.get('/api/davomat/mening-davomatim', { oy, yil });
 
     if (!data || !data.ok) {
       wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
@@ -120,11 +131,11 @@ async function loadDavomatim() {
 
     const records = (data.records || []).filter(r => r.sana);
     if (!records.length) {
-      wrap.innerHTML = '<div class="oq-empty">📭 Hali davomat belgilanmagan</div>';
+      wrap.innerHTML = '<div class="oq-empty">📭 Bu oyda davomat belgilanmagan</div>';
       return;
     }
 
-    // Statistika (oxirgi 90 kun bo'yicha)
+    // Statistika — faqat shu oy bo'yicha
     const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
     records.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
     stats.innerHTML = `

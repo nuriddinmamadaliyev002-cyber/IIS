@@ -72,6 +72,11 @@
     <!-- ══ DAVOMATIM TAB ══ -->
     <div class="oq-tab-page active" id="tab-davomat">
       <div class="oq-section-title" id="ouq-dav-title">📋 Mening davomatim</div>
+      <div class="ouq-oy-nav">
+        <button class="ouq-oy-nav-btn" onclick="changeDavomatimOy(-1)" title="Oldingi oy">‹</button>
+        <span class="ouq-oy-label" id="ouq-oy-label">—</span>
+        <button class="ouq-oy-nav-btn" onclick="changeDavomatimOy(1)" title="Keyingi oy">›</button>
+      </div>
       <div id="ouq-dav-stats" class="ouq-dav-stats"></div>
       <div id="ouq-dav-list"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>

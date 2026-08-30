@@ -18,6 +18,14 @@ router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (re
   if (req.user.rol === 'oquvchi') {
     const { ism, maktabId, sinf, entityId } = req.user;
     if (!maktabId) return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
+
+    // Ixtiyoriy oy/yil filtri — o'quvchi web panelida oylar bo'yicha
+    // ko'rish (‹ Sentabr 2026 ›) uchun. Berilmasa — eski xulq-atvor
+    // (oxirgi 90 ta yozuv) saqlanib qoladi.
+    const oyQ  = parseInt(req.query.oy, 10);
+    const yilQ = parseInt(req.query.yil, 10);
+    const hasOyYil = oyQ >= 1 && oyQ <= 12 && yilQ >= 2000;
+
     try {
       // DB da oquvchi_ism "Ism Familiya" yoki "Familiya Ism" bo'lishi mumkin
       // Token da ism = "Familiya Ism" formatida saqlanadi
@@ -33,10 +41,12 @@ router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (re
          WHERE (oquvchi_ism = $1 OR oquvchi_ism = $4)
            AND maktab_id   = $2
            AND sinf        = $3
+           ${hasOyYil ? `AND EXTRACT(MONTH FROM to_date(NULLIF(sana,''), 'YYYY-MM-DD')) = $5
+                          AND EXTRACT(YEAR  FROM to_date(NULLIF(sana,''), 'YYYY-MM-DD')) = $6` : ''}
          ORDER BY
            to_date(NULLIF(sana,''), 'YYYY-MM-DD') DESC NULLS LAST
-         LIMIT 90`,
-        [ism, maktabId, sinf, teskari]
+         ${hasOyYil ? '' : 'LIMIT 90'}`,
+        hasOyYil ? [ism, maktabId, sinf, teskari, oyQ, yilQ] : [ism, maktabId, sinf, teskari]
       );
       return res.json({
         ok:      true,

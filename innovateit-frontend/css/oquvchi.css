@@ -1,4 +1,19 @@
 /* ─── O'quvchi panel: Davomatim tab ─── */
+.ouq-oy-nav {
+  display: flex; align-items: center; justify-content: center; gap: 14px;
+  margin-bottom: 14px;
+}
+.ouq-oy-nav-btn {
+  width: 32px; height: 32px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: #fff; font-size: 16px; font-weight: 700; color: var(--text);
+  cursor: pointer; display: flex; align-items: center; justify-content: center;
+  transition: background .15s;
+}
+.ouq-oy-nav-btn:hover { background: var(--bg); }
+.ouq-oy-label {
+  font-size: 15px; font-weight: 700; color: var(--text); min-width: 140px;
+  text-align: center; font-family: 'DM Mono', monospace;
+}
 .ouq-dav-stats { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
 .ouq-stat-pill {
   display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 10px;
@@ -13,11 +28,17 @@
 .ouq-dav-row {
   background: #fff; border: 1.5px solid var(--border); border-radius: 12px;
   padding: 12px 14px; margin-bottom: 8px;
-  display: flex; align-items: center; flex-wrap: wrap; gap: 10px;
+  display: flex; align-items: center; justify-content: space-between;
+  flex-wrap: wrap; gap: 8px 10px;
 }
-.ouq-dav-date { font-size: 13px; font-weight: 600; color: var(--text); min-width: 140px; }
+.ouq-dav-date {
+  font-size: 13px; font-weight: 600; color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  flex: 1 1 auto; min-width: 0;
+}
 .ouq-dav-badge {
-  font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px; margin-left: auto;
+  font-size: 12px; font-weight: 700; padding: 4px 10px; border-radius: 8px;
+  white-space: nowrap; flex-shrink: 0;
 }
 .ouq-dav-badge.k { background: #f0fdf4; color: #15803d; }
 .ouq-dav-badge.x { background: #fef2f2; color: #dc2626; }
@@ -26,4 +47,10 @@
 .ouq-dav-izoh {
   flex-basis: 100%; font-size: 12px; color: var(--muted);
   background: var(--bg); border-radius: 8px; padding: 6px 10px;
+}
+
+@media (max-width: 380px) {
+  .ouq-dav-row  { padding: 10px 12px; }
+  .ouq-dav-date { font-size: 12px; }
+  .ouq-dav-badge { font-size: 11px; padding: 3px 8px; }
 }
