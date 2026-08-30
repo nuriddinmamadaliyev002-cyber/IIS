@@ -25,6 +25,32 @@ function ismFamiliya(ism) {
   return { familiya: parts[0] || '', ismOnly: parts.slice(1).join(' ') || '' };
 }
 
+// Bir javobga biriktirilishi mumkin bo'lgan eng ko'p fayl soni
+const MAX_JAVOB_FAYL = 5;
+
+// Bir nechta javob_id uchun ularga tegishli fayllarni bitta so'rovda olib,
+// { [javob_id]: [{id, fayl_nomi, original_nomi}, ...] } shaklida qaytaradi
+async function fayllarniOlish(javobIdlar) {
+  const ids = javobIdlar.filter(Boolean);
+  if (!ids.length) return {};
+  const result = await pool.query(
+    `SELECT id, javob_id, fayl_nomi, original_nomi
+       FROM vazifa_javob_fayllari
+      WHERE javob_id = ANY($1::int[])
+      ORDER BY tartib ASC, id ASC`,
+    [ids]
+  );
+  const map = {};
+  for (const row of result.rows) {
+    (map[row.javob_id] ||= []).push({
+      id: row.id,
+      fayl_nomi: row.fayl_nomi,
+      original_nomi: row.original_nomi
+    });
+  }
+  return map;
+}
+
 // ═══════════════════════════════════════════════════════════════════════════
 //  O'QITUVCHI — mavzu / uyga vazifa yozish
 // ═══════════════════════════════════════════════════════════════════════════
@@ -128,7 +154,9 @@ router.get('/tekshirish', requireAuth(['oqituvchi']), async (req, res) => {
        ORDER BY vj.yuborilgan_vaqt DESC`,
       params
     );
-    res.json({ ok: true, javoblar: result.rows });
+    const fayllarMap = await fayllarniOlish(result.rows.map(r => r.id));
+    const javoblar = result.rows.map(r => ({ ...r, javob_fayllar: fayllarMap[r.id] || [] }));
+    res.json({ ok: true, javoblar });
   } catch (err) {
     console.error('vazifalar/tekshirish GET xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
@@ -215,7 +243,9 @@ router.get('/mening-vazifalarim', requireAuth(['oquvchi']), async (req, res) => 
        ORDER BY dm.sana DESC`,
       sinfParams
     );
-    res.json({ ok: true, vazifalar: result.rows });
+    const fayllarMap = await fayllarniOlish(result.rows.map(r => r.javob_id));
+    const vazifalar = result.rows.map(r => ({ ...r, javob_fayllar: r.javob_id ? (fayllarMap[r.javob_id] || []) : [] }));
+    res.json({ ok: true, vazifalar });
   } catch (err) {
     console.error('vazifalar/mening-vazifalarim GET xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
@@ -223,14 +253,24 @@ router.get('/mening-vazifalarim', requireAuth(['oquvchi']), async (req, res) => 
 });
 
 // ─── POST /api/vazifalar/:vazifaId/javob — javob yuborish/tahrirlash ─────────
+//  Body: { javob_matn, javob_fayllar: [{ fayl_nomi, original_nomi }, ...] }
+//  javob_fayllar — o'quvchi hozir ko'rib turgan TO'LIQ fayllar ro'yxati
+//  (avval yuklanganlar + yangi qo'shilganlar, olib tashlanganlar bo'lmagan
+//  holda). Server har safar mavjud fayllarni shu ro'yxat bilan almashtiradi.
 router.post('/:vazifaId/javob', requireAuth(['oquvchi']), async (req, res) => {
   const { entityId, sinf } = req.user;
-  const { javob_matn, javob_fayl } = req.body;
+  const { javob_matn } = req.body;
+  let { javob_fayllar } = req.body;
   const vazifaId = parseInt(req.params.vazifaId);
+
+  if (!Array.isArray(javob_fayllar)) javob_fayllar = [];
+  javob_fayllar = javob_fayllar
+    .filter(f => f && (f.fayl_nomi || '').trim())
+    .slice(0, MAX_JAVOB_FAYL);
 
   if (!vazifaId) return res.status(400).json({ ok: false, error: 'vazifaId kerak' });
   if (!entityId) return res.status(400).json({ ok: false, error: "O'quvchi ID topilmadi" });
-  if (!(javob_matn || '').trim() && !(javob_fayl || '').trim())
+  if (!(javob_matn || '').trim() && javob_fayllar.length === 0)
     return res.status(400).json({ ok: false, error: 'Javob matni yoki fayl kerak' });
 
   try {
@@ -256,13 +296,39 @@ router.post('/:vazifaId/javob', requireAuth(['oquvchi']), async (req, res) => {
     }
 
     const now = new Date().toLocaleString('uz-UZ');
-    await pool.query(
-      `INSERT INTO vazifa_javoblari (vazifa_id, oquvchi_id, javob_matn, javob_fayl, yuborilgan_vaqt, holat)
-       VALUES ($1,$2,$3,$4,$5,'yuborilgan')
-       ON CONFLICT (vazifa_id, oquvchi_id) DO UPDATE
-         SET javob_matn=$3, javob_fayl=$4, yuborilgan_vaqt=$5, holat='yuborilgan'`,
-      [vazifaId, entityId, javob_matn || '', javob_fayl || '', now]
-    );
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+
+      const upsertRes = await client.query(
+        `INSERT INTO vazifa_javoblari (vazifa_id, oquvchi_id, javob_matn, yuborilgan_vaqt, holat)
+         VALUES ($1,$2,$3,$4,'yuborilgan')
+         ON CONFLICT (vazifa_id, oquvchi_id) DO UPDATE
+           SET javob_matn=$3, yuborilgan_vaqt=$4, holat='yuborilgan'
+         RETURNING id`,
+        [vazifaId, entityId, javob_matn || '', now]
+      );
+      const javobId = upsertRes.rows[0].id;
+
+      // Fayllar ro'yxatini to'liq almashtiramiz (eskilarini o'chirib, yangilarini yozamiz)
+      await client.query('DELETE FROM vazifa_javob_fayllari WHERE javob_id=$1', [javobId]);
+      for (let i = 0; i < javob_fayllar.length; i++) {
+        const f = javob_fayllar[i];
+        await client.query(
+          `INSERT INTO vazifa_javob_fayllari (javob_id, fayl_nomi, original_nomi, tartib)
+           VALUES ($1,$2,$3,$4)`,
+          [javobId, f.fayl_nomi, f.original_nomi || '', i]
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      throw err;
+    } finally {
+      client.release();
+    }
+
     res.json({ ok: true });
   } catch (err) {
     console.error('vazifalar/javob POST xatolik:', err.message);

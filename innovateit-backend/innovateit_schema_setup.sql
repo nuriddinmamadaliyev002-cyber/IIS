@@ -569,6 +569,32 @@ CREATE TABLE IF NOT EXISTS vazifa_javoblari (
 );
 
 
+-- ─── 29. VAZIFA JAVOB FAYLLARI ──────────────────────────────────────────────────
+--  Bitta javobga bir nechta fayl biriktirish mumkin (1-ko'p bog'lanish).
+--  Eski javob_fayl ustuni orqaga moslik uchun saqlanadi, lekin backend
+--  endi shu jadvaldan foydalanadi.
+CREATE TABLE IF NOT EXISTS vazifa_javob_fayllari (
+    id             SERIAL PRIMARY KEY,
+    javob_id       INTEGER NOT NULL REFERENCES vazifa_javoblari(id) ON DELETE CASCADE,
+    fayl_nomi      TEXT    NOT NULL,
+    original_nomi  TEXT    DEFAULT '',
+    tartib         INTEGER DEFAULT 0,
+    yuklangan_vaqt TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI')
+);
+
+-- Mavjud (eski, yagona) javob_fayl qiymatlarini yangi jadvalga ko'chirish.
+-- NOT EXISTS bilan tekshirilgani uchun deploy.sh har safar qayta ishga
+-- tushirsa ham xavfsiz — dublikat yozuv qo'shilmaydi.
+INSERT INTO vazifa_javob_fayllari (javob_id, fayl_nomi, tartib)
+SELECT vj.id, vj.javob_fayl, 0
+FROM vazifa_javoblari vj
+WHERE COALESCE(vj.javob_fayl, '') <> ''
+  AND NOT EXISTS (
+    SELECT 1 FROM vazifa_javob_fayllari f
+    WHERE f.javob_id = vj.id AND f.fayl_nomi = vj.javob_fayl
+  );
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
@@ -680,6 +706,9 @@ CREATE INDEX IF NOT EXISTS idx_vazifa_javoblari_vazifa  ON vazifa_javoblari(vazi
 CREATE INDEX IF NOT EXISTS idx_vazifa_javoblari_oquvchi ON vazifa_javoblari(oquvchi_id);
 CREATE INDEX IF NOT EXISTS idx_vazifa_javoblari_holat   ON vazifa_javoblari(holat);
 
+-- vazifa_javob_fayllari
+CREATE INDEX IF NOT EXISTS idx_vazifa_javob_fayllari_javob ON vazifa_javob_fayllari(javob_id);
+
 
 -- ─── O'qituvchi avatar (rasm) — mavjud bazalarga xavfsiz qo'shish ────────────
 ALTER TABLE oqituvchilar ADD COLUMN IF NOT EXISTS avatar TEXT;
@@ -708,4 +737,4 @@ ALTER TABLE oquvchilar ADD CONSTRAINT oquvchilar_avatar_check
 \echo '              telegram_users, anketa_sorovlar, oqituvchi_oquvchilar,'
 \echo '              sales_xodimlar, leadlar, sales_maktablar,'
 \echo '              blog_categories, blog_posts, blog_tags, blog_post_tags,'
-\echo '              dars_mavzulari, vazifa_javoblari'
+\echo '              dars_mavzulari, vazifa_javoblari, vazifa_javob_fayllari'

@@ -289,6 +289,17 @@ async function loadJadvalim() {
 //  VAZIFALARIM (mavzu / uyga vazifa + javob yuborish)
 // ═══════════════════════════════════════════
 let vazifalarimList = [];
+const MAX_VZM_FAYL = 5;
+// vazifaId -> hozirgi ko'rinayotgan fayllar ro'yxati [{fayl_nomi, original_nomi}]
+const vzmFayllarState = {};
+// vazifaId -> fayl qo'shish/o'chirish paytida qayta chizilganda yo'qolmasligi uchun
+// hali yuborilmagan javob matni qoralamasi
+const vzmMatnDraft = {};
+
+function vzmMatnSaqlash(vazifaId) {
+  const matnEl = g('vzm-matn-' + vazifaId);
+  if (matnEl) vzmMatnDraft[vazifaId] = matnEl.value;
+}
 
 function resolveUploadUrl(filename) {
   if (!filename) return '';
@@ -320,6 +331,37 @@ async function loadVazifalarim() {
   }
 }
 
+// Yuborilgan fayllar ro'yxatini (link'lar) chizadi — faqat ko'rsatish uchun
+function renderVzmFayllarKorish(fayllar) {
+  if (!fayllar || !fayllar.length) return '';
+  return `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px;">` +
+    fayllar.map(f => `<a href="${esc(resolveUploadUrl(f.fayl_nomi))}" target="_blank" rel="noopener">📎 ${esc(f.original_nomi || f.fayl_nomi)}</a>`).join('') +
+    `</div>`;
+}
+
+// Tahrirlash rejimidagi fayl maydoni: hozirgi fayllar (✕ bilan o'chiriladigan) + qo'shish tugmasi
+function renderVzmFaylEditor(vazifaId) {
+  const fayllar = vzmFayllarState[vazifaId] || [];
+  const chiplar = fayllar.map((f, idx) => `
+    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg-soft,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:4px 8px;font-size:12.5px;margin:2px 4px 2px 0;">
+      📎 ${esc(f.original_nomi || f.fayl_nomi)}
+      <span style="cursor:pointer;color:#e11d48;font-weight:700;" onclick="removeVzmFayl(${vazifaId}, ${idx})" title="O'chirish">✕</span>
+    </span>`).join('');
+
+  const limitYetildi = fayllar.length >= MAX_VZM_FAYL;
+
+  return `
+    <div class="field-group">
+      <label class="field-label">Fayllar (${fayllar.length}/${MAX_VZM_FAYL})</label>
+      <div id="vzm-fayl-chips-${vazifaId}" style="margin-bottom:6px;">${chiplar}</div>
+      ${!limitYetildi ? `
+        <input type="file" id="vzm-fayl-${vazifaId}" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
+               onchange="handleVzmFaylTanlash(${vazifaId})">
+      ` : `<div style="font-size:12px;color:var(--muted);">Maksimal ${MAX_VZM_FAYL} ta fayl biriktirish mumkin</div>`}
+      <div id="vzm-fayl-status-${vazifaId}" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+    </div>`;
+}
+
 function renderVazifalarim() {
   const wrap = g('ouq-vazifalar-content');
 
@@ -327,19 +369,20 @@ function renderVazifalarim() {
     const teacherIsm = `${v.teacher_familiya || ''} ${v.teacher_ism || ''}`.trim();
     const hasHomework = (v.uy_vazifasi || '').trim().length > 0;
 
+    // Fayllar holatini bir marta ishga tushiramiz (serverdan kelgan mavjud fayllar bilan)
+    if (!vzmFayllarState[v.id]) {
+      vzmFayllarState[v.id] = (v.javob_fayllar || []).map(f => ({ fayl_nomi: f.fayl_nomi, original_nomi: f.original_nomi || f.fayl_nomi }));
+    }
+
     let statusBlock;
     if (!v.javob_id) {
       // Hali javob yuborilmagan
       statusBlock = hasHomework ? `
         <div class="field-group" style="margin-top:10px;">
           <label class="field-label">Javobingiz</label>
-          <textarea class="field-input" id="vzm-matn-${v.id}" rows="3" placeholder="Javobingizni shu yerga yozing"></textarea>
+          <textarea class="field-input" id="vzm-matn-${v.id}" rows="3" placeholder="Javobingizni shu yerga yozing">${esc(vzmMatnDraft[v.id] || '')}</textarea>
         </div>
-        <div class="field-group">
-          <label class="field-label">Fayl biriktirish (ixtiyoriy)</label>
-          <input type="file" id="vzm-fayl-${v.id}" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx">
-          <div id="vzm-fayl-status-${v.id}" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
-        </div>
+        ${renderVzmFaylEditor(v.id)}
         <button class="btn-primary" style="padding:9px 16px;" onclick="yuborVazifa(${v.id})">📤 Yuborish</button>
       ` : '';
     } else if (v.holat === 'tekshirilgan') {
@@ -347,7 +390,7 @@ function renderVazifalarim() {
       statusBlock = `
         <div style="margin-top:10px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
           <b>Sizning javobingiz:</b> ${esc(v.javob_matn || '—')}
-          ${v.javob_fayl ? `<div style="margin-top:4px;"><a href="${esc(resolveUploadUrl(v.javob_fayl))}" target="_blank" rel="noopener">📎 Yuborilgan fayl</a></div>` : ''}
+          ${renderVzmFayllarKorish(v.javob_fayllar)}
         </div>
         <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
           <span class="ouq-stat-pill k">✅ Baho <b>${esc(v.baho ?? '—')}</b></span>
@@ -359,7 +402,7 @@ function renderVazifalarim() {
       statusBlock = `
         <div style="margin-top:10px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
           <b>Sizning javobingiz:</b> ${esc(v.javob_matn || '—')}
-          ${v.javob_fayl ? `<div style="margin-top:4px;"><a href="${esc(resolveUploadUrl(v.javob_fayl))}" target="_blank" rel="noopener">📎 Yuborilgan fayl</a></div>` : ''}
+          ${renderVzmFayllarKorish(v.javob_fayllar)}
         </div>
         <div style="margin-top:8px;">
           <span class="ouq-stat-pill s">⏳ Tekshirilmoqda</span>
@@ -368,13 +411,9 @@ function renderVazifalarim() {
         <div id="vzm-edit-${v.id}" style="display:none;margin-top:10px;">
           <div class="field-group">
             <label class="field-label">Javobingiz</label>
-            <textarea class="field-input" id="vzm-matn-${v.id}" rows="3">${esc(v.javob_matn || '')}</textarea>
+            <textarea class="field-input" id="vzm-matn-${v.id}" rows="3">${esc(vzmMatnDraft[v.id] !== undefined ? vzmMatnDraft[v.id] : (v.javob_matn || ''))}</textarea>
           </div>
-          <div class="field-group">
-            <label class="field-label">Fayl biriktirish (ixtiyoriy)</label>
-            <input type="file" id="vzm-fayl-${v.id}" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx">
-            <div id="vzm-fayl-status-${v.id}" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
-          </div>
+          ${renderVzmFaylEditor(v.id)}
           <button class="btn-primary" style="padding:9px 16px;" onclick="yuborVazifa(${v.id})">💾 Yangilash</button>
         </div>
       `;
@@ -397,6 +436,46 @@ function renderVazifalarim() {
   }).join('');
 }
 
+// Fayl tanlangach — darhol serverga yuklaymiz va ro'yxatga qo'shamiz
+async function handleVzmFaylTanlash(vazifaId) {
+  const faylEl = g('vzm-fayl-' + vazifaId);
+  const statusEl = g('vzm-fayl-status-' + vazifaId);
+  const file = faylEl?.files?.[0];
+  if (!file) return;
+
+  const fayllar = vzmFayllarState[vazifaId] || (vzmFayllarState[vazifaId] = []);
+  if (fayllar.length >= MAX_VZM_FAYL) {
+    if (statusEl) statusEl.textContent = `❌ Maksimal ${MAX_VZM_FAYL} ta fayl`;
+    return;
+  }
+
+  if (statusEl) statusEl.textContent = '⏳ Fayl yuklanmoqda...';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const upRes = await api.uploadFile(fd);
+    if (!upRes || !upRes.ok) {
+      if (statusEl) statusEl.textContent = '❌ Fayl yuklanmadi';
+      return;
+    }
+    fayllar.push({ fayl_nomi: upRes.filename, original_nomi: file.name });
+    if (statusEl) statusEl.textContent = '✅ Fayl yuklandi';
+    vzmMatnSaqlash(vazifaId);
+    renderVazifalarim();
+  } catch (e) {
+    if (statusEl) statusEl.textContent = '❌ Fayl yuklanmadi';
+  }
+}
+
+// Ro'yxatdan bitta faylni olib tashlash (hali "Yuborish/Yangilash" bosilmagan bo'lsa)
+function removeVzmFayl(vazifaId, idx) {
+  const fayllar = vzmFayllarState[vazifaId];
+  if (!fayllar) return;
+  fayllar.splice(idx, 1);
+  vzmMatnSaqlash(vazifaId);
+  renderVazifalarim();
+}
+
 function toggleVazifaTahrir(vazifaId) {
   const el = g('vzm-edit-' + vazifaId);
   if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
@@ -404,35 +483,19 @@ function toggleVazifaTahrir(vazifaId) {
 
 async function yuborVazifa(vazifaId) {
   const matnEl = g('vzm-matn-' + vazifaId);
-  const faylEl = g('vzm-fayl-' + vazifaId);
-  const statusEl = g('vzm-fayl-status-' + vazifaId);
   const javob_matn = (matnEl?.value || '').trim();
+  const javob_fayllar = vzmFayllarState[vazifaId] || [];
 
-  const existing = vazifalarimList.find(v => v.id === vazifaId);
-  let javob_fayl = existing?.javob_fayl || '';
-
-  const file = faylEl?.files?.[0];
-  if (file) {
-    if (statusEl) statusEl.textContent = '⏳ Fayl yuklanmoqda...';
-    const fd = new FormData();
-    fd.append('file', file);
-    const upRes = await api.uploadFile(fd);
-    if (!upRes || !upRes.ok) {
-      if (statusEl) statusEl.textContent = '❌ Fayl yuklanmadi';
-      return;
-    }
-    javob_fayl = upRes.filename;
-    if (statusEl) statusEl.textContent = '✅ Fayl yuklandi';
-  }
-
-  if (!javob_matn && !javob_fayl) {
+  if (!javob_matn && javob_fayllar.length === 0) {
     alert('Javob matni yoki fayl biriktiring');
     return;
   }
 
   try {
-    const res = await api.yuborVazifaJavobi(vazifaId, { javob_matn, javob_fayl });
+    const res = await api.yuborVazifaJavobi(vazifaId, { javob_matn, javob_fayllar });
     if (res && res.ok) {
+      delete vzmMatnDraft[vazifaId];
+      delete vzmFayllarState[vazifaId]; // serverdan qayta yuklanadi
       await loadVazifalarim();
     } else {
       alert(res?.error || 'Yuborishda xatolik yuz berdi');

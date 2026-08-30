@@ -1463,7 +1463,9 @@ async function loadVazifalarniTekshirish() {
           </div>
           <div style="margin-top:8px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
             <b>O'quvchi javobi:</b> ${esc(j.javob_matn || '—')}
-            ${j.javob_fayl ? `<div style="margin-top:4px;"><a href="${esc(resolveUploadUrl(j.javob_fayl))}" target="_blank" rel="noopener">📎 Biriktirilgan fayl</a></div>` : ''}
+            ${(j.javob_fayllar || []).length ? `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px;">` +
+              j.javob_fayllar.map(f => `<a href="${esc(resolveUploadUrl(f.fayl_nomi))}" target="_blank" rel="noopener">📎 ${esc(f.original_nomi || f.fayl_nomi)}</a>`).join('') +
+              `</div>` : ''}
           </div>
           ${j.holat === 'tekshirilgan' ? `
             <div style="margin-top:8px;font-size:12.5px;color:var(--muted);">💬 Izoh: ${esc(j.oqituvchi_izohi || '—')}</div>
