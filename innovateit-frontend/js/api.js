@@ -226,6 +226,14 @@ const api = {
   saveJadval:   (d)     => api.post('/api/jadval', d),
   deleteJadval: (d, id) => api.del(`/api/jadval/${id}`, d),
 
+  // ─── Mavzu / Uyga vazifa ───
+  getGuruhVazifa:      (guruhId, sana) => api.get(`/api/vazifalar/guruh/${guruhId}`, { sana }),
+  saveGuruhVazifa:     (guruhId, d)    => api.post(`/api/vazifalar/guruh/${guruhId}`, d),
+  getVazifalarTekshirish: (holat)      => api.get('/api/vazifalar/tekshirish', { holat }),
+  baholaVazifaJavobi:  (javobId, d)    => api.post(`/api/vazifalar/javob/${javobId}/baholash`, d),
+  getMeningVazifalarim: ()             => api.get('/api/vazifalar/mening-vazifalarim'),
+  yuborVazifaJavobi:   (vazifaId, d)   => api.post(`/api/vazifalar/${vazifaId}/javob`, d),
+
   // ─── O'qituvchilar ───
   getTeachers:         (d) => api.get('/api/teachers', d),
   addTeacher:          (d) => api.post('/api/teachers', d),

@@ -1,52 +1,43 @@
-# Vazifalar moduli — 1–2-bosqich (Baza + Backend)
+# Vazifalar moduli — 3-bosqich (O'qituvchi paneli frontend)
 
-Bu arxivda faqat o'zgartirilgan/qo'shilgan fayllar bor. Loyihangizdagi
-xuddi shu yo'ldagi faylning o'rniga almashtiring:
+Bu arxivda faqat o'zgartirilgan fayllar bor:
 
-- `innovateit-backend/migrations/017_dars_mavzu_vazifa.sql`  ← YANGI fayl
-- `innovateit-backend/innovateit_schema_setup.sql`             ← yangilangan (yangi jadvallar shu faylga ham idempotent qo'shildi)
-- `innovateit-backend/src/routes/vazifalar.js`                 ← YANGI fayl
-- `innovateit-backend/src/index.js`                            ← yangilangan (yangi router ulandi)
+- `innovateit-frontend/oqituvchi.html` — yangilangan
+- `innovateit-frontend/js/oqituvchi.js` — yangilangan
+- `innovateit-frontend/js/api.js` — yangilangan
 
 ## Nima qo'shildi
 
-**2 ta yangi jadval:**
-- `dars_mavzulari` — guruh (`dars_jadvali`) + sana bo'yicha mavzu va uyga vazifa
-- `vazifa_javoblari` — o'quvchining javobi (matn/fayl) + o'qituvchi bahosi/izohi
+### 1) Mavzu va uyga vazifa yozish
+`Guruhlarim → [guruh tanlash] → Davomat` ekraniga, davomat ro'yxati ostiga
+**"📘 Mavzu va uyga vazifa"** bloki qo'shildi. Bu blok xuddi davomat kabi
+tanlangan **guruh + sana** bo'yicha ishlaydi — sana o'zgarganda (‹ › tugmalar
+yoki kalendar orqali) mavzu/vazifa maydonlari ham avtomatik shu kunga mos
+qayta yuklanadi. "💾 Mavzu va vazifani saqlash" tugmasi bilan alohida
+saqlanadi (davomatdan mustaqil).
 
-**Yangi API endpointlar (`/api/vazifalar`):**
+### 2) Vazifalarni tekshirish (yangi tab)
+Tab navigatsiyasiga **"📝 Vazifalarni tekshirish"** qo'shildi. Bu yerda:
+- **⏳ Yangi** — hali baholanmagan javoblar (standart ko'rinish)
+- **✅ Baholangan** — baholab bo'lingan javoblar
+- **📋 Hammasi** — barchasi
 
-O'qituvchi uchun:
-- `GET  /guruh/:guruhId?sana=` — shu kunlik mavzu/vazifani olish
-- `POST /guruh/:guruhId` — mavzu/vazifa saqlash (`{ sana, mavzu, uy_vazifasi, muddat, vazifa_fayl }`)
-- `GET  /tekshirish?holat=yuborilgan|tekshirilgan|hammasi` — kelgan javoblar ro'yxati
-- `POST /javob/:javobId/baholash` — javobni baholash (`{ baho, izoh }`)
+Har bir yozuvda: o'quvchi ismi+sinfi, fan, sana, mavzu, uyga vazifa matni,
+o'quvchining javobi (matn + fayl havolasi), va hali baholanmagan bo'lsa —
+**baho (1–5) + izoh** kiritib "Baholash" tugmasi bosiladi.
 
-O'quvchi uchun:
-- `GET  /mening-vazifalarim` — o'z o'qituvchilari/sinfiga tegishli barcha vazifalar + o'z javob holati
-- `POST /:vazifaId/javob` — javob yuborish/tahrirlash (`{ javob_matn, javob_fayl }`)
+## Deploy
 
-Fayl biriktirish uchun mavjud `POST /upload` endpoint ishlatiladi (frontendda
-qaytgan `filename`ni `javob_fayl`/`vazifa_fayl` sifatida yuboriladi).
+Statik frontend fayllar — serverga oddiy nusxalash yetarli
+(`deploy.sh` orqali yoki qo'lda `/var/www/IIS/innovateit-frontend/`ga).
+Cache-busting kerak bo'lsa, `oqituvchi.css`dagi kabi HTML'dagi
+`js/oqituvchi.js`/`js/api.js` skript manzillariga `?v=N` qo'shishni unutmang.
 
-## Deploy tartibi (serverda)
+⚠️ **Eslatma:** bu bosqich ishlashi uchun avvalgi (1–2-bosqich) backend
+patch serverga allaqachon deploy qilingan va migratsiya ishga tushirilgan
+bo'lishi shart (`/api/vazifalar/...` endpointlari kerak).
 
-```bash
-# 1) Yangi migratsiyani ishga tushirish
-psql -U iis_user -d iis_db -f innovateit-backend/migrations/017_dars_mavzu_vazifa.sql
+## Keyingi bosqich
 
-# 2) deploy.sh orqali odatdagidek deploy qilish
-./deploy.sh
-```
-
-`innovateit_schema_setup.sql` faqat noldan server o'rnatilganda kerak —
-mavjud bazani yangilash uchun yuqoridagi migratsiya yetarli.
-
-## Keyingi bosqichlar (frontend)
-
-3–4-bosqich hali qolyapti:
-- O'qituvchi paneli: `openGuruhDavomat` ekraniga mavzu/uy vazifasi bloki +
-  yangi "Vazifalarni tekshirish" tab
-- O'quvchi paneli: yangi "Vazifalarim" tab (ko'rish + javob yuborish)
-
-Roziligingiz bilan shu qismlarni ham navbatma-navbat yozib boraman.
+4-bosqich — **o'quvchi paneli**: yangi "Vazifalarim" tab — mavzu/vazifalarni
+ko'rish va javob (matn/fayl) yuborish.
