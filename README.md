@@ -1,79 +1,52 @@
-# O'zgargan fayllar — O'qituvchi panel dizayn tuzatishlari
+# Vazifalar moduli — 1–2-bosqich (Baza + Backend)
 
-Bu arxivda faqat o'zgartirilgan/qo'shilgan fayllar bor. Har birini loyihangizdagi
+Bu arxivda faqat o'zgartirilgan/qo'shilgan fayllar bor. Loyihangizdagi
 xuddi shu yo'ldagi faylning o'rniga almashtiring:
 
-- innovateit-frontend/oqituvchi.html
-- innovateit-frontend/css/oqituvchi.css
-- innovateit-frontend/js/oqituvchi.js               ← YANGI o'zgargan fayl
-- innovateit-frontend/img/logo-mark.png          ← YANGI fayl
-- innovateit-frontend/img/logo-mark-cyan.svg      ← YANGI fayl
-- innovateit-frontend/img/logo-mark-cyan.png      ← YANGI fayl (zaxira)
+- `innovateit-backend/migrations/017_dars_mavzu_vazifa.sql`  ← YANGI fayl
+- `innovateit-backend/innovateit_schema_setup.sql`             ← yangilangan (yangi jadvallar shu faylga ham idempotent qo'shildi)
+- `innovateit-backend/src/routes/vazifalar.js`                 ← YANGI fayl
+- `innovateit-backend/src/index.js`                            ← yangilangan (yangi router ulandi)
 
-## Nima uchun buzilgan edi
+## Nima qo'shildi
 
-`innovateit-frontend/img/` papkasida logotip fayllari umuman yo'q edi (faqat
-`innovateit-blog-frontend/img/` da bor edi) — shuning uchun "InnovateIT School"
-yozuvi yonida logotip ko'rinmay, bo'sh joy qolayotgan edi.
+**2 ta yangi jadval:**
+- `dars_mavzulari` — guruh (`dars_jadvali`) + sana bo'yicha mavzu va uyga vazifa
+- `vazifa_javoblari` — o'quvchining javobi (matn/fayl) + o'qituvchi bahosi/izohi
 
-## Nima o'zgardi
+**Yangi API endpointlar (`/api/vazifalar`):**
 
-1. **Logotip ko'rinmasligi** — `innovateit-blog-frontend/img/`dagi logotip
-   fayllari (`logo-mark.png` — oq rangli variant, `logo-mark-cyan.svg` — cyan
-   variant) `innovateit-frontend/img/`ga ko'chirildi. Yuqori bannerda (ko'k
-   fonda) endi **oq rangli** logotip (`logo-mark.png`) ishlatiladi — yozuv
-   bilan bir xil rangda, yaxshi ko'rinadi. Login ekranidagi (oq doira fonli)
-   logotip esa avvalgidek cyan rangida qoldi.
+O'qituvchi uchun:
+- `GET  /guruh/:guruhId?sana=` — shu kunlik mavzu/vazifani olish
+- `POST /guruh/:guruhId` — mavzu/vazifa saqlash (`{ sana, mavzu, uy_vazifasi, muddat, vazifa_fayl }`)
+- `GET  /tekshirish?holat=yuborilgan|tekshirilgan|hammasi` — kelgan javoblar ro'yxati
+- `POST /javob/:javobId/baholash` — javobni baholash (`{ baho, izoh }`)
 
-2. **Ko'k banner kompyuterda to'liq chiqmasligi** — sabab: `#app`
-   konteynerining o'zi `max-width: 1100px` bilan cheklangan edi, shu tufayli
-   banner ham (uning ichida joylashgani uchun) markazda torroq bo'lib, keng
-   ekranlarda ikki tarafdan bo'sh joy qolib ketardi. Endi `#app`dan
-   `max-width` olib tashlandi — banner butun ekran kengligiga cho'ziladi,
-   ichkaridagi tab-menyu va kontent esa (`oq-tabnav`, `oq-content`) avvalgidek
-   1100px'da markazlashgan holda qoladi.
+O'quvchi uchun:
+- `GET  /mening-vazifalarim` — o'z o'qituvchilari/sinfiga tegishli barcha vazifalar + o'z javob holati
+- `POST /:vazifaId/javob` — javob yuborish/tahrirlash (`{ javob_matn, javob_fayl }`)
 
-3. **Menyu va pastki tugmalar rangi** — "Guruhlarim/Guruh yaratish/..." tab
-   menyusidagi faol tugma, "Saqlash" turidagi asosiy tugmalar va
-   sinf/kun/guruh chip'lari endi yuqori bannerdagi bilan **bir xil gradient**
-   rangda chiqadi (avval boshqacha ko'k — indigo rangda edi).
+Fayl biriktirish uchun mavjud `POST /upload` endpoint ishlatiladi (frontendda
+qaytgan `filename`ni `javob_fayl`/`vazifa_fayl` sifatida yuboriladi).
 
-4. **Topbar joylashuvi almashtirildi** — endi chap tomonda logotip +
-   "InnovateIT School" yozuvi, o'ng tomonda esa avatar, o'qituvchining
-   ismi-familiyasi, maktab selektori va "Chiqish" tugmasi turadi (standart
-   UX konventsiyasi: brend chapda, foydalanuvchi/sessiya ma'lumoti o'ngda —
-   bu blog frontend bilan ham izchil bo'ldi).
+## Deploy tartibi (serverda)
 
-5. **"Chiqish" tugmasi hover effekti** — sichqoncha ustiga kelganda fon
-   qizil rangga o'zgaradi (avval hover deyarli sezilmasdi, chunki topbar'ga
-   xos qoida umumiy hover.css qoidasidan ustun kelib, uni bekor qilib
-   qo'ygan edi).
+```bash
+# 1) Yangi migratsiyani ishga tushirish
+psql -U iis_user -d iis_db -f innovateit-backend/migrations/017_dars_mavzu_vazifa.sql
 
-6. **Logo/"InnovateIT School" yozuvi olib tashlandi** — endi topbar'ning
-   chap tomonida avatar + o'qituvchining familiya-ismi turadi (avvalgi
-   holatga qaytarildi), o'ng tomonda esa faqat maktab selektori va
-   "Chiqish" tugmasi qoladi.
+# 2) deploy.sh orqali odatdagidek deploy qilish
+./deploy.sh
+```
 
-7. **Uzun ism-familiya mobil ekranda** — endi kesib (`...`) ko'rsatish
-   o'rniga, agar joy yetmasa, avtomatik ikki qatorga bo'linadi: yuqori
-   qatorda familiya, pastki qatorda ism (chunki matn oddiy so'z bo'sh
-   joyidan tabiiy tarzda o'raladi).
+`innovateit_schema_setup.sql` faqat noldan server o'rnatilganda kerak —
+mavjud bazani yangilash uchun yuqoridagi migratsiya yetarli.
 
-8. **Tab menyu joylashuvi mobilda beqaror edi** — sababi: tugmalar oddiy
-   `flex-wrap` bilan joylashtirilgan edi, shu tufayli faol tab qalinroq
-   (bold) bo'lgani uchun eni o'zgarib, qaysi tugma qaysi qatorga tushishini
-   har safar boshqacha qilib qo'yardi (masalan, ba'zida 3+1, ba'zida 2+2).
-   Endi mobil kenglikda tab menyu **doim 2 ustunli izchil grid** ko'rinishda
-   chiqadi — qaysi tab faol bo'lishidan qat'i nazar, tugmalar joyi hech
-   qachon o'zgarmaydi.
+## Keyingi bosqichlar (frontend)
 
-9. **"Guruh yaratish" tabi qayta ishlandi:**
-   - Sarlavha: "O'zingizga o'quvchi guruhi yarating" →
-     "Sinf o'quvchilaridan o'zingiz uchun guruh yarating"
-   - Diapazon tanlash bloki ("1–3 sinf / 4–6 sinf / 7–9 sinf / Barcha
-     sinflar") butunlay olib tashlandi
-   - Sinf raqamlari (1–11) endi **bitta tanlov** tarzida ishlaydi: yangi
-     sinf bosilsa, avvalgi tanlangan sinf avtomatik bekor bo'ladi; xuddi shu
-     sinf ustiga qayta bosilsa, uning belgisi olib tashlanadi
-   - "Boshlanish" → "Boshlanish vaqti", "Tugash" → "Tugash vaqti"
-   - Standart tugash vaqti 14:00 dan **10:00** ga o'zgartirildi
+3–4-bosqich hali qolyapti:
+- O'qituvchi paneli: `openGuruhDavomat` ekraniga mavzu/uy vazifasi bloki +
+  yangi "Vazifalarni tekshirish" tab
+- O'quvchi paneli: yangi "Vazifalarim" tab (ko'rish + javob yuborish)
+
+Roziligingiz bilan shu qismlarni ham navbatma-navbat yozib boraman.
