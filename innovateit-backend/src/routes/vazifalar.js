@@ -28,6 +28,12 @@ function ismFamiliya(ism) {
 // Bir javobga biriktirilishi mumkin bo'lgan eng ko'p fayl soni
 const MAX_JAVOB_FAYL = 5;
 
+// Serverning OS sozlamasidan qat'i nazar, O'zbekiston vaqti bo'yicha
+// bugungi sanani YYYY-MM-DD formatida qaytaradi (muddat bilan solishtirish uchun)
+function bugungiSanaISO() {
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent' }).format(new Date());
+}
+
 // Bir nechta javob_id uchun ularga tegishli fayllarni bitta so'rovda olib,
 // { [javob_id]: [{id, fayl_nomi, original_nomi}, ...] } shaklida qaytaradi
 async function fayllarniOlish(javobIdlar) {
@@ -94,6 +100,8 @@ router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
 
   if (!guruhId || !sana) return res.status(400).json({ ok: false, error: 'guruhId va sana kerak' });
   if (!entityId) return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
+  if ((muddat || '').trim() && muddat < bugungiSanaISO())
+    return res.status(400).json({ ok: false, error: "Topshirish muddati sifatida o'tmishdagi sana tanlab bo'lmaydi" });
 
   const { familiya, ismOnly } = ismFamiliya(ism);
 
@@ -277,7 +285,7 @@ router.post('/:vazifaId/javob', requireAuth(['oquvchi']), async (req, res) => {
     // Vazifa shu o'quvchiga tegishli ekanini tekshiramiz — o'z o'qituvchisining
     // guruhi va o'z sinfiga mos bo'lishi shart
     const checkRes = await pool.query(
-      `SELECT dm.id FROM dars_mavzulari dm
+      `SELECT dm.id, dm.muddat FROM dars_mavzulari dm
        JOIN dars_jadvali dj ON dj.id = dm.guruh_id
        JOIN oqituvchilar o ON LOWER(TRIM(o.familiya))=LOWER(TRIM(dj.teacher_familiya)) AND LOWER(TRIM(o.ism))=LOWER(TRIM(dj.teacher_ism))
        JOIN oqituvchi_oquvchilar oo ON oo.oqituvchi_id = o.id AND oo.oquvchi_id = $2
@@ -285,6 +293,14 @@ router.post('/:vazifaId/javob', requireAuth(['oquvchi']), async (req, res) => {
       [vazifaId, entityId]
     );
     if (checkRes.rowCount === 0) return res.status(404).json({ ok: false, error: 'Vazifa topilmadi' });
+
+    // Muddat qo'yilgan bo'lsa va u allaqachon o'tib ketgan bo'lsa — javob
+    // yuborish/tahrirlash bloklanadi. O'qituvchi muddatni bugun yoki
+    // kelajakka surmaguncha o'quvchi hech narsa yubora olmaydi.
+    const muddat = checkRes.rows[0].muddat;
+    if ((muddat || '').trim() && muddat < bugungiSanaISO()) {
+      return res.status(400).json({ ok: false, error: "Topshirish muddati tugagan. O'qituvchi muddatni yangilamaguncha javob yuborib bo'lmaydi." });
+    }
 
     // Allaqachon baholangan javobni o'zgartirib bo'lmaydi
     const existing = await pool.query(

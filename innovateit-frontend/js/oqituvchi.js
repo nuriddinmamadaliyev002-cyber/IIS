@@ -841,14 +841,17 @@ function setMvMuddatText() {
   const v = g('mv-muddat').value;
   const textEl = g('mv-muddat-text');
   const clearWrap = g('mv-muddat-clear-wrap');
+  const warnEl = g('mv-muddat-warn');
   if (!v) {
     textEl.textContent = 'Tanlanmagan';
     clearWrap.style.display = 'none';
+    warnEl.style.display = 'none';
     return;
   }
   const [y, m, d] = v.split('-');
   textEl.textContent = `${d}/${m}/${y}`;
   clearWrap.style.display = 'block';
+  warnEl.style.display = (v < dateStrLocal(new Date())) ? 'block' : 'none';
 }
 
 function openMvMuddatPicker() {
@@ -972,6 +975,11 @@ async function loadMavzuVazifa() {
 
 async function saveMavzuVazifa() {
   if (!activeMvGuruh) return;
+  const muddat = g('mv-muddat').value || '';
+  if (muddat && muddat < dateStrLocal(new Date())) {
+    alert("⚠️ Topshirish muddati sifatida o'tmishdagi sana tanlangan. Iltimos, muddatni bugungi yoki kelajakdagi sanaga o'zgartiring.");
+    return;
+  }
   const sana = dateStrLocal(window._mv_curdate);
   const btn = g('mv-save-btn');
   btn.disabled = true;
@@ -980,7 +988,7 @@ async function saveMavzuVazifa() {
       sana,
       mavzu:       g('mv-mavzu').value.trim(),
       uy_vazifasi: g('mv-vazifa').value.trim(),
-      muddat:      g('mv-muddat').value || '',
+      muddat,
       vazifa_fayl: _mv_fayl
     });
     if (res && res.ok) {

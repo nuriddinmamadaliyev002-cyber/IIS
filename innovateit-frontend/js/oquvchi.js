@@ -308,6 +308,14 @@ function resolveUploadUrl(filename) {
   return `${base}/uploads/${filename}`;
 }
 
+// muddat (YYYY-MM-DD) bugungi kundan oldinmi — bo'lsa muddat tugagan
+function muddatOtganmi(muddat) {
+  if (!(muddat || '').trim()) return false;
+  const d = new Date();
+  const bugun = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  return muddat < bugun;
+}
+
 async function loadVazifalarim() {
   const wrap = g('ouq-vazifalar-content');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
@@ -375,9 +383,17 @@ function renderVazifalarim() {
     }
 
     let statusBlock;
+    const muddatTugagan = muddatOtganmi(v.muddat);
+
     if (!v.javob_id) {
       // Hali javob yuborilmagan
-      statusBlock = hasHomework ? `
+      if (hasHomework && muddatTugagan) {
+        statusBlock = `
+          <div style="margin-top:10px;font-size:13px;color:#dc2626;background:#fef2f2;border-radius:8px;padding:10px;">
+            ⏰ Topshirish muddati tugagan. Javob yuborish uchun o'qituvchingiz muddatni yangilashi kerak.
+          </div>`;
+      } else {
+        statusBlock = hasHomework ? `
         <div class="field-group" style="margin-top:10px;">
           <label class="field-label">Javobingiz</label>
           <textarea class="field-input" id="vzm-matn-${v.id}" rows="3" placeholder="Javobingizni shu yerga yozing">${esc(vzmMatnDraft[v.id] || '')}</textarea>
@@ -385,6 +401,7 @@ function renderVazifalarim() {
         ${renderVzmFaylEditor(v.id)}
         <button class="btn-primary" style="padding:9px 16px;" onclick="yuborVazifa(${v.id})">📤 Yuborish</button>
       ` : '';
+      }
     } else if (v.holat === 'tekshirilgan') {
       // Baholangan — tahrirlab bo'lmaydi
       statusBlock = `
@@ -398,7 +415,7 @@ function renderVazifalarim() {
         ${v.oqituvchi_izohi ? `<div style="margin-top:6px;font-size:12.5px;color:var(--muted);">💬 ${esc(v.oqituvchi_izohi)}</div>` : ''}
       `;
     } else {
-      // Yuborilgan, hali tekshirilmagan — tahrirlash mumkin
+      // Yuborilgan, hali tekshirilmagan — tahrirlash mumkin (agar muddat o'tmagan bo'lsa)
       statusBlock = `
         <div style="margin-top:10px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
           <b>Sizning javobingiz:</b> ${esc(v.javob_matn || '—')}
@@ -406,8 +423,11 @@ function renderVazifalarim() {
         </div>
         <div style="margin-top:8px;">
           <span class="ouq-stat-pill s">⏳ Tekshirilmoqda</span>
-          <button class="oq-back-btn" style="padding:0;margin-left:10px;font-size:12.5px;" onclick="toggleVazifaTahrir(${v.id})">✏️ Javobni tahrirlash</button>
+          ${muddatTugagan
+            ? `<span style="margin-left:10px;font-size:12.5px;color:#dc2626;">⏰ Muddat tugagani uchun tahrirlab bo'lmaydi</span>`
+            : `<button class="oq-back-btn" style="padding:0;margin-left:10px;font-size:12.5px;" onclick="toggleVazifaTahrir(${v.id})">✏️ Javobni tahrirlash</button>`}
         </div>
+        ${!muddatTugagan ? `
         <div id="vzm-edit-${v.id}" style="display:none;margin-top:10px;">
           <div class="field-group">
             <label class="field-label">Javobingiz</label>
@@ -415,7 +435,7 @@ function renderVazifalarim() {
           </div>
           ${renderVzmFaylEditor(v.id)}
           <button class="btn-primary" style="padding:9px 16px;" onclick="yuborVazifa(${v.id})">💾 Yangilash</button>
-        </div>
+        </div>` : ''}
       `;
     }
 
