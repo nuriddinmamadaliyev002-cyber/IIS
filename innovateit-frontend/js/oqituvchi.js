@@ -835,6 +835,41 @@ function updateMvNavBtns() {
   g('mv-next-btn').disabled = !findMvLessonDate(window._mv_curdate, 1);
 }
 
+// ─── Muddat maydoni: native <input type="date"> MM/DD/YYYY ko'rsatishi mumkin,
+//     shu sababli o'zimiz DD/MM/YYYY formatida matn ko'rsatamiz ───────────────
+function setMvMuddatText() {
+  const v = g('mv-muddat').value;
+  const textEl = g('mv-muddat-text');
+  const clearWrap = g('mv-muddat-clear-wrap');
+  if (!v) {
+    textEl.textContent = 'Tanlanmagan';
+    clearWrap.style.display = 'none';
+    return;
+  }
+  const [y, m, d] = v.split('-');
+  textEl.textContent = `${d}/${m}/${y}`;
+  clearWrap.style.display = 'block';
+}
+
+function openMvMuddatPicker() {
+  const inp = g('mv-muddat');
+  if (!inp) return;
+  if (typeof inp.showPicker === 'function') {
+    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
+  }
+  inp.focus();
+  inp.click();
+}
+
+function onMvMuddatPick() {
+  setMvMuddatText();
+}
+
+function clearMvMuddat() {
+  g('mv-muddat').value = '';
+  setMvMuddatText();
+}
+
 async function changeMvDate(dir) {
   const nd = findMvLessonDate(window._mv_curdate, dir);
   if (!nd) return;
@@ -916,6 +951,7 @@ async function loadMavzuVazifa() {
   g('mv-mavzu').value = '';
   g('mv-vazifa').value = '';
   g('mv-muddat').value = '';
+  setMvMuddatText();
   _mv_fayl = '';
   renderMvFaylCurrent();
   if (!activeMvGuruh) return;
@@ -927,6 +963,7 @@ async function loadMavzuVazifa() {
       g('mv-mavzu').value  = res.vazifa.mavzu || '';
       g('mv-vazifa').value = res.vazifa.uy_vazifasi || '';
       g('mv-muddat').value = res.vazifa.muddat || '';
+      setMvMuddatText();
       _mv_fayl = res.vazifa.vazifa_fayl || '';
       renderMvFaylCurrent();
     }

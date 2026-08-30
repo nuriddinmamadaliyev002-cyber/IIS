@@ -243,7 +243,13 @@
         </div>
         <div class="field-group">
           <label class="field-label">Topshirish muddati (ixtiyoriy)</label>
-          <input class="field-input" type="date" id="mv-muddat">
+          <div class="dav-date-input-wrap" style="width:100%;margin-left:0;">
+            <div class="dav-date-input-text" id="mv-muddat-text" style="width:100%;box-sizing:border-box;padding:11px 12px;font-size:14px;" onclick="openMvMuddatPicker()">Tanlanmagan</div>
+            <input class="dav-date-input" type="date" id="mv-muddat" onchange="onMvMuddatPick()">
+          </div>
+          <div id="mv-muddat-clear-wrap" style="display:none;margin-top:6px;">
+            <button type="button" class="oq-back-btn" style="padding:0;font-size:12px;" onclick="clearMvMuddat()">✕ Muddatni tozalash</button>
+          </div>
         </div>
         <div class="field-group">
           <label class="field-label">Fayl yoki rasm biriktirish (ixtiyoriy)</label>
