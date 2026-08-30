@@ -225,7 +225,7 @@ async function loadJadvalim() {
               </div>
               <div>
                 <div class="jadval-fan">${esc(d.fan || '—')}</div>
-                <div class="jadval-sinf"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> ${esc(`${d.teacher_familiya || ''} ${d.teacher_ism || ''}`.trim())}</div>
+                <div class="jadval-sinf">${esc(`${d.teacher_familiya || ''} ${d.teacher_ism || ''}`.trim())}</div>
               </div>
             </div>`).join('')}
         </div>`;
