@@ -116,7 +116,7 @@ router.get('/tekshirish', requireAuth(['oqituvchi']), async (req, res) => {
     const result = await pool.query(
       `SELECT vj.id, vj.javob_matn, vj.javob_fayl, vj.yuborilgan_vaqt, vj.holat,
               vj.baho, vj.oqituvchi_izohi, vj.baholangan_vaqt,
-              dm.id AS vazifa_id, dm.sana, dm.mavzu, dm.uy_vazifasi,
+              dm.id AS vazifa_id, dm.sana, dm.mavzu, dm.uy_vazifasi, dm.vazifa_fayl,
               dj.fan, dj.sinflar,
               o.id AS oquvchi_id, o.ism AS oquvchi_ism, o.familiya AS oquvchi_familiya, o.sinf AS oquvchi_sinf
        FROM vazifa_javoblari vj

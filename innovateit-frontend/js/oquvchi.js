@@ -391,6 +391,7 @@ function renderVazifalarim() {
         </div>
         ${v.mavzu ? `<div style="margin-top:8px;font-size:13.5px;"><b>Mavzu:</b> ${esc(v.mavzu)}</div>` : ''}
         ${hasHomework ? `<div style="margin-top:4px;font-size:13.5px;"><b>Uyga vazifa:</b> ${esc(v.uy_vazifasi)}</div>` : '<div style="margin-top:4px;font-size:12.5px;color:var(--muted);">Bu darsga uyga vazifa berilmagan</div>'}
+        ${v.vazifa_fayl ? `<div style="margin-top:4px;font-size:12.5px;"><a href="${esc(resolveUploadUrl(v.vazifa_fayl))}" target="_blank" rel="noopener">📎 O'qituvchi biriktirgan fayl</a></div>` : ''}
         ${statusBlock}
       </div>`;
   }).join('');

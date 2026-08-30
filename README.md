@@ -1,44 +1,36 @@
-# Vazifalar moduli — 4-bosqich (O'quvchi paneli frontend)
+# Vazifalar moduli — yangilanish: alohida tab + fayl/rasm yuklash
 
-Bu arxivda:
+Bu arxiv avvalgi 3-bosqichni **almashtiradi** (o'rniga qo'yiladi). Fayllar:
 
-- `innovateit-frontend/oquvchi.html` — yangilangan
-- `innovateit-frontend/js/oquvchi.js` — yangilangan
-- `innovateit-frontend/js/api.js` — 3-bosqichdagi bilan bir xil (agar 3-bosqichni
-  allaqachon qo'llagan bo'lsangiz, bu faylni qayta almashtirish shart emas)
+- `innovateit-frontend/oqituvchi.html` — yangilangan
+- `innovateit-frontend/js/oqituvchi.js` — yangilangan
+- `innovateit-frontend/js/oquvchi.js` — yangilangan (fayl havolasi to'g'ri manzilga tuzatildi + o'qituvchi fayli ko'rsatiladi)
+- `innovateit-backend/src/routes/vazifalar.js` — yangilangan (`/tekshirish`ga `vazifa_fayl` maydoni qo'shildi)
 
-## Nima qo'shildi
+## Nima o'zgardi
 
-Tab navigatsiyasiga **"📝 Vazifalarim"** qo'shildi. Bu yerda o'quvchi:
+### 1) Mavzu/vazifa endi alohida tab
+Avval davomat ekrani ichida edi — endi tab navigatsiyasida mustaqil
+**"📘 Mavzu / Vazifa berish"** tabi bor:
+- Guruh tanlanadi (ro'yxatdan bosiladi)
+- O'sha guruhning **dars kunlari** bo'yicha sana navigatsiyasi (davomatdagi
+  bilan bir xil uslub, lekin mustaqil — davomat sanasidan bog'liq emas)
+- Mavzu, uyga vazifa, ixtiyoriy muddat va **fayl/rasm** maydonlari
 
-- O'ziga biriktirilgan barcha o'qituvchilarning e'lon qilgan **mavzu va uyga
-  vazifalarini** sana bo'yicha kamayish tartibida ko'radi (fan, o'qituvchi,
-  mavzu, vazifa matni, ixtiyoriy muddat)
-- Har bir vazifaga **matn + ixtiyoriy fayl** (rasm/hujjat) bilan javob yuboradi
-  (mavjud `/upload` endpoint orqali)
-- Holat ko'rsatiladi:
-  - Hali yubormagan → forma ochiq
-  - **⏳ Tekshirilmoqda** → yuborilgan, "✏️ Javobni tahrirlash" bilan
-    o'zgartirish mumkin (fayl qayta tanlanmasa, avvalgi fayl saqlanib qoladi)
-  - **✅ Baholangan** → baho + o'qituvchi izohi ko'rinadi, tahrirlash yopiladi
-
-Agar darsga uyga vazifa berilmagan bo'lsa (faqat mavzu yozilgan bo'lsa),
-javob yuborish formasi ko'rsatilmaydi — shunchaki "vazifa berilmagan" degan
-matn chiqadi.
+### 2) Fayl/rasm yuklash — ikkala tomonda ham
+- **O'qituvchi** ("Mavzu/Vazifa berish"): mavzuga rasm yoki fayl (pdf/doc)
+  biriktirishi mumkin — mavjud `/upload` endpointi orqali darhol yuklanadi,
+  havola ko'rinadi, "❌ Olib tashlash" bilan bekor qilinadi
+- **O'quvchi** ("Vazifalarim"): javobiga matn + fayl/rasm biriktiradi (bu
+  qism 4-bosqichda allaqachon qo'shilgan edi)
+- **O'qituvchi** ("Vazifalarni tekshirish"): endi o'quvchining javob fayli
+  ustiga bosilganda **to'g'ri manzilga** ochiladi (avval nisbiy yo'l xato
+  edi — tuzatildi), shuningdek o'zining biriktirgan fayli ham ko'rinadi
+- **O'quvchi** ("Vazifalarim"da): o'qituvchi biriktirgan faylni ham ko'radi
 
 ## Deploy
 
-Statik fayllar — `deploy.sh` orqali yoki qo'lda serverga nusxalanadi.
-Bu bosqich ishlashi uchun 1–2-bosqich (backend) va 3-bosqichdagi `api.js`
-o'zgarishlari serverda allaqachon bo'lishi kerak.
-
----
-
-**Barcha 4 bosqich ham tugadi.** To'liq oqim: o'qituvchi guruh+sana bo'yicha
-mavzu/vazifa yozadi → o'quvchi "Vazifalarim"da ko'rib javob yuboradi →
-o'qituvchi "Vazifalarni tekshirish"da baholaydi → o'quvchi bahoni ko'radi.
-
-Keyingi (ixtiyoriy) qadamlar taklif etaman:
-1. Serverga deploy qilib, real ma'lumot bilan uchtalik oqimni sinovdan o'tkazish
-2. Telegram bot orqali bildirishnoma (yangi vazifa e'lon qilinganda o'quvchiga,
-   yangi javob kelganda o'qituvchiga)
+Statik frontend fayllar + backend `vazifalar.js`ni serverga almashtiring,
+so'ng `pm2 restart` (yoki `deploy.sh`). Bazaga tegishli o'zgarish yo'q —
+1–2-bosqichdagi migratsiya bilan hech narsa o'zgarmaydi (`vazifa_fayl` va
+`javob_fayl` ustunlari allaqachon bor edi).

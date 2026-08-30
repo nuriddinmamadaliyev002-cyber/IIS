@@ -125,6 +125,7 @@ function switchTab(tab) {
   if (tab === 'jadval')   loadJadval();
   if (tab === 'soat')     loadSoatStatistika();
   if (tab === 'guruh')    initGuruhTab();
+  if (tab === 'mavzu')    loadMvGuruhlarim();
   if (tab === 'vazifalar') loadVazifalarniTekshirish();
 }
 
@@ -639,7 +640,6 @@ async function openGuruhDavomat(guruhId, event) {
   updateDavomatNavBtns();
 
   await loadDavomatOquvchilarVaHolat(sinflarSet);
-  await loadMavzuVazifa();
 }
 
 function setDavomatDateUI() {
@@ -681,7 +681,6 @@ async function changeDavomatDate(dir) {
   setDavomatDateUI();
   updateDavomatNavBtns();
   await loadDavomatOquvchilarVaHolat(currentGuruhSinflarSet());
-  await loadMavzuVazifa();
 }
 
 async function onDavomatDatePick() {
@@ -705,39 +704,247 @@ async function onDavomatDatePick() {
   setDavomatDateUI();
   updateDavomatNavBtns();
   await loadDavomatOquvchilarVaHolat(currentGuruhSinflarSet());
+}
+
+// ═══════════════════════════════════════════
+//  MAVZU / VAZIFA BERISH (mustaqil tab — guruh
+//  tanlash + o'sha guruhning dars kuni bo'yicha
+//  mavzu, uyga vazifa va ixtiyoriy fayl/rasm)
+// ═══════════════════════════════════════════
+let activeMvGuruh = null;
+let _mv_fayl = '';
+
+function resolveUploadUrl(filename) {
+  if (!filename) return '';
+  if (filename.startsWith('http')) return filename;
+  const base = (typeof BASE !== 'undefined') ? BASE : '';
+  return `${base}/uploads/${filename}`;
+}
+
+function mvIsLessonDay(date) {
+  if (!window._mv_kunlar || !window._mv_kunlar.size) return true;
+  return window._mv_kunlar.has(date.getDay());
+}
+
+function findMvLessonDate(fromDate, dir) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let d = new Date(fromDate); d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 14; i++) {
+    d.setDate(d.getDate() + dir);
+    if (dir > 0 && d > today) return null;
+    if (mvIsLessonDay(d)) return new Date(d);
+  }
+  return null;
+}
+
+async function loadMvGuruhlarim() {
+  closeMvEditor();
+  const wrap = g('mv-guruhlar-list');
+  wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+
+  if (!TANLANGAN_MID) {
+    wrap.innerHTML = '<div class="oq-empty">⚠️ Avval maktabni tanlang</div>';
+    return;
+  }
+
+  try {
+    const data = await api.get('/api/jadval/mening-jadvalim-oqituvchi', { maktabId: TANLANGAN_MID });
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+
+    LAST_GURUHLAR = data.jadvallar || [];
+    if (!LAST_GURUHLAR.length) {
+      wrap.innerHTML = '<div class="oq-empty">📭 Hali guruh yaratmagansiz.<br>"➕ Guruh yaratish" bo\'limidan boshlang.</div>';
+      return;
+    }
+
+    wrap.innerHTML = LAST_GURUHLAR.map(j => {
+      const sinflar = sortSinflar((j.sinflar || '').split(',').filter(Boolean));
+      const sinflarText = sinflar.map(s => s.replace(/-sinf$/i, '')).join(', ') +
+        (sinflar.length ? ('-sinf' + (sinflar.length > 1 ? 'lar' : '')) : '');
+      const kunlar = (j.kunlar || '').split(',').map(k => KUN_QISQA[k.trim()] || k.trim()).filter(Boolean).join(', ');
+
+      return `
+        <div class="guruh-card" onclick="openMvGuruh(${j.id})">
+          <div class="guruh-card-top">
+            <div class="guruh-card-sinf">📚 ${esc(sinflarText || '—')}</div>
+            <div class="guruh-card-edit">📘</div>
+          </div>
+          <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
+  }
+}
+
+async function openMvGuruh(guruhId) {
+  const j = LAST_GURUHLAR.find(x => x.id === guruhId);
+  if (!j) return;
+  activeMvGuruh = j;
+  window._mv_kunlar = parseKunlarSet(j.kunlar);
+
+  g('mv-guruhlar-wrap').style.display = 'none';
+  g('mv-editor-wrap').style.display = 'block';
+
+  const sinflarSet  = new Set((j.sinflar || '').split(',').filter(Boolean));
+  const sinflarText = sortSinflar([...sinflarSet]).map(s => s.replace(/-sinf$/i, '') + '-sinf').join(', ');
+  g('mv-editor-title').textContent = `📘 ${sinflarText} — mavzu va vazifa`;
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let startDate = mvIsLessonDay(today) ? today : findMvLessonDate(today, -1);
+  if (!startDate) startDate = today;
+  window._mv_curdate = startDate;
+
+  g('mv-date-picker').max = dateStrLocal(today);
+  setMvDateUI();
+  updateMvNavBtns();
   await loadMavzuVazifa();
+}
+
+function closeMvEditor() {
+  g('mv-editor-wrap').style.display = 'none';
+  g('mv-guruhlar-wrap').style.display = 'block';
+  activeMvGuruh = null;
+}
+
+function setMvDateUI() {
+  const d = window._mv_curdate;
+  g('mv-date-display').textContent = `${d.getDate()}-${OY_NOMLARI[d.getMonth() + 1]}, ${d.getFullYear()}`;
+  g('mv-date-sub').textContent     = KUN_NOMLARI_MAP[String(d.getDay())] || '';
+  g('mv-date-picker').value        = dateStrLocal(d);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  g('mv-date-picker-text').textContent = `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+function openMvDatePicker() {
+  const inp = g('mv-date-picker');
+  if (!inp) return;
+  if (typeof inp.showPicker === 'function') {
+    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
+  }
+  inp.focus();
+  inp.click();
+}
+
+function updateMvNavBtns() {
+  g('mv-prev-btn').disabled = !findMvLessonDate(window._mv_curdate, -1);
+  g('mv-next-btn').disabled = !findMvLessonDate(window._mv_curdate, 1);
+}
+
+async function changeMvDate(dir) {
+  const nd = findMvLessonDate(window._mv_curdate, dir);
+  if (!nd) return;
+  window._mv_curdate = nd;
+  setMvDateUI();
+  updateMvNavBtns();
+  await loadMavzuVazifa();
+}
+
+async function onMvDatePick() {
+  const val = g('mv-date-picker').value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  if (d > today) {
+    alert('⚠️ Kelajak sanani tanlash mumkin emas');
+    setMvDateUI();
+    return;
+  }
+  if (!mvIsLessonDay(d)) {
+    alert("⚠️ Bu kun guruhingiz uchun dars kuni emas");
+    setMvDateUI();
+    return;
+  }
+
+  window._mv_curdate = d;
+  setMvDateUI();
+  updateMvNavBtns();
+  await loadMavzuVazifa();
+}
+
+function renderMvFaylCurrent() {
+  const wrap = g('mv-fayl-current');
+  if (_mv_fayl) {
+    wrap.style.display = 'block';
+    wrap.innerHTML = `📎 <a href="${resolveUploadUrl(_mv_fayl)}" target="_blank" rel="noopener">Biriktirilgan faylni ko'rish</a>
+      &nbsp;·&nbsp; <button type="button" class="oq-back-btn" style="padding:0;font-size:12.5px;display:inline;" onclick="removeMvFayl()">❌ Olib tashlash</button>`;
+  } else {
+    wrap.style.display = 'none';
+    wrap.innerHTML = '';
+  }
+}
+
+function removeMvFayl() {
+  _mv_fayl = '';
+  renderMvFaylCurrent();
+}
+
+async function uploadMvFayl() {
+  const inp = g('mv-fayl-input');
+  const statusEl = g('mv-fayl-status');
+  const file = inp.files?.[0];
+  if (!file) return;
+
+  statusEl.textContent = '⏳ Fayl yuklanmoqda...';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const res = await api.uploadFile(fd);
+    if (res && res.ok) {
+      _mv_fayl = res.filename;
+      statusEl.textContent = '✅ Fayl yuklandi';
+      renderMvFaylCurrent();
+    } else {
+      statusEl.textContent = '❌ Fayl yuklanmadi';
+    }
+  } catch (e) {
+    statusEl.textContent = '❌ Fayl yuklanmadi';
+  } finally {
+    inp.value = '';
+  }
 }
 
 // ─── Mavzu / Uyga vazifa (joriy guruh + joriy sana bo'yicha) ─────────────────
 async function loadMavzuVazifa() {
   g('mv-saved-note').style.display = 'none';
+  g('mv-fayl-status').textContent = '';
   g('mv-mavzu').value = '';
   g('mv-vazifa').value = '';
   g('mv-muddat').value = '';
-  if (!activeDavomatGuruh) return;
+  _mv_fayl = '';
+  renderMvFaylCurrent();
+  if (!activeMvGuruh) return;
 
-  const sana = dateStrLocal(window._davomat_curdate);
+  const sana = dateStrLocal(window._mv_curdate);
   try {
-    const res = await api.getGuruhVazifa(activeDavomatGuruh.id, sana);
+    const res = await api.getGuruhVazifa(activeMvGuruh.id, sana);
     if (res && res.ok && res.vazifa) {
       g('mv-mavzu').value  = res.vazifa.mavzu || '';
       g('mv-vazifa').value = res.vazifa.uy_vazifasi || '';
       g('mv-muddat').value = res.vazifa.muddat || '';
+      _mv_fayl = res.vazifa.vazifa_fayl || '';
+      renderMvFaylCurrent();
     }
   } catch (e) { /* jim - bo'sh forma bilan qoladi */ }
 }
 
 async function saveMavzuVazifa() {
-  if (!activeDavomatGuruh) return;
-  const sana = dateStrLocal(window._davomat_curdate);
+  if (!activeMvGuruh) return;
+  const sana = dateStrLocal(window._mv_curdate);
   const btn = g('mv-save-btn');
   btn.disabled = true;
   try {
-    const res = await api.saveGuruhVazifa(activeDavomatGuruh.id, {
+    const res = await api.saveGuruhVazifa(activeMvGuruh.id, {
       sana,
       mavzu:       g('mv-mavzu').value.trim(),
       uy_vazifasi: g('mv-vazifa').value.trim(),
-      muddat:      g('mv-muddat').value || ''
+      muddat:      g('mv-muddat').value || '',
+      vazifa_fayl: _mv_fayl
     });
     if (res && res.ok) {
       g('mv-saved-note').style.display = 'block';
@@ -1215,10 +1422,11 @@ async function loadVazifalarniTekshirish() {
           </div>
           <div style="margin-top:10px;font-size:13.5px;line-height:1.5;">
             <b>Uyga vazifa:</b> ${esc(j.uy_vazifasi || '—')}
+            ${j.vazifa_fayl ? `<div style="margin-top:4px;"><a href="${esc(resolveUploadUrl(j.vazifa_fayl))}" target="_blank" rel="noopener">📎 Sizning biriktirgan faylingiz</a></div>` : ''}
           </div>
           <div style="margin-top:8px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
             <b>O'quvchi javobi:</b> ${esc(j.javob_matn || '—')}
-            ${j.javob_fayl ? `<div style="margin-top:4px;"><a href="${esc(j.javob_fayl)}" target="_blank" rel="noopener">📎 Biriktirilgan fayl</a></div>` : ''}
+            ${j.javob_fayl ? `<div style="margin-top:4px;"><a href="${esc(resolveUploadUrl(j.javob_fayl))}" target="_blank" rel="noopener">📎 Biriktirilgan fayl</a></div>` : ''}
           </div>
           ${j.holat === 'tekshirilgan' ? `
             <div style="margin-top:8px;font-size:12.5px;color:var(--muted);">💬 Izoh: ${esc(j.oqituvchi_izohi || '—')}</div>
