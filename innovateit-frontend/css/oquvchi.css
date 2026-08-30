@@ -18,12 +18,18 @@
 .ouq-stat-pill {
   display: flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 10px;
   font-size: 12px; font-weight: 600; background: #fff; border: 1px solid var(--border); white-space: nowrap;
+  cursor: pointer; user-select: none; transition: background .15s, border-color .15s;
 }
+.ouq-stat-pill:hover { background: var(--bg); }
 .ouq-stat-pill b { font-family: 'DM Mono', monospace; font-size: 13px; }
 .ouq-stat-pill.k { color: #15803d; }
 .ouq-stat-pill.x { color: #dc2626; }
 .ouq-stat-pill.s { color: #d97706; }
 .ouq-stat-pill.l { color: #7c3aed; }
+.ouq-stat-pill.active.k { background: #f0fdf4; border-color: #15803d; }
+.ouq-stat-pill.active.x { background: #fef2f2; border-color: #dc2626; }
+.ouq-stat-pill.active.s { background: #fffbeb; border-color: #d97706; }
+.ouq-stat-pill.active.l { background: #f5f3ff; border-color: #7c3aed; }
 
 .ouq-dav-row {
   background: #fff; border: 1.5px solid var(--border); border-radius: 12px;

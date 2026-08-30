@@ -104,7 +104,9 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════
 //  DAVOMATIM
 // ═══════════════════════════════════════════
-let davomatimSana = new Date(); // joriy ko'rib turilgan oy/yil
+let davomatimSana    = new Date(); // joriy ko'rib turilgan oy/yil
+let davomatimRecords = [];         // shu oy uchun yuklangan barcha yozuvlar
+let davomatimFilter  = null;       // 'keldi' | 'kelmadi' | 'sababli' | 'kech' | null (hammasi)
 
 function changeDavomatimOy(delta) {
   davomatimSana.setMonth(davomatimSana.getMonth() + delta);
@@ -116,6 +118,7 @@ async function loadDavomatim() {
   const stats = g('ouq-dav-stats');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
   stats.innerHTML = '';
+  davomatimFilter = null; // oy almashganda filtr tozalanadi
 
   const oy  = davomatimSana.getMonth() + 1;
   const yil = davomatimSana.getFullYear();
@@ -125,39 +128,72 @@ async function loadDavomatim() {
     const data = await api.get('/api/davomat/mening-davomatim', { oy, yil });
 
     if (!data || !data.ok) {
+      davomatimRecords = [];
       wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
       return;
     }
 
-    const records = (data.records || []).filter(r => r.sana);
-    if (!records.length) {
-      wrap.innerHTML = '<div class="oq-empty">📭 Bu oyda davomat belgilanmagan</div>';
-      return;
-    }
-
-    // Statistika — faqat shu oy bo'yicha
-    const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
-    records.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
-    stats.innerHTML = `
-      <span class="ouq-stat-pill k">✅ Keldi <b>${c.keldi}</b></span>
-      <span class="ouq-stat-pill x">❌ Kelmadi <b>${c.kelmadi}</b></span>
-      <span class="ouq-stat-pill s">📋 Sababli <b>${c.sababli}</b></span>
-      <span class="ouq-stat-pill l">⏰ Kech <b>${c.kech}</b></span>
-    `;
-
-    // Sana bo'yicha kamayish tartibida (server allaqachon shu tartibda beradi)
-    wrap.innerHTML = records.map(r => {
-      const meta = DAV_STATUS_META[r.status] || { emoji: '❔', label: r.status || '—', cls: '' };
-      return `
-        <div class="ouq-dav-row">
-          <span class="ouq-dav-date">${esc(formatSana(r.sana))}</span>
-          <span class="ouq-dav-badge ${meta.cls}">${meta.emoji} ${meta.label}</span>
-          ${r.izoh ? `<div class="ouq-dav-izoh">💬 ${esc(r.izoh)}</div>` : ''}
-        </div>`;
-    }).join('');
+    davomatimRecords = (data.records || []).filter(r => r.sana);
+    renderDavomatimStats();
+    renderDavomatimList();
   } catch (e) {
+    davomatimRecords = [];
     wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
   }
+}
+
+function renderDavomatimStats() {
+  const stats = g('ouq-dav-stats');
+  if (!davomatimRecords.length) { stats.innerHTML = ''; return; }
+
+  const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
+  davomatimRecords.forEach(r => { if (c[r.status] !== undefined) c[r.status]++; });
+
+  const pill = (status, cls, emoji, label) => `
+    <span class="ouq-stat-pill ${cls}${davomatimFilter === status ? ' active' : ''}"
+          onclick="toggleDavomatimFilter('${status}')">${emoji} ${label} <b>${c[status]}</b></span>`;
+
+  stats.innerHTML =
+    pill('keldi',   'k', '✅', 'Keldi')   +
+    pill('kelmadi', 'x', '❌', 'Kelmadi') +
+    pill('sababli', 's', '📋', 'Sababli') +
+    pill('kech',    'l', '⏰', 'Kech');
+}
+
+// Tugma bosilganda — shu status bo'yicha filtrlaydi; qayta bosilsa hammasi qaytadi ko'rsatiladi
+function toggleDavomatimFilter(status) {
+  davomatimFilter = (davomatimFilter === status) ? null : status;
+  renderDavomatimStats();
+  renderDavomatimList();
+}
+
+function renderDavomatimList() {
+  const wrap = g('ouq-dav-list');
+
+  if (!davomatimRecords.length) {
+    wrap.innerHTML = '<div class="oq-empty">📭 Bu oyda davomat belgilanmagan</div>';
+    return;
+  }
+
+  const filtered = davomatimFilter
+    ? davomatimRecords.filter(r => r.status === davomatimFilter)
+    : davomatimRecords;
+
+  if (!filtered.length) {
+    wrap.innerHTML = '<div class="oq-empty">📭 Bu holatda yozuv topilmadi</div>';
+    return;
+  }
+
+  // Sana bo'yicha kamayish tartibida (server allaqachon shu tartibda beradi)
+  wrap.innerHTML = filtered.map(r => {
+    const meta = DAV_STATUS_META[r.status] || { emoji: '❔', label: r.status || '—', cls: '' };
+    return `
+      <div class="ouq-dav-row">
+        <span class="ouq-dav-date">${esc(formatSana(r.sana))}</span>
+        <span class="ouq-dav-badge ${meta.cls}">${meta.emoji} ${meta.label}</span>
+        ${r.izoh ? `<div class="ouq-dav-izoh">💬 ${esc(r.izoh)}</div>` : ''}
+      </div>`;
+  }).join('');
 }
 
 // "YYYY-MM-DD" yoki "DD.MM.YYYY" -> "22-Avgust, 2026"
