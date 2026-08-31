@@ -475,7 +475,7 @@ async function handleVzmFaylTanlash(vazifaId) {
   try {
     const upRes = await api.uploadFile(fd);
     if (!upRes || !upRes.ok) {
-      if (statusEl) statusEl.textContent = '❌ Fayl yuklanmadi';
+      if (statusEl) statusEl.textContent = '❌ ' + (upRes?.error || 'Fayl yuklanmadi');
       return;
     }
     fayllar.push({ fayl_nomi: upRes.filename, original_nomi: file.name });

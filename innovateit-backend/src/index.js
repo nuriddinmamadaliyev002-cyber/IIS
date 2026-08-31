@@ -39,7 +39,11 @@ const storage = multer.diskStorage({
   filename: (req, file, cb) => {
     let ext = path.extname(file.originalname).toLowerCase();
     if (!ext) {
-      const mimeToExt = { 'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.png' };
+      const mimeToExt = {
+        'image/jpeg': '.jpg', 'image/png': '.png', 'image/gif': '.gif', 'image/webp': '.webp', 'image/bmp': '.png',
+        'application/msword': '.doc',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document': '.docx'
+      };
       ext = mimeToExt[file.mimetype] || '.png';
     }
     cb(null, `kvit_${Date.now()}_${Math.random().toString(36).slice(2,7)}${ext}`);
@@ -50,8 +54,12 @@ const upload = multer({
   storage,
   limits: { fileSize: 5 * 1024 * 1024 },
   fileFilter: (req, file, cb) => {
-    const allowed = ['.jpg','.jpeg','.png','.gif','.webp','.pdf'];
-    const mimes   = ['image/jpeg','image/png','image/gif','image/webp','image/bmp','application/pdf'];
+    const allowed = ['.jpg','.jpeg','.png','.gif','.webp','.pdf','.doc','.docx'];
+    const mimes   = [
+      'image/jpeg','image/png','image/gif','image/webp','image/bmp','application/pdf',
+      'application/msword',                                                       // .doc
+      'application/vnd.openxmlformats-officedocument.wordprocessingml.document'   // .docx
+    ];
     const ext = path.extname(file.originalname).toLowerCase();
     cb(null, (ext ? allowed.includes(ext) : false) || mimes.includes(file.mimetype));
   }
@@ -107,10 +115,18 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// ─── Fayl yuklash (kvitansiyalar uchun) ───
-app.post('/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.json({ ok: false, error: 'Fayl yuklanmadi' });
-  res.json({ ok: true, filename: req.file.filename });
+// ─── Fayl yuklash (kvitansiyalar, vazifa javoblari va h.k. uchun) ───
+app.post('/upload', (req, res) => {
+  upload.single('file')(req, res, (err) => {
+    if (err) {
+      const msg = err.code === 'LIMIT_FILE_SIZE'
+        ? "Fayl hajmi 5MB dan katta bo'lmasligi kerak"
+        : (err.message || 'Fayl yuklashda xatolik');
+      return res.status(400).json({ ok: false, error: msg });
+    }
+    if (!req.file) return res.status(400).json({ ok: false, error: "Fayl yuklanmadi (format qo'llab-quvvatlanmaydi — jpg, png, gif, webp, pdf, doc, docx bo'lishi kerak)" });
+    res.json({ ok: true, filename: req.file.filename });
+  });
 });
 app.delete('/upload/:filename', (req, res) => {
   const fp = path.join(UPLOAD_DIR, req.params.filename);

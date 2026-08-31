@@ -938,7 +938,7 @@ async function uploadMvFayl() {
       statusEl.textContent = '✅ Fayl yuklandi';
       renderMvFaylCurrent();
     } else {
-      statusEl.textContent = '❌ Fayl yuklanmadi';
+      statusEl.textContent = '❌ ' + (res?.error || 'Fayl yuklanmadi');
     }
   } catch (e) {
     statusEl.textContent = '❌ Fayl yuklanmadi';
