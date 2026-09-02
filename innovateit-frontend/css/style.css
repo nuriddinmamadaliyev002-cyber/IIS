@@ -20,6 +20,13 @@
   --shadow: 0 1px 3px rgba(0,0,0,.08), 0 4px 12px rgba(0,0,0,.04);
   --p: 14px;
   --topbar-h: 52px;
+
+  /* ── Brend ranglari (o'qituvchi/o'quvchi paneli bilan bir xil) ── */
+  --iit-cyan:        #05BFF6;
+  --iit-sky-deep:    #5CB6F5;
+  --iit-sky-darker:  #3E9BDC;
+  --iit-indigo-deep: #0F5493;
+  --iit-brand-grad: linear-gradient(90deg, var(--iit-cyan) 0%, var(--iit-cyan) 22%, var(--iit-sky-deep) 62%, var(--iit-sky-darker) 100%);
 }
 @media (min-width: 600px)  { :root { --p: 24px; } }
 @media (min-width: 1024px) { :root { --p: 32px; } }
@@ -155,8 +162,9 @@ body {
 #app { display: none; }
 
 .topbar {
-  background: var(--surface);
-  border-bottom: 1px solid var(--border);
+  background-image: var(--iit-brand-grad);
+  background-color: var(--iit-cyan);
+  border-bottom: none;
   padding: 0 var(--p);
   height: var(--topbar-h);
   display: flex; align-items: center; justify-content: space-between;
@@ -166,16 +174,17 @@ body {
   font-size: 12px; font-weight: 700; letter-spacing: .07em;
   text-transform: uppercase; display: flex; align-items: center;
   gap: 6px; flex-shrink: 0; white-space: nowrap;
+  color: #fff;
 }
 .topbar-brand::before {
   content: ''; width: 7px; height: 7px;
-  background: var(--accent); border-radius: 50%;
+  background: #fff; border-radius: 50%;
 }
 .topbar-right { display: flex; align-items: center; gap: 6px; overflow: hidden; min-width: 0; flex-wrap: nowrap; }
 
 .admin-badge {
-  font-size: 11px; color: var(--muted);
-  background: var(--bg); border: 1px solid var(--border);
+  font-size: 11px; color: var(--iit-indigo-deep);
+  background: rgba(255,255,255,.94); border: 1px solid rgba(255,255,255,.55);
   padding: 3px 10px; border-radius: 20px;
   overflow: visible; text-overflow: clip; white-space: nowrap;
   max-width: 220px; flex-shrink: 0;
@@ -184,8 +193,8 @@ body {
 .admin-badge.super { background: #fef3c7; border-color: #fbbf24; color: #92400e; }
 
 .stat-badge {
-  font-size: 11px; color: var(--muted);
-  background: var(--bg); border: 1px solid var(--border);
+  font-size: 11px; color: var(--iit-indigo-deep);
+  background: rgba(255,255,255,.94); border: 1px solid rgba(255,255,255,.55);
   padding: 3px 8px; border-radius: 20px;
   font-family: 'DM Mono', monospace; white-space: nowrap; flex-shrink: 0;
 }
@@ -195,23 +204,23 @@ body {
 .admin-selector-wrap { display: flex; align-items: center; flex-shrink: 0; }
 .admin-selector {
   padding: 5px 28px 5px 10px;
-  border: 1.5px solid var(--border);
+  border: 1.5px solid rgba(255,255,255,.55);
   border-radius: 8px;
   font-family: 'DM Sans', sans-serif;
   font-size: 12px;
-  background: var(--bg);
+  background-color: rgba(255,255,255,.94);
   color: var(--text);
   outline: none;
   cursor: pointer;
   -webkit-appearance: none;
   appearance: none;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%237a7870' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%231670C4' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right 8px center;
   max-width: 160px;
   transition: border-color .15s;
 }
-.admin-selector:focus { border-color: var(--accent); }
+.admin-selector:focus { border-color: #fff; }
 @media (max-width: 520px) { .admin-selector { max-width: 110px; font-size: 11px; } }
 
 /* ── Davomat tugmasi ── */
@@ -223,9 +232,19 @@ body {
   -webkit-tap-highlight-color: transparent;
 }
 .btn-teachers:active { opacity: .8; }
+.btn-nofaol {
+  font-size: 12px; font-weight: 500;
+  color: #b91c1c; background: rgba(255,255,255,.94);
+  border: none; padding: 6px 12px; border-radius: 8px;
+  cursor: pointer; font-family: 'DM Sans', sans-serif;
+  white-space: nowrap; flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
+  transition: opacity .15s;
+}
+.btn-nofaol:active { opacity: .8; }
 .btn-davomat {
   font-size: 12px; font-weight: 500;
-  color: #fff; background: var(--accent);
+  color: var(--iit-indigo-deep); background: rgba(255,255,255,.94);
   border: none; padding: 6px 12px; border-radius: 8px;
   cursor: pointer; font-family: 'DM Sans', sans-serif;
   white-space: nowrap; flex-shrink: 0;
@@ -235,14 +254,16 @@ body {
 .btn-davomat:active { opacity: .8; }
 
 .btn-logout {
-  font-size: 12px; color: var(--muted);
-  background: none; border: 1px solid var(--border);
+  font-size: 12px; color: #fff;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.55);
   padding: 5px 10px; border-radius: 8px;
   cursor: pointer; font-family: 'DM Sans', sans-serif;
   white-space: nowrap; flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
+  transition: background .15s, border-color .15s;
 }
-.btn-logout:active { color: var(--danger); border-color: var(--danger); }
+.btn-logout:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
+.btn-logout:active { background: var(--danger); border-color: var(--danger); color: #fff; }
 
 /* ── Tablar ── */
 .tabs { display: flex; gap: 4px; padding: 14px var(--p) 0; max-width: 1200px; margin: 0 auto; }

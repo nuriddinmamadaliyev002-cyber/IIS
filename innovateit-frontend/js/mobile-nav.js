@@ -1,0 +1,97 @@
+/* ═══════════════════════════════════════════════════════════════════
+   InnovateIT School — Admin panel: mobil hamburger menyu (JS)
+   Har bir .topbar ichiga hamburger tugma qo'shadi va .topbar-right ni
+   telefon o'lchamida (≤768px) pastga tushadigan menyuga aylantiradi.
+   Bu fayl barcha admin panel sahifalarida bir xil ishlaydi — sahifaga
+   xos hech qanday moslama talab qilinmaydi.
+═══════════════════════════════════════════════════════════════════ */
+(function () {
+  var MOBILE_BREAKPOINT = 768;
+
+  function makeOverlay(topbar) {
+    var overlay = document.createElement('div');
+    overlay.className = 'topbar-overlay';
+    topbar.parentNode.insertBefore(overlay, topbar.nextSibling);
+    return overlay;
+  }
+
+  function initTopbar(topbar) {
+    if (topbar.dataset.mobileNavReady) return;
+
+    var right = topbar.querySelector('.topbar-right');
+    if (!right) return;
+
+    topbar.dataset.mobileNavReady = '1';
+
+    var btn = document.createElement('button');
+    btn.type = 'button';
+    btn.className = 'topbar-hamburger';
+    btn.setAttribute('aria-label', 'Menyuni ochish');
+    btn.setAttribute('aria-expanded', 'false');
+    btn.innerHTML = '<span></span>';
+    topbar.appendChild(btn);
+
+    var overlay = makeOverlay(topbar);
+
+    function isMobile() {
+      return window.innerWidth <= MOBILE_BREAKPOINT;
+    }
+
+    function openMenu() {
+      right.classList.add('mn-open');
+      overlay.classList.add('mn-open');
+      btn.classList.add('open');
+      btn.setAttribute('aria-expanded', 'true');
+    }
+
+    function closeMenu() {
+      right.classList.remove('mn-open');
+      overlay.classList.remove('mn-open');
+      btn.classList.remove('open');
+      btn.setAttribute('aria-expanded', 'false');
+    }
+
+    function toggleMenu() {
+      if (right.classList.contains('mn-open')) closeMenu();
+      else openMenu();
+    }
+
+    btn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      toggleMenu();
+    });
+
+    overlay.addEventListener('click', closeMenu);
+
+    // Menyu ichida biror tugma/link bosilsa — menyuni yopamiz
+    right.addEventListener('click', function (e) {
+      var el = e.target;
+      while (el && el !== right) {
+        if (el.tagName === 'BUTTON' || el.tagName === 'A') {
+          closeMenu();
+          break;
+        }
+        el = el.parentNode;
+      }
+    });
+
+    document.addEventListener('keydown', function (e) {
+      if (e.key === 'Escape' || e.key === 'Esc') closeMenu();
+    });
+
+    window.addEventListener('resize', function () {
+      if (!isMobile()) closeMenu();
+    });
+  }
+
+  function init() {
+    var topbars = document.querySelectorAll('.topbar');
+    for (var i = 0; i < topbars.length; i++) initTopbar(topbars[i]);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

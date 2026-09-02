@@ -19,17 +19,17 @@
 .topbar-right { display: flex; align-items: center; gap: 8px; flex-shrink: 0; }
 .admin-badge {
   font-size: 12px; font-weight: 600;
-  background: #eff4ff; color: #2563eb;
+  background: rgba(255,255,255,.94); color: #2563eb;
   padding: 3px 10px; border-radius: 20px;
-  border: 1px solid #bfdbfe;
+  border: 1px solid rgba(255,255,255,.55);
 }
 .btn-logout {
   padding: 7px 14px; border-radius: 8px; cursor: pointer;
-  background: transparent; border: 1px solid var(--border);
-  font-size: 13px; color: var(--text); font-family: inherit;
-  transition: background .15s;
+  background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.55);
+  font-size: 13px; color: #fff; font-family: inherit;
+  transition: background .15s, border-color .15s;
 }
-.btn-logout:hover { background: var(--bg); }
+.btn-logout:hover { background: var(--danger); border-color: var(--danger); color: #fff; }
 .btn-export-bux {
   padding: 7px 14px; border-radius: 8px; cursor: pointer;
   background: #16a34a; border: none; color: #fff;
