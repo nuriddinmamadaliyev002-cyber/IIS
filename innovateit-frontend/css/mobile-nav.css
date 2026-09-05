@@ -66,17 +66,20 @@
   }
   .topbar-right { padding-bottom: 0 !important; }
 
-  .topbar-hamburger { display: inline-flex !important; }
+  .topbar-hamburger { display: inline-flex !important; z-index: 250 !important; }
 
   /* html/body: drawer yopiq holatda ekrandan tashqarida turgani uchun
      gorizontal scroll paydo bo'lmasin */
   html, body { overflow-x: hidden !important; }
 
-  /* Asosiy topbar-right endi o'ngdan chapga siljib ochiladigan yon panel
-     (drawer) bo'ladi — ekran kengligining 50%ini egallaydi */
+  /* Asosiy topbar-right endi o'ngdan chapga siljib, blog saytidagi
+     hamburger menyu kabi TO'LIQ BALANDLIKDA (ekranning tepasidan
+     tagigacha) ochiladigan yon panel (drawer) bo'ladi — kengligi
+     ekran kengligining 50%i. Hamburger (✕) tugmasi yuqorida alohida
+     z-index bilan har doim bosiladigan holda qoladi. */
   .topbar-right {
     position: fixed !important;
-    top: var(--topbar-h) !important;
+    top: 0 !important;
     right: 0 !important;
     left: auto !important;
     bottom: 0 !important;
@@ -85,11 +88,11 @@
     flex-direction: column !important;
     align-items: stretch !important;
     flex-wrap: nowrap !important;
-    gap: 8px !important;
+    gap: 0 !important;
     background: var(--surface, #fff) !important;
-    padding: 14px calc(14px + var(--safe-right, 0px)) calc(20px + var(--safe-bottom, 0px)) 14px !important;
+    padding: calc(var(--topbar-h) + 14px) calc(14px + var(--safe-right, 0px)) calc(20px + var(--safe-bottom, 0px)) 14px !important;
     box-shadow: -8px 0 32px rgba(0,0,0,.18);
-    border-radius: 16px 0 0 0;
+    border-radius: 0 !important;
     max-height: none !important;
     overflow-y: auto !important;
     -webkit-overflow-scrolling: touch;
@@ -97,7 +100,7 @@
     opacity: 1;
     visibility: hidden;
     transition: transform .25s ease, visibility 0s linear .25s;
-    z-index: 199;
+    z-index: 220;
   }
   .topbar-right.mn-open {
     transform: translateX(0) !important;
@@ -108,6 +111,9 @@
   /* Panel ichidagi elementlar to'liq kenglikda, teppa-tepa chiqadi */
   .topbar-right > * { width: 100% !important; flex-shrink: 0 !important; }
 
+  /* Menyu band(lar)i blog saytining mobil hamburger menyusidagi kabi
+     ro'yxat-qator ko'rinishida: pastki chiziq, chapda urg'u chizig'i,
+     hover/active holatida --accent rangi bilan ajralib turadi. */
   .topbar-right button,
   .topbar-right .btn-teachers,
   .topbar-right .btn-davomat,
@@ -118,10 +124,36 @@
   .topbar-right .btn-export-bux,
   .topbar-right .btn-export-jadval {
     width: 100% !important;
-    text-align: center;
-    padding-top: 11px !important;
-    padding-bottom: 11px !important;
-    font-size: 13px !important;
+    text-align: left !important;
+    background: transparent !important;
+    background-image: none !important;
+    color: #1f2430 !important;
+    border: none !important;
+    border-bottom: 1px solid #e9ebf0 !important;
+    border-left: 3px solid transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+    padding: 15px 4px 15px 12px !important;
+    margin: 0 !important;
+    font-size: 14px !important;
+    font-weight: 500 !important;
+    transition: border-color .15s ease, background-color .15s ease, color .15s ease;
+  }
+  .topbar-right button:hover,
+  .topbar-right button:active,
+  .topbar-right button:focus-visible {
+    color: var(--accent, #2563eb) !important;
+    border-left-color: var(--accent, #2563eb) !important;
+    background: var(--accent-soft, #eff4ff) !important;
+  }
+  /* Joriy ochiq bo'lim/sahifaga mos band shu uslubda "faol" bo'lib ko'rinadi
+     (band .active klassiga ega bo'lsa) — blog saytidagi "Bosh sahifa" kabi */
+  .topbar-right button.active,
+  .topbar-right a.active {
+    color: var(--accent, #2563eb) !important;
+    font-weight: 700 !important;
+    border-left-color: var(--accent, #2563eb) !important;
+    background: var(--accent-soft, #eff4ff) !important;
   }
 
   .topbar-right .admin-badge,
