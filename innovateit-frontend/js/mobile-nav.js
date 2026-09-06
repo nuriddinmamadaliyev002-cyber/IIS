@@ -8,6 +8,27 @@
 (function () {
   var MOBILE_BREAKPOINT = 768;
 
+  // Berilgan elementdan yuqoriga qarab `cls` klassiga ega ajdodni topadi
+  // (root ga yetguncha). Topilmasa null qaytaradi.
+  function findAncestor(el, cls, root) {
+    while (el && el !== root) {
+      if (el.classList && el.classList.contains(cls)) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  // Barcha accordion submenularni yopiq holatga qaytaradi (menyu yopilganda
+  // yoki qayta ochilganda toza holatdan boshlanishi uchun)
+  function resetAccordions(right) {
+    var accs = right.querySelectorAll('.mn-acc.mn-acc-open');
+    for (var i = 0; i < accs.length; i++) {
+      accs[i].classList.remove('mn-acc-open');
+      var toggle = accs[i].querySelector('.mn-acc-toggle');
+      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+    }
+  }
+
   function makeOverlay(topbar) {
     var overlay = document.createElement('div');
     overlay.className = 'topbar-overlay';
@@ -38,6 +59,7 @@
     }
 
     function openMenu() {
+      resetAccordions(right);
       right.classList.add('mn-open');
       overlay.classList.add('mn-open');
       btn.classList.add('open');
@@ -49,6 +71,7 @@
       overlay.classList.remove('mn-open');
       btn.classList.remove('open');
       btn.setAttribute('aria-expanded', 'false');
+      resetAccordions(right);
     }
 
     function toggleMenu() {
@@ -63,8 +86,21 @@
 
     overlay.addEventListener('click', closeMenu);
 
-    // Menyu ichida biror tugma/link bosilsa — menyuni yopamiz
+    // Accordion sarlavhasi (masalan "O'quvchilar"/"O'qituvchilar") bosilsa —
+    // faqat shu submenuni ochamiz/yopamiz, butun menyu yopilmaydi.
+    // Boshqa (haqiqiy navigatsiya) tugma/link bosilsa — butun menyu yopiladi.
     right.addEventListener('click', function (e) {
+      var toggleBtn = findAncestor(e.target, 'mn-acc-toggle', right);
+      if (toggleBtn) {
+        var acc = findAncestor(toggleBtn, 'mn-acc', right);
+        if (acc) {
+          var willOpen = !acc.classList.contains('mn-acc-open');
+          acc.classList.toggle('mn-acc-open', willOpen);
+          toggleBtn.setAttribute('aria-expanded', String(willOpen));
+        }
+        return;
+      }
+
       var el = e.target;
       while (el && el !== right) {
         if (el.tagName === 'BUTTON' || el.tagName === 'A') {

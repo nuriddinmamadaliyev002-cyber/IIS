@@ -168,9 +168,10 @@ async function showApp() {
     g('admin-selector-wrap').style.display = 'flex';
     const amalCol = g('amal-col'); if(amalCol) amalCol.style.display = 'none';
     g('btn-davomat').style.display   = 'none';
-    g('btn-teachers').style.display  = 'none';  // Superadmin uchun tab ichida bor
+    g('mn-acc-teachers').style.display = 'none';  // Superadmin uchun tab ichida bor
     g('btn-nofaol').style.display    = '';
     g('add-student-form').style.display = 'none';
+    g('btn-add-student-nav').style.display = 'none';
     await loadAdmins();
     buildAdminSelector();
   } else {
@@ -179,9 +180,10 @@ async function showApp() {
     g('tabs-row').style.display = 'none';
     g('admin-selector-wrap').style.display = 'none';
     g('btn-davomat').style.display  = '';
-    g('btn-teachers').style.display = '';
+    g('mn-acc-teachers').style.display = '';
     g('btn-nofaol').style.display   = '';
     g('add-student-form').style.display = 'block';
+    g('btn-add-student-nav').style.display = '';
   }
 
   await loadStudents();
@@ -224,14 +226,14 @@ async function onAdminSelect() {
   if (!val) {
     viewingAdmin = null;
     g('btn-davomat').style.display   = 'none';
-    g('btn-teachers').style.display  = 'none';  // Tab ichida bor
     g('add-student-form').style.display = 'none';
+    g('btn-add-student-nav').style.display = 'none';
   } else {
     const found = ADMINS.find(a => String(a.id) === String(val));
     viewingAdmin = found ? { id: found.id, ism: found.ism, maktab_id: found.maktab_id, maktab_nomi: found.maktab_nomi } : null;
     g('btn-davomat').style.display   = '';
-    g('btn-teachers').style.display  = 'none';  // Tab ichida bor
     g('add-student-form').style.display = 'block';
+    g('btn-add-student-nav').style.display = 'block';
   }
 
   await loadStudents();
@@ -1005,20 +1007,46 @@ window.delA          = delA;
 // ─────────────────────────────────────────────
 //  O'QITUVCHILAR / DAVOMAT
 // ─────────────────────────────────────────────
-function openTeachers() {
-  let teacherUser;
+function buildTeacherUser() {
   if (!U.isSuper) {
     // Oddiy admin — o'zining maktabId si (Telegram JWT ichidan keladi)
     const adminMaktabId = U.maktabId || null;
-    teacherUser = { ism: U.ism, isSuper: false, isSuperProxy: false, maktabId: adminMaktabId };
+    return { ism: U.ism, isSuper: false, isSuperProxy: false, maktabId: adminMaktabId };
   } else if (viewingAdmin) {
     const adminMaktabId = viewingAdmin.maktab_id || null;
-    teacherUser = { ism: viewingAdmin.ism, isSuper: false, isSuperProxy: true, superIsm: U.ism, maktabId: adminMaktabId };
-  } else {
-    teacherUser = { username: U.username, parol: U.parol, ism: U.ism, isSuper: true, adminsMap: JSON.stringify(ADMINS.map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))) };
+    return { ism: viewingAdmin.ism, isSuper: false, isSuperProxy: true, superIsm: U.ism, maktabId: adminMaktabId };
   }
-  sessionStorage.setItem('iit_teacher_user', JSON.stringify(teacherUser));
+  return { username: U.username, parol: U.parol, ism: U.ism, isSuper: true, adminsMap: JSON.stringify(ADMINS.map(a => ({ username: a.username, ism: a.ism, maktab_nomi: a.maktab_nomi || null }))) };
+}
+
+function openTeachers() {
+  sessionStorage.setItem('iit_teacher_user', JSON.stringify(buildTeacherUser()));
   window.location.href = 'oqituvchilar.html';
+}
+
+// Hamburger menyu: O'qituvchilar ➜ Dars jadvali (to'g'ridan-to'g'ri, oqituvchilar.html ga kirmasdan)
+function openTeachersJadval() {
+  const tu = buildTeacherUser();
+  sessionStorage.setItem('iit_jadval_user', JSON.stringify({ ...tu, maktabId: tu.maktabId || null }));
+  window.location.href = 'dars-jadvali.html';
+}
+
+// Hamburger menyu: O'qituvchilar ➜ Davomat (to'g'ridan-to'g'ri)
+function openTeachersDavomatDirect() {
+  sessionStorage.setItem('iit_teacher_dav_user', JSON.stringify(buildTeacherUser()));
+  window.location.href = 'oqituvchilar-davomat.html';
+}
+
+// Hamburger menyu: O'quvchilar ➜ Faol — joriy (faol o'quvchilar) ro'yxatiga sirg'anib o'tish
+function scrollToStudentsList() {
+  const el = document.querySelector('#tab-s .table-card') || g('tab-s');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+// Hamburger menyu: O'quvchilar ➜ Yangi o'quvchi qo'shish — forma tomon sirg'anib o'tish
+function scrollToAddStudent() {
+  const el = g('add-student-form');
+  if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 

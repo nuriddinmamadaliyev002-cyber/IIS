@@ -68,11 +68,33 @@
       <span class="admin-badge" id="admin-badge"></span>
       <span class="maktab-badge" id="maktab-badge" style="display:none;background:#e8f0fe;color:#3c5fb0;border-radius:20px;padding:4px 12px;font-size:13px;font-weight:600;align-items:center;gap:4px;"></span>
       <span class="stat-badge"  id="total-count">0</span>
-      <!-- ✅ YANGI: Nofaol tugmasi -->
-      <button class="btn-nofaol" id="btn-nofaol" onclick="openNofaol()">Nofaol</button>
-      <button class="btn-teachers" id="btn-teachers" onclick="openTeachers()">O'qituvchilar</button>
-      <button class="btn-davomat" id="btn-davomat" onclick="openDavomat()">Davomat</button>
-      <button class="btn-logout"  onclick="doLogout()">Chiqish</button>
+
+      <!-- ✅ O'quvchilar — accordion (mobilda pastga ochiladi, desktopda tugmalar tekis chiqadi) -->
+      <div class="mn-acc" id="mn-acc-students">
+        <button type="button" class="mn-acc-toggle">
+          <span>O'quvchilar</span><span class="mn-acc-caret">⌄</span>
+        </button>
+        <div class="mn-acc-body">
+          <button class="mn-mobile-item" onclick="scrollToStudentsList()">Faol</button>
+          <button class="btn-nofaol" id="btn-nofaol" onclick="openNofaol()">Nofaol</button>
+          <button class="btn-davomat" id="btn-davomat" onclick="openDavomat()">Davomat</button>
+          <button class="mn-mobile-item" id="btn-add-student-nav" onclick="scrollToAddStudent()">Yangi o'quvchi qo'shish</button>
+        </div>
+      </div>
+
+      <!-- ✅ O'qituvchilar — accordion -->
+      <div class="mn-acc" id="mn-acc-teachers">
+        <button type="button" class="mn-acc-toggle">
+          <span>O'qituvchilar</span><span class="mn-acc-caret">⌄</span>
+        </button>
+        <div class="mn-acc-body">
+          <button class="btn-teachers" id="btn-teachers" onclick="openTeachers()"><span class="mn-label-mobile">Ma'lumotnoma</span><span class="mn-label-desktop">O'qituvchilar</span></button>
+          <button class="mn-mobile-item" onclick="openTeachersJadval()">Dars jadvali</button>
+          <button class="mn-mobile-item" onclick="openTeachersDavomatDirect()">Davomat</button>
+        </div>
+      </div>
+
+      <button class="btn-logout" id="btn-logout-nav" onclick="doLogout()">Chiqish</button>
     </div>
   </div>
 
