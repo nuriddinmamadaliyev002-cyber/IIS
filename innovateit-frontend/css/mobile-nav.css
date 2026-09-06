@@ -160,7 +160,7 @@
     align-items: stretch !important;
     flex-wrap: nowrap !important;
     gap: 0 !important;
-    background: var(--surface, #fff) !important;
+    background: #101b34 !important;
     padding: calc(var(--topbar-h) + 14px) 14px calc(20px + var(--safe-bottom, 0px)) calc(14px + var(--safe-left, 0px)) !important;
     box-shadow: 8px 0 32px rgba(0,0,0,.18);
     border-radius: 0 !important;
@@ -188,9 +188,12 @@
     justify-content: flex-end !important;
     gap: 10px !important;
     background: #101b34 !important;
-    border-radius: 14px !important;
-    padding: 14px 14px 14px 16px !important;
-    margin: 0 0 16px 0 !important;
+    border-radius: 0 !important;
+    /* Panelning o'z top/left/right padding'ini "yutib", karta sayt eng
+       yuqorisiga elka-elkaga (edge-to-edge) yopishib chiqadi — ism/avatar
+       endi pastda emas, to'g'ridan-to'g'ri ekran tepasida ko'rinadi. */
+    margin: calc(-1 * (var(--topbar-h) + 14px)) -14px 16px calc(-1 * (14px + var(--safe-left, 0px))) !important;
+    padding: calc(14px + var(--safe-top, 0px)) 14px 14px calc(16px + var(--safe-left, 0px)) !important;
   }
   .mn-drawer-profile {
     display: flex !important;
@@ -287,9 +290,9 @@
     text-align: left !important;
     background: transparent !important;
     background-image: none !important;
-    color: #1f2430 !important;
+    color: #fff !important;
     border: none !important;
-    border-bottom: 1px solid #e9ebf0 !important;
+    border-bottom: 1px solid rgba(255,255,255,.10) !important;
     border-left: 3px solid transparent !important;
     border-radius: 0 !important;
     box-shadow: none !important;
@@ -302,22 +305,28 @@
   .topbar-right button:hover,
   .topbar-right button:active,
   .topbar-right button:focus-visible {
-    color: var(--accent, #2563eb) !important;
-    border-left-color: var(--accent, #2563eb) !important;
-    background: var(--accent-soft, #eff4ff) !important;
+    color: #fff !important;
+    border-left-color: var(--iit-cyan, #05BFF6) !important;
+    background: rgba(5,191,246,.16) !important;
   }
   /* Joriy ochiq bo'lim/sahifaga mos band shu uslubda "faol" bo'lib ko'rinadi
      (band .active klassiga ega bo'lsa) — blog saytidagi "Bosh sahifa" kabi */
   .topbar-right button.active,
   .topbar-right a.active {
-    color: var(--accent, #2563eb) !important;
+    color: #fff !important;
     font-weight: 700 !important;
-    border-left-color: var(--accent, #2563eb) !important;
-    background: var(--accent-soft, #eff4ff) !important;
+    border-left-color: var(--iit-cyan, #05BFF6) !important;
+    background: rgba(5,191,246,.22) !important;
+  }
+  /* Ochiq turgan accordion sarlavhasi ("O'quvchilar"/"O'qituvchilar")
+     2-rasmdagi kabi to'liq InnovateIT ko'k rangida ajralib turadi */
+  .mn-acc.mn-acc-open > .mn-acc-toggle {
+    color: #fff !important;
+    background: var(--iit-cyan, #05BFF6) !important;
+    border-left-color: var(--iit-cyan, #05BFF6) !important;
   }
 
   .topbar-right .admin-badge,
-  .topbar-right .stat-badge,
   .topbar-right .maktab-badge,
   .topbar-right .nofaol-count {
     display: inline-flex !important;
@@ -325,6 +334,11 @@
     width: auto !important;
     max-width: none !important;
   }
+
+  /* ✅ Umumiy o'quvchilar soni ("N o'quvchi") endi hamburger menyuda
+     ko'rinmaydi — faqat mobil drawer uchun, desktop topbar'da
+     o'zgarishsiz qoladi. */
+  .topbar-right .stat-badge { display: none !important; }
 
   .topbar-right .admin-selector-wrap { width: 100% !important; }
   .topbar-right .admin-selector,
