@@ -50,7 +50,23 @@
     btn.setAttribute('aria-label', 'Menyuni ochish');
     btn.setAttribute('aria-expanded', 'false');
     btn.innerHTML = '<span></span>';
-    topbar.appendChild(btn);
+    // Hamburger tugma topbar'ning CHAP tomonida (brend nomidan oldin)
+    // joylashadi — shunda u drawer ochiladigan tomon (chap) bilan bir
+    // xil tarafda turadi.
+    topbar.insertBefore(btn, topbar.firstChild);
+
+    // Drawer ichida, blog saytidagi "mobile-nav-head" patterniga o'xshab,
+    // alohida ✕ yopish tugmasi — tashqi hamburger tugmasiga bog'liq
+    // bo'lmagan holda ham drawer'ni yopish imkonini beradi.
+    var drawerHead = document.createElement('div');
+    drawerHead.className = 'mn-drawer-head';
+    var closeBtn = document.createElement('button');
+    closeBtn.type = 'button';
+    closeBtn.className = 'mn-drawer-close';
+    closeBtn.setAttribute('aria-label', 'Menyuni yopish');
+    closeBtn.innerHTML = '&times;';
+    drawerHead.appendChild(closeBtn);
+    right.insertBefore(drawerHead, right.firstChild);
 
     var overlay = makeOverlay(topbar);
 
@@ -82,6 +98,11 @@
     btn.addEventListener('click', function (e) {
       e.stopPropagation();
       toggleMenu();
+    });
+
+    closeBtn.addEventListener('click', function (e) {
+      e.stopPropagation();
+      closeMenu();
     });
 
     overlay.addEventListener('click', closeMenu);

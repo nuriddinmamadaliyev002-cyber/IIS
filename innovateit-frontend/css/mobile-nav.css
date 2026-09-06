@@ -6,7 +6,8 @@
    hamburger tugma bosilganda pastga tushadigan panel sifatida chiqadi.
 ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Hamburger tugma (faqat mobil, JS orqali qo'shiladi) ── */
+/* ── Hamburger tugma (faqat mobil, JS orqali qo'shiladi, topbar'ning
+   ENG CHAP tomoniga — brend nomidan oldin — joylashtiriladi) ── */
 .topbar-hamburger {
   display: none;
   align-items: center;
@@ -14,7 +15,7 @@
   width: 36px;
   height: 36px;
   padding: 0;
-  margin: 0 0 0 4px;
+  margin: 0 4px 0 0;
   border: 1.5px solid rgba(255,255,255,.55);
   border-radius: 8px;
   background: rgba(255,255,255,.14);
@@ -51,6 +52,31 @@
 .topbar-hamburger.open span::before { top: 0; transform: rotate(45deg); }
 .topbar-hamburger.open span::after  { top: 0; transform: rotate(-45deg); }
 
+/* ── Drawer ichidagi ✕ yopish tugmasi (faqat mobil, JS orqali qo'shiladi)
+   — blog saytidagi "mobile-nav-head" patterniga o'xshab, drawer'ning
+   o'zi ichida joylashadi va tashqi hamburger tugmasiga bog'liq bo'lmasdan
+   ham drawer'ni yopa oladi. Desktopda ko'rinmaydi. ── */
+.mn-drawer-head { display: none; }
+.mn-drawer-close {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border: 1px solid #e9ebf0;
+  border-radius: 8px;
+  background: #f5f6f8;
+  color: #1f2430;
+  font-size: 20px;
+  line-height: 1;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  transition: background .15s;
+}
+.mn-drawer-close:hover,
+.mn-drawer-close:active { background: #e9ebf0; }
+
 /* ── Accordion (submenu) — desktopda ko'rinmas: o'ram divlar "contents"
    bo'lib, ichidagi asosiy tugmalar (masalan Nofaol, Davomat) tekis holda
    topbar-right qatorida avvalgidek chiqadi. Faqat mobil submenu
@@ -85,7 +111,12 @@
     height: var(--topbar-h) !important;
     min-height: 0 !important;
     flex-wrap: nowrap !important;
-    padding: 0 calc(14px + var(--safe-left, 0px)) 0 calc(14px + var(--safe-left, 0px)) !important;
+    /* Hamburger + brend nomi CHAP tomonda birga tursin (avval
+       justify-content:space-between brendni butunlay o'ng chetga
+       surib yuborardi — endi ikkalasi ham chapda, yonma-yon). */
+    justify-content: flex-start !important;
+    gap: 8px !important;
+    padding: 0 calc(14px + var(--safe-right, 0px)) 0 calc(14px + var(--safe-left, 0px)) !important;
     row-gap: 0 !important;
   }
   .topbar-right { padding-bottom: 0 !important; }
@@ -96,11 +127,15 @@
      gorizontal scroll paydo bo'lmasin */
   html, body { overflow-x: hidden !important; }
 
-  /* Asosiy topbar-right endi CHAPDAN O'NGGA siljib, blog saytidagi
-     hamburger menyu kabi TO'LIQ BALANDLIKDA (ekranning tepasidan
-     tagigacha) ochiladigan yon panel (drawer) bo'ladi — kengligi
-     ekran kengligining 50%i. Hamburger (✕) tugmasi yuqorida alohida
-     z-index bilan har doim bosiladigan holda qoladi. */
+  /* Asosiy topbar-right — hamburger tugmasi topbar'ning CHAP tomonida
+     joylashgani uchun, drawer ham aynan CHAPDAN chiqadi — shunda
+     tugma va ochiladigan panel bir xil tarafda, bir-biriga bog'liq
+     holda ko'rinadi (ilgari ular qarama-qarshi tomonlarda bo'lib,
+     bir-biridan uzilib qolgan edi). TO'LIQ BALANDLIKDA (ekranning
+     tepasidan tagigacha) ochiladi, kengligi ekran kengligining 50%i.
+     Hamburger tugmasi yuqorida alohida z-index bilan har doim
+     bosiladigan holda qoladi; drawer ichida esa o'zining ✕ yopish
+     tugmasi (.mn-drawer-close) bor. */
   .topbar-right {
     position: fixed !important;
     top: 0 !important;
@@ -131,6 +166,18 @@
     visibility: visible !important;
     transition: transform .25s ease, visibility 0s linear 0s;
   }
+
+  /* Drawer ichidagi ✕ yopish satri — panelning eng tepasida, o'ngga
+     tekislangan holda chiqadi. */
+  .mn-drawer-head {
+    display: flex !important;
+    justify-content: flex-end !important;
+    padding-bottom: 14px !important;
+    margin-bottom: 8px !important;
+    border-bottom: 1px solid #e9ebf0 !important;
+    flex-shrink: 0 !important;
+  }
+  .mn-drawer-close { display: inline-flex !important; }
 
   /* ── Accordion — mobilda haqiqiy blok elementlar sifatida, ochiladigan
      (pastga tushadigan) submenu ko'rinishida ── */
@@ -229,6 +276,31 @@
   .topbar-right #oq-maktab-selector {
     width: 100% !important;
     max-width: none !important;
+  }
+
+  /* .mn-drawer-close ham .topbar-right ichidagi <button>, shuning uchun
+     yuqoridagi umumiy ".topbar-right button" qatoridan ustun turishi
+     uchun ikkita klass bilan (yuqoriroq specifiklik) qayta belgilanadi —
+     aks holda to'liq enli qatorga aylanib qolardi. */
+  .topbar-right .mn-drawer-close {
+    width: 34px !important;
+    height: 34px !important;
+    text-align: center !important;
+    border: 1px solid #e9ebf0 !important;
+    border-left: 1px solid #e9ebf0 !important;
+    border-radius: 8px !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #f5f6f8 !important;
+    font-size: 20px !important;
+    font-weight: 400 !important;
+  }
+  .topbar-right .mn-drawer-close:hover,
+  .topbar-right .mn-drawer-close:active,
+  .topbar-right .mn-drawer-close:focus-visible {
+    color: #1f2430 !important;
+    border-left-color: #e9ebf0 !important;
+    background: #e9ebf0 !important;
   }
 }
 
