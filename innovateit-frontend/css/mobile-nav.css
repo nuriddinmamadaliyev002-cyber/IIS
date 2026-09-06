@@ -186,14 +186,14 @@
     display: flex !important;
     align-items: center !important;
     justify-content: flex-end !important;
-    gap: 10px !important;
+    gap: 16px !important;
     background: #101b34 !important;
     border-radius: 0 !important;
     /* Panelning o'z top/left/right padding'ini "yutib", karta sayt eng
        yuqorisiga elka-elkaga (edge-to-edge) yopishib chiqadi — ism/avatar
        endi pastda emas, to'g'ridan-to'g'ri ekran tepasida ko'rinadi. */
     margin: calc(-1 * (var(--topbar-h) + 14px)) -14px 16px calc(-1 * (14px + var(--safe-left, 0px))) !important;
-    padding: calc(14px + var(--safe-top, 0px)) 14px 14px calc(16px + var(--safe-left, 0px)) !important;
+    padding: calc(14px + var(--safe-top, 0px)) 18px 14px calc(16px + var(--safe-left, 0px)) !important;
   }
   .mn-drawer-profile {
     display: flex !important;
@@ -353,6 +353,8 @@
      aks holda to'liq enli qatorga aylanib qolardi. */
   .topbar-right .mn-drawer-close {
     display: inline-flex !important;
+    align-self: flex-start !important;   /* 2 qatorli ismga qaramay har doim tepada tursin */
+    margin-top: 1px !important;
     width: 34px !important;
     height: 34px !important;
     text-align: center !important;
