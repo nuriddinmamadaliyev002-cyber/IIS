@@ -56,17 +56,50 @@
     topbar.insertBefore(btn, topbar.firstChild);
 
     // Drawer ichida, blog saytidagi "mobile-nav-head" patterniga o'xshab,
-    // alohida ✕ yopish tugmasi — tashqi hamburger tugmasiga bog'liq
-    // bo'lmagan holda ham drawer'ni yopish imkonini beradi.
+    // yuqorida ADMIN ISMI (agar shu sahifada #admin-badge/.admin-badge
+    // mavjud bo'lsa) bilan BIR QATORDA ✕ yopish tugmasi chiqadi.
+    // Desktopda bu o'ram divlar "display:contents" bo'lgani uchun
+    // admin-badge xuddi avvalgidek topbar qatorida chiqaveradi — faqat
+    // mobil drawer'da alohida "profil qatori" hosil bo'ladi.
     var drawerHead = document.createElement('div');
     drawerHead.className = 'mn-drawer-head';
+
+    var badge = right.querySelector('.admin-badge');
+    var avatar = null;
+    if (badge) {
+      var profile = document.createElement('div');
+      profile.className = 'mn-drawer-profile';
+
+      avatar = document.createElement('div');
+      avatar.className = 'mn-drawer-avatar';
+      profile.appendChild(avatar);
+
+      var nameWrap = document.createElement('div');
+      nameWrap.className = 'mn-drawer-name-wrap';
+      nameWrap.appendChild(badge); // mavjud elementni shu yerga ko'chiramiz
+      profile.appendChild(nameWrap);
+
+      drawerHead.appendChild(profile);
+    }
+
     var closeBtn = document.createElement('button');
     closeBtn.type = 'button';
     closeBtn.className = 'mn-drawer-close';
     closeBtn.setAttribute('aria-label', 'Menyuni yopish');
     closeBtn.innerHTML = '&times;';
     drawerHead.appendChild(closeBtn);
+
     right.insertBefore(drawerHead, right.firstChild);
+
+    // Avatar doirachasidagi harf — admin ismining birinchi harfi (masalan
+    // "Muhammadaliyev Nuriddin" → "M"). Ism keyinroq (login/showApp ichida)
+    // to'ldirilishi mumkin bo'lgani uchun menyu HAR OCHILGANIDA yangilanadi.
+    function updateAvatar() {
+      if (!avatar || !badge) return;
+      var txt = (badge.textContent || '').replace(/[^\p{L}\p{N}]/gu, '');
+      avatar.textContent = txt ? txt.charAt(0).toUpperCase() : '';
+    }
+    updateAvatar();
 
     var overlay = makeOverlay(topbar);
 
@@ -76,6 +109,7 @@
 
     function openMenu() {
       resetAccordions(right);
+      updateAvatar();
       right.classList.add('mn-open');
       overlay.classList.add('mn-open');
       btn.classList.add('open');

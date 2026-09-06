@@ -52,11 +52,17 @@
 .topbar-hamburger.open span::before { top: 0; transform: rotate(45deg); }
 .topbar-hamburger.open span::after  { top: 0; transform: rotate(-45deg); }
 
-/* ── Drawer ichidagi ✕ yopish tugmasi (faqat mobil, JS orqali qo'shiladi)
-   — blog saytidagi "mobile-nav-head" patterniga o'xshab, drawer'ning
-   o'zi ichida joylashadi va tashqi hamburger tugmasiga bog'liq bo'lmasdan
-   ham drawer'ni yopa oladi. Desktopda ko'rinmaydi. ── */
-.mn-drawer-head { display: none; }
+/* ── Drawer ichidagi profil qatori: avatar + ism (ko'chirilgan admin-badge)
+   + ✕ yopish tugmasi. Desktopda bu o'ram divlar "contents" bo'lib,
+   ichidagi haqiqiy admin-badge topbar qatorida xuddi avvalgidek chiqadi —
+   faqat mobil drawer'da haqiqiy quti (profil karta) sifatida ko'rinadi. ── */
+.mn-drawer-head,
+.mn-drawer-profile,
+.mn-drawer-name-wrap {
+  display: contents;
+}
+.mn-drawer-avatar { display: none; }
+
 .mn-drawer-close {
   display: none;
   align-items: center;
@@ -76,6 +82,12 @@
 }
 .mn-drawer-close:hover,
 .mn-drawer-close:active { background: #e9ebf0; }
+
+/* Desktopda badge o'z asl o'rnida (admin-selector-wrap'dan keyin) chiqishi
+   uchun — u endi DOM bo'yicha eng boshida joylashgani uchun (mobil profil
+   qatori uchun ko'chirilgani sabab) admin-selector-wrap'ga aniq order
+   beriladi, tie-break DOM tartibiga emas, shu qiymatga qarab hal bo'ladi. */
+.topbar-right .admin-selector-wrap { order: -1; }
 
 /* ── Accordion (submenu) — desktopda ko'rinmas: o'ram divlar "contents"
    bo'lib, ichidagi asosiy tugmalar (masalan Nofaol, Davomat) tekis holda
@@ -167,17 +179,60 @@
     transition: transform .25s ease, visibility 0s linear 0s;
   }
 
-  /* Drawer ichidagi ✕ yopish satri — panelning eng tepasida, o'ngga
-     tekislangan holda chiqadi. */
+  /* Drawer ichidagi profil qatori — skrinshotdagi kabi: avatar doiracha +
+     ism BIR QATORDA, ✕ esa har doim shu qatorning o'ng chetida. Qorong'i
+     "karta" fon bilan qolgan menyu bandlaridan vizual ajratiladi. */
   .mn-drawer-head {
     display: flex !important;
+    align-items: center !important;
     justify-content: flex-end !important;
-    padding-bottom: 14px !important;
-    margin-bottom: 8px !important;
-    border-bottom: 1px solid #e9ebf0 !important;
+    gap: 10px !important;
+    background: #101b34 !important;
+    border-radius: 14px !important;
+    padding: 14px 14px 14px 16px !important;
+    margin: 0 0 16px 0 !important;
+  }
+  .mn-drawer-profile {
+    display: flex !important;
+    align-items: center !important;
+    gap: 10px !important;
+    min-width: 0 !important;
+    margin-right: auto !important; /* ✕ ni har doim o'ngga suradi */
+  }
+  .mn-drawer-avatar {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 40px !important;
+    height: 40px !important;
+    border-radius: 50% !important;
+    background: #fff !important;
+    color: #16233f !important;
+    font-family: inherit !important;
+    font-weight: 700 !important;
+    font-size: 16px !important;
     flex-shrink: 0 !important;
   }
-  .mn-drawer-close { display: inline-flex !important; }
+  .mn-drawer-name-wrap {
+    display: flex !important;
+    flex-direction: column !important;
+    min-width: 0 !important;
+  }
+  /* Ko'chirilgan .admin-badge — drawer ichida pill emas, oddiy oq matn
+     sifatida chiqadi (fon qorong'i bo'lgani uchun). */
+  .mn-drawer-head .admin-badge {
+    background: none !important;
+    border: none !important;
+    color: #fff !important;
+    font-size: 14.5px !important;
+    font-weight: 700 !important;
+    padding: 0 !important;
+    max-width: none !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    text-align: left !important;
+  }
 
   /* ── Accordion — mobilda haqiqiy blok elementlar sifatida, ochiladigan
      (pastga tushadigan) submenu ko'rinishida ── */
@@ -283,6 +338,7 @@
      uchun ikkita klass bilan (yuqoriroq specifiklik) qayta belgilanadi —
      aks holda to'liq enli qatorga aylanib qolardi. */
   .topbar-right .mn-drawer-close {
+    display: inline-flex !important;
     width: 34px !important;
     height: 34px !important;
     text-align: center !important;
@@ -301,6 +357,20 @@
     color: #1f2430 !important;
     border-left-color: #e9ebf0 !important;
     background: #e9ebf0 !important;
+  }
+
+  /* Qorong'i fon ustidagi ✕ tugma varianti — topbar-hamburgerga mos
+     "shaffof oq" uslub. Shu blok fayl oxirida turadi, chunki yuqoridagi
+     ".topbar-right .mn-drawer-close" bilan bir xil specifiklikka ega —
+     CSS'da KEYINGI qoida ustun turadi. */
+  .mn-drawer-head .mn-drawer-close {
+    background: rgba(255,255,255,.14) !important;
+    border: 1px solid rgba(255,255,255,.35) !important;
+    color: #fff !important;
+  }
+  .mn-drawer-head .mn-drawer-close:hover,
+  .mn-drawer-head .mn-drawer-close:active {
+    background: rgba(255,255,255,.28) !important;
   }
 }
 
