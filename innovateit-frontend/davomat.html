@@ -18,8 +18,35 @@
   <div class="topbar-brand">InnovateIT School · Davomat</div>
   <div class="topbar-right">
     <span class="admin-badge" id="dav-badge"></span>
-    <button class="btn-logout" onclick="goBack()">← Orqaga</button>
+
+    <!-- ✅ Asosiy menyu bilan bir xil ko'rinish — "Davomat" shu yerda
+         faol (active) va uning guruhi ("O'quvchilar") menyu ochilganda
+         standart holatda ochiq turadi (mobile-nav.js: data-default-open) -->
+    <div class="mn-acc" id="mn-acc-students" data-default-open>
+      <button type="button" class="mn-acc-toggle">
+        <span>O'quvchilar</span><span class="mn-acc-caret">⌄</span>
+      </button>
+      <div class="mn-acc-body">
+        <button class="mn-mobile-item" onclick="window.location.href='index.html'">Faol</button>
+        <button class="mn-mobile-item" onclick="openNofaolFromDavomat()">Nofaol</button>
+        <button class="mn-mobile-item active">Davomat</button>
+        <button class="mn-mobile-item" onclick="window.location.href='index.html'">Yangi o'quvchi qo'shish</button>
+      </div>
+    </div>
+
+    <div class="mn-acc" id="mn-acc-teachers">
+      <button type="button" class="mn-acc-toggle">
+        <span>O'qituvchilar</span><span class="mn-acc-caret">⌄</span>
+      </button>
+      <div class="mn-acc-body">
+        <button class="mn-mobile-item" onclick="openTeachersFromDavomat()">Ma'lumotnoma</button>
+        <button class="mn-mobile-item" onclick="openTeachersJadvalFromDavomat()">Dars jadvali</button>
+        <button class="mn-mobile-item" onclick="openTeachersDavomatFromDavomat()">Davomat</button>
+      </div>
+    </div>
+
     <button class="btn-export" onclick="openExportModal()">📊 Excel</button>
+    <button class="btn-logout" onclick="goBack()">← Orqaga</button>
   </div>
 </div>
 

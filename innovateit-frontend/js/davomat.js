@@ -187,6 +187,40 @@ function goBack() {
   window.location.href = 'index.html';
 }
 
+// ✅ Hamburger menyu: "O'quvchilar" guruhi ichidan to'g'ridan-to'g'ri
+// qisqa yo'llar (index.html'dagi bilan bir xil xatti-harakat)
+function openNofaolFromDavomat() {
+  const isProxy = U.isSuper && U.viewingUsername;
+  sessionStorage.setItem('iit_nofaol_user', JSON.stringify({
+    username:     isProxy ? U.viewingUsername : U.username,
+    parol:        U.parol,
+    ism:          isProxy ? U.viewingIsm : U.ism,
+    isSuper:      U.isSuper && !isProxy,
+    isSuperProxy: !!isProxy
+  }));
+  window.location.href = 'nofaol.html';
+}
+
+function buildTeacherUserFromDavomat() {
+  const isProxy = U.isSuper && U.viewingUsername;
+  if (!U.isSuper) return { ism: U.ism, isSuper: false, isSuperProxy: false, maktabId: null };
+  if (isProxy)     return { ism: U.viewingIsm, isSuper: false, isSuperProxy: true, superIsm: U.ism, maktabId: null };
+  return { username: U.username, parol: U.parol, ism: U.ism, isSuper: true };
+}
+function openTeachersFromDavomat() {
+  sessionStorage.setItem('iit_teacher_user', JSON.stringify(buildTeacherUserFromDavomat()));
+  window.location.href = 'oqituvchilar.html';
+}
+function openTeachersJadvalFromDavomat() {
+  const tu = buildTeacherUserFromDavomat();
+  sessionStorage.setItem('iit_jadval_user', JSON.stringify({ ...tu, maktabId: tu.maktabId || null }));
+  window.location.href = 'dars-jadvali.html';
+}
+function openTeachersDavomatFromDavomat() {
+  sessionStorage.setItem('iit_teacher_dav_user', JSON.stringify(buildTeacherUserFromDavomat()));
+  window.location.href = 'oqituvchilar-davomat.html';
+}
+
 // ─────────────────────────────────────────────
 //  SANA BOSHQARUVI
 // ─────────────────────────────────────────────

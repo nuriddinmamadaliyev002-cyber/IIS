@@ -18,14 +18,18 @@
     return null;
   }
 
-  // Barcha accordion submenularni yopiq holatga qaytaradi (menyu yopilganda
-  // yoki qayta ochilganda toza holatdan boshlanishi uchun)
+  // Barcha accordion submenularni "standart holat"iga qaytaradi: agar
+  // .mn-acc elementida data-default-open atributi bo'lsa — ochiq holatda
+  // qoladi (masalan davomat.html'da "O'quvchilar" guruhi, chunki joriy
+  // sahifa shu guruhga tegishli); qolganlari yopiladi. Shu tufayli
+  // "Davomat"ga o'tganda submenu birdan yopilib-yopiq bo'lib qolmaydi.
   function resetAccordions(right) {
-    var accs = right.querySelectorAll('.mn-acc.mn-acc-open');
+    var accs = right.querySelectorAll('.mn-acc');
     for (var i = 0; i < accs.length; i++) {
-      accs[i].classList.remove('mn-acc-open');
+      var shouldOpen = accs[i].hasAttribute('data-default-open');
+      accs[i].classList.toggle('mn-acc-open', shouldOpen);
       var toggle = accs[i].querySelector('.mn-acc-toggle');
-      if (toggle) toggle.setAttribute('aria-expanded', 'false');
+      if (toggle) toggle.setAttribute('aria-expanded', String(shouldOpen));
     }
   }
 
