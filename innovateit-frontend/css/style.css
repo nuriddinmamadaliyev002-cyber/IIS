@@ -38,14 +38,20 @@ body {
   color: var(--text);
   min-height: 100vh;
   font-size: 14px;
-  /* ✅ .topbar endi position:fixed bo'lgani uchun (pastda), u hujjat
-     oqimidan chiqib ketadi — shu bo'shliqni body'ning yuqori paddingi
-     bilan qoplaymiz, shunda sahifa kontenti header ostida qolib
-     ketmaydi. --topbar-h qiymati ekran o'lchamiga qarab (mobil/tablet/
-     desktop) responsive.css va mobile-nav.css'da o'zgarib turgani
-     uchun bu ham avtomatik moslashadi. */
-  padding-top: var(--topbar-h);
 }
+/* ✅ .topbar endi position:fixed bo'lgani uchun (pastda) hujjat oqimidan
+   chiqib ketadi — shu bo'shliqni qoplash uchun UNING TO'G'RIDAN-TO'G'RI
+   ONA elementiga (qaysi sahifada qanday joylashganiga qarab) yuqori
+   padding beriladi, shunda kontent header ostida qolib ketmaydi:
+   • nofaol/davomat/oqituvchilar va h.k. sahifalarida .topbar to'g'ridan-
+     to'g'ri <body> farzandi — shu bilan "body:has(> .topbar)" orqali;
+   • index.html'da .topbar #app ichida joylashgan (login ekrani esa
+     alohida #login-screen'da, topbar'siz) — shu sabab bu yerda
+     to'g'ridan-to'g'ri "body"ga emas, faqat "#app"ga beriladi, aks
+     holda hali tizimga kirilmagan holatdagi login ekranida ham
+     keraksiz bo'sh joy paydo bo'lardi. */
+body:has(> .topbar) { padding-top: var(--topbar-h); }
+#app { padding-top: var(--topbar-h); }
 
 /* ══ LOGIN ══ */
 #login-screen {

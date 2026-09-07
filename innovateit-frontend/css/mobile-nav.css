@@ -136,8 +136,15 @@
   .topbar-hamburger { display: inline-flex !important; z-index: 250 !important; }
 
   /* html/body: drawer yopiq holatda ekrandan tashqarida turgani uchun
-     gorizontal scroll paydo bo'lmasin */
-  html, body { overflow-x: hidden !important; }
+     gorizontal scroll paydo bo'lmasin. ✅ MUHIM: bu faqat <html>'ga
+     qo'yiladi, <body>'ga EMAS — agar ikkalasiga ham qo'yilsa, brauzer
+     "overflow-x:hidden + overflow-y (default) visible" kombinatsiyasini
+     avtomatik "overflow-y:auto"ga aylantiradi va shu sabab <body> o'zi
+     alohida (mustaqil) scroll konteynerga aylanib qoladi. Natijada
+     sahifadagi position:fixed/sticky elementlar (topbar, date-bar,
+     stat-grid va h.k.) noto'g'ri hisoblanib, orasida bo'sh joy paydo
+     bo'lishi yoki elementlar chapga siljib-kesilib qolishi mumkin edi. */
+  html { overflow-x: hidden !important; }
 
   /* Asosiy topbar-right — hamburger tugmasi topbar'ning CHAP tomonida
      joylashgani uchun, drawer ham aynan CHAPDAN chiqadi — shunda
