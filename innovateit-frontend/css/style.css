@@ -38,6 +38,13 @@ body {
   color: var(--text);
   min-height: 100vh;
   font-size: 14px;
+  /* ✅ .topbar endi position:fixed bo'lgani uchun (pastda), u hujjat
+     oqimidan chiqib ketadi — shu bo'shliqni body'ning yuqori paddingi
+     bilan qoplaymiz, shunda sahifa kontenti header ostida qolib
+     ketmaydi. --topbar-h qiymati ekran o'lchamiga qarab (mobil/tablet/
+     desktop) responsive.css va mobile-nav.css'da o'zgarib turgani
+     uchun bu ham avtomatik moslashadi. */
+  padding-top: var(--topbar-h);
 }
 
 /* ══ LOGIN ══ */
@@ -168,7 +175,13 @@ body {
   padding: 0 var(--p);
   height: var(--topbar-h);
   display: flex; align-items: center; justify-content: space-between;
-  position: sticky; top: 0; z-index: 200; gap: 8px;
+  /* ✅ Doimiy vertikal scroll paytida ham har doim ekranning tepasida
+     qotib tursin — oldingi "position: sticky" ba'zi mobil brauzerlarda
+     (masalan, .mobile-nav.css ichida html/body'ga qo'yilgan
+     overflow-x:hidden bilan birga) barqaror ishlamasligi mumkin edi,
+     shuning uchun "fixed"ga o'zgartirildi (qarang: body{padding-top}). */
+  position: fixed; top: 0; left: 0; right: 0; width: 100%;
+  z-index: 200; gap: 8px;
 }
 .topbar-brand {
   font-size: 12px; font-weight: 700; letter-spacing: .07em;
