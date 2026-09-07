@@ -45,8 +45,7 @@
       </div>
     </div>
 
-    <button class="btn-export" onclick="openExportModal()">📊 Excel</button>
-    <button class="btn-logout" onclick="goBack()">← Orqaga</button>
+    <button class="btn-logout" onclick="mnLogout('iit_davomat_user')">Chiqish</button>
   </div>
 </div>
 
@@ -60,7 +59,10 @@
     </div>
     <button class="date-nav-btn" id="btn-next" onclick="changeDate(1)">›</button>
   </div>
-  <input class="date-input" type="date" id="date-picker" onchange="onDatePick()">
+  <div style="display:flex;align-items:center;gap:8px;">
+    <input class="date-input" type="date" id="date-picker" onchange="onDatePick()">
+    <button class="btn-export" onclick="openExportModal()">📊 Excel</button>
+  </div>
 </div>
 
 <div class="dav-main">
@@ -166,6 +168,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="js/api.js"></script>
+  <script src="js/mn-nav.js"></script>
   <script src="js/davomat.js"></script>
 <script src="js/mobile-nav.js"></script>
 </body>

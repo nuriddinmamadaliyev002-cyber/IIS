@@ -54,12 +54,13 @@ window.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('iit_u', JSON.stringify(U));
     window.history.replaceState({}, '', window.location.pathname);
     await showApp();
+    handlePendingNav();
     return;
   }
 
   try {
     const saved = localStorage.getItem('iit_u');
-    if (saved) { U = JSON.parse(saved); await showApp(); }
+    if (saved) { U = JSON.parse(saved); await showApp(); handlePendingNav(); }
   } catch (e) { localStorage.removeItem('iit_u'); }
 
   g('inp-parol').addEventListener('keydown', e => {
@@ -105,6 +106,24 @@ async function doLogin() {
     showErr(g('login-err'), 'Ulanishda xatolik');
   }
   btn.disabled = false; btn.textContent = 'Kirish';
+}
+
+// ─────────────────────────────────────────────
+//  Boshqa sahifalar (nofaol/davomat/oqituvchilar/dars-jadvali/
+//  oqituvchilar-davomat) hamburger menyusidan "index.html orqali"
+//  qaytarilgan navigatsiyani yakunlaydi (qarang: js/mn-nav.js).
+// ─────────────────────────────────────────────
+function handlePendingNav() {
+  const nav = sessionStorage.getItem('iit_pending_nav');
+  if (!nav) return;
+  sessionStorage.removeItem('iit_pending_nav');
+  if (nav === 'faol')                 scrollToStudentsList();
+  else if (nav === 'add-student')     scrollToAddStudent();
+  else if (nav === 'nofaol')          openNofaol();
+  else if (nav === 'davomat')         openDavomat();
+  else if (nav === 'teachers')        openTeachers();
+  else if (nav === 'teachers-jadval') openTeachersJadval();
+  else if (nav === 'teachers-davomat')openTeachersDavomatDirect();
 }
 
 function showErr(el, msg) {

@@ -66,7 +66,34 @@
   <div class="topbar-right">
     <span class="admin-badge" id="nofaol-badge"></span>
     <span class="nofaol-count" id="nofaol-count">0</span>
-    <button class="btn-logout" onclick="goBack()">← Orqaga</button>
+
+    <!-- ✅ O'quvchilar — accordion; joriy sahifa shu guruhga tegishli
+         bo'lgani uchun standart holatda ochiq turadi -->
+    <div class="mn-acc" id="mn-acc-students" data-default-open>
+      <button type="button" class="mn-acc-toggle">
+        <span>O'quvchilar</span><span class="mn-acc-caret">⌄</span>
+      </button>
+      <div class="mn-acc-body">
+        <button class="mn-mobile-item" onclick="mnGoHome('faol')">Faol</button>
+        <button class="mn-mobile-item active">Nofaol</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('davomat')">Davomat</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('add-student')">Yangi o'quvchi qo'shish</button>
+      </div>
+    </div>
+
+    <!-- ✅ O'qituvchilar — accordion -->
+    <div class="mn-acc" id="mn-acc-teachers">
+      <button type="button" class="mn-acc-toggle">
+        <span>O'qituvchilar</span><span class="mn-acc-caret">⌄</span>
+      </button>
+      <div class="mn-acc-body">
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers')">Ma'lumotnoma</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers-jadval')">Dars jadvali</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers-davomat')">Davomat</button>
+      </div>
+    </div>
+
+    <button class="btn-logout" onclick="mnLogout('iit_nofaol_user')">Chiqish</button>
   </div>
 </div>
 
@@ -178,6 +205,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="js/api.js"></script>
+  <script src="js/mn-nav.js"></script>
   <script src="js/nofaol.js"></script>
 <script src="js/mobile-nav.js"></script>
 </body>

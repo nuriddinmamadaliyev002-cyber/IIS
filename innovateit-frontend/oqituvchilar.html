@@ -19,10 +19,42 @@
   <div class="topbar-right">
     <span class="admin-badge" id="admin-badge"></span>
     <span class="stat-badge"  id="total-count">0</span>
-    <button class="btn-jadval"  id="btn-jadval-teacher"  onclick="openJadval()">📅 Dars jadvali</button>
-    <button class="btn-davomat" id="btn-davomat-teacher" onclick="openDavomat()">📋 O'qituvchilar davomati</button>
-    <button class="btn-logout"  onclick="goBack()">← Orqaga</button>
+
+    <!-- ✅ O'quvchilar — accordion (mobilda pastga ochiladi) -->
+    <div class="mn-acc" id="mn-acc-students">
+      <button type="button" class="mn-acc-toggle">
+        <span>O'quvchilar</span><span class="mn-acc-caret">⌄</span>
+      </button>
+      <div class="mn-acc-body">
+        <button class="mn-mobile-item" onclick="mnGoHome('faol')">Faol</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('nofaol')">Nofaol</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('davomat')">Davomat</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('add-student')">Yangi o'quvchi qo'shish</button>
+      </div>
+    </div>
+
+    <!-- ✅ O'qituvchilar — accordion, joriy sahifa shu guruhga tegishli
+         bo'lgani uchun standart holatda ochiq turadi -->
+    <div class="mn-acc" id="mn-acc-teachers" data-default-open>
+      <button type="button" class="mn-acc-toggle">
+        <span>O'qituvchilar</span><span class="mn-acc-caret">⌄</span>
+      </button>
+      <div class="mn-acc-body">
+        <button class="mn-mobile-item active">Ma'lumotnoma</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers-jadval')">Dars jadvali</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers-davomat')">Davomat</button>
+      </div>
+    </div>
+
+    <button class="btn-logout" onclick="mnLogout('iit_teacher_user')">Chiqish</button>
   </div>
+</div>
+
+<!-- Sahifaga xos amal tugmalari — har doim (mobilda ham, desktopda ham)
+     ko'rinadi, hamburger menyuning bir qismi emas -->
+<div id="oq-page-actions" style="display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;padding:10px 24px;background:#fff;border-bottom:1px solid #f3f4f6;">
+  <button class="btn-jadval"  id="btn-jadval-teacher"  onclick="openJadval()">📅 Dars jadvali</button>
+  <button class="btn-davomat" id="btn-davomat-teacher" onclick="openDavomat()">📋 O'qituvchilar davomati</button>
 </div>
 
 <!-- Tab navigatsiya (faqat superadmin uchun) -->
@@ -452,6 +484,7 @@
 <div class="toast" id="toast"></div>
 
 <script src="js/api.js"></script>
+<script src="js/mn-nav.js"></script>
 <script src="js/oqituvchilar.js"></script>
 <script src="js/mobile-nav.js"></script>
 </body>
