@@ -199,13 +199,18 @@
     transition: transform .25s ease, visibility 0s linear 0s;
   }
 
-  /* Drawer ichidagi profil qatori — skrinshotdagi kabi: avatar doiracha +
-     ism BIR QATORDA, ✕ esa har doim shu qatorning o'ng chetida. Qorong'i
-     "karta" fon bilan qolgan menyu bandlaridan vizual ajratiladi. */
+  /* Drawer ichidagi profil qatori — avatar doiracha + ism BIR QATORDA.
+     ✅ ✕ yopish tugmasi OLIB TASHLANDI (pastda .mn-drawer-close
+     display:none qilingan) — tor drawer'da avatar+ism+✕ uchtasi bir
+     qatorga hech qanday holatda barqaror sig'may, ismning uzunligiga
+     qarab turli bug'lar (✕ ustiga tushib qolish, ism harflarga
+     bo'linib ketishi va h.k.) chiqavergan edi. Endi menyuni yopish
+     uchun: tashqarisini (overlay) bosish yoki istalgan submenu/link
+     bosish yetarli — ikkalasi ham allaqachon ishlaydi. */
   .mn-drawer-head {
     display: flex !important;
     align-items: center !important;
-    justify-content: flex-end !important;
+    justify-content: flex-start !important;
     gap: 16px !important;
     background: #101b34 !important;
     border-radius: 0 !important;
@@ -220,8 +225,7 @@
     align-items: center !important;
     gap: 10px !important;
     min-width: 0 !important;
-    flex: 1 1 auto !important; /* qolgan bo'sh joyni egallaydi, ✕ ga aniq joy qoldiradi */
-    margin-right: auto !important; /* ✕ ni har doim o'ngga suradi */
+    flex: 1 1 auto !important; /* ✕ olib tashlangani uchun qatorning butun kengligini egallaydi */
   }
   .mn-drawer-avatar {
     display: flex !important;
@@ -385,47 +389,12 @@
     max-width: none !important;
   }
 
-  /* .mn-drawer-close ham .topbar-right ichidagi <button>, shuning uchun
-     yuqoridagi umumiy ".topbar-right button" qatoridan ustun turishi
-     uchun ikkita klass bilan (yuqoriroq specifiklik) qayta belgilanadi —
-     aks holda to'liq enli qatorga aylanib qolardi. */
-  .topbar-right .mn-drawer-close {
-    display: inline-flex !important;
-    align-self: flex-start !important;   /* 2 qatorli ismga qaramay har doim tepada tursin */
-    flex-shrink: 0 !important;           /* ism uzun bo'lsa ham ✕ hech qachon siqilmasin */
-    margin-top: 1px !important;
-    width: 34px !important;
-    height: 34px !important;
-    text-align: center !important;
-    border: 1px solid #e9ebf0 !important;
-    border-left: 1px solid #e9ebf0 !important;
-    border-radius: 8px !important;
-    padding: 0 !important;
-    margin: 0 !important;
-    background: #f5f6f8 !important;
-    font-size: 20px !important;
-    font-weight: 400 !important;
-  }
-  .topbar-right .mn-drawer-close:hover,
-  .topbar-right .mn-drawer-close:active,
-  .topbar-right .mn-drawer-close:focus-visible {
-    color: #1f2430 !important;
-    border-left-color: #e9ebf0 !important;
-    background: #e9ebf0 !important;
-  }
-
-  /* Qorong'i fon ustidagi ✕ tugma varianti — topbar-hamburgerga mos
-     "shaffof oq" uslub. Shu blok fayl oxirida turadi, chunki yuqoridagi
-     ".topbar-right .mn-drawer-close" bilan bir xil specifiklikka ega —
-     CSS'da KEYINGI qoida ustun turadi. */
-  .mn-drawer-head .mn-drawer-close {
-    background: rgba(255,255,255,.14) !important;
-    border: 1px solid rgba(255,255,255,.35) !important;
-    color: #fff !important;
-  }
-  .mn-drawer-head .mn-drawer-close:hover,
-  .mn-drawer-head .mn-drawer-close:active {
-    background: rgba(255,255,255,.28) !important;
+  /* ✅ ✕ yopish tugmasi butunlay olib tashlandi (menyuni yopish uchun
+     tashqarisini bosish yoki istalgan submenu/link bosish yetarli —
+     ikkalasi ham allaqachon ishlaydi, JS logikasi o'zgarmagan). Eski
+     ✕ stillari (hover/qorong'i variant) endi keraksiz, olib tashlandi. */
+  .mn-drawer-close {
+    display: none !important;
   }
 }
 
