@@ -252,15 +252,19 @@
     font-size: 14.5px !important;
     font-weight: 700 !important;
     padding: 0 !important;
-    max-width: none !important;
-    /* ✅ "Muhammadaliyev" kabi uzun/bo'linmas so'zlar endi qatorni
-       kengaytirib, ✕ tugmasini bosib qolmasin — kerak bo'lsa so'zning
-       o'zi ham qatorga sig'adigan joyidan bo'linadi. */
-    overflow-wrap: anywhere !important;
-    word-break: break-word !important;
-    white-space: normal !important;
-    overflow: visible !important;
-    text-overflow: clip !important;
+    /* ✅ Juda tor drawer'da (masalan 50%-kenglik kichik telefonda) uzun
+       ism ikkita so'zga ham to'liq joy yetmasligi mumkin. Avval
+       "overflow-wrap:anywhere" sinovdan o'tkazilgan edi — lekin bu
+       brauzerga matn konteynerining minimal kengligini deyarli 0'gacha
+       qisqartirishga ruxsat berib, ismni har 2-3 harfda qatorga
+       bo'lib yuborgan edi (juda o'qilmas ko'rinish). Shuning uchun endi
+       ism BITTA qatorda qoladi va sig'masa oxiri "…" bilan qirqiladi —
+       ✕ tugmasi bilan hech qachon to'qnashmaydi. */
+    display: block !important;
+    max-width: 100% !important;
+    white-space: nowrap !important;
+    overflow: hidden !important;
+    text-overflow: ellipsis !important;
     text-align: left !important;
   }
 
@@ -354,12 +358,19 @@
   }
 
   .topbar-right .admin-badge,
-  .topbar-right .maktab-badge,
   .topbar-right .nofaol-count {
     display: inline-flex !important;
     align-self: flex-start;
     width: auto !important;
     max-width: none !important;
+  }
+
+  /* ✅ #maktab-badge topbar'da hech qachon matn bilan to'ldirilmaydi
+     (bo'sh <span> sifatida qoladi) — shuning uchun yuqoridagi qatordan
+     chiqarib tashlandi. Aks holda bo'sh bo'lsa ham majburan ko'rinib,
+     drawer boshida mazmunsiz kichik "pill" bo'lib chiqib qolardi. */
+  .topbar-right .maktab-badge {
+    display: none !important;
   }
 
   /* ✅ Umumiy o'quvchilar soni ("N o'quvchi") endi hamburger menyuda
