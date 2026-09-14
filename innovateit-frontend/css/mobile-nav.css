@@ -256,19 +256,16 @@
     font-size: 14.5px !important;
     font-weight: 700 !important;
     padding: 0 !important;
-    /* ✅ Juda tor drawer'da (masalan 50%-kenglik kichik telefonda) uzun
-       ism ikkita so'zga ham to'liq joy yetmasligi mumkin. Avval
-       "overflow-wrap:anywhere" sinovdan o'tkazilgan edi — lekin bu
-       brauzerga matn konteynerining minimal kengligini deyarli 0'gacha
-       qisqartirishga ruxsat berib, ismni har 2-3 harfda qatorga
-       bo'lib yuborgan edi (juda o'qilmas ko'rinish). Shuning uchun endi
-       ism BITTA qatorda qoladi va sig'masa oxiri "…" bilan qirqiladi —
-       ✕ tugmasi bilan hech qachon to'qnashmaydi. */
+    /* ✅ ✕ tugmasi olib tashlangani uchun endi ism bilan raqobatlashadigan
+       hech narsa yo'q — shuning uchun "…" bilan qirqish shart emas.
+       Ism/familiya oddiy holda so'z chegarasida (bo'sh joydan) 2 qatorga
+       bo'linadi — hech qanday harf o'rtasida bo'linish bo'lmaydi, va
+       to'liq ism (ism + familiya) har doim ko'rinadi. */
     display: block !important;
     max-width: 100% !important;
-    white-space: nowrap !important;
-    overflow: hidden !important;
-    text-overflow: ellipsis !important;
+    white-space: normal !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
     text-align: left !important;
   }
 
