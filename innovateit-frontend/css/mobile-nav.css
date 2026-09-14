@@ -52,6 +52,19 @@
 .topbar-hamburger.open span::before { top: 0; transform: rotate(45deg); }
 .topbar-hamburger.open span::after  { top: 0; transform: rotate(-45deg); }
 
+/* ✅ Drawer ochiq bo'lganda hamburger tugmasi (endi X shakliga aylangan)
+   butunlay yashiriladi. Sabab: drawer boshi (.mn-drawer-head) manfiy
+   margin orqali ekranning aynan CHAP-YUQORI burchagiga chiqadi — bu esa
+   hamburger tugmasi turgan joyning O'ZI. Hamburger balandroq z-index'ga
+   ega bo'lgani uchun (250 > drawer'ning 220), u avatarning orqasidan/
+   ustidan ko'rinib, g'alati "kvadrat kontur" effektini berardi. Drawer
+   ichida allaqachon o'zining ✕ (.mn-drawer-close) tugmasi bor, shuning
+   uchun hamburgerni shunchaki yashirib qo'yish xavfsiz. */
+.topbar-hamburger.open {
+  visibility: hidden !important;
+  pointer-events: none !important;
+}
+
 /* ── Drawer ichidagi profil qatori: avatar + ism (ko'chirilgan admin-badge)
    + ✕ yopish tugmasi. Desktopda bu o'ram divlar "contents" bo'lib,
    ichidagi haqiqiy admin-badge topbar qatorida xuddi avvalgidek chiqadi —
@@ -207,6 +220,7 @@
     align-items: center !important;
     gap: 10px !important;
     min-width: 0 !important;
+    flex: 1 1 auto !important; /* qolgan bo'sh joyni egallaydi, ✕ ga aniq joy qoldiradi */
     margin-right: auto !important; /* ✕ ni har doim o'ngga suradi */
   }
   .mn-drawer-avatar {
@@ -227,6 +241,7 @@
     display: flex !important;
     flex-direction: column !important;
     min-width: 0 !important;
+    flex: 1 1 auto !important;
   }
   /* Ko'chirilgan .admin-badge — drawer ichida pill emas, oddiy oq matn
      sifatida chiqadi (fon qorong'i bo'lgani uchun). */
@@ -238,6 +253,11 @@
     font-weight: 700 !important;
     padding: 0 !important;
     max-width: none !important;
+    /* ✅ "Muhammadaliyev" kabi uzun/bo'linmas so'zlar endi qatorni
+       kengaytirib, ✕ tugmasini bosib qolmasin — kerak bo'lsa so'zning
+       o'zi ham qatorga sig'adigan joyidan bo'linadi. */
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
     white-space: normal !important;
     overflow: visible !important;
     text-overflow: clip !important;
@@ -361,6 +381,7 @@
   .topbar-right .mn-drawer-close {
     display: inline-flex !important;
     align-self: flex-start !important;   /* 2 qatorli ismga qaramay har doim tepada tursin */
+    flex-shrink: 0 !important;           /* ism uzun bo'lsa ham ✕ hech qachon siqilmasin */
     margin-top: 1px !important;
     width: 34px !important;
     height: 34px !important;
