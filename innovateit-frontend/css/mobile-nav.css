@@ -358,8 +358,7 @@
     border-left-color: var(--iit-cyan, #05BFF6) !important;
   }
 
-  .topbar-right .admin-badge,
-  .topbar-right .nofaol-count {
+  .topbar-right .admin-badge {
     display: inline-flex !important;
     align-self: flex-start;
     width: auto !important;
@@ -373,6 +372,10 @@
   .topbar-right .maktab-badge {
     display: none !important;
   }
+
+  .topbar-right .nofaol-count {
+  display: none !important;
+}
 
   /* ✅ Umumiy o'quvchilar soni ("N o'quvchi") endi hamburger menyuda
      ko'rinmaydi — faqat mobil drawer uchun, desktop topbar'da
