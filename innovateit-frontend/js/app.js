@@ -160,6 +160,13 @@ function doLogout() {
   const wasTelegram = !!(U && U.viaTelegram);
   U = null; S = []; ADMINS = []; viewingAdmin = null;
   localStorage.removeItem('iit_u');
+  // ✅ TUZATILDI: avval faqat "iit_u" tozalanardi, haqiqiy JWT token
+  // ("innovateit_token") esa localStorage'da qolib ketaverardi — ya'ni
+  // foydalanuvchi to'liq chiqib ketmagan bo'lardi. Endi tokenni ham
+  // aniq tozalaymiz.
+  if (typeof api !== 'undefined' && api && typeof api.logout === 'function') {
+    api.logout();
+  }
   document.body.classList.remove('super-admin');
 
   // Telegram orqali kirgan admin — botga yoki Mini App'ga qaytarilmaydi,

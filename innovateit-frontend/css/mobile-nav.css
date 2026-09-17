@@ -146,6 +146,14 @@
   }
   .topbar-right { padding-bottom: 0 !important; }
 
+  /* ✅ "X nofaol" pill (nofaol.html'da .nofaol-count) — desktopda topbar
+     qatorida joyi bor, lekin mobil hamburger drawer'ga tushganda
+     profil kartasi ostida, menyu bandlaridan OLDIN, o'rinsiz "milt
+     etib" chiqib turadi. Drawer ichida bu ma'lumot ortiqcha — sahifaning
+     o'zida (jadval sarlavhasida/filterda) allaqachon ko'rinadi, shu
+     sabab faqat mobil ko'rinishda yashiriladi. */
+  .topbar-right > .nofaol-count { display: none !important; }
+
   .topbar-hamburger { display: inline-flex !important; z-index: 250 !important; }
 
   /* html/body: drawer yopiq holatda ekrandan tashqarida turgani uchun
@@ -372,10 +380,6 @@
   .topbar-right .maktab-badge {
     display: none !important;
   }
-
-  .topbar-right .nofaol-count {
-  display: none !important;
-}
 
   /* ✅ Umumiy o'quvchilar soni ("N o'quvchi") endi hamburger menyuda
      ko'rinmaydi — faqat mobil drawer uchun, desktop topbar'da

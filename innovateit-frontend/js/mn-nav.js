@@ -88,11 +88,52 @@ function mnGoHome(navKey) {
   window.location.href = 'index.html';
 }
 
-/* Chiqish (logout) — joriy sahifaning o'z session-kalitini va asosiy
-   login tokenini (iit_u) tozalab, index.html'ga qaytaradi (u yerda
-   token topilmagani uchun login ekrani ko'rsatiladi). */
+/* Chiqish (logout).
+   ✅ TUZATILDI (bug: "Chiqish" bosilganda tizimdan TO'LIQ chiqilmayotgan
+   edi): avvalgi versiya faqat "iit_u" (kim tizimga kirgani haqidagi
+   belgi) va joriy sahifaning session-kalitini tozalab, index.html'ga
+   qaytarardi. Lekin haqiqiy JWT token ("innovateit_token", api.js
+   tokenStore orqali boshqariladi) hech qachon tozalanmasdi — ya'ni
+   foydalanuvchi ko'rinishda "chiqib ketgandek" bo'lsa-da, token hali
+   ham localStorage'da amal qilib turaverardi.
+   Bundan tashqari, maktab admini (Telegram orqali kiradi — login/parol
+   yo'q) uchun index.html'dagi login formasi umuman foydasiz edi: u
+   yerda qayta kira olmaydi. Endi index.html'dagi doLogout() bilan BIR
+   XIL mantiq qo'llaniladi: haqiqiy login/parol bilan kirgan (superadmin)
+   bo'lsa — index.html'dagi login formaga qaytariladi; aks holda
+   (Telegram/maktab admini yoki proxy) — token to'liq tozalanib,
+   to'g'ridan-to'g'ri shu sahifaning o'zida "Siz tizimdan chiqdingiz"
+   yakuniy ekrani ko'rsatiladi (oyna yopilishga harakat qilinadi). */
 function mnLogout(sessionKey) {
   if (sessionKey) sessionStorage.removeItem(sessionKey);
   localStorage.removeItem('iit_u');
-  window.location.href = 'index.html';
+
+  // ✅ Asosiy JWT tokenni ham tozalash — aks holda haqiqiy "chiqish"
+  // bo'lmaydi (token hali ham amal qilib qolaveradi).
+  if (typeof api !== 'undefined' && api && typeof api.logout === 'function') {
+    api.logout();
+  } else {
+    localStorage.removeItem('innovateit_token');
+  }
+
+  var u = (typeof U !== 'undefined' && U) ? U : {};
+
+  // Haqiqiy login/parol bilan kirgan (superadmin) — index.html'dagi
+  // login formaga qaytarib, u yerda qayta kirishi mumkin.
+  if (u.username) {
+    window.location.href = 'index.html';
+    return;
+  }
+
+  // Maktab admini (Telegram orqali) yoki proxy sessiya — login formasi
+  // ularga foydasiz, shu sabab to'g'ridan-to'g'ri "chiqdingiz" ekrani.
+  try { window.close(); } catch (e) {}
+  document.documentElement.innerHTML =
+    '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;' +
+    'justify-content:center;gap:14px;font-family:system-ui,sans-serif;' +
+    'background:#0f172a;color:#e5e7eb;text-align:center;padding:24px;box-sizing:border-box;">' +
+    '<div style="font-size:44px;">✅</div>' +
+    '<div style="font-size:18px;font-weight:600;">Siz tizimdan chiqdingiz</div>' +
+    '<div style="font-size:14px;color:#9ca3af;max-width:280px;">Ushbu oynani yopishingiz mumkin.</div>' +
+    '</div>';
 }
