@@ -360,6 +360,23 @@
   }
   /* Ochiq turgan accordion sarlavhasi ("O'quvchilar"/"O'qituvchilar")
      2-rasmdagi kabi to'liq InnovateIT ko'k rangida ajralib turadi */
+
+.topbar-right .btn-logout {
+  margin-top: auto !important;
+  border-top: 1px solid rgba(255,255,255,.14) !important;
+  border-bottom: none !important;
+  color: #f87171 !important;
+  font-weight: 600 !important;
+}
+.topbar-right .btn-logout:hover,
+.topbar-right .btn-logout:active,
+.topbar-right .btn-logout:focus-visible {
+  color: #fca5a5 !important;
+  border-left-color: #ef4444 !important;
+  background: rgba(239,68,68,.14) !important;
+}
+
+
   .mn-acc.mn-acc-open > .mn-acc-toggle {
     color: #fff !important;
     background: var(--iit-cyan, #05BFF6) !important;
