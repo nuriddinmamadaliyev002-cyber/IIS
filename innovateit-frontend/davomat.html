@@ -27,10 +27,10 @@
         <span>O'quvchilar</span><span class="mn-acc-caret">⌄</span>
       </button>
       <div class="mn-acc-body">
-        <button class="mn-mobile-item" onclick="window.location.href='index.html'">Faol</button>
-        <button class="mn-mobile-item" onclick="openNofaolFromDavomat()">Nofaol</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('faol')">Faol</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('nofaol')">Nofaol</button>
         <button class="mn-mobile-item active">Davomat</button>
-        <button class="mn-mobile-item" onclick="window.location.href='index.html'">Yangi o'quvchi qo'shish</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('add-student')">Yangi o'quvchi qo'shish</button>
       </div>
     </div>
 
@@ -39,9 +39,9 @@
         <span>O'qituvchilar</span><span class="mn-acc-caret">⌄</span>
       </button>
       <div class="mn-acc-body">
-        <button class="mn-mobile-item" onclick="openTeachersFromDavomat()">Ma'lumotnoma</button>
-        <button class="mn-mobile-item" onclick="openTeachersJadvalFromDavomat()">Dars jadvali</button>
-        <button class="mn-mobile-item" onclick="openTeachersDavomatFromDavomat()">Davomat</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers')">Ma'lumotnoma</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers-jadval')">Dars jadvali</button>
+        <button class="mn-mobile-item" onclick="mnGoHome('teachers-davomat')">Davomat</button>
       </div>
     </div>
 

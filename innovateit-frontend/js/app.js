@@ -17,6 +17,16 @@ let sortDir   = 'asc';  // 'asc' | 'desc'
 // ─────────────────────────────────────────────
 //  YUKLANGANDA
 // ─────────────────────────────────────────────
+// ✅ TUZATILDI: sahifa yuklanganda (yoki hamburger submenu orqali
+// index.html'ga qaytarilganda) ko'rinadigan "boot-loading" ekranini
+// yashiradi — session holati (login kerakmi yoki app ko'rsatilsinmi)
+// aniqlangandan keyin chaqiriladi. Bir necha marta chaqirilsa ham
+// xavfsiz (element allaqachon yashirin bo'lsa hech narsa qilmaydi).
+function hideBootOverlay() {
+  const el = document.getElementById('boot-loading');
+  if (el) el.style.display = 'none';
+}
+
 window.addEventListener('DOMContentLoaded', async () => {
   // Bugungi sana — max qilib o'rnatish
   const today = todayStr();
@@ -54,14 +64,29 @@ window.addEventListener('DOMContentLoaded', async () => {
     localStorage.setItem('iit_u', JSON.stringify(U));
     window.history.replaceState({}, '', window.location.pathname);
     await showApp();
+    hideBootOverlay();
     handlePendingNav();
     return;
   }
 
+  let _sessionRestored = false;
   try {
     const saved = localStorage.getItem('iit_u');
-    if (saved) { U = JSON.parse(saved); await showApp(); handlePendingNav(); }
+    if (saved) {
+      U = JSON.parse(saved);
+      await showApp();
+      _sessionRestored = true;
+    }
   } catch (e) { localStorage.removeItem('iit_u'); }
+
+  // Session tiklanmagan bo'lsa (yoki tiklashda xatolik chiqsa) — haqiqiy
+  // login ekranini ko'rsatamiz. Aks holda showApp() allaqachon uni
+  // yashirgan. Ikkala holatda ham boot-overlay endi olib tashlanadi.
+  if (!_sessionRestored) {
+    g('login-screen').style.display = 'flex';
+  }
+  hideBootOverlay();
+  if (_sessionRestored) handlePendingNav();
 
   g('inp-parol').addEventListener('keydown', e => {
     if (e.key === 'Enter') doLogin();

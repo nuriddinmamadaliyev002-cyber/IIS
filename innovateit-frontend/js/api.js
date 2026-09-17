@@ -71,9 +71,30 @@ async function autoRefreshToken() {
   } catch (_) { /* tarmoq xatoligi — avvalgi token bilan davom etadi */ }
 }
 
+// ✅ TUZATILDI: yuqoridagi autoRefreshToken() avval YOZILGAN, lekin HECH
+// QAYERDAN CHAQIRILMAGAN edi — natijada tokenlar (standart 8 soat) hech
+// qanday ogohlantirishsiz tugar, va foydalanuvchi ishlab turgan paytida
+// birdan "login" holatiga tushib qolardi (masalan hamburger submenu
+// bosganda). Endi har bir sahifa yuklanganda darhol, va sahifa ochiq
+// turgan vaqtda muntazam ravishda (10 daqiqada bir) tekshirib turiladi.
+autoRefreshToken();
+setInterval(autoRefreshToken, 10 * 60 * 1000);
+
 // ─── 401 holatida login sahifasiga qaytish ───────────────────────────────────
 function handleUnauthorized() {
   tokenStore.clear();
+  // ✅ TUZATILDI: token bilan birga "kim tizimga kirgan" ma'lumotini ham
+  // tozalaymiz. Avval faqat token tozalanardi — masalan index.html'dagi
+  // "iit_u" localStorage'da qolib ketaverardi, shu sabab sahifa qayta
+  // yuklanganda U qayta tiklanib, tokensiz so'rov yana 401 qaytarib,
+  // foydalanuvchi tushunarsiz "login ekrani/qayta yuklanish" tsiklida
+  // qolib ketardi. Endi bitta 401'dan keyin sahifa toza login holatiga
+  // tushadi. (Boshqa panellarga tegishli bo'lmagan kalitlarni ham
+  // tozalash zararsiz — ular baribir ishlatilmaydi.)
+  localStorage.removeItem('iit_u');
+  ['iit_nofaol_user', 'iit_teacher_user', 'iit_davomat_user',
+   'iit_jadval_user', 'iit_teacher_dav_user', 'iit_pending_nav'
+  ].forEach(k => sessionStorage.removeItem(k));
   // file:// va http:// ikkalasida ham to'g'ri ishlashi uchun
   const page = window.location.pathname;
   const isFile = window.location.protocol === 'file:';

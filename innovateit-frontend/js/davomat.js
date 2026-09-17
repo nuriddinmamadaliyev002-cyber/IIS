@@ -13,7 +13,7 @@ const STATUS_META = {
 };
 
 // Foydalanuvchi ma'lumotlari (app.js dan sessionStorage orqali keladi)
-let U  = null; // { username, parol, ism, isSuper, viewingUsername, viewingIsm }
+let U  = null; // { ism, isSuper, isSuperProxy, superIsm, maktabId }
 let WU = null; // Haqiqiy ishlayotgan username (agar super admin boshqani ko'rsa)
 
 // O'quvchilar va davomat holati
@@ -187,39 +187,10 @@ function goBack() {
   window.location.href = 'index.html';
 }
 
-// ✅ Hamburger menyu: "O'quvchilar" guruhi ichidan to'g'ridan-to'g'ri
-// qisqa yo'llar (index.html'dagi bilan bir xil xatti-harakat)
-function openNofaolFromDavomat() {
-  const isProxy = U.isSuper && U.viewingUsername;
-  sessionStorage.setItem('iit_nofaol_user', JSON.stringify({
-    username:     isProxy ? U.viewingUsername : U.username,
-    parol:        U.parol,
-    ism:          isProxy ? U.viewingIsm : U.ism,
-    isSuper:      U.isSuper && !isProxy,
-    isSuperProxy: !!isProxy
-  }));
-  window.location.href = 'nofaol.html';
-}
-
-function buildTeacherUserFromDavomat() {
-  const isProxy = U.isSuper && U.viewingUsername;
-  if (!U.isSuper) return { ism: U.ism, isSuper: false, isSuperProxy: false, maktabId: null };
-  if (isProxy)     return { ism: U.viewingIsm, isSuper: false, isSuperProxy: true, superIsm: U.ism, maktabId: null };
-  return { username: U.username, parol: U.parol, ism: U.ism, isSuper: true };
-}
-function openTeachersFromDavomat() {
-  sessionStorage.setItem('iit_teacher_user', JSON.stringify(buildTeacherUserFromDavomat()));
-  window.location.href = 'oqituvchilar.html';
-}
-function openTeachersJadvalFromDavomat() {
-  const tu = buildTeacherUserFromDavomat();
-  sessionStorage.setItem('iit_jadval_user', JSON.stringify({ ...tu, maktabId: tu.maktabId || null }));
-  window.location.href = 'dars-jadvali.html';
-}
-function openTeachersDavomatFromDavomat() {
-  sessionStorage.setItem('iit_teacher_dav_user', JSON.stringify(buildTeacherUserFromDavomat()));
-  window.location.href = 'oqituvchilar-davomat.html';
-}
+// ✅ Hamburger menyu: "O'quvchilar"/"O'qituvchilar" guruhlari ichidan
+// qisqa yo'llar — endi umumiy js/mn-nav.js dagi mnGoHome() orqali
+// to'g'ridan-to'g'ri (index.html'ga kirmasdan) boshqariladi, shu sabab
+// bu yerda alohida funksiyalar shart emas (qarang: davomat.html).
 
 // ─────────────────────────────────────────────
 //  SANA BOSHQARUVI

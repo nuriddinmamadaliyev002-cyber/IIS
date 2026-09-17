@@ -14,6 +14,26 @@
 </head>
 <body>
 
+<!-- ════════════════ BOOT OVERLAY ════════════════
+     ✅ TUZATILDI (bug: sahifa yuklanganda/hamburger submenu orqali
+     index.html'ga qaytarilganda login oynasi "milt etib" chiqib
+     qolardi): #login-screen standart holatda ko'rinadigan qilib
+     yozilgan (pastda), shu sabab JS session'ni tekshirib bo'lguncha
+     (localStorage'dagi "iit_u" ni o'qish + showApp() ichidagi tarmoq
+     so'rovlari) login ekrani bir zumga ko'rinib turardi — hatto
+     foydalanuvchi allaqachon tizimga kirgan bo'lsa ham. Bu overlay
+     ana shu holatni yashirinib turadi va js/app.js session holatini
+     aniqlab bo'lgach (login kerakmi yoki app ko'rsatilsinmi) olib
+     tashlanadi — qarang: app.js dagi hideBootOverlay(). -->
+<div id="boot-loading" style="position:fixed;inset:0;z-index:99999;
+     display:flex;align-items:center;justify-content:center;
+     background:linear-gradient(135deg,#5b6cf6 0%,#6c63ff 35%,#48caa4 100%);">
+  <div style="width:40px;height:40px;border-radius:50%;
+       border:3px solid rgba(255,255,255,.35);border-top-color:#fff;
+       animation:iit-boot-spin .8s linear infinite;"></div>
+</div>
+<style>@keyframes iit-boot-spin{to{transform:rotate(360deg);}}</style>
+
 <!-- ════════════════ LOGIN ════════════════ -->
 <div id="login-screen">
   <div class="login-card">
