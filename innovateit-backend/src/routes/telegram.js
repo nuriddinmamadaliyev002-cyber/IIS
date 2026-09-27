@@ -131,6 +131,16 @@ async function buildAuthResponse(tgUser, tgId) {
     roleLabel = entity.maktab ? `${entity.maktab} o'quvchisi` : "O'quvchi — " + ism;
   }
 
+  else if (rol === 'buxgalter') {
+  const birinchiMaktab = (entity.maktablar || []).filter(Boolean)[0] || '';
+  roleLabel = birinchiMaktab ? `${birinchiMaktab} buxgalteri` : 'Buxgalter';
+} else if (rol === 'sales') {
+  const birinchiMaktab = (entity.maktablar || []).filter(Boolean)[0] || '';
+  roleLabel = birinchiMaktab ? `${birinchiMaktab} — sotuv bo'limi` : "Sotuv bo'limi xodimi";
+}
+
+  
+
   return {
     ok:    true,
     found: true,

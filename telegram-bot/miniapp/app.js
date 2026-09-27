@@ -122,9 +122,9 @@ function handleAuthResult(data) {
 // ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────
 function showRoleChooser(tgId, roles) {
   const rolLabels = {
-    admin:     { icon: '🖥️', label: 'Admin' },
+    admin:     { icon: '🖥️', label: 'Maktab admini' },
     buxgalter: { icon: '💼', label: 'Buxgalter' },
-    sales:     { icon: '🎯', label: 'Sales xodimi' },
+    sales:     { icon: '🎯', label: 'Sotuv bo`limi xodimi' },
     oqituvchi: { label: "O'qituvchi" },
     oquvchi:   { label: "O'quvchi" },
   };
