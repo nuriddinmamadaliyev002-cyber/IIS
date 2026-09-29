@@ -1137,6 +1137,7 @@ async function loadMavzuVazifa() {
   setMvMuddatText();
   _mv_fayl = '';
   renderMvFaylCurrent();
+  updateMvSaveState();
   if (!activeMvGuruh) return;
 
   const sana = dateStrLocal(window._mv_curdate);
@@ -1151,10 +1152,38 @@ async function loadMavzuVazifa() {
       renderMvFaylCurrent();
     }
   } catch (e) { /* jim - bo'sh forma bilan qoladi */ }
+  updateMvSaveState();
+}
+
+// Mavzu va uyga vazifa ikkalasi ham to'ldirilmaguncha "Saqlash" tugmasi faol bo'lmaydi.
+// (Muddat va fayl ixtiyoriy — ularga bog'liq emas.)
+function mvMissingFields() {
+  const missing = [];
+  if (!g('mv-mavzu').value.trim())  missing.push('dars mavzusi');
+  if (!g('mv-vazifa').value.trim()) missing.push('uyga vazifa');
+  return missing;
+}
+
+function updateMvSaveState() {
+  const btn  = g('mv-save-btn');
+  const hint = g('mv-save-hint');
+  if (!btn) return;
+  const missing = mvMissingFields();
+  btn.disabled = missing.length > 0;
+  if (hint) {
+    hint.style.display = missing.length ? 'block' : 'none';
+    hint.textContent   = missing.length ? `Saqlash uchun to'ldiring: ${missing.join(' va ')}` : '';
+  }
 }
 
 async function saveMavzuVazifa() {
   if (!activeMvGuruh) return;
+  const missing = mvMissingFields();
+  if (missing.length) {
+    updateMvSaveState();
+    alert(`⚠️ Saqlash uchun to'ldiring: ${missing.join(' va ')}`);
+    return;
+  }
   const muddat = g('mv-muddat').value || '';
   if (muddat && muddat < dateStrLocal(new Date())) {
     alert("⚠️ Topshirish muddati sifatida o'tmishdagi sana tanlangan. Iltimos, muddatni bugungi yoki kelajakdagi sanaga o'zgartiring.");
@@ -1180,7 +1209,7 @@ async function saveMavzuVazifa() {
   } catch (e) {
     alert('Saqlashda xatolik yuz berdi');
   } finally {
-    btn.disabled = false;
+    updateMvSaveState();
   }
 }
 

@@ -100,6 +100,8 @@ router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
 
   if (!guruhId || !sana) return res.status(400).json({ ok: false, error: 'guruhId va sana kerak' });
   if (!entityId) return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
+  if (!(mavzu || '').trim())       return res.status(400).json({ ok: false, error: 'Dars mavzusi majburiy' });
+  if (!(uy_vazifasi || '').trim()) return res.status(400).json({ ok: false, error: 'Uyga vazifa majburiy' });
   if ((muddat || '').trim() && muddat < bugungiSanaISO())
     return res.status(400).json({ ok: false, error: "Topshirish muddati sifatida o'tmishdagi sana tanlab bo'lmaydi" });
 

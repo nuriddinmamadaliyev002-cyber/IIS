@@ -281,6 +281,8 @@ button, a, input, select, textarea, [role="button"] {
   cursor: pointer; font-family: inherit;
 }
 .oq-mark-btn:hover { opacity: .9; }
+.oq-mark-btn:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.35); }
+.oq-mark-btn:disabled:hover { opacity: .45; }
 
 /* ── Dars belgilash status tugmalari ── */
 .dars-status-row { display: flex; gap: 8px; }
