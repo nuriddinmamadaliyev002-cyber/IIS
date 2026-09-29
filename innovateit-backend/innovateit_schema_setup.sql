@@ -253,7 +253,6 @@ CREATE TABLE IF NOT EXISTS tolovlar (
     tolov_qildi            INTEGER DEFAULT 0,              -- haqiqatda to'langan summa
     tolov_sanasi           TEXT    DEFAULT '',
     ehtimoliy_tolov_sanasi TEXT    DEFAULT '',             -- kelgusida to'lov qilinishi kutilayotgan sana
-    kvitansiya_fayl        TEXT    DEFAULT '',             -- yuklangan kvitansiya fayli
     yangilangan            TEXT    DEFAULT '',
     UNIQUE(oy, oquvchi_id)
 );

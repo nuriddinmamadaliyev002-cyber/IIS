@@ -373,7 +373,7 @@ const api = {
   editBlogCategory:    (id,d) => api.put(`/api/blog/admin/categories/${id}`, d),
   deleteBlogCategory:  (id)   => api.del(`/api/blog/admin/categories/${id}`),
 
-  // ─── Fayl upload (kvitansiya) — token bilan ───
+  // ─── Fayl upload (uy vazifasi javoblari, blog rasmlari) — token bilan ───
   uploadFile: async (formData) => {
     const token = tokenStore.get();
     const headers = {};

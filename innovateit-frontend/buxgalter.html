@@ -190,7 +190,6 @@
             <th class="col-qildi"  data-col="qildi">To'lov qildi</th>
             <th class="col-sana"   data-col="sana">To'lov sanasi</th>
             <th class="col-holat"  data-col="holat">To'lov holati</th>
-            <th class="col-kvit"   data-col="kvit">Kvitansiya fayli</th>
           </tr>
         </thead>
         <tbody id="bux-tbody">
@@ -204,28 +203,6 @@
 
 <!-- Toast -->
 <div class="bux-toast" id="bux-toast"></div>
-
-<!-- ── Kvitansiya Context Menu ── -->
-<div id="kvit-ctx-menu" class="kvit-ctx-menu" style="display:none">
-  <button class="kvit-ctx-item kvit-ctx-replace" onclick="ctxReplaceKvit()">
-    <span class="kvit-ctx-icon">🔄</span> Kvitansiya faylini almashtirish
-  </button>
-  <button class="kvit-ctx-item kvit-ctx-add" onclick="ctxAddKvit()">
-    <span class="kvit-ctx-icon">➕</span> Yangi kvitansiya fayli qo'shish
-  </button>
-  <div class="kvit-ctx-divider"></div>
-  <button class="kvit-ctx-item kvit-ctx-delete" onclick="ctxDeleteKvit()">
-    <span class="kvit-ctx-icon">🗑️</span>Ushbu kvitansiya faylini o'chirish
-  </button>
-</div>
-
-<!-- ── In-page Kvitansiya Lightbox ── -->
-<div id="kvit-lightbox" onclick="kvitLbClose(event)">
-  <div id="kvit-lb-inner">
-    <button id="kvit-lb-close" onclick="kvitLbClose(event)">✕</button>
-    <div id="kvit-lb-name"></div>
-  </div>
-</div>
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_bux_token';</script>
 <script src="js/api.js?v=2"></script>

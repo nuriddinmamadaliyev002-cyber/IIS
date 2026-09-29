@@ -301,7 +301,6 @@ const ColContextMenu = (() => {
       qildi:  parseInt(t.tolov_qildi  || 0),
       sana:   t.tolov_sanasi      || '',
       holat:  (parseInt(t.tolov_kerak||0) - parseInt(t.tolov_qildi||0)),
-      kvit:   t.kvitansiya_fayl   || '',
       num:    s.id || 0,
     };
     return map[col] !== undefined ? map[col] : '';

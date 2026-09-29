@@ -116,7 +116,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// ─── Fayl yuklash (kvitansiyalar, vazifa javoblari va h.k. uchun) ───
+// ─── Fayl yuklash (vazifa javoblari, blog rasmlari va h.k. uchun) ───
 app.post('/upload', (req, res) => {
   upload.single('file')(req, res, (err) => {
     if (err) {

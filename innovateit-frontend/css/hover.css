@@ -144,12 +144,6 @@ button, .btn-action, .tab-btn, .jad-tab,
 /* ─────────────────────────────────────────────────
    8. BUXGALTER SAHIFASI
 ───────────────────────────────────────────────── */
-.kvit-drop-zone:hover,
-.kvit-drop-zone.drag-over {
-  border-color: #16a34a;
-  background: #dcfce7;
-}
-
 /* ─────────────────────────────────────────────────
    9. MODAL TUGMALAR
 ───────────────────────────────────────────────── */

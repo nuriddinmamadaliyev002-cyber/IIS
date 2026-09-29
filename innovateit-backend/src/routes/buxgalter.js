@@ -19,23 +19,6 @@ const { requireAuth } = require('../middleware/jwt');
 const router = Router();
 function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
 
-// ─── kvitansiya fayl yordamchilari ───────────────────────────────────────────
-function normalizeKvitFiles(raw) {
-  if (!raw) return [];
-  if (Array.isArray(raw)) return raw.filter(Boolean);
-  try {
-    const parsed = JSON.parse(raw);
-    if (Array.isArray(parsed)) return parsed.filter(Boolean);
-    if (typeof parsed === 'string' && parsed) return [parsed];
-  } catch {}
-  if (typeof raw === 'string' && raw.trim()) return [raw.trim()];
-  return [];
-}
-function serializeKvitFiles(files) {
-  const arr = (Array.isArray(files) ? files : []).filter(Boolean);
-  return arr.length === 0 ? '' : JSON.stringify(arr);
-}
-
 // ─── Buxgalterni maktab id lariga ko'ra olish ────────────────────────────────
 async function getBuxMaktabIds(buxId) {
   const res = await pool.query(
@@ -181,15 +164,13 @@ router.post('/tolovlar', requireAuth(['admin', 'buxgalter']), async (req, res) =
   if (!oy || !ism || !familiya)
     return res.status(400).json({ ok: false, error: 'Majburiy maydonlar yetishmaydi' });
 
-  const kvFiles = serializeKvitFiles(normalizeKvitFiles(p.kvitansiya_fayl));
-
   try {
     await pool.query(
       `INSERT INTO tolovlar
          (oy, oquvchi_id, oquvchi_ism, oquvchi_familiya, maktab_id, sinf, telefon,
           tarif, qaydnoma, ehtimoliy_tolov_sanasi, gaplashilgan_vaqt, tolov_kerak, tolov_qildi,
-          tolov_sanasi, kvitansiya_fayl, yangilangan)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16)
+          tolov_sanasi, yangilangan)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15)
        ON CONFLICT (oy, oquvchi_id) DO UPDATE SET
          tarif             = EXCLUDED.tarif,
          qaydnoma          = EXCLUDED.qaydnoma,
@@ -198,13 +179,12 @@ router.post('/tolovlar', requireAuth(['admin', 'buxgalter']), async (req, res) =
          tolov_kerak       = EXCLUDED.tolov_kerak,
          tolov_qildi       = EXCLUDED.tolov_qildi,
          tolov_sanasi      = EXCLUDED.tolov_sanasi,
-         kvitansiya_fayl   = EXCLUDED.kvitansiya_fayl,
          yangilangan       = EXCLUDED.yangilangan`,
       [oy, oquvchiId, ism, familiya, maktabId,
        p.sinf||'', p.telefon||'',
        parseInt(p.tarif)||0, p.qaydnoma||'', p.ehtimoliy_tolov_sanasi||'', p.gaplashilgan_vaqt||'',
        parseInt(p.tolov_kerak)||0, parseInt(p.tolov_qildi)||0,
-       p.tolov_sanasi||'', kvFiles, todayUZ()]
+       p.tolov_sanasi||'', todayUZ()]
     );
     res.json({ ok: true });
   } catch (err) {
