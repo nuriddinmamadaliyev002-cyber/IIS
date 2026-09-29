@@ -4,6 +4,8 @@
 //    GET    /api/vazifalar/guruh/:guruhId            — bir guruhning bir kunlik
 //                                                        mavzu/vazifasini olish
 //    POST   /api/vazifalar/guruh/:guruhId             — mavzu/vazifa saqlash (upsert)
+//    DELETE /api/vazifalar/guruh/:guruhId             — bir kunlik mavzu/vazifani o'chirish
+//                                                        (o'quvchi javoblari va baholari ham o'chadi)
 //    GET    /api/vazifalar/tekshirish                 — kelgan javoblar ro'yxati
 //    POST   /api/vazifalar/javob/:javobId/baholash     — javobni baholash
 //
@@ -13,6 +15,8 @@
 //
 // ─────────────────────────────────────────────────────────────────────────────
 const { Router }      = require('express');
+const fs              = require('fs');
+const path            = require('path');
 const pool            = require('../db');
 const { requireAuth } = require('../middleware/jwt');
 
@@ -24,6 +28,42 @@ function ismFamiliya(ism) {
   const parts = (ism || '').trim().split(' ');
   return { familiya: parts[0] || '', ismOnly: parts.slice(1).join(' ') || '' };
 }
+
+// Yuklangan fayllar papkasi (index.js dagi UPLOAD_DIR bilan bir xil joy)
+const UPLOAD_DIR = path.join(__dirname, '../../uploads');
+
+// Serverning OS sozlamasidan qat'i nazar O'zbekiston vaqti: "DD.MM.YYYY HH:MM"
+function hozirUZ() {
+  const parts = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Tashkent', day: '2-digit', month: '2-digit', year: 'numeric',
+    hour: '2-digit', minute: '2-digit', hourCycle: 'h23'
+  }).formatToParts(new Date());
+  const v = t => parts.find(p => p.type === t).value;
+  return `${v('day')}.${v('month')}.${v('year')} ${v('hour')}:${v('minute')}`;
+}
+
+// Diskdagi faylni jim o'chiradi. Faqat oddiy fayl nomi qabul qilinadi
+// (yo'l ajratgichlari yoki http havolalar e'tiborsiz qoldiriladi).
+function faylniOchirish(nom) {
+  try {
+    const n = String(nom || '').trim();
+    if (!n || n !== path.basename(n)) return;
+    fs.unlink(path.join(UPLOAD_DIR, n), () => {});
+  } catch (_) { /* fayl bo'lmasa ham muammo emas */ }
+}
+
+// Guruh haqiqatan ham shu o'qituvchiga tegishli ekanini tekshiradi
+async function oqituvchiGuruhi(guruhId, ism) {
+  const { familiya, ismOnly } = ismFamiliya(ism);
+  const r = await pool.query(
+    `SELECT id, maktab_id FROM dars_jadvali
+     WHERE id=$1 AND LOWER(TRIM(teacher_familiya))=LOWER($2) AND LOWER(TRIM(teacher_ism))=LOWER($3)`,
+    [guruhId, familiya, ismOnly]
+  );
+  return r.rows[0] || null;
+}
+
+const SANA_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 // Bir javobga biriktirilishi mumkin bo'lgan eng ko'p fayl soni
 const MAX_JAVOB_FAYL = 5;
@@ -62,6 +102,8 @@ async function fayllarniOlish(javobIdlar) {
 // ═══════════════════════════════════════════════════════════════════════════
 
 // ─── GET /api/vazifalar/guruh/:guruhId?sana=YYYY-MM-DD ────────────────────────
+// Javobda kartochka uchun kerakli qo'shimcha ma'lumotlar ham bor:
+// yaratilgan/yangilangan vaqt va kelgan/baholangan javoblar soni.
 router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
   const { ism, entityId } = req.user;
   const { sana } = req.query;
@@ -70,19 +112,19 @@ router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
   if (!guruhId || !sana) return res.status(400).json({ ok: false, error: 'guruhId va sana kerak' });
   if (!entityId) return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
 
-  const { familiya, ismOnly } = ismFamiliya(ism);
-
   try {
-    // Guruh haqiqatan ham shu o'qituvchiga tegishli ekanini tekshiramiz
-    const guruhRes = await pool.query(
-      `SELECT id FROM dars_jadvali
-       WHERE id=$1 AND LOWER(TRIM(teacher_familiya))=LOWER($2) AND LOWER(TRIM(teacher_ism))=LOWER($3)`,
-      [guruhId, familiya, ismOnly]
-    );
-    if (guruhRes.rowCount === 0) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
+    const guruh = await oqituvchiGuruhi(guruhId, ism);
+    if (!guruh) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
 
     const result = await pool.query(
-      `SELECT id, mavzu, uy_vazifasi, vazifa_fayl, muddat FROM dars_mavzulari WHERE guruh_id=$1 AND sana=$2`,
+      `SELECT dm.id, dm.mavzu, dm.uy_vazifasi, dm.vazifa_fayl, dm.muddat,
+              dm.yaratilgan, dm.yangilangan,
+              (SELECT COUNT(*) FROM vazifa_javoblari vj
+                WHERE vj.vazifa_id = dm.id)::int AS javoblar_soni,
+              (SELECT COUNT(*) FROM vazifa_javoblari vj
+                WHERE vj.vazifa_id = dm.id AND vj.holat = 'tekshirilgan')::int AS baholangan_soni
+       FROM dars_mavzulari dm
+       WHERE dm.guruh_id=$1 AND dm.sana=$2`,
       [guruhId, sana]
     );
     res.json({ ok: true, vazifa: result.rows[0] || null });
@@ -94,40 +136,118 @@ router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
 
 // ─── POST /api/vazifalar/guruh/:guruhId — mavzu/vazifa saqlash (upsert) ──────
 router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
-  const { ism, entityId, maktabIdlar } = req.user;
+  const { ism, entityId } = req.user;
   const { sana, mavzu, uy_vazifasi, muddat, vazifa_fayl } = req.body;
   const guruhId = parseInt(req.params.guruhId);
 
   if (!guruhId || !sana) return res.status(400).json({ ok: false, error: 'guruhId va sana kerak' });
+  if (!SANA_RE.test(String(sana))) return res.status(400).json({ ok: false, error: "Sana formati noto'g'ri" });
   if (!entityId) return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
   if (!(mavzu || '').trim())       return res.status(400).json({ ok: false, error: 'Dars mavzusi majburiy' });
   if (!(uy_vazifasi || '').trim()) return res.status(400).json({ ok: false, error: 'Uyga vazifa majburiy' });
-  if ((muddat || '').trim() && muddat < bugungiSanaISO())
-    return res.status(400).json({ ok: false, error: "Topshirish muddati sifatida o'tmishdagi sana tanlab bo'lmaydi" });
-
-  const { familiya, ismOnly } = ismFamiliya(ism);
 
   try {
-    const guruhRes = await pool.query(
-      `SELECT id, maktab_id FROM dars_jadvali
-       WHERE id=$1 AND LOWER(TRIM(teacher_familiya))=LOWER($2) AND LOWER(TRIM(teacher_ism))=LOWER($3)`,
-      [guruhId, familiya, ismOnly]
-    );
-    if (guruhRes.rowCount === 0) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
+    const guruh = await oqituvchiGuruhi(guruhId, ism);
+    if (!guruh) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
 
-    const maktabId = guruhRes.rows[0].maktab_id;
-    const now = new Date().toLocaleString('uz-UZ');
+    // Avvalgi holat: muddat o'zgarganini va eski fayl almashganini bilish uchun
+    const oldRes = await pool.query(
+      `SELECT vazifa_fayl, muddat FROM dars_mavzulari WHERE guruh_id=$1 AND sana=$2`,
+      [guruhId, sana]
+    );
+    const old = oldRes.rows[0] || null;
+
+    // O'tmishdagi muddatni FAQAT yangi qo'yilayotgan/o'zgartirilayotgan bo'lsa rad etamiz.
+    // Aks holda kecha berilgan vazifadagi imloviy xatoni tuzatib ham bo'lmay qoladi
+    // (eski muddat allaqachon o'tib ketgan bo'ladi).
+    const yangiMuddat = (muddat || '').trim();
+    if (yangiMuddat && yangiMuddat < bugungiSanaISO() && yangiMuddat !== ((old && old.muddat) || ''))
+      return res.status(400).json({ ok: false, error: "Topshirish muddati sifatida o'tmishdagi sana tanlab bo'lmaydi" });
+
+    const now = hozirUZ();
+    const yangiFayl = vazifa_fayl || '';
 
     await pool.query(
-      `INSERT INTO dars_mavzulari (guruh_id, maktab_id, sana, mavzu, uy_vazifasi, vazifa_fayl, muddat, yangilangan)
+      `INSERT INTO dars_mavzulari (guruh_id, maktab_id, sana, mavzu, uy_vazifasi, vazifa_fayl, muddat, yaratilgan)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (guruh_id, sana) DO UPDATE
          SET mavzu=$4, uy_vazifasi=$5, vazifa_fayl=$6, muddat=$7, yangilangan=$8`,
-      [guruhId, maktabId, sana, mavzu || '', uy_vazifasi || '', vazifa_fayl || '', muddat || '', now]
+      [guruhId, guruh.maktab_id, sana, mavzu || '', uy_vazifasi || '', yangiFayl, yangiMuddat, now]
     );
+
+    // Fayl almashtirilgan yoki olib tashlangan bo'lsa — eskisini diskdan tozalaymiz
+    if (old && old.vazifa_fayl && old.vazifa_fayl !== yangiFayl) faylniOchirish(old.vazifa_fayl);
+
     res.json({ ok: true });
   } catch (err) {
     console.error('vazifalar/guruh POST xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── DELETE /api/vazifalar/guruh/:guruhId  (body yoki query: { sana }) ────────
+// Bir kunlik mavzu/vazifani o'chiradi. DIQQAT: vazifa_javoblari jadvali
+// dars_mavzulari ga ON DELETE CASCADE bilan bog'langan — o'quvchilarning javoblari,
+// baholari va yuklagan fayllari ham o'chadi. Frontend buni tasdiqlash oynasida
+// javoblar soni bilan ogohlantiradi.
+router.delete('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, entityId } = req.user;
+  const sana = (req.body && req.body.sana) || req.query.sana;
+  const guruhId = parseInt(req.params.guruhId);
+
+  if (!guruhId || !sana) return res.status(400).json({ ok: false, error: 'guruhId va sana kerak' });
+  if (!SANA_RE.test(String(sana))) return res.status(400).json({ ok: false, error: "Sana formati noto'g'ri" });
+  if (!entityId) return res.status(400).json({ ok: false, error: "O'qituvchi ID topilmadi" });
+
+  try {
+    const guruh = await oqituvchiGuruhi(guruhId, ism);
+    if (!guruh) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
+
+    const client = await pool.connect();
+    let fayllar = [];
+    let ochirilganJavoblar = 0;
+    try {
+      await client.query('BEGIN');
+
+      const row = await client.query(
+        `SELECT id, vazifa_fayl FROM dars_mavzulari WHERE guruh_id=$1 AND sana=$2 FOR UPDATE`,
+        [guruhId, sana]
+      );
+      if (row.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return res.status(404).json({ ok: false, error: 'Vazifa topilmadi (allaqachon o\'chirilgan bo\'lishi mumkin)' });
+      }
+      const vazifaId = row.rows[0].id;
+
+      // CASCADE bilan o'chadigan javob fayllarining nomlarini oldindan yig'ib olamiz
+      const jf = await client.query(
+        `SELECT f.fayl_nomi
+           FROM vazifa_javob_fayllari f
+           JOIN vazifa_javoblari vj ON vj.id = f.javob_id
+          WHERE vj.vazifa_id = $1`,
+        [vazifaId]
+      );
+      const cnt = await client.query(
+        `SELECT COUNT(*)::int AS n FROM vazifa_javoblari WHERE vazifa_id=$1`, [vazifaId]
+      );
+      ochirilganJavoblar = cnt.rows[0].n;
+      fayllar = [row.rows[0].vazifa_fayl, ...jf.rows.map(r => r.fayl_nomi)];
+
+      await client.query(`DELETE FROM dars_mavzulari WHERE id=$1`, [vazifaId]);
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK').catch(() => {});
+      throw err;
+    } finally {
+      client.release();
+    }
+
+    // Baza o'zgarishi muvaffaqiyatli tugagandan KEYIN fayllarni tozalaymiz
+    fayllar.forEach(faylniOchirish);
+
+    res.json({ ok: true, ochirilgan_javoblar: ochirilganJavoblar });
+  } catch (err) {
+    console.error('vazifalar/guruh DELETE xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });

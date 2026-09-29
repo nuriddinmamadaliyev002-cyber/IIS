@@ -250,6 +250,7 @@ const api = {
   // ─── Mavzu / Uyga vazifa ───
   getGuruhVazifa:      (guruhId, sana) => api.get(`/api/vazifalar/guruh/${guruhId}`, { sana }),
   saveGuruhVazifa:     (guruhId, d)    => api.post(`/api/vazifalar/guruh/${guruhId}`, d),
+  deleteGuruhVazifa:   (guruhId, sana) => api.del(`/api/vazifalar/guruh/${guruhId}`, { sana }),
   getVazifalarTekshirish: (holat)      => api.get('/api/vazifalar/tekshirish', { holat }),
   baholaVazifaJavobi:  (javobId, d)    => api.post(`/api/vazifalar/javob/${javobId}/baholash`, d),
   getMeningVazifalarim: ()             => api.get('/api/vazifalar/mening-vazifalarim'),

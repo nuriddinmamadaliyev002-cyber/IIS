@@ -891,6 +891,8 @@ async function onDavomatDatePick() {
 // ═══════════════════════════════════════════
 let activeMvGuruh = null;
 let _mv_fayl = '';
+let _mv_saved = null;   // serverdagi saqlangan vazifa (tanlangan kunda yo'q bo'lsa null)
+let _mv_noteTimer = null;
 
 function resolveUploadUrl(filename) {
   if (!filename) return '';
@@ -987,7 +989,9 @@ function closeMvEditor() {
   navRelease('mvEditor');
   g('mv-editor-wrap').style.display = 'none';
   g('mv-guruhlar-wrap').style.display = 'block';
+  closeMvDeleteModal();
   activeMvGuruh = null;
+  _mv_saved = null;
 }
 
 function setMvDateUI() {
@@ -1128,31 +1132,217 @@ async function uploadMvFayl() {
 }
 
 // ─── Mavzu / Uyga vazifa (joriy guruh + joriy sana bo'yicha) ─────────────────
-async function loadMavzuVazifa() {
-  g('mv-saved-note').style.display = 'none';
-  g('mv-fayl-status').textContent = '';
-  g('mv-mavzu').value = '';
-  g('mv-vazifa').value = '';
-  g('mv-muddat').value = '';
+//
+//  Sahifa to'rt holatdan birida bo'ladi:
+//    'loading' — serverdan olinmoqda
+//    'empty'   — bu kunga vazifa yozilmagan → bo'sh forma
+//    'view'    — vazifa saqlangan → kartochka (Tahrirlash / O'chirish tugmalari bilan)
+//    'edit'    — kartochkadan "Tahrirlash" bosilgan → oldindan to'ldirilgan forma
+function setMvMode(mode) {
+  g('mv-loading').style.display    = mode === 'loading' ? 'block' : 'none';
+  g('mv-card-wrap').style.display  = mode === 'view' ? 'block' : 'none';
+  g('mv-form-wrap').style.display  = (mode === 'empty' || mode === 'edit') ? 'block' : 'none';
+  g('mv-cancel-btn').style.display = mode === 'edit' ? 'block' : 'none';
+  g('mv-save-btn').textContent     = mode === 'edit' ? '💾 Yangilash' : '💾 Mavzu va vazifani saqlash';
+
+  // Javoblar allaqachon kelgan bo'lsa — tahrirlashdan oldin ogohlantiramiz
+  const warn = g('mv-edit-warn');
+  const jn = _mv_saved ? (_mv_saved.javoblar_soni || 0) : 0;
+  if (mode === 'edit' && jn > 0) {
+    warn.textContent = `ℹ️ ${jn} ta o'quvchi allaqachon javob yuborgan. Vazifa matnini o'zgartirsangiz, ular eski topshiriqqa javob bergan bo'ladi.`;
+    warn.style.display = 'block';
+  } else {
+    warn.style.display = 'none';
+  }
+}
+
+// Formani berilgan vazifa bilan to'ldiradi (null bo'lsa — tozalaydi)
+function fillMvForm(v) {
+  g('mv-mavzu').value  = v ? (v.mavzu || '') : '';
+  g('mv-vazifa').value = v ? (v.uy_vazifasi || '') : '';
+  g('mv-muddat').value = v ? (v.muddat || '') : '';
   setMvMuddatText();
-  _mv_fayl = '';
+  _mv_fayl = v ? (v.vazifa_fayl || '') : '';
+  g('mv-fayl-status').textContent = '';
   renderMvFaylCurrent();
   updateMvSaveState();
-  if (!activeMvGuruh) return;
+}
 
-  const sana = dateStrLocal(window._mv_curdate);
+function showMvNote(text, isError) {
+  const el = g('mv-saved-note');
+  el.textContent = text;
+  el.classList.toggle('mv-note-err', !!isError);
+  el.style.display = 'block';
+  clearTimeout(_mv_noteTimer);
+  _mv_noteTimer = setTimeout(() => { el.style.display = 'none'; }, 3000);
+}
+
+async function loadMavzuVazifa() {
+  clearTimeout(_mv_noteTimer);
+  g('mv-saved-note').style.display = 'none';
+  _mv_saved = null;
+  fillMvForm(null);
+  if (!activeMvGuruh) { setMvMode('empty'); return; }
+
+  setMvMode('loading');
+  const guruhId = activeMvGuruh.id;
+  const sana    = dateStrLocal(window._mv_curdate);
+
+  let res = null;
+  try { res = await api.getGuruhVazifa(guruhId, sana); } catch (e) { res = null; }
+
+  // Kutish paytida boshqa sanaga o'tib ketilgan yoki editor yopilgan bo'lsa — eski javobni tashlaymiz
+  if (!activeMvGuruh || activeMvGuruh.id !== guruhId || dateStrLocal(window._mv_curdate) !== sana) return;
+
+  if (res && res.ok && res.vazifa) {
+    _mv_saved = res.vazifa;
+    fillMvForm(_mv_saved);
+    renderMvCard(_mv_saved);
+    setMvMode('view');
+  } else {
+    setMvMode('empty');
+    if (!res || !res.ok) showMvNote("⚠️ Saqlangan vazifani yuklab bo'lmadi. Internetni tekshiring", true);
+  }
+}
+
+// ─── Kartochka ────────────────────────────────────────────────────────────────
+function mvFmtMuddat(iso) {
+  const [y, m, d] = String(iso).split('-');
+  return (y && m && d) ? `${d}/${m}/${y}` : iso;
+}
+
+function mvFaylHtml(nom) {
+  if (!nom) return '';
+  const url = esc(resolveUploadUrl(nom));
+  const ext = (String(nom).split('?')[0].split('.').pop() || '').toLowerCase();
+
+  if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+    return `<a class="mv-file-img" href="${url}" target="_blank" rel="noopener" aria-label="Rasmni to'liq ochish">
+      <img src="${url}" alt="Biriktirilgan rasm" loading="lazy" onerror="mvImgFail(this)">
+    </a>`;
+  }
+  const isPdf = ext === 'pdf';
+  const label = isPdf ? 'PDF fayl' : (ext === 'doc' || ext === 'docx') ? 'Word fayl' : 'Biriktirilgan fayl';
+  return `<a class="mv-file-row" href="${url}" target="_blank" rel="noopener">
+    <span class="mv-file-ico">${isPdf ? '📄' : '📝'}</span>
+    <span class="mv-file-name">${label}</span>
+    <span class="mv-file-open">Ochish</span>
+  </a>`;
+}
+
+// Rasm yuklanmasa — oddiy "Ochish" qatoriga o'tamiz
+function mvImgFail(img) {
+  const a = img.closest('a');
+  if (!a) return;
+  a.className = 'mv-file-row';
+  a.innerHTML = '<span class="mv-file-ico">🖼</span><span class="mv-file-name">Biriktirilgan rasm</span><span class="mv-file-open">Ochish</span>';
+}
+
+function renderMvCard(v) {
+  const wrap = g('mv-card-wrap');
+  const bugun = dateStrLocal(new Date());
+
+  // Vaqt belgisi
+  const vaqt = v.yangilangan ? `Tahrirlangan: ${v.yangilangan}` : (v.yaratilgan ? `Yozilgan: ${v.yaratilgan}` : '');
+
+  // Muddat
+  let muddatHtml, muddatHint = '';
+  if (v.muddat) {
+    const otgan = v.muddat < bugun;
+    muddatHtml = otgan
+      ? `<span class="mv-chip mv-chip-danger">⏰ Muddat tugagan: ${esc(mvFmtMuddat(v.muddat))}</span>`
+      : `<span class="mv-chip mv-chip-warn">📅 Muddat: ${esc(mvFmtMuddat(v.muddat))}</span>`;
+    if (otgan) muddatHint = `<div class="mv-hint-danger">O'quvchilar endi javob yubora olmaydi. Davom ettirish uchun "Tahrirlash" orqali muddatni yangilang.</div>`;
+  } else {
+    muddatHtml = `<span class="mv-chip">Muddat belgilanmagan</span>`;
+  }
+
+  // Javoblar
+  const jn = v.javoblar_soni || 0, bn = v.baholangan_soni || 0;
+  const statHtml = jn === 0
+    ? `<div class="mv-stat mv-stat-empty">Hali javob kelmagan</div>`
+    : `<div class="mv-stat"><span>👥 ${jn} ta javob keldi${bn ? `, ${bn} tasi baholangan` : ''}</span>
+         <button type="button" class="mv-link" onclick="openMvJavoblar()">Javoblarni ko'rish</button></div>`;
+
+  wrap.innerHTML = `
+    <div class="mv-card-top">
+      <span class="mv-badge-ok">✅ Saqlangan</span>
+      <span class="mv-card-time">${esc(vaqt)}</span>
+    </div>
+
+    <div class="mv-card-label">Dars mavzusi</div>
+    <div class="mv-card-title">${esc(v.mavzu || '—')}</div>
+
+    <div class="mv-card-label">Uyga vazifa</div>
+    <div class="mv-card-text">${esc(v.uy_vazifasi || '—')}</div>
+
+    ${mvFaylHtml(v.vazifa_fayl)}
+
+    <div class="mv-chips">${muddatHtml}</div>
+    ${muddatHint}
+    ${statHtml}
+
+    <div class="mv-actions">
+      <button type="button" class="mv-btn" onclick="editMvVazifa()">✏️ Tahrirlash</button>
+      <button type="button" class="mv-btn mv-btn-danger" onclick="openMvDeleteModal()">🗑 O'chirish</button>
+    </div>`;
+}
+
+function openMvJavoblar() { switchTab('vazifalar'); }
+
+function editMvVazifa() {
+  if (!_mv_saved) return;
+  fillMvForm(_mv_saved);
+  setMvMode('edit');
+  const f = g('mv-form-wrap');
+  if (f && f.scrollIntoView) f.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function cancelMvEdit() {
+  if (!_mv_saved) { setMvMode('empty'); return; }
+  fillMvForm(_mv_saved);       // kiritilgan o'zgarishlarni bekor qilamiz
+  renderMvCard(_mv_saved);
+  setMvMode('view');
+}
+
+// ─── O'chirish (tasdiqlash oynasi bilan) ──────────────────────────────────────
+function openMvDeleteModal() {
+  if (!_mv_saved) return;
+  const jn = _mv_saved.javoblar_soni || 0, bn = _mv_saved.baholangan_soni || 0;
+  const mavzu = `<div style="color:var(--muted);margin-bottom:8px;">Mavzu: <b style="color:var(--text);">${esc(_mv_saved.mavzu || '—')}</b></div>`;
+  g('mv-delete-body').innerHTML = mavzu + (jn === 0
+    ? "Bu kundagi mavzu va uyga vazifa o'chiriladi. O'quvchilar uni endi ko'rmaydi."
+    : `<b>Diqqat:</b> o'quvchilarning ${jn} ta javobi${bn ? ` va ${bn} ta bahosi` : ''} ham o'chib ketadi. Buni qaytarib bo'lmaydi.`);
+  g('mv-delete-msg').textContent = '';
+  g('mv-delete-confirm').disabled = false;
+  g('mv-delete-cancel').disabled = false;
+  g('mv-delete-modal').style.display = 'flex';
+}
+
+function closeMvDeleteModal() {
+  const m = g('mv-delete-modal');
+  if (m) m.style.display = 'none';
+}
+
+async function confirmMvDelete() {
+  if (!activeMvGuruh) return;
+  const btn = g('mv-delete-confirm'), cancel = g('mv-delete-cancel'), msg = g('mv-delete-msg');
+  msg.textContent = '';
+  btn.disabled = true; cancel.disabled = true;
   try {
-    const res = await api.getGuruhVazifa(activeMvGuruh.id, sana);
-    if (res && res.ok && res.vazifa) {
-      g('mv-mavzu').value  = res.vazifa.mavzu || '';
-      g('mv-vazifa').value = res.vazifa.uy_vazifasi || '';
-      g('mv-muddat').value = res.vazifa.muddat || '';
-      setMvMuddatText();
-      _mv_fayl = res.vazifa.vazifa_fayl || '';
-      renderMvFaylCurrent();
+    const res = await api.deleteGuruhVazifa(activeMvGuruh.id, dateStrLocal(window._mv_curdate));
+    if (res && res.ok) {
+      closeMvDeleteModal();
+      await loadMavzuVazifa();
+      showMvNote("🗑 Vazifa o'chirildi");
+    } else {
+      msg.textContent = (res && res.error) || "O'chirishda xatolik yuz berdi";
     }
-  } catch (e) { /* jim - bo'sh forma bilan qoladi */ }
-  updateMvSaveState();
+  } catch (e) {
+    msg.textContent = "O'chirishda xatolik yuz berdi";
+  } finally {
+    btn.disabled = false; cancel.disabled = false;
+  }
 }
 
 // Mavzu va uyga vazifa ikkalasi ham to'ldirilmaguncha "Saqlash" tugmasi faol bo'lmaydi.
@@ -1184,11 +1374,15 @@ async function saveMavzuVazifa() {
     alert(`⚠️ Saqlash uchun to'ldiring: ${missing.join(' va ')}`);
     return;
   }
-  const muddat = g('mv-muddat').value || '';
-  if (muddat && muddat < dateStrLocal(new Date())) {
+  const muddat    = g('mv-muddat').value || '';
+  const eskiMuddat = _mv_saved ? (_mv_saved.muddat || '') : '';
+  // O'tmishdagi muddat faqat YANGI tanlansa rad etiladi — mavjud (o'tib ketgan)
+  // muddatni o'zgartirmasdan matnni tuzatish mumkin bo'lishi kerak
+  if (muddat && muddat < dateStrLocal(new Date()) && muddat !== eskiMuddat) {
     alert("⚠️ Topshirish muddati sifatida o'tmishdagi sana tanlangan. Iltimos, muddatni bugungi yoki kelajakdagi sanaga o'zgartiring.");
     return;
   }
+  const wasEdit = !!_mv_saved;
   const sana = dateStrLocal(window._mv_curdate);
   const btn = g('mv-save-btn');
   btn.disabled = true;
@@ -1201,8 +1395,8 @@ async function saveMavzuVazifa() {
       vazifa_fayl: _mv_fayl
     });
     if (res && res.ok) {
-      g('mv-saved-note').style.display = 'block';
-      setTimeout(() => { g('mv-saved-note').style.display = 'none'; }, 2500);
+      await loadMavzuVazifa();          // serverdagi holat + kartochka
+      showMvNote(wasEdit ? '✅ Yangilandi' : '✅ Saqlandi');
     } else {
       alert(res?.error || 'Saqlashda xatolik yuz berdi');
     }
