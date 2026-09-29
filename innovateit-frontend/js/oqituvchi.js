@@ -26,6 +26,80 @@ function sortSinflar(arr) {
   return [...arr].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
 }
 
+// ─── Telefonning "orqaga" tugmasi ─────────────────
+// Panel Telegramdan brauzer oynasida ochiladi: tizimning "orqaga" tugmasi
+// odatda butun panelni yopib qo'yardi. Endi har bir ichki sahifa/oyna
+// (davomat, mavzu tahrirlagichi, guruhni tahrirlash, modal oynalar,
+// hamburger menyu) ochilganda brauzer tarixiga bitta yozuv qo'shiladi va
+// "orqaga" bosilganda eng ustki qatlam yopiladi. Qatlam sahifa ichidagi
+// tugma bilan yopilsa, tarix yozuvi ham avtomatik olib tashlanadi.
+const NAV = { stack: [], pending: [], skip: 0, backN: 0, timer: 0, dog: 0 };
+
+function navBusy() { return NAV.skip > 0 || NAV.timer; }
+
+// key — qatlam nomi, close — "orqaga" bosilganda chaqiriladigan funksiya,
+// tab — qatlam tegishli bo'lgan tab (boshqa tabga o'tilsa qatlam tashlab yuboriladi)
+function navPush(key, close, tab) {
+  if (NAV.stack.some(l => l.key === key) || NAV.pending.some(l => l.key === key)) return;
+  if (navBusy()) { NAV.pending.push({ key, close, tab }); return; } // tarix o'zgarib bo'lguncha kutamiz
+  NAV.stack.push({ key, close, tab });
+  history.pushState({ oq: NAV.stack.length }, '');
+}
+
+// Qatlam sahifa ichida yopilganda chaqiriladi (orqaga tugmasisiz)
+function navRelease(key) {
+  const p = NAV.pending.findIndex(l => l.key === key);
+  if (p >= 0) { NAV.pending.splice(p, 1); return; }
+  const i = NAV.stack.findIndex(l => l.key === key);
+  if (i < 0) return; // allaqachon yopilgan (masalan, orqaga tugmasi bilan)
+  NAV.stack.splice(i, 1);
+  NAV.backN++;
+  if (!NAV.timer) NAV.timer = setTimeout(navGoBack, 0); // bir vaqtdagi yopilishlarni bitta qadamga jamlaymiz
+}
+
+function navGoBack() {
+  const n = NAV.backN;
+  NAV.backN = 0; NAV.timer = 0;
+  if (!n) return;
+  NAV.skip = 1; // bu popstate foydalanuvchidan emas, o'zimizdan
+  NAV.dog = setTimeout(navSettled, 600); // zaxira: brauzer popstate yubormasa qulflanib qolmaslik uchun
+  history.go(-n);
+}
+
+function navSettled() {
+  clearTimeout(NAV.dog);
+  NAV.skip = 0;
+  NAV.pending.splice(0).forEach(l => navPush(l.key, l.close, l.tab));
+}
+
+// Boshqa tabga o'tilganda avvalgi tabning ichki sahifalari tarixdan olib tashlanadi
+// (ular baribir tabga qaytilganda asl holatiga tushadi)
+function navDropOtherTabs(tab) {
+  NAV.stack.filter(l => l.tab && l.tab !== tab).forEach(l => navRelease(l.key));
+}
+
+window.addEventListener('popstate', () => {
+  if (NAV.skip) { navSettled(); return; }
+  const l = NAV.stack.pop();
+  if (l) l.close();
+});
+
+// Hamburger menyu (mobile-nav.js) ochilganda ham "orqaga" uni yopsin
+let _navDrawerWatch = false;
+function initNavDrawerWatch() {
+  if (_navDrawerWatch) return;
+  const right = document.querySelector('.oq-topbar .topbar-right');
+  if (!right) return;
+  _navDrawerWatch = true;
+  new MutationObserver(() => {
+    if (right.classList.contains('mn-open')) {
+      navPush('drawer', () => { const ov = document.querySelector('.topbar-overlay'); if (ov) ov.click(); });
+    } else {
+      navRelease('drawer');
+    }
+  }).observe(right, { attributes: true, attributeFilter: ['class'] });
+}
+
 // ─── Kirish ──────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
   const params  = new URLSearchParams(window.location.search);
@@ -74,6 +148,7 @@ function doLogout() {
 }
 
 function showApp() {
+  initNavDrawerWatch();
   g('login-screen').style.display = 'none';
   g('app').style.display = 'block';
   g('oq-badge').textContent = U.ism;
@@ -171,9 +246,11 @@ function renderMaktabPicker() {
 function openMaktabSheet() {
   renderMaktabPicker();
   g('oq-maktab-sheet-ov').classList.add('open');
+  navPush('maktabSheet', closeMaktabSheet);
 }
 
 function closeMaktabSheet() {
+  navRelease('maktabSheet');
   const ov = g('oq-maktab-sheet-ov');
   if (ov) ov.classList.remove('open');
 }
@@ -201,6 +278,7 @@ function onMaktabChange() {
 
 // ─── Tab almashtirish ─────────────────────────────
 function switchTab(tab) {
+  navDropOtherTabs(tab);
   document.querySelectorAll('.oq-tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.oq-tab-page').forEach(p => p.classList.remove('active'));
   g('tab-btn-' + tab).classList.add('active');
@@ -411,6 +489,7 @@ function clearGuruhForm() {
   guruhOquvchilarNames.clear();
   pendingGuruhData = null;
   editingGuruhId = null;
+  navRelease('guruhEdit');
 }
 
 function saveGuruh() {
@@ -484,9 +563,11 @@ function openGuruhConfirmModal() {
   `;
 
   g('guruh-confirm-modal').style.display = 'flex';
+  navPush('guruhConfirm', closeGuruhConfirmModal);
 }
 
 function closeGuruhConfirmModal() {
+  navRelease('guruhConfirm');
   g('guruh-confirm-modal').style.display = 'none';
 }
 
@@ -599,6 +680,7 @@ async function editGuruh(id) {
   g('guruh-form-title').textContent = "✏️ Guruhni tahrirlash";
   g('guruh-delete-wrap').style.display = 'block';
   g('guruh-back-btn').style.display = 'block';
+  navPush('guruhEdit', backToGuruhlar, 'guruh');
 
   const [bs, bm] = (j.boshlanish || '08:00').split(':');
   const [ts, tm] = (j.tugash || '14:00').split(':');
@@ -720,6 +802,7 @@ async function openGuruhDavomat(guruhId, event) {
 
   g('guruhlar-list-wrap').style.display = 'none';
   g('guruh-davomat-wrap').style.display = 'block';
+  navPush('davomat', closeGuruhDavomat, 'guruhlar');
 
   const sinflarSet  = new Set((j.sinflar || '').split(',').filter(Boolean));
   const sinflarText = sortSinflar([...sinflarSet]).map(s => s.replace(/-sinf$/i, '') + '-sinf').join(', ');
@@ -883,6 +966,7 @@ async function openMvGuruh(guruhId) {
 
   g('mv-guruhlar-wrap').style.display = 'none';
   g('mv-editor-wrap').style.display = 'block';
+  navPush('mvEditor', closeMvEditor, 'mavzu');
 
   const sinflarSet  = new Set((j.sinflar || '').split(',').filter(Boolean));
   const sinflarText = sortSinflar([...sinflarSet]).map(s => s.replace(/-sinf$/i, '') + '-sinf').join(', ');
@@ -900,6 +984,7 @@ async function openMvGuruh(guruhId) {
 }
 
 function closeMvEditor() {
+  navRelease('mvEditor');
   g('mv-editor-wrap').style.display = 'none';
   g('mv-guruhlar-wrap').style.display = 'block';
   activeMvGuruh = null;
@@ -1228,6 +1313,7 @@ function setGuruhDavStatus(ism, status) {
     g('dav-izoh-input').value = (window._davomat_izoh && window._davomat_izoh[ism]) || '';
     g('dav-izoh-err').textContent = '';
     g('dav-izoh-modal').style.display = 'flex';
+    navPush('davIzoh', closeDavIzoh);
     setTimeout(() => g('dav-izoh-input').focus(), 100);
     return;
   }
@@ -1262,6 +1348,7 @@ function confirmDavIzoh() {
 }
 
 function closeDavIzoh() {
+  navRelease('davIzoh');
   g('dav-izoh-modal').style.display = 'none';
   pendingDavIzoh = null;
 }
@@ -1306,6 +1393,7 @@ async function saveGuruhDavomat() {
 }
 
 function closeGuruhDavomat() {
+  navRelease('davomat');
   const listWrap = g('guruhlar-list-wrap'), davWrap = g('guruh-davomat-wrap');
   if (listWrap) listWrap.style.display = 'block';
   if (davWrap)  davWrap.style.display  = 'none';
@@ -1465,9 +1553,11 @@ function openDarsModal() {
   g('dars-modal-msg').textContent = '';
   selectDarsStatus('keldi');
   g('dars-modal').style.display = 'flex';
+  navPush('darsModal', closeDarsModal);
 }
 
 function closeDarsModal() {
+  navRelease('darsModal');
   g('dars-modal').style.display = 'none';
 }
 
