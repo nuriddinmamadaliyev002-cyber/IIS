@@ -99,12 +99,95 @@ function showApp() {
     sel.innerHTML = MAKTABLAR_RO.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('');
     TANLANGAN_MID = MAKTABLAR_RO[0].id;
     sel.value = TANLANGAN_MID;
-    sel.style.display = 'inline-block';
+    initMaktabPicker(); // native <select> o'rniga o'zbekcha tanlash oynasi (select yashirin qoladi)
   } else if (MAKTABLAR_RO.length === 1) {
     TANLANGAN_MID = MAKTABLAR_RO[0].id;
   }
 
   switchTab('guruhlar');
+}
+
+// ─── Maktab tanlagich ────────────────────────────
+// Telefonning standart <select> oynasidagi "Prev. / Next / Done" yozuvlari
+// brauzer/klaviatura tilida chiqadi va sahifadan o'zgartirib bo'lmaydi.
+// Shu sababli o'zimizning o'zbekcha oynamizni ko'rsatamiz. Asl <select>
+// yashirin holda qoladi (qiymat va onMaktabChange() u orqali ishlaydi).
+function initMaktabPicker() {
+  const sel = g('oq-maktab-selector');
+  if (!sel) return;
+  if (!g('oq-maktab-picker')) {
+    const btn = document.createElement('div');
+    btn.id = 'oq-maktab-picker';
+    btn.className = 'oq-maktab-picker';
+    // <button> emas: mobile-nav.js menyu ichidagi har bir <button> bosilganda drawer'ni yopadi
+    btn.setAttribute('role', 'button');
+    btn.setAttribute('aria-haspopup', 'dialog');
+    btn.tabIndex = 0;
+    sel.parentNode.insertBefore(btn, sel);
+    btn.addEventListener('click', openMaktabSheet);
+    btn.addEventListener('keydown', e => {
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openMaktabSheet(); }
+    });
+
+    const ov = document.createElement('div');
+    ov.id = 'oq-maktab-sheet-ov';
+    ov.className = 'oq-sheet-overlay';
+    ov.innerHTML =
+      '<div class="oq-sheet" role="dialog" aria-modal="true" aria-label="Maktabni tanlang">' +
+        '<div class="oq-sheet-title">Maktabni tanlang</div>' +
+        '<div class="oq-sheet-list" id="oq-maktab-sheet-list"></div>' +
+        '<button type="button" class="oq-sheet-close">Yopish</button>' +
+      '</div>';
+    document.body.appendChild(ov);
+    ov.addEventListener('click', e => { if (e.target === ov) closeMaktabSheet(); });
+    ov.querySelector('.oq-sheet-close').addEventListener('click', closeMaktabSheet);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeMaktabSheet(); });
+  }
+  renderMaktabPicker();
+}
+
+function renderMaktabPicker() {
+  const sel = g('oq-maktab-selector'), btn = g('oq-maktab-picker'), list = g('oq-maktab-sheet-list');
+  if (!sel || !btn || !list) return;
+  const cur = sel.options[sel.selectedIndex];
+  btn.textContent = cur ? cur.textContent : '';
+  list.innerHTML = '';
+  Array.from(sel.options).forEach(o => {
+    const on = o.value === sel.value;
+    const item = document.createElement('button');
+    item.type = 'button';
+    item.className = 'oq-sheet-item' + (on ? ' selected' : '');
+    item.setAttribute('aria-pressed', String(on));
+    const dot = document.createElement('span');
+    dot.className = 'oq-sheet-radio';
+    const lbl = document.createElement('span');
+    lbl.textContent = o.textContent;
+    item.append(dot, lbl);
+    item.addEventListener('click', () => pickMaktab(o.value));
+    list.appendChild(item);
+  });
+}
+
+function openMaktabSheet() {
+  renderMaktabPicker();
+  g('oq-maktab-sheet-ov').classList.add('open');
+}
+
+function closeMaktabSheet() {
+  const ov = g('oq-maktab-sheet-ov');
+  if (ov) ov.classList.remove('open');
+}
+
+function pickMaktab(val) {
+  const sel = g('oq-maktab-selector');
+  const changed = sel.value !== String(val);
+  sel.value = val;
+  closeMaktabSheet();
+  renderMaktabPicker();
+  if (changed) sel.dispatchEvent(new Event('change', { bubbles: true })); // → onMaktabChange()
+  // Hamburger menyu ochiq bo'lsa, tanlangandan keyin yopamiz
+  const ov = document.querySelector('.topbar-overlay.mn-open');
+  if (ov) ov.click();
 }
 
 function onMaktabChange() {
