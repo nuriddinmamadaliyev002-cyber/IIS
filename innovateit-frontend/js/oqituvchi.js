@@ -405,6 +405,7 @@ function clearGuruhForm() {
   g('guruh-msg').textContent = '';
   g('guruh-form-title').textContent = "➕ Sinf o'quvchilaridan o'zingiz uchun guruh yarating";
   g('guruh-delete-wrap').style.display = 'none';
+  g('guruh-back-btn').style.display = 'none';
   activeGuruhSinf = null;
   guruhOquvchilarMap.clear();
   guruhOquvchilarNames.clear();
@@ -597,6 +598,7 @@ async function editGuruh(id) {
   editingGuruhId = id;
   g('guruh-form-title').textContent = "✏️ Guruhni tahrirlash";
   g('guruh-delete-wrap').style.display = 'block';
+  g('guruh-back-btn').style.display = 'block';
 
   const [bs, bm] = (j.boshlanish || '08:00').split(':');
   const [ts, tm] = (j.tugash || '14:00').split(':');
@@ -615,6 +617,12 @@ async function editGuruh(id) {
     activeGuruhSinf = sinflar[sinflar.length - 1];
     await loadGuruhOquvchilar(activeGuruhSinf);
   }
+}
+
+// Tahrirlash sahifasidan "Guruhlarim" ro'yxatiga qaytish (saqlamasdan)
+function backToGuruhlar() {
+  clearGuruhForm();
+  switchTab('guruhlar');
 }
 
 async function deleteGuruh() {
