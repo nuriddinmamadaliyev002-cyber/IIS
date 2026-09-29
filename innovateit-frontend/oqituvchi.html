@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/hover.css">
   <link rel="stylesheet" href="css/oqituvchi.css?v=2">
+  <link rel="stylesheet" href="css/mobile-nav.css">
 </head>
 <body>
 
@@ -61,7 +62,18 @@
       </div>
     </div>
     <div class="topbar-right">
+      <!-- Faqat mobil hamburger menyu uchun: mobile-nav.js buni drawer tepasidagi
+           profil qatoriga (avatar + ism) ko'chiradi. Desktopda yashirin. -->
+      <span class="admin-badge oq-drawer-badge" id="oq-badge-drawer"></span>
       <select id="oq-maktab-selector" onchange="onMaktabChange()" style="display:none;"></select>
+      <!-- Mobil menyu bandlari (≤768px) — desktopda .mn-mobile-item yashirin, u yerda
+           yuqoridagi .oq-tabnav ishlatiladi. Ikkalasi ham switchTab() ni chaqiradi. -->
+      <button type="button" class="mn-mobile-item mn-tab-item active" data-tab="guruhlar" onclick="switchTab('guruhlar')">👥 Guruhlarim</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="mavzu" onclick="switchTab('mavzu')">📘 Mavzu / Vazifa berish</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="vazifalar" onclick="switchTab('vazifalar')">📝 Vazifalarni tekshirish</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
   </div>
@@ -372,6 +384,7 @@
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_teacher_token';</script>
 <script src="js/api.js"></script>
 <script src="js/oqituvchi.js"></script>
+<script src="js/mobile-nav.js"></script>
 <script>
 // ⚠️ MUHIM: bu yerga haqiqiy bot username'ini kiriting
 const BOT_USERNAME = 'InnovateIT_School_bot';

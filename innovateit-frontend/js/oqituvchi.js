@@ -77,6 +77,8 @@ function showApp() {
   g('login-screen').style.display = 'none';
   g('app').style.display = 'block';
   g('oq-badge').textContent = U.ism;
+  const drawerBadge = g('oq-badge-drawer'); // mobil hamburger menyudagi profil qatori
+  if (drawerBadge) drawerBadge.textContent = U.ism;
   TEACHER_ID = U.entityId;
 
   // Topbardagi avatar — o'qituvchi tanlagan avatarga qarab
@@ -119,6 +121,8 @@ function switchTab(tab) {
   document.querySelectorAll('.oq-tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.oq-tab-page').forEach(p => p.classList.remove('active'));
   g('tab-btn-' + tab).classList.add('active');
+  // Mobil hamburger menyudagi mos band ham "faol" bo'lib ko'rinsin
+  document.querySelectorAll('.mn-tab-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   g('tab-' + tab).classList.add('active');
 
   if (tab === 'guruhlar') loadGuruhlarim();

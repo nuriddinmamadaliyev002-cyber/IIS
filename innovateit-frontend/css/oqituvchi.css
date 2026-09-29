@@ -466,3 +466,26 @@ button, a, input, select, textarea, [role="button"] {
 }
 .guruh-confirm-row { font-size: 13px; margin-top: 8px; padding-top: 10px; border-top: 1px dashed var(--border); }
 .guruh-confirm-row b { font-weight: 600; }
+
+/* ═══════════════════════════════════════════════════
+   MOBIL HAMBURGER MENYU (≤768px) — admin paneldagi kabi
+   mobile-nav.js/css drawer'ni yaratadi; bu yerda faqat o'qituvchi
+   paneliga xos moslamalar. Yuqoridagi tablar (.oq-tabnav) telefonda
+   yashiriladi va ular drawer ichidagi .mn-tab-item bandlariga aylanadi.
+   ═══════════════════════════════════════════════════ */
+
+/* Desktopda drawer uchun ism yashirin (u yerda topbar'dagi .oq-topbar-user bor) */
+@media (min-width: 769px) {
+  .oq-topbar .oq-drawer-badge { display: none !important; }
+}
+
+@media (max-width: 768px) {
+  .oq-tabnav { display: none !important; }
+
+  /* Maktab tanlagich drawer ichida — menyu bandlaridan ajralib tursin */
+  .topbar-right #oq-maktab-selector { margin: 0 0 12px !important; }
+
+  /* Bandlar nomlari uzunroq ("Mavzu / Vazifa berish") — admin paneldagi 50% kenglik
+     ularga tor, shuning uchun o'qituvchi panelida drawer kengroq. */
+  .topbar.oq-topbar .topbar-right { width: min(80%, 320px) !important; }
+}
