@@ -1,741 +1,496 @@
-// ═══════════════════════════════════════════════════
-//  InnovateIT School — Davomat  (davomat.js)
-// ═══════════════════════════════════════════════════
+// ─── Davomat routes ──────────────────────────────────────────────────────────
+//
+// Filtr: admin_username o'rniga maktab_id ishlatiladi
+//   isSuper=true  → barcha maktablar ko'rinadi
+//   isSuper=false → faqat req.user.maktabId ga mos yozuvlar
+//
+// ─────────────────────────────────────────────────────────────────────────────
+const { Router }      = require('express');
+const pool            = require('../db');
+const { requireAuth } = require('../middleware/jwt');
 
-const OYLAR  = ['Yanvar','Fevral','Mart','Aprel','May','Iyun','Iyul','Avgust','Sentabr','Oktabr','Noyabr','Dekabr'];
-const KUNLAR = ['Yakshanba','Dushanba','Seshanba','Chorshanba','Payshanba','Juma','Shanba'];
+const router = Router();
 
-const STATUS_META = {
-  keldi:   { label: 'Keldi',      badge: 'keldi'   },
-  kelmadi: { label: 'Kelmadi',    badge: 'kelmadi' },
-  sababli: { label: 'Sababli',    badge: 'sababli' },
-  kech:    { label: 'Kech keldi', badge: 'kech'    },
-};
+// ─── O'qituvchi tanlagan maktabni xavfsiz aniqlash ───────────────────────────
+// Panel ?maktabId= (GET) yoki body.maktabId (POST) yuboradi. Qiymat faqat
+// tokendagi o'qituvchining o'z maktablari (maktabIdlar) ichida bo'lsa qabul
+// qilinadi; aks holda 403. Berilmasa — tokendagi asosiy maktab (eski xulq).
+function resolveTeacherMaktab(req) {
+  const allowed = (req.user.maktabIdlar || []).map(Number).filter(Number.isInteger);
+  const main    = Number(req.user.maktabId);
+  if (Number.isInteger(main) && main > 0 && !allowed.includes(main)) allowed.push(main);
 
-// Foydalanuvchi ma'lumotlari (app.js dan sessionStorage orqali keladi)
-let U  = null; // { ism, isSuper, isSuperProxy, superIsm, maktabId }
-let WU = null; // Haqiqiy ishlayotgan username (agar super admin boshqani ko'rsa)
-
-// O'quvchilar va davomat holati
-let STUDENTS          = []; // Faol o'quvchilar
-let INACTIVE_STUDENTS = []; // Nofaol o'quvchilar
-let attendance = {}; // { "Ism Familiya": "keldi"|"kelmadi"|"sababli"|"kech" }
-let izohlar    = {}; // { "Ism Familiya": "izoh matni" }
-
-// Dars jadvali — bitta yozuv = bitta o'qituvchi darsi/guruhi
-// (bir nechta sinf birgalikda bitta guruhda o'qishi mumkin, masalan "6-sinf,8-sinf")
-// [{ fan, sinflar:[...], kunlar:[1..6], boshlanish, tugash, teacher }]
-let JADVALLAR = [];
-
-function parseSinflarList(str) {
-  if (!str) return [];
-  return String(str).split(',').map(s => s.trim()).filter(Boolean);
-}
-function parseKunlarList(str) {
-  if (!str) return [];
-  return String(str).split(',').map(Number).filter(n => n >= 1 && n <= 6);
-}
-// "8-sinf" → "8" ko'rinishiga keltirib solishtirish uchun
-function normalizeSinf(s) {
-  return String(s || '').toLowerCase().replace(/-?sinf$/i, '').trim();
-}
-
-// Berilgan sanada (hafta kuniga qarab) o'tkaziladigan darslar (guruhlar) ro'yxati
-function getSessionsForDate(date) {
-  const weekday = date.getDay(); // 1=Dushanba ... 6=Shanba
-  if (weekday < 1 || weekday > 6) return [];
-  return JADVALLAR
-    .filter(j => j.kunlar.includes(weekday))
-    .sort((a, b) => (a.boshlanish || '').localeCompare(b.boshlanish || ''));
-}
-
-// Vaqt oralig'ini "08:00–08:45" ko'rinishida qaytaradi
-function formatVaqt(j) {
-  if (j.boshlanish && j.tugash) return `${j.boshlanish}–${j.tugash}`;
-  if (j.boshlanish) return j.boshlanish;
-  return '';
-}
-
-// Jadval filter/qidiruv holati
-let activeFilter = null; // null | 'keldi' | 'kelmadi' | 'sababli' | 'kech'
-
-// ─── Sana yordamchi funksiyalari ───
-// "DD.MM.YYYY" → Date
-function parseDDMMYYYY(str) {
-  if (!str || typeof str !== 'string' || !str.includes('.')) return null;
-  const parts = str.split('.');
-  if (parts.length !== 3) return null;
-  const [d, m, y] = parts;
-  const date = new Date(`${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}T00:00:00`);
-  return isNaN(date) ? null : date;
-}
-// "YYYY-MM-DD" → Date
-function parseYYYYMMDD(str) {
-  if (!str || typeof str !== 'string' || !str.includes('-')) return null;
-  const date = new Date(str + 'T00:00:00');
-  return isNaN(date) ? null : date;
-}
-// O'quvchining boshlash sanasini olish (boshlagan yoki qoshilgan)
-function getStudentStartDate(s) {
-  const b = s.boshlagan ? String(s.boshlagan).trim() : '';
-  const q = s.date      ? String(s.date).trim()      : '';
-  // boshlagan: YYYY-MM-DD yoki DD.MM.YYYY
-  if (b) {
-    if (b.includes('-')) return parseYYYYMMDD(b);
-    if (b.includes('.')) return parseDDMMYYYY(b);
-  }
-  // qoshilgan (date): DD.MM.YYYY
-  if (q) {
-    if (q.includes('.')) return parseDDMMYYYY(q);
-    if (q.includes('-')) return parseYYYYMMDD(q);
-  }
-  return null;
-}
-// Nofaol o'quvchining tugash sanasini olish — har ikkala formatni qabul qiladi
-function getStudentEndDate(s) {
-  if (!s.chiqgan) return null;
-  const str = String(s.chiqgan).trim();
-  if (!str) return null;
-  // DD.MM.YYYY
-  if (str.includes('.')) return parseDDMMYYYY(str);
-  // YYYY-MM-DD (input[type=date] dan kelganda)
-  if (str.includes('-')) return parseYYYYMMDD(str);
-  return null;
-}
-
-/**
- * Berilgan sanada ko'rinishi kerak bo'lgan o'quvchilar ro'yxatini qaytaradi.
- * Faol o'quvchilar: boshlagan <= date
- * Nofaol o'quvchilar: boshlagan <= date <= chiqgan
- */
-function getStudentsForDate(date) {
-  const d = new Date(date); d.setHours(0,0,0,0);
-  const list = [];
-  // Faol o'quvchilar — boshlagan sanasi o'tgan bo'lishi kerak
-  STUDENTS.forEach(s => {
-    const start = getStudentStartDate(s);
-    if (!start || start <= d) list.push(s);
-  });
-  // Nofaol o'quvchilar — shu sana ularning faol davriga tushsa
-  INACTIVE_STUDENTS.forEach(s => {
-    const start = getStudentStartDate(s);
-    const end   = getStudentEndDate(s);
-    if (end && d <= end && (!start || start <= d)) {
-      list.push({ ...s, _nofaol: true });
+  const raw = (req.query && req.query.maktabId) ?? (req.body && req.body.maktabId);
+  if (raw !== undefined && raw !== null && raw !== '') {
+    const mid = parseInt(raw, 10);
+    if (!Number.isInteger(mid) || !allowed.includes(mid)) {
+      return { status: 403, error: "Bu maktab sizga biriktirilmagan" };
     }
-  });
-  return list;
+    return { mid };
+  }
+  const mid = (Number.isInteger(main) && main > 0) ? main : allowed[0];
+  if (!mid) return { status: 400, error: 'Maktab biriktirilmagan' };
+  return { mid };
 }
 
-// Joriy ko'rilayotgan sana
-const TODAY = (() => { const d = new Date(); d.setHours(0,0,0,0); return d; })();
-let currentDate = skipSunday(new Date(TODAY));
+// ─── GET /api/davomat/mening-davomatim — O'qituvchi yoki O'quvchi o'z davomatini ko'radi ───
+// ⚠️  router.use(requireAuth(['admin'])) DAN OLDIN — oqituvchi/oquvchi roli uchun!
+router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (req, res) => {
+  // O'quvchi uchun alohida logika
+  if (req.user.rol === 'oquvchi') {
+    const { ism, maktabId, sinf, entityId } = req.user;
+    if (!maktabId) return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
 
-// ─────────────────────────────────────────────
-//  YUKLANGANDA
-// ─────────────────────────────────────────────
-// ─── Sticky bar balandliklarini dinamik hisoblash ───
-function updateStickyHeights() {
-  const topbar  = document.querySelector('.topbar');
-  const datebar = document.querySelector('.date-bar');
-  const root = document.documentElement;
-  if (topbar)   root.style.setProperty('--topbar-h',   topbar.offsetHeight   + 'px');
-  if (datebar)  root.style.setProperty('--datebar-h',  datebar.offsetHeight  + 'px');
-}
-window.addEventListener('resize', updateStickyHeights);
+    // Ixtiyoriy oy/yil filtri — o'quvchi web panelida oylar bo'yicha
+    // ko'rish (‹ Sentabr 2026 ›) uchun. Berilmasa — eski xulq-atvor
+    // (oxirgi 90 ta yozuv) saqlanib qoladi.
+    const oyQ  = parseInt(req.query.oy, 10);
+    const yilQ = parseInt(req.query.yil, 10);
+    const hasOyYil = oyQ >= 1 && oyQ <= 12 && yilQ >= 2000;
 
-window.addEventListener('DOMContentLoaded', async () => {
-  // Sahifa yuklangandan keyin haqiqiy balandliklarni o'lchash
-  requestAnimationFrame(updateStickyHeights);
-  // Session dan foydalanuvchini olish
-  try {
-    const saved = sessionStorage.getItem('iit_davomat_user');
-    if (!saved) { window.location.href = 'index.html'; return; }
-    U = JSON.parse(saved);
-  } catch (e) { window.location.href = 'index.html'; return; }
+    try {
+      // DB da oquvchi_ism "Ism Familiya" yoki "Familiya Ism" bo'lishi mumkin
+      // Token da ism = "Familiya Ism" formatida saqlanadi
+      // Shuning uchun ikkala variantni ham tekshiramiz
+      const ismParts = ism.trim().split(' ');
+      const teskari = ismParts.length >= 2
+        ? ismParts.slice(1).join(' ') + ' ' + ismParts[0]
+        : ism;
 
-  // Kimning davomati ko'rsatiladi?
-  // Yangi tizimda: super admin maktab tanlagan bo'lsa, U.username = maktab admin username
-  // isSuperProxy belgisi orqali aniqlaymiz
-  WU = { username: U.username, ism: U.ism };
+      const result = await pool.query(
+        `SELECT sana, status, izoh
+         FROM davomat
+         WHERE (oquvchi_ism = $1 OR oquvchi_ism = $4)
+           AND maktab_id   = $2
+           AND sinf        = $3
+           ${hasOyYil ? `AND EXTRACT(MONTH FROM to_date(NULLIF(sana,''), 'YYYY-MM-DD')) = $5
+                          AND EXTRACT(YEAR  FROM to_date(NULLIF(sana,''), 'YYYY-MM-DD')) = $6` : ''}
+         ORDER BY
+           to_date(NULLIF(sana,''), 'YYYY-MM-DD') DESC NULLS LAST
+         ${hasOyYil ? '' : 'LIMIT 90'}`,
+        hasOyYil ? [ism, maktabId, sinf, teskari, oyQ, yilQ] : [ism, maktabId, sinf, teskari]
+      );
+      return res.json({
+        ok:      true,
+        records: result.rows,
+        kunlar:  '',
+        fan:     '',
+        ism,
+        sinf,
+      });
+    } catch (err) {
+      console.error('GET /mening-davomatim (oquvchi) xatolik:', err.message);
+      return res.status(500).json({ ok: false, error: 'Server xatoligi' });
+    }
+  }
+  const { ism, maktabId, entityId } = req.user;
+  // ism = "Familiya Ism" (token da shunday saqlanadi)
+  // maktabId = o'qituvchining asosiy maktabi
 
-  // Badge
-  const badge = g('dav-badge');
-  if (U.isSuperProxy) {
-    badge.textContent = '🏫 ' + U.ism;
-    badge.classList.add('super');
-  } else {
-    badge.textContent = U.ism;
+  if (!maktabId) {
+    return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
   }
 
-  // Sana picker max = bugun
-  g('date-picker').max = dateStr(TODAY);
+  try {
+    // O'qituvchining kunlar va fan ma'lumotlarini olish
+    const teacherRes = await pool.query(
+      'SELECT kunlar, fan FROM oqituvchilar WHERE id = $1',
+      [entityId]
+    );
+    const kunlar = teacherRes.rows[0]?.kunlar || '';
+    const fan    = teacherRes.rows[0]?.fan    || '';
 
-  setDateUI(currentDate);
-  updateNextBtn();
+    // Oxirgi 90 kun ichidagi davomat yozuvlari
+    const result = await pool.query(
+      `SELECT sana, status, izoh, fan,
+              dars_soat, dars_daqiqa, kech_minut
+       FROM oqituvchilar_davomat
+       WHERE oqituvchi_ism = $1
+         AND maktab_id     = $2
+       ORDER BY
+         -- DD.MM.YYYY formatni to'g'ri tartiblash
+         SPLIT_PART(sana,'.',3)::int DESC,
+         SPLIT_PART(sana,'.',2)::int DESC,
+         SPLIT_PART(sana,'.',1)::int DESC
+       LIMIT 90`,
+      [ism, maktabId]
+    );
 
-  // O'quvchilarni va dars jadvalini parallel yuklash
-  await Promise.all([loadStudents(), loadJadval()]);
-  // Shu sananing mavjud davomatini yuklash
-  await loadDavomat(currentDate);
+    res.json({
+      ok:      true,
+      records: result.rows,
+      kunlar,
+      fan,
+      ism,
+    });
+  } catch (err) {
+    console.error('GET /mening-davomatim xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
 });
 
-// ─────────────────────────────────────────────
-//  NAVIGATSIYA
-// ─────────────────────────────────────────────
-function goBack() {
-  window.location.href = 'index.html';
-}
+// ─── GET /api/davomat/soat-statistika — O'qituvchi dars soatlari statistikasi ─
+router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, entityId } = req.user;
 
-// ✅ Hamburger menyu: "O'quvchilar"/"O'qituvchilar" guruhlari ichidan
-// qisqa yo'llar — endi umumiy js/mn-nav.js dagi mnGoHome() orqali
-// to'g'ridan-to'g'ri (index.html'ga kirmasdan) boshqariladi, shu sabab
-// bu yerda alohida funksiyalar shart emas (qarang: davomat.html).
+  const sel = resolveTeacherMaktab(req);
+  if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
+  const maktabId = sel.mid;
 
-// ─────────────────────────────────────────────
-//  SANA BOSHQARUVI
-// ─────────────────────────────────────────────
-function skipSunday(d) {
-  const nd = new Date(d); nd.setHours(0,0,0,0);
-  if (nd.getDay() === 0) nd.setDate(nd.getDate() - 1); // Oldinga emas, orqaga
-  return nd;
-}
-
-function dateStr(d) {
-  const y  = d.getFullYear();
-  const m  = String(d.getMonth() + 1).padStart(2, '0');
-  const dd = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${dd}`;
-}
-
-function formatDateDisplay(d) {
-  return `${d.getDate()}-${OYLAR[d.getMonth()]}, ${d.getFullYear()}`;
-}
-
-function setDateUI(d) {
-  g('date-display').textContent = formatDateDisplay(d);
-  g('date-sub').textContent     = KUNLAR[d.getDay()];
-  g('date-picker').value        = dateStr(d);
-}
-
-async function changeDate(dir) {
-  const nd = new Date(currentDate);
-  nd.setDate(nd.getDate() + dir);
-  // Yakshanbani o'tkazib yuborish
-  if (nd.getDay() === 0) nd.setDate(nd.getDate() + dir);
-  if (nd > TODAY) return;
-
-  currentDate = nd;
-  attendance  = {};
-  izohlar     = {};
-  setDateUI(currentDate);
-  updateNextBtn();
-  render();
-  await loadDavomat(currentDate);
-}
-
-async function onDatePick() {
-  const val = g('date-picker').value;
-  if (!val) return;
-  const d = new Date(val + 'T00:00:00');
-  if (d.getDay() === 0) {
-    toast('⚠️ Yakshanba tanlash mumkin emas', 'error');
-    g('date-picker').value = dateStr(currentDate); return;
-  }
-  if (d > TODAY) {
-    toast('⚠️ Kelajak sana tanlash mumkin emas', 'error');
-    g('date-picker').value = dateStr(currentDate); return;
-  }
-  currentDate = d;
-  attendance  = {};
-  izohlar     = {};
-  setDateUI(currentDate);
-  updateNextBtn();
-  render();
-  await loadDavomat(currentDate);
-}
-
-function updateNextBtn() {
-  const nd = new Date(currentDate);
-  nd.setDate(nd.getDate() + 1);
-  if (nd.getDay() === 0) nd.setDate(nd.getDate() + 1);
-  g('btn-next').disabled = nd > TODAY;
-}
-
-// ─────────────────────────────────────────────
-//  MA'LUMOT YUKLASH
-// ─────────────────────────────────────────────
-async function loadStudents() {
-  g('loading-ov').style.display = 'flex';
   try {
-    // Faol va nofaol o'quvchilarni parallel yuklash
-    const [active, inactive] = await Promise.all([
-      api.getStudents({ username: U.username, parol: U.parol }),
-      api.getInactiveStudents({ username: U.username, parol: U.parol })
-    ]);
-    if (active.ok) {
-      STUDENTS = active.students;
+    // 1) O'qituvchi ma'lumotlari (rejalangan soatlar)
+    const teacherRes = await pool.query(
+      `SELECT kunlar, fan, boshlanish, tugash, sinflar
+       FROM oqituvchilar WHERE id = $1`,
+      [entityId]
+    );
+    const teacher = teacherRes.rows[0] || {};
+
+    // Rejalangan haftalik soatni hisoblash (boshlanish-tugash vaqtidan)
+    let rejaSoat = 0, rejaDaqiqa = 0;
+    if (teacher.boshlanish && teacher.tugash) {
+      const [bH, bM] = (teacher.boshlanish).split(':').map(Number);
+      const [tH, tM] = (teacher.tugash).split(':').map(Number);
+      const totalMin = (tH * 60 + tM) - (bH * 60 + (bM || 0));
+      if (totalMin > 0) {
+        rejaSoat   = Math.floor(totalMin / 60);
+        rejaDaqiqa = totalMin % 60;
+      }
+    }
+
+    // Necha kun dars o'tilishi rejalangan (kunlar maydoni)
+    const kunlar = (teacher.kunlar || '').split(',').map(k => k.trim()).filter(Boolean);
+    const kunSoni = kunlar.length;
+
+    // 2) Haqiqatda o'tilgan dars soatlari (oxirgi 30 kun)
+    const statsRes = await pool.query(
+      `SELECT
+         SUM(dars_soat)    AS jami_soat,
+         SUM(dars_daqiqa)  AS jami_daqiqa,
+         COUNT(*)          AS jami_dars,
+         COUNT(CASE WHEN status='keldi' THEN 1 END)   AS keldi,
+         COUNT(CASE WHEN status='kelmadi' THEN 1 END) AS kelmadi,
+         COUNT(CASE WHEN status='kech' THEN 1 END)    AS kech
+       FROM oqituvchilar_davomat
+       WHERE oqituvchi_ism = $1 AND maktab_id = $2`,
+      [ism, maktabId]
+    );
+    const st = statsRes.rows[0] || {};
+
+    // 3) Oylik statistika (so'nggi 4 oy)
+    //    Sana formati ikki xil bo'lishi mumkin: DD.MM.YYYY (o'qituvchi paneli)
+    //    yoki YYYY-MM-DD (eski yozuvlar). Ikkalasini ham xavfsiz o'qiymiz.
+    const oylikRes = await pool.query(
+      `SELECT oy, yil, SUM(dars_soat) AS soat, SUM(dars_daqiqa) AS daqiqa, COUNT(*) AS dars_soni
+       FROM (
+         SELECT dars_soat, dars_daqiqa,
+           CASE WHEN sana ~ '^\\d{1,2}\\.\\d{1,2}\\.\\d{4}$' THEN SPLIT_PART(sana,'.',2)::int
+                WHEN sana ~ '^\\d{4}-\\d{1,2}-\\d{1,2}$'       THEN SPLIT_PART(sana,'-',2)::int END AS oy,
+           CASE WHEN sana ~ '^\\d{1,2}\\.\\d{1,2}\\.\\d{4}$' THEN SPLIT_PART(sana,'.',3)::int
+                WHEN sana ~ '^\\d{4}-\\d{1,2}-\\d{1,2}$'       THEN SPLIT_PART(sana,'-',1)::int END AS yil
+         FROM oqituvchilar_davomat
+         WHERE oqituvchi_ism = $1 AND maktab_id = $2
+       ) t
+       WHERE oy IS NOT NULL AND yil IS NOT NULL
+       GROUP BY yil, oy
+       ORDER BY yil DESC, oy DESC
+       LIMIT 4`,
+      [ism, maktabId]
+    );
+
+    // Jami haqiqiy soatni hisoblash
+    let haqSoat = parseInt(st.jami_soat || 0);
+    let haqDaq  = parseInt(st.jami_daqiqa || 0);
+    haqSoat += Math.floor(haqDaq / 60);
+    haqDaq   = haqDaq % 60;
+
+    res.json({
+      ok: true,
+      teacher: {
+        fan:       teacher.fan || '—',
+        kunlar:    teacher.kunlar || '',
+        kunSoni,
+        sinflar:   teacher.sinflar || '—',
+        boshlanish: teacher.boshlanish || '',
+        tugash:    teacher.tugash || '',
+        rejaSoat,
+        rejaDaqiqa,
+      },
+      statistika: {
+        jamiDars:   parseInt(st.jami_dars   || 0),
+        keldi:      parseInt(st.keldi       || 0),
+        kelmadi:    parseInt(st.kelmadi     || 0),
+        kech:       parseInt(st.kech        || 0),
+        haqSoat,
+        haqDaq,
+      },
+      oylik: oylikRes.rows
+    });
+  } catch (err) {
+    console.error('soat-statistika xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── POST /api/davomat/mening-darsim — O'qituvchi o'z davomatini belgilaydi ──
+router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, entityId } = req.user;
+  const { sana, status, dars_soat, dars_daqiqa, kech_minut, izoh } = req.body;
+
+  const sel = resolveTeacherMaktab(req);
+  if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
+  const maktabId = sel.mid;
+
+  if (!sana || !status) {
+    return res.status(400).json({ ok: false, error: 'Sana va status kerak' });
+  }
+
+  try {
+    // O'qituvchi fan ma'lumotini olish
+    const teacherRes = await pool.query(
+      'SELECT fan FROM oqituvchilar WHERE id = $1', [entityId]
+    );
+    const fan = teacherRes.rows[0]?.fan || '';
+
+    const now = new Date().toLocaleTimeString('uz-UZ');
+
+    // Avvalgi yozuvni o'chirish (bir kun — bir yozuv)
+    await pool.query(
+      'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3',
+      [sana, maktabId, ism]
+    );
+
+    // Yangi yozuv kiritish
+    await pool.query(
+      `INSERT INTO oqituvchilar_davomat
+         (sana, maktab_id, oqituvchi_ism, fan, status, izoh,
+          vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+      [sana, maktabId, ism, fan, status, izoh || '', now,
+       dars_soat || 0, dars_daqiqa || 0, kech_minut || 0]
+    );
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('mening-darsim POST xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/davomat/sinf-davomat — O'qituvchi sinf davomatini ko'radi ────────
+router.get('/sinf-davomat', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, maktabIdlar } = req.user;
+  const { maktabId, sinf, sana } = req.query;
+
+  const mid = maktabId ? parseInt(maktabId) : (maktabIdlar && maktabIdlar[0]);
+  if (!mid || !sinf || !sana) {
+    return res.status(400).json({ ok: false, error: 'maktabId, sinf va sana kerak' });
+  }
+
+  try {
+    const result = await pool.query(
+      `SELECT oquvchi_ism, status, izoh, vaqt_belgilangan
+       FROM davomat
+       WHERE maktab_id = $1 AND sinf = $2 AND sana = $3
+       ORDER BY oquvchi_ism`,
+      [mid, sinf, sana]
+    );
+    res.json({ ok: true, records: result.rows });
+  } catch (err) {
+    console.error('sinf-davomat GET xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── POST /api/davomat/sinf-davomat — O'qituvchi sinf davomatini belgilaydi ──
+router.post('/sinf-davomat', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism, maktabIdlar } = req.user;
+  const { maktabId, sinf, sana, records } = req.body;
+
+  const mid = maktabId ? parseInt(maktabId) : (maktabIdlar && maktabIdlar[0]);
+  if (!mid || !sinf || !sana || !Array.isArray(records)) {
+    return res.status(400).json({ ok: false, error: 'maktabId, sinf, sana va records kerak' });
+  }
+
+  const now = new Date().toLocaleTimeString('uz-UZ');
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Faqat shu sinf va sana uchun o'chirish (boshqa sinflarni o'chirmaslik)
+    await client.query(
+      'DELETE FROM davomat WHERE maktab_id=$1 AND sinf=$2 AND sana=$3',
+      [mid, sinf, sana]
+    );
+
+    for (const rec of records) {
+      if (!rec.ism || !rec.status) continue;
+      await client.query(
+        `INSERT INTO davomat (sana, maktab_id, sinf, oquvchi_ism, status, izoh, vaqt_belgilangan)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [sana, mid, sinf, rec.ism, rec.status, rec.izoh || '', now + ' (oq: ' + ism + ')']
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, saved: records.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('sinf-davomat POST xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
+  }
+});
+
+router.use(requireAuth(['admin']));
+
+// ─── POST /api/davomat — o'quvchilar davomati saqlash ────────────────────────
+router.post('/', async (req, res) => {
+  const p = req.body;
+  const { isSuper, maktabId } = req.user;
+
+  const records = JSON.parse(p.records || '[]');
+  const now = new Date().toLocaleTimeString('uz-UZ');
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // Avvalgi yozuvlarni o'chirish
+    if (isSuper) {
+      // superadmin: agar maktabId berilsa shu maktab, aks holda barcha
+      if (maktabId) {
+        await client.query(
+          'DELETE FROM davomat WHERE sana=$1 AND maktab_id=$2',
+          [p.sana, maktabId]
+        );
+      } else {
+        await client.query('DELETE FROM davomat WHERE sana=$1', [p.sana]);
+      }
     } else {
-      toast('❌ ' + active.error, 'error');
+      await client.query(
+        'DELETE FROM davomat WHERE sana=$1 AND maktab_id=$2',
+        [p.sana, maktabId]
+      );
     }
-    if (inactive.ok) {
-      INACTIVE_STUDENTS = inactive.students;
-    }
-    render();
-  } catch (e) { toast("❌ Yuklashda xatolik", 'error'); }
-  g('loading-ov').style.display = 'none';
-}
 
-async function loadJadval() {
+    // Yangi yozuvlarni kiritish
+    for (const rec of records) {
+      await client.query(
+        `INSERT INTO davomat
+           (sana, maktab_id, sinf, oquvchi_ism, status, izoh, vaqt_belgilangan)
+         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        [p.sana, maktabId, rec.sinf, rec.ism, rec.status, rec.izoh || '', now]
+      );
+    }
+
+    await client.query('COMMIT');
+    res.json({ ok: true, saved: records.length });
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('davomat POST xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
+  }
+});
+
+// ─── GET /api/davomat — o'quvchilar davomati olish ───────────────────────────
+router.get('/', async (req, res) => {
+  const { sana, targetMaktabId } = req.query;
+  const { isSuper, maktabId } = req.user;
+
+  // superadmin boshqa maktabni ham ko'ra oladi (query da targetMaktabId bilan)
+  const filterMaktabId = (isSuper && targetMaktabId)
+    ? parseInt(targetMaktabId)
+    : maktabId;
+
   try {
-    const d = await api.getJadvallar({ username: U.username, parol: U.parol });
-    if (d.ok) {
-      JADVALLAR = d.jadvallar.map(j => ({
-        fan:        j.fan,
-        sinflar:    parseSinflarList(j.sinflar),
-        kunlar:     parseKunlarList(j.kunlar),
-        boshlanish: j.boshlanish || '',
-        tugash:     j.tugash || '',
-        teacher:    [j.teacher_familiya, j.teacher_ism].filter(Boolean).join(' '),
-      }));
-      render();
+    let result;
+    if (isSuper && !filterMaktabId) {
+      // Superadmin barcha maktablarni ko'radi
+      result = await pool.query(
+        'SELECT sinf, oquvchi_ism, status, izoh, maktab_id FROM davomat WHERE sana=$1 ORDER BY sinf, oquvchi_ism',
+        [sana]
+      );
+    } else {
+      result = await pool.query(
+        'SELECT sinf, oquvchi_ism, status, izoh FROM davomat WHERE sana=$1 AND maktab_id=$2 ORDER BY sinf, oquvchi_ism',
+        [sana, filterMaktabId]
+      );
     }
-  } catch (e) {}
-}
 
-async function loadDavomat(date) {
+    res.json({
+      ok: true,
+      records: result.rows.map(r => ({
+        sinf: r.sinf,
+        ism:  r.oquvchi_ism,
+        status: r.status,
+        izoh: r.izoh,
+      }))
+    });
+  } catch (err) {
+    console.error('davomat GET xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/davomat/tarix — sanalar tarixi ─────────────────────────────────
+router.get('/tarix', async (req, res) => {
+  const { targetMaktabId } = req.query;
+  const { isSuper, maktabId } = req.user;
+  const filterMaktabId = (isSuper && targetMaktabId) ? parseInt(targetMaktabId) : maktabId;
+
   try {
-    const params = {
-      username: U.username,
-      parol:    U.parol,
-      sana:     dateStr(date)
-    };
-    const d = await api.getDavomat(params);
-    if (d.ok && d.records.length) {
-      d.records.forEach(r => {
-        attendance[r.ism] = r.status;
-        if (r.izoh) izohlar[r.ism] = r.izoh;
-      });
-      render();
+    let result;
+    if (isSuper && !filterMaktabId) {
+      result = await pool.query(
+        'SELECT DISTINCT sana FROM davomat ORDER BY sana DESC'
+      );
+    } else {
+      result = await pool.query(
+        'SELECT DISTINCT sana FROM davomat WHERE maktab_id=$1 ORDER BY sana DESC',
+        [filterMaktabId]
+      );
     }
-  } catch (e) {}
-}
-
-// ─────────────────────────────────────────────
-//  RENDER — statistika kartalari + davomat jadvali
-//  (Faqat ko'rish rejimi: davomatni o'qituvchi
-//  o'z panelidan belgilaydi, admin bu yerda o'zgartira olmaydi.)
-// ─────────────────────────────────────────────
-function render() {
-  updateStats();
-  renderTable();
-}
-
-function updateStats() {
-  const list = getStudentsForDate(currentDate);
-  const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
-  Object.values(attendance).forEach(s => { if (s && c[s] !== undefined) c[s]++; });
-  g('st-keldi').textContent   = c.keldi;
-  g('st-kelmadi').textContent = c.kelmadi;
-  g('st-sababli').textContent = c.sababli;
-  g('st-kech').textContent    = c.kech;
-  g('st-total').textContent   = list.length;
-}
-
-// Stat kartani bosish — jadvalni shu statusga filtrlaydi (qayta bossa — bekor qiladi)
-function toggleFilter(status) {
-  activeFilter = activeFilter === status ? null : status;
-  ['keldi','kelmadi','sababli','kech'].forEach(s => {
-    g('card-' + s).classList.toggle('active', activeFilter === s);
-  });
-  renderTable();
-}
-
-function renderTable() {
-  const q = (g('dav-search').value || '').trim().toLowerCase();
-  const list = getStudentsForDate(currentDate)
-    .map(s => {
-      const key = s.familiya + ' ' + s.ism;
-      const sinfLabel = s.sinf && s.sinf.toLowerCase().includes('sinf') ? s.sinf : (s.sinf ? s.sinf + '-sinf' : '—');
-      return { sinf: sinfLabel, name: key, status: attendance[key] || '', izoh: izohlar[key] || '' };
-    })
-    .filter(r => (!activeFilter || r.status === activeFilter))
-    .filter(r => !q || r.name.toLowerCase().includes(q))
-    .sort((a, b) => a.name.localeCompare(b.name));
-
-  const tbody   = g('dav-tbody');
-  const mobWrap = g('dav-mobile-list');
-
-  if (!list.length) {
-    tbody.innerHTML = `<tr><td colspan="3"><div class="dav-empty">
-      <div class="dav-empty-icon">📋</div>
-      <p>Mos yozuv topilmadi</p>
-    </div></td></tr>`;
-    mobWrap.innerHTML = `<div class="dav-empty">
-      <div class="dav-empty-icon">📋</div>
-      <p>Mos yozuv topilmadi</p>
-    </div>`;
-    return;
+    res.json({ ok: true, sanalar: result.rows.map(r => r.sana) });
+  } catch (err) {
+    console.error('davomat tarix xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
+});
 
-  // ─── Guruhlash: haqiqiy dars guruhlariga (dars_jadvali yozuvlariga) qarab ───
-  // Bir guruh bir nechta sinfni birlashtirishi mumkin (masalan "6-sinf,8-sinf" — bitta
-  // o'qituvchi ikkala sinfni birga o'qitadi). Shu kunga to'g'ri keladigan har bir dars
-  // — alohida guruh sifatida ko'rsatiladi, sinf esa faqat shu darsda ishtirok etadi.
-  const sessions = getSessionsForDate(currentDate);
-  const usedIdx  = new Set(); // list ichidagi qaysi indekslar allaqachon biror guruhga tushdi
+// ─── GET /api/davomat/range — oraliq ─────────────────────────────────────────
+router.get('/range', async (req, res) => {
+  const { from, to, targetMaktabId } = req.query;
+  const { isSuper, maktabId } = req.user;
 
-  const sessionGroups = sessions.map(session => {
-    const sinfNormSet = new Set(session.sinflar.map(normalizeSinf));
-    const rows = [];
-    list.forEach((r, i) => {
-      if (sinfNormSet.has(normalizeSinf(r.sinf))) { rows.push(r); usedIdx.add(i); }
-    });
-    const label = [...new Set(session.sinflar.map(s => normalizeSinf(s)))]
-      .sort((a, b) => (parseInt(a) - parseInt(b)) || a.localeCompare(b))
-      .join(', ') + '-sinf';
-    return { label, fan: session.fan, vaqt: formatVaqt(session), teacher: session.teacher, rows };
-  }).filter(g => g.rows.length); // hech kim yo'q guruhlarni ko'rsatmaymiz
+  if (!from || !to)
+    return res.status(400).json({ ok: false, error: 'from va to sanalar kerak' });
 
-  // Hech qanday darsga tushmagan o'quvchilar — o'z sinfi bo'yicha alohida (eski xulq)
-  const leftover = new Map(); // sinf -> rows
-  list.forEach((r, i) => {
-    if (usedIdx.has(i)) return;
-    if (!leftover.has(r.sinf)) leftover.set(r.sinf, []);
-    leftover.get(r.sinf).push(r);
-  });
-  const leftoverOrder = [...leftover.keys()].sort((a, b) => {
-    const na = parseInt(a), nb = parseInt(b);
-    if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
-    return a.localeCompare(b);
-  });
-  const leftoverGroups = leftoverOrder.map(sinf => ({
-    label: sinf, fan: '', vaqt: '', teacher: '', rows: leftover.get(sinf)
-  }));
+  const filterMaktabId = (isSuper && targetMaktabId) ? parseInt(targetMaktabId) : maktabId;
 
-  // Dars vaqti borlar avval (vaqt bo'yicha allaqachon saralangan), keyin fansiz qolganlar
-  const allGroups = [...sessionGroups, ...leftoverGroups];
-
-  const badgeHtml = (status) => {
-    const meta = STATUS_META[status];
-    return meta
-      ? `<span class="dav-badge ${meta.badge}">${meta.label}</span>`
-      : `<span style="color:var(--muted);font-size:12px;">Belgilanmagan</span>`;
-  };
-
-  const headChips = (grp) => {
-    const fanHtml = grp.fan
-      ? `<span class="dav-group-fan">${esc(grp.fan)}</span>`
-      : `<span class="dav-group-fan dav-group-fan-empty">Fan belgilanmagan</span>`;
-    const vaqtHtml = grp.vaqt ? `<span class="dav-group-vaqt">🕒 ${esc(grp.vaqt)}</span>` : '';
-    const teacherHtml = grp.teacher ? `<span class="dav-group-teacher">${esc(grp.teacher)}</span>` : '';
-    return fanHtml + vaqtHtml + teacherHtml;
-  };
-
-  // ─── Desktop jadval ───
-  tbody.innerHTML = allGroups.map(grp => {
-    const head = `<tr class="dav-group-row"><td colspan="3">
-        <span class="dav-group-sinf">${esc(grp.label)}</span>
-        ${headChips(grp)}
-        <span class="dav-group-count">${grp.rows.length} ta o'quvchi</span>
-      </td></tr>`;
-    const body = grp.rows.map(r => `<tr>
-        <td class="dav-td-name">${esc(r.name)}</td>
-        <td>${badgeHtml(r.status)}</td>
-        <td class="dav-td-izoh">${r.izoh ? esc(r.izoh) : '—'}</td>
-      </tr>`).join('');
-    return head + body;
-  }).join('');
-
-  // ─── Mobil kartalar ───
-  mobWrap.innerHTML = allGroups.map(grp => {
-    const cards = grp.rows.map(r => `<div class="dav-mcard">
-        <div class="dav-mcard-name">${esc(r.name)}</div>
-        <div class="dav-mcard-row">${badgeHtml(r.status)}</div>
-        ${r.izoh ? `<div class="dav-mcard-izoh">${esc(r.izoh)}</div>` : ''}
-      </div>`).join('');
-    return `<div class="dav-mgroup">
-        <div class="dav-mgroup-head">
-          <span class="dav-group-sinf">${esc(grp.label)}</span>
-          ${headChips(grp)}
-          <span class="dav-group-count">${grp.rows.length} ta o'quvchi</span>
-        </div>
-        <div class="dav-mgroup-body">${cards}</div>
-      </div>`;
-  }).join('');
-}
-
-// ─────────────────────────────────────────────
-//  EXCEL EXPORT
-// ─────────────────────────────────────────────
-let exportType = 'bugun';
-
-function openExportModal() {
-  exportType = 'bugun';
-  const now = new Date();
-  // Oylik picker
-  g('exp-month-pick').value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  g('exp-month-pick').max   = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;
-  // Davr: joriy oy 1-kuni — bugun (DD.MM.YYYY formatida)
-  const y = now.getFullYear();
-  const m = String(now.getMonth()+1).padStart(2,'0');
-  const d = String(now.getDate()).padStart(2,'0');
-  g('exp-from').value = `01.${m}.${y}`;
-  g('exp-to').value   = `${d}.${m}.${y}`;
-  updateDavrPreview();
-  updateBugunPreview();
-  g('export-modal').style.display = 'flex';
-}
-
-// DD.MM.YYYY text inputni avtomatik formatlash (raqam kiritganda nuqta qo'shish)
-function onDavrInput(el) {
-  let v = el.value.replace(/[^\d.]/g, '');
-  // Nuqtalarni avtomatik qo'shish: 2 ta raqamdan keyin
-  const digits = v.replace(/\./g, '');
-  if (digits.length >= 3 && !v.includes('.')) {
-    v = digits.slice(0,2) + '.' + digits.slice(2);
+  try {
+    let result;
+    if (isSuper && !filterMaktabId) {
+      result = await pool.query(
+        'SELECT sana, sinf, oquvchi_ism, status, izoh, maktab_id FROM davomat ORDER BY sinf, oquvchi_ism, sana'
+      );
+    } else {
+      result = await pool.query(
+        'SELECT sana, sinf, oquvchi_ism, status, izoh FROM davomat WHERE maktab_id=$1 ORDER BY sinf, oquvchi_ism, sana',
+        [filterMaktabId]
+      );
+    }
+    res.json({ ok: true, records: result.rows });
+  } catch (err) {
+    console.error('davomat range xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
-  if (digits.length >= 5) {
-    const parts = v.split('.');
-    if (parts.length === 2) v = parts[0] + '.' + parts[1].slice(0,2) + '.' + digits.slice(4);
-    if (parts.length >= 3) v = parts[0].slice(0,2) + '.' + parts[1].slice(0,2) + '.' + digits.slice(4,8);
-  }
-  el.value = v;
-  updateDavrPreview();
-}
+});
 
-// Davr inputlar validatsiyasi va preview
-function updateDavrPreview() {
-  const fromVal = (g('exp-from').value || '').trim();
-  const toVal   = (g('exp-to').value   || '').trim();
-  const prevEl  = g('exp-davr-preview');
-  if (!prevEl) return;
+// NOTE: o'qituvchilar davomatini admin tomonidan olish (POST/GET /oqituvchi va /teacher)
+// olib tashlandi. O'qituvchi o'z darsini /mening-darsim orqali belgilaydi.
 
-  const ddmmyyyy = /^\d{2}\.\d{2}\.\d{4}$/;
-  const fromOk = ddmmyyyy.test(fromVal);
-  const toOk   = ddmmyyyy.test(toVal);
-
-  if (!fromOk && !toOk) { prevEl.innerHTML = ''; return; }
-  if (!fromOk || !toOk) {
-    prevEl.innerHTML = `<span style="color:#9ca3af;">DD.MM.YYYY formatida kiriting</span>`;
-    return;
-  }
-  // YYYY-MM-DD ga o'girib taqqoslash
-  const fromISO = fromVal.split('.').reverse().join('-');
-  const toISO   = toVal.split('.').reverse().join('-');
-  if (fromISO > toISO) {
-    prevEl.innerHTML = `<span style="color:#dc2626;">⚠️ Boshlanish sanasi tugash sanasidan katta</span>`;
-  } else {
-    prevEl.innerHTML = `<span style="color:#16a34a;font-size:13px;font-weight:500;">✅ ${fromVal} — ${toVal}</span>`;
-  }
-}
-
-// DD.MM.YYYY → YYYY-MM-DD (API uchun)
-function ddmmToISO(v) {
-  if (!v || !v.includes('.')) return v;
-  return v.split('.').reverse().join('-');
-}
-
-function closeExportModal() {
-  g('export-modal').style.display = 'none';
-}
-
-function selectExportType(type, btn) {
-  exportType = type;
-  document.querySelectorAll('.export-tab').forEach(b => b.classList.remove('active'));
-  btn.classList.add('active');
-  g('exp-bugun').style.display = type === 'bugun'  ? '' : 'none';
-  g('exp-oylik').style.display = type === 'oylik'  ? '' : 'none';
-  g('exp-davr').style.display  = type === 'davr'   ? '' : 'none';
-  if (type === 'bugun') updateBugunPreview();
-}
-
-function updateBugunPreview() {
-  const c = { keldi: 0, kelmadi: 0, sababli: 0, kech: 0 };
-  Object.values(attendance).forEach(s => { if (c[s] !== undefined) c[s]++; });
-  const total = Object.values(attendance).filter(Boolean).length;
-  g('exp-bugun-preview').innerHTML = total
-    ? `📅 <span>${formatDateDisplay(currentDate)}</span> &nbsp;·&nbsp; `
-      + `<span class="exp-stat">${total}</span> o'quvchi &nbsp;`
-      + `✅<span class="exp-stat">${c.keldi}</span> `
-      + `❌<span class="exp-stat">${c.kelmadi}</span> `
-      + `📋<span class="exp-stat">${c.sababli}</span> `
-      + `⏰<span class="exp-stat">${c.kech}</span>`
-    : `<span style="color:var(--muted)">Bugun uchun davomat belgilanmagan</span>`;
-}
-
-async function doExport() {
-  let from, to, filename;
-
-  if (exportType === 'bugun') {
-    from = dateStr(currentDate);
-    to   = dateStr(currentDate);
-    filename = `Davomat_${from}`;
-  } else if (exportType === 'oylik') {
-    const mp = g('exp-month-pick').value;
-    if (!mp) { toast('⚠️ Oy tanlang', 'error'); return; }
-    const [y, m] = mp.split('-');
-    from = `${y}-${m}-01`;
-    const lastDay = new Date(+y, +m, 0).getDate();
-    to   = `${y}-${m}-${String(lastDay).padStart(2,'0')}`;
-    filename = `Davomat_${OYLAR[+m-1]}_${y}`;
-  } else {
-    from = g('exp-from').value.trim();
-    to   = g('exp-to').value.trim();
-    const ddmmyyyy = /^\d{2}\.\d{2}\.\d{4}$/;
-    if (!from || !to)           { toast('⚠️ Sanalarni kiriting', 'error'); return; }
-    if (!ddmmyyyy.test(from))   { toast('⚠️ Boshlanish: DD.MM.YYYY formatida kiriting', 'error'); return; }
-    if (!ddmmyyyy.test(to))     { toast('⚠️ Tugash: DD.MM.YYYY formatida kiriting', 'error'); return; }
-    const fromISO = ddmmToISO(from);
-    const toISO   = ddmmToISO(to);
-    if (fromISO > toISO)        { toast('⚠️ Boshlanish sanasi katta bo\'lishi mumkin emas', 'error'); return; }
-    filename = `Davomat_${from}_${to}`;
-    from = fromISO;
-    to   = toISO;
-  }
-
-  // Agar bugungi — API chaqirmaylik, memory dan olamiz
-  let records;
-  if (exportType === 'bugun' && Object.keys(attendance).length) {
-    records = getStudentsForDate(currentDate)
-      .filter(s => attendance[s.ism + ' ' + s.familiya])
-      .map(s => {
-        const key = s.ism + ' ' + s.familiya;
-        return { sana: dateStr(currentDate).split('-').reverse().join('.'), sinf: s.sinf, ism: key, status: attendance[key], izoh: izohlar[key]||'' };
-      });
-  } else {
-    // API dan olish
-    bl('btn-do-export','exp-spinner','exp-txt',true,'Yuklanmoqda…');
-    try {
-      const d = await api.getDavomatRange({ username:U.username, parol:U.parol, from, to });
-      if (!d.ok) { toast('❌ ' + d.error, 'error'); bl('btn-do-export','exp-spinner','exp-txt',false,'⬇ Yuklab olish'); return; }
-      records = d.records;
-    } catch(e) { toast('❌ Xatolik', 'error'); bl('btn-do-export','exp-spinner','exp-txt',false,'⬇ Yuklab olish'); return; }
-    bl('btn-do-export','exp-spinner','exp-txt',false,'⬇ Yuklab olish');
-  }
-
-  if (!records.length) { toast('⚠️ Bu davr uchun ma\'lumot topilmadi', 'error'); return; }
-
-  buildExcel(records, filename);
-  closeExportModal();
-  toast('✅ Excel fayl yuklab olindi!', 'success');
-}
-
-function buildExcel(records, filename) {
-  const wb = XLSX.utils.book_new();
-  const STATUS_LABEL = { keldi:'Keldi', kelmadi:'Kelmadi', sababli:'Sababli', kech:'Kech keldi' };
-
-  if (exportType === 'bugun') {
-    // ─── 1 SHEET: Bugungi jadval ───
-    const rows = [['#', 'Sinf', 'Ism Familiya', 'Status', 'Izoh']];
-    records.forEach((r, i) => rows.push([i+1, r.sinf, r.ism, STATUS_LABEL[r.status]||r.status, r.izoh]));
-
-    // Xulosa qatori
-    const c = { keldi:0, kelmadi:0, sababli:0, kech:0 };
-    records.forEach(r => { if(c[r.status]!==undefined) c[r.status]++; });
-    rows.push([]);
-    rows.push(['', '', 'JAMI:', records.length, '']);
-    rows.push(['', '', 'Keldi:', c.keldi, '']);
-    rows.push(['', '', 'Kelmadi:', c.kelmadi, '']);
-    rows.push(['', '', 'Sababli:', c.sababli, '']);
-    rows.push(['', '', 'Kech keldi:', c.kech, '']);
-
-    const ws = XLSX.utils.aoa_to_sheet(rows);
-    ws['!cols'] = [{wch:4},{wch:10},{wch:24},{wch:12},{wch:30}];
-    XLSX.utils.book_append_sheet(wb, ws, 'Davomat');
-
-  } else {
-    // ─── Ko'p kunli: har sinf uchun alohida sheet ───
-    // 1. Umumiy sheet — barcha yozuvlar
-    const allRows = [['Sana', 'Sinf', 'Ism Familiya', 'Status', 'Izoh']];
-    records.forEach(r => allRows.push([r.sana, r.sinf, r.ism, STATUS_LABEL[r.status]||r.status, r.izoh]));
-    const wsAll = XLSX.utils.aoa_to_sheet(allRows);
-    wsAll['!cols'] = [{wch:12},{wch:10},{wch:24},{wch:12},{wch:30}];
-    XLSX.utils.book_append_sheet(wb, wsAll, 'Barchasi');
-
-    // 2. Har sinf uchun kross-jadval (o'quvchi × sana)
-    const sinflar = [...new Set(records.map(r => r.sinf))].sort((a,b)=>parseInt(a)-parseInt(b));
-
-    sinflar.forEach(sinf => {
-      const sinfRecs = records.filter(r => r.sinf === sinf);
-      const sanalar  = [...new Set(sinfRecs.map(r => r.sana))].sort((a,b) => {
-        const pa = a.split('.').reverse().join('-');
-        const pb = b.split('.').reverse().join('-');
-        return pa > pb ? 1 : -1;
-      });
-      const students = [...new Set(sinfRecs.map(r => r.ism))].sort();
-
-      // Header: Ism | Sana1 | Sana2 | ... | Keldi_% | Kelmadi_%
-      const header = ['Ism Familiya', ...sanalar, 'Keldi', 'Kelmadi', 'Sababli', 'Kech', 'Davomat %'];
-      const rows = [header];
-
-      students.forEach(ism => {
-        const row = [ism];
-        const cnt = { keldi:0, kelmadi:0, sababli:0, kech:0 };
-        sanalar.forEach(sana => {
-          const rec = sinfRecs.find(r => r.ism === ism && r.sana === sana);
-          const st  = rec ? (STATUS_LABEL[rec.status] || rec.status) : '—';
-          row.push(st);
-          if (rec && cnt[rec.status] !== undefined) cnt[rec.status]++;
-        });
-        const total = sanalar.length;
-        const pct   = total ? Math.round((cnt.keldi + cnt.kech) / total * 100) : 0;
-        row.push(cnt.keldi, cnt.kelmadi, cnt.sababli, cnt.kech, pct + '%');
-        rows.push(row);
-      });
-
-      // Kunlik xulosa qatori
-      const sumRow = ['JAMI'];
-      sanalar.forEach(sana => {
-        const daySt = sinfRecs.filter(r => r.sana === sana);
-        const k = daySt.filter(r => r.status==='keldi').length;
-        sumRow.push(`${k}/${daySt.length}`);
-      });
-      sumRow.push('','','','','');
-      rows.push(sumRow);
-
-      const ws = XLSX.utils.aoa_to_sheet(rows);
-      const colW = [{wch:24}, ...sanalar.map(()=>({wch:10})), {wch:7},{wch:8},{wch:7},{wch:5},{wch:10}];
-      ws['!cols'] = colW;
-
-      const sheetName = sinf.length > 31 ? sinf.slice(0,31) : sinf;
-      XLSX.utils.book_append_sheet(wb, ws, sheetName + '-sinf');
-    });
-
-    // 3. Umumiy statistika sheet
-    const statRows = [['Sinf', 'Jami dars', 'Umumiy davomat', 'Keldi', 'Kelmadi', 'Sababli', 'Kech', 'Davomat %']];
-    sinflar.forEach(sinf => {
-      const sr = records.filter(r => r.sinf === sinf);
-      const c  = {keldi:0,kelmadi:0,sababli:0,kech:0};
-      sr.forEach(r => { if(c[r.status]!==undefined) c[r.status]++; });
-      const total = sr.length;
-      const pct   = total ? Math.round((c.keldi+c.kech)/total*100) : 0;
-      statRows.push([sinf, total, c.keldi+c.kech, c.keldi, c.kelmadi, c.sababli, c.kech, pct+'%']);
-    });
-    const wsStat = XLSX.utils.aoa_to_sheet(statRows);
-    wsStat['!cols'] = [{wch:12},{wch:10},{wch:14},{wch:7},{wch:8},{wch:7},{wch:5},{wch:10}];
-    XLSX.utils.book_append_sheet(wb, wsStat, 'Statistika');
-  }
-
-  XLSX.writeFile(wb, filename + '.xlsx');
-}
-
-// ─────────────────────────────────────────────
-//  YORDAMCHI FUNKSIYALAR
-// ─────────────────────────────────────────────
-
-function bl(btnId, spId, txtId, loading, txt) {
-  g(btnId).disabled           = loading;
-  g(spId).style.display       = loading ? 'inline-block' : 'none';
-  g(txtId).textContent        = txt;
-}
-
-function g(id)      { return document.getElementById(id); }
-function esc(s)     { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
-
-let toastT;
-function toast(msg, type = '') {
-  const t = g('toast');
-  t.textContent = msg; t.className = 'toast show ' + type;
-  clearTimeout(toastT); toastT = setTimeout(() => { t.className = 'toast'; }, 3000);
-}
+module.exports = router;

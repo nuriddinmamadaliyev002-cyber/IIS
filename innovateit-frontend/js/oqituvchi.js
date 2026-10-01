@@ -274,6 +274,7 @@ function onMaktabChange() {
   loadJadval();
   clearGuruhForm();
   if (g('tab-guruh').classList.contains('active')) initGuruhTab();
+  if (g('tab-soat').classList.contains('active'))  loadSoatStatistika();
 }
 
 // ─── Tab almashtirish ─────────────────────────────
@@ -1697,13 +1698,21 @@ async function loadJadval() {
 // ═══════════════════════════════════════════
 //  DARS SOATLARI STATISTIKASI
 // ═══════════════════════════════════════════
+let _soatReqSeq = 0;   // maktab tez almashtirilganda eski javob yangisini bosib ketmasin
 async function loadSoatStatistika() {
   const wrap = g('soat-content');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+  const mySeq = ++_soatReqSeq;
 
   try {
-    const data = await api.get('/api/davomat/soat-statistika');
+    const params = TANLANGAN_MID ? { maktabId: TANLANGAN_MID } : {};
+    const data = await api.get('/api/davomat/soat-statistika', params);
+    if (mySeq !== _soatReqSeq) return;   // bu so'rov eskirgan
     if (!data || !data.ok) {
+      if (data && data.error) {
+        wrap.innerHTML = '<div class="oq-empty">' + esc(data.error) + '</div>';
+        return;
+      }
       wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
       return;
     }
@@ -1800,6 +1809,7 @@ async function saveDarsBelgilash() {
 
   const body = {
     sana,
+    maktabId:     TANLANGAN_MID || undefined,
     status:       _darsStatus,
     dars_soat:    parseInt(g('dars-soat').value)    || 0,
     dars_daqiqa:  parseInt(g('dars-daqiqa').value)  || 0,
