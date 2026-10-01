@@ -232,6 +232,62 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
   }
 });
 
+// ─── Yordamchilar: sana (DD.MM.YYYY) va o'qituvchining dars kunlari ──────────
+function parseSanaDMY(s) {
+  const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(s || '').trim());
+  if (!m) return null;
+  const d = new Date(+m[3], +m[2] - 1, +m[1]);
+  if (d.getFullYear() !== +m[3] || d.getMonth() !== +m[2] - 1 || d.getDate() !== +m[1]) return null;
+  return d;
+}
+
+// O'qituvchining tanlangan maktabdagi guruhlari (dars_jadvali) bo'yicha dars
+// kunlari to'plami (0=Yakshanba ... 6=Shanba). Guruh bo'lmasa — bo'sh Set.
+async function teacherLessonWeekdays(ism, maktabId) {
+  const parts    = String(ism || '').trim().split(' ');
+  const familiya = parts[0] || '';
+  const ismOnly  = parts.slice(1).join(' ') || '';
+  const r = await pool.query(
+    `SELECT kunlar FROM dars_jadvali
+     WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
+       AND LOWER(TRIM(teacher_ism))      = LOWER($2)
+       AND maktab_id = $3`,
+    [familiya, ismOnly, maktabId]
+  );
+  const set = new Set();
+  r.rows.forEach(row => String(row.kunlar || '').split(',').forEach(k => {
+    const n = parseInt(k.trim(), 10);
+    if (!isNaN(n)) set.add(n);
+  }));
+  return set;
+}
+
+// ─── GET /api/davomat/mening-darsim?sana=DD.MM.YYYY — bitta kunlik yozuv ─────
+router.get('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism } = req.user;
+  const sel = resolveTeacherMaktab(req);
+  if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
+
+  const sana = String(req.query.sana || '').trim();
+  if (!parseSanaDMY(sana)) {
+    return res.status(400).json({ ok: false, error: "Sana formati noto'g'ri (DD.MM.YYYY)" });
+  }
+
+  try {
+    const r = await pool.query(
+      `SELECT sana, status, izoh, vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut
+       FROM oqituvchilar_davomat
+       WHERE sana = $1 AND maktab_id = $2 AND oqituvchi_ism = $3
+       ORDER BY id DESC LIMIT 1`,
+      [sana, sel.mid, ism]
+    );
+    res.json({ ok: true, yozuv: r.rows[0] || null });
+  } catch (err) {
+    console.error('mening-darsim GET xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 // ─── POST /api/davomat/mening-darsim — O'qituvchi o'z davomatini belgilaydi ──
 router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   const { ism, entityId } = req.user;
@@ -244,35 +300,87 @@ router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   if (!sana || !status) {
     return res.status(400).json({ ok: false, error: 'Sana va status kerak' });
   }
+  if (!['keldi', 'kelmadi', 'kech'].includes(status)) {
+    return res.status(400).json({ ok: false, error: "Status noto'g'ri" });
+  }
+
+  const sanaDate = parseSanaDMY(sana);
+  if (!sanaDate) {
+    return res.status(400).json({ ok: false, error: "Sana formati noto'g'ri (DD.MM.YYYY)" });
+  }
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (sanaDate > today) {
+    return res.status(400).json({ ok: false, error: "Kelajak sanaga dars belgilab bo'lmaydi" });
+  }
+
+  // Soat/daqiqa chegaralari; kelmagan kunda soat yozilmaydi
+  const clamp = (v, max) => Math.min(Math.max(parseInt(v, 10) || 0, 0), max);
+  let soat   = clamp(dars_soat, 12);
+  let daqiqa = clamp(dars_daqiqa, 59);
+  let kech   = clamp(kech_minut, 600);
+  if (status === 'kelmadi') { soat = 0; daqiqa = 0; }
+  if (status !== 'kech')    { kech = 0; }
 
   try {
-    // O'qituvchi fan ma'lumotini olish
-    const teacherRes = await pool.query(
-      'SELECT fan FROM oqituvchilar WHERE id = $1', [entityId]
-    );
-    const fan = teacherRes.rows[0]?.fan || '';
+    // Faqat guruhi (jadvali) bor o'qituvchida dars kunlari bilan cheklanadi
+    const kunlar = await teacherLessonWeekdays(ism, maktabId);
+    if (kunlar.size && !kunlar.has(sanaDate.getDay())) {
+      return res.status(400).json({ ok: false, error: "Bu kun sizning dars kuningiz emas" });
+    }
 
+    const teacherRes = await pool.query('SELECT fan FROM oqituvchilar WHERE id = $1', [entityId]);
+    const fan = teacherRes.rows[0]?.fan || '';
     const now = new Date().toLocaleTimeString('uz-UZ');
 
-    // Avvalgi yozuvni o'chirish (bir kun — bir yozuv)
-    await pool.query(
-      'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3',
-      [sana, maktabId, ism]
-    );
-
-    // Yangi yozuv kiritish
-    await pool.query(
-      `INSERT INTO oqituvchilar_davomat
-         (sana, maktab_id, oqituvchi_ism, fan, status, izoh,
-          vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-      [sana, maktabId, ism, fan, status, izoh || '', now,
-       dars_soat || 0, dars_daqiqa || 0, kech_minut || 0]
-    );
+    // Bir kun — bir yozuv: o'chirish va qo'shish bitta tranzaksiyada
+    const client = await pool.connect();
+    try {
+      await client.query('BEGIN');
+      await client.query(
+        'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3',
+        [sana, maktabId, ism]
+      );
+      await client.query(
+        `INSERT INTO oqituvchilar_davomat
+           (sana, maktab_id, oqituvchi_ism, fan, status, izoh,
+            vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+        [sana, maktabId, ism, fan, status, String(izoh || '').slice(0, 500), now, soat, daqiqa, kech]
+      );
+      await client.query('COMMIT');
+    } catch (e) {
+      await client.query('ROLLBACK');
+      throw e;
+    } finally {
+      client.release();
+    }
 
     res.json({ ok: true });
   } catch (err) {
     console.error('mening-darsim POST xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── DELETE /api/davomat/mening-darsim — kunlik yozuvni o'chirish ────────────
+router.delete('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism } = req.user;
+  const sel = resolveTeacherMaktab(req);
+  if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
+
+  const sana = String((req.body && req.body.sana) || req.query.sana || '').trim();
+  if (!parseSanaDMY(sana)) {
+    return res.status(400).json({ ok: false, error: "Sana formati noto'g'ri (DD.MM.YYYY)" });
+  }
+
+  try {
+    await pool.query(
+      'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3',
+      [sana, sel.mid, ism]
+    );
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('mening-darsim DELETE xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });

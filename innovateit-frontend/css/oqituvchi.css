@@ -322,11 +322,9 @@ button, a, input, select, textarea, [role="button"] {
 }
 
 /* ── Shu panel ichidagi modal Saqlash/Tasdiqlash tugmalari — banner rangida ── */
-#dars-modal .btn-submit,
 #dav-izoh-modal .btn-submit {
   background: var(--iit-brand-grad);
 }
-#dars-modal .btn-submit:active,
 #dav-izoh-modal .btn-submit:active {
   background: var(--iit-indigo-deep);
 }
@@ -697,3 +695,21 @@ button, a, input, select, textarea, [role="button"] {
 .btn-submit.mv-btn-danger-fill:disabled,
 #mv-delete-cancel:disabled { opacity: .6; cursor: not-allowed; }
 #mv-delete-modal .btn-submit, #mv-delete-modal .btn-cancel { min-height: 44px; }
+
+/* ═══════════════════════════════════════════════════
+   DARS SOATLARI — "Dars soatini belgilash" bo'limi
+   ═══════════════════════════════════════════════════ */
+.sm-field { margin-bottom: 14px; }
+.sm-time-row { display: flex; gap: 10px; margin-bottom: 6px; }
+.sm-time-field {
+  flex: 1; display: flex; align-items: center; gap: 8px;
+  border: 1.5px solid var(--border); border-radius: 10px;
+  padding: 0 12px; background: var(--bg); min-width: 0;
+}
+.sm-time-field input {
+  flex: 1; min-width: 0; width: 100%; border: 0; outline: none; background: transparent;
+  font-family: inherit; font-size: 18px; font-weight: 700; color: var(--text); padding: 10px 0;
+}
+.sm-time-field span { font-size: 12.5px; color: var(--muted); }
+.sm-time-field:focus-within { border-color: var(--iit-indigo); }
+.sm-plan { font-size: 12px; color: var(--muted); margin-bottom: 14px; }

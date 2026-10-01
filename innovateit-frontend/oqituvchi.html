@@ -220,6 +220,63 @@
     <!-- ══ DARS SOATLARI TAB ══ -->
     <div class="oq-tab-page" id="tab-soat">
       <div id="soat-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
+      <!-- Dars soatini belgilash: faqat guruhning dars kunlari -->
+      <div id="sm-wrap">
+        <div class="oq-section-title">✏️ Dars soatini belgilash</div>
+        <div id="sm-empty" class="oq-empty" style="display:none;"></div>
+
+        <div id="sm-body" style="display:none;">
+          <div class="dav-date-bar">
+            <button class="dav-date-nav-btn" id="sm-prev-btn" onclick="smChangeDate(-1)">‹</button>
+            <div style="text-align:center;">
+              <div class="dav-date-display" id="sm-date-display">—</div>
+              <div class="dav-date-sub" id="sm-date-sub">—</div>
+            </div>
+            <button class="dav-date-nav-btn" id="sm-next-btn" onclick="smChangeDate(1)">›</button>
+            <div class="dav-date-input-wrap">
+              <div class="dav-date-input-text" id="sm-date-picker-text" onclick="smOpenDatePicker()">—</div>
+              <input class="dav-date-input" type="date" id="sm-date-picker" onchange="smOnDatePick()">
+            </div>
+          </div>
+
+          <div id="sm-note" class="mv-note" role="status" style="display:none;"></div>
+          <div id="sm-loading" class="oq-loading" style="display:none;"><div class="loading-spinner"></div></div>
+
+          <!-- Saqlangan dars kartochkasi -->
+          <div id="sm-card" class="mv-card" style="display:none;"></div>
+
+          <!-- Forma -->
+          <div id="sm-form" class="mv-card" style="display:none;">
+            <div class="mv-card-label">Holat</div>
+            <div class="dars-status-row sm-field">
+              <button type="button" id="sm-st-keldi"   class="dars-status-btn active" onclick="smSelectStatus('keldi')"   style="--sc:#10b981">✅ Keldi</button>
+              <button type="button" id="sm-st-kelmadi" class="dars-status-btn"        onclick="smSelectStatus('kelmadi')" style="--sc:#ef4444">❌ Kelmadi</button>
+              <button type="button" id="sm-st-kech"    class="dars-status-btn"        onclick="smSelectStatus('kech')"    style="--sc:#8b5cf6">⏰ Kech</button>
+            </div>
+
+            <div id="sm-time-wrap">
+              <div class="mv-card-label">Dars davomiyligi</div>
+              <div class="sm-time-row">
+                <label class="sm-time-field"><input id="sm-soat" type="number" inputmode="numeric" min="0" max="12" placeholder="0"><span>soat</span></label>
+                <label class="sm-time-field"><input id="sm-daqiqa" type="number" inputmode="numeric" min="0" max="59" placeholder="0"><span>daqiqa</span></label>
+              </div>
+              <div class="sm-plan" id="sm-plan"></div>
+            </div>
+
+            <div id="sm-kech-wrap" class="sm-field" style="display:none;">
+              <div class="mv-card-label">Necha daqiqa kech qoldingiz</div>
+              <label class="sm-time-field"><input id="sm-kech" type="number" inputmode="numeric" min="0" max="600" placeholder="0"><span>daqiqa</span></label>
+            </div>
+
+            <div class="mv-card-label">Izoh (ixtiyoriy)</div>
+            <textarea class="field-input sm-field" id="sm-izoh" rows="2" maxlength="500" style="resize:vertical;font-family:inherit;"></textarea>
+
+            <button class="oq-mark-btn" id="sm-save-btn" onclick="smSave()">💾 Saqlash</button>
+            <button type="button" class="btn-cancel mv-btn-cancel" id="sm-cancel-btn" onclick="smCancelEdit()" style="display:none;">Bekor qilish</button>
+          </div>
+        </div>
+      </div>
+
     </div>
 
     <!-- ══ MAVZU / VAZIFA BERISH TAB ══ -->
@@ -302,59 +359,6 @@
       <div id="vazifalar-tekshirish-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>
 
-  </div>
-</div>
-
-<!-- ════════════ DARSNI BELGILASH MODAL ════════════ -->
-<div class="modal-overlay" id="dars-modal" style="display:none;" onclick="if(event.target===this)closeDarsModal()">
-  <div class="modal">
-    <div class="modal-drag"></div>
-    <div class="modal-title">✏️ Bugungi darsni belgilash</div>
-
-    <div class="field-group">
-      <label class="field-label">📅 Sana</label>
-      <input class="field-input" id="dars-sana" type="text" placeholder="DD.MM.YYYY">
-    </div>
-
-    <div class="field-group">
-      <label class="field-label">📌 Holat</label>
-      <div class="dars-status-row">
-        <button type="button" id="dars-st-keldi"   class="dars-status-btn active" onclick="selectDarsStatus('keldi')"   style="--sc:#10b981">✅ Keldi</button>
-        <button type="button" id="dars-st-kelmadi"  class="dars-status-btn"        onclick="selectDarsStatus('kelmadi')" style="--sc:#ef4444">❌ Kelmadi</button>
-        <button type="button" id="dars-st-kech"     class="dars-status-btn"        onclick="selectDarsStatus('kech')"    style="--sc:#8b5cf6">⏰ Kech</button>
-      </div>
-    </div>
-
-    <div class="form-grid">
-      <div class="field-group">
-        <label class="field-label">⏱️ Soat</label>
-        <input class="field-input" id="dars-soat" type="number" min="0" max="12" placeholder="Soat">
-      </div>
-      <div class="field-group">
-        <label class="field-label">⏱️ Daqiqa</label>
-        <input class="field-input" id="dars-daqiqa" type="number" min="0" max="59" placeholder="Daqiqa">
-      </div>
-    </div>
-
-    <div class="field-group" id="dars-kech-wrap" style="display:none;">
-      <label class="field-label">⏰ Kechikish (daqiqa)</label>
-      <input class="field-input" id="dars-kech-minut" type="number" min="0" placeholder="Necha daqiqa kech">
-    </div>
-
-    <div class="field-group">
-      <label class="field-label">💬 Izoh (ixtiyoriy)</label>
-      <textarea class="field-input" id="dars-izoh" rows="3" style="resize:vertical;font-family:inherit;"></textarea>
-    </div>
-
-    <div id="dars-modal-msg" style="text-align:center;font-size:13px;margin-bottom:8px;min-height:18px;"></div>
-
-    <div class="modal-footer">
-      <button class="btn-cancel" onclick="closeDarsModal()">Bekor</button>
-      <button class="btn-submit" id="dars-save-btn" onclick="saveDarsBelgilash()">
-        <span class="spinner" id="dars-spinner"></span>
-        <span id="dars-btn-txt">💾 Saqlash</span>
-      </button>
-    </div>
   </div>
 </div>
 

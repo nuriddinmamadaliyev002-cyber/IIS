@@ -274,7 +274,7 @@ function onMaktabChange() {
   loadJadval();
   clearGuruhForm();
   if (g('tab-guruh').classList.contains('active')) initGuruhTab();
-  if (g('tab-soat').classList.contains('active'))  loadSoatStatistika();
+  if (g('tab-soat').classList.contains('active'))  { loadSoatStatistika(); initSoatMark(); }
 }
 
 // ─── Tab almashtirish ─────────────────────────────
@@ -289,7 +289,7 @@ function switchTab(tab) {
 
   if (tab === 'guruhlar') loadGuruhlarim();
   if (tab === 'jadval')   loadJadval();
-  if (tab === 'soat')     loadSoatStatistika();
+  if (tab === 'soat')   { loadSoatStatistika(); initSoatMark(); }
   if (tab === 'guruh')    initGuruhTab();
   if (tab === 'mavzu')    loadMvGuruhlarim();
   if (tab === 'vazifalar') loadVazifalarniTekshirish();
@@ -1760,8 +1760,6 @@ async function loadSoatStatistika() {
       });
     }
 
-    html += `<button class="oq-mark-btn" onclick="openDarsModal()">✏️ Bugungi darsni belgilash</button>`;
-
     wrap.innerHTML = html;
   } catch (e) {
     wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
@@ -1769,74 +1767,331 @@ async function loadSoatStatistika() {
 }
 
 // ═══════════════════════════════════════════
-//  DARSNI BELGILASH (modal)
+//  DARS SOATINI BELGILASH
+//  Faqat o'qituvchining dars o'tadigan kunlari uchun:
+//  ‹ › bilan dars kunlari bo'ylab yuriladi, kelajakka
+//  chiqib bo'lmaydi. Saqlangan kun kartochka ko'rinishida.
 // ═══════════════════════════════════════════
-let _darsStatus = 'keldi';
+const _sm = {
+  kunlar: new Set(),   // dars kunlari (0=Yakshanba ... 6=Shanba)
+  jadvallar: [],       // tanlangan maktabdagi guruhlar
+  cur: null,           // tanlangan sana (Date)
+  saved: null,         // serverdagi yozuv (yo'q bo'lsa null)
+  status: 'keldi',
+  initSeq: 0,
+  recSeq: 0,
+  noteTimer: null,
+};
 
-function openDarsModal() {
-  const today = new Date();
-  const dd = String(today.getDate()).padStart(2,'0');
-  const mm = String(today.getMonth()+1).padStart(2,'0');
-  g('dars-sana').value = `${dd}.${mm}.${today.getFullYear()}`;
-  g('dars-soat').value = '';
-  g('dars-daqiqa').value = '';
-  g('dars-kech-minut').value = '';
-  g('dars-izoh').value = '';
-  g('dars-modal-msg').textContent = '';
-  selectDarsStatus('keldi');
-  g('dars-modal').style.display = 'flex';
-  navPush('darsModal', closeDarsModal);
+const SM_STATUS = {
+  keldi:   { icon: '✅', label: 'Keldi' },
+  kelmadi: { icon: '❌', label: 'Kelmadi' },
+  kech:    { icon: '⏰', label: 'Kech keldi' },
+};
+
+function smFmtSana(d) {
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()}`;
 }
 
-function closeDarsModal() {
-  navRelease('darsModal');
-  g('dars-modal').style.display = 'none';
+function smIsLessonDay(d) { return _sm.kunlar.has(d.getDay()); }
+
+// Berilgan sanadan dir yo'nalishida eng yaqin dars kuni; kelajakka chiqmaydi
+function smFindLessonDate(from, dir) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const d = new Date(from); d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 14; i++) {
+    d.setDate(d.getDate() + dir);
+    if (dir > 0 && d > today) return null;
+    if (smIsLessonDay(d)) return new Date(d);
+  }
+  return null;
 }
 
-function selectDarsStatus(status) {
-  _darsStatus = status;
-  document.querySelectorAll('.dars-status-btn').forEach(b => b.classList.remove('active'));
-  g('dars-st-' + status)?.classList.add('active');
-  g('dars-kech-wrap').style.display = status === 'kech' ? 'block' : 'none';
+// "HH:MM" -> daqiqa
+function smToMin(t) {
+  const m = /^(\d{1,2}):(\d{2})/.exec(String(t || ''));
+  return m ? (+m[1]) * 60 + (+m[2]) : null;
 }
 
-async function saveDarsBelgilash() {
-  const msgEl = g('dars-modal-msg');
-  msgEl.textContent = '';
+// Tanlangan kun uchun jadval bo'yicha rejalangan daqiqalar (guruhlar yig'indisi)
+function smPlanMin(d) {
+  let total = 0;
+  _sm.jadvallar.forEach(j => {
+    const days = parseKunlarSet(j.kunlar);
+    if (!days.has(d.getDay())) return;
+    const b = smToMin(j.boshlanish), t = smToMin(j.tugash);
+    if (b !== null && t !== null && t > b) total += (t - b);
+  });
+  return total;
+}
 
-  const sana = g('dars-sana').value.trim();
-  if (!sana) { msgEl.style.color = '#ef4444'; msgEl.textContent = '❌ Sanani kiriting'; return; }
+function smFmtDur(h, m) {
+  const parts = [];
+  if (h) parts.push(`${h} soat`);
+  if (m) parts.push(`${m} daqiqa`);
+  return parts.join(' ') || '0 daqiqa';
+}
+
+function smShowNote(text, isError) {
+  const el = g('sm-note');
+  clearTimeout(_sm.noteTimer);
+  el.textContent = text;
+  el.classList.toggle('mv-note-err', !!isError);
+  el.style.display = 'block';
+  if (!isError) _sm.noteTimer = setTimeout(() => { el.style.display = 'none'; }, 3500);
+}
+
+function smSetMode(mode) {   // 'loading' | 'card' | 'form' | 'none'
+  g('sm-loading').style.display = mode === 'loading' ? 'block' : 'none';
+  g('sm-card').style.display    = mode === 'card'    ? 'block' : 'none';
+  g('sm-form').style.display    = mode === 'form'    ? 'block' : 'none';
+}
+
+// Bo'limni ishga tushirish: guruhlardan dars kunlarini aniqlaydi
+async function initSoatMark() {
+  const seq = ++_sm.initSeq;
+  const empty = g('sm-empty'), body = g('sm-body');
+  body.style.display = 'none';
+  empty.style.display = 'none';
+
+  if (!TANLANGAN_MID) {
+    empty.textContent = '⚠️ Avval maktabni tanlang';
+    empty.style.display = 'block';
+    return;
+  }
+
+  let data = null;
+  try { data = await api.get('/api/jadval/mening-jadvalim-oqituvchi', { maktabId: TANLANGAN_MID }); }
+  catch (e) { data = null; }
+  if (seq !== _sm.initSeq) return;   // maktab almashtirilgan — eski javobni tashlaymiz
+
+  if (!data || !data.ok) {
+    empty.textContent = "⚠️ Ma'lumot yuklanmadi";
+    empty.style.display = 'block';
+    return;
+  }
+
+  _sm.jadvallar = data.jadvallar || [];
+  _sm.kunlar = new Set();
+  _sm.jadvallar.forEach(j => parseKunlarSet(j.kunlar).forEach(n => _sm.kunlar.add(n)));
+
+  if (!_sm.kunlar.size) {
+    empty.innerHTML = '📭 Dars soatini belgilash uchun avval guruh yarating.<br>"➕ Guruh yaratish" bo\'limidan boshlang.';
+    empty.style.display = 'block';
+    return;
+  }
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  _sm.cur = smIsLessonDay(today) ? today : (smFindLessonDate(today, -1) || today);
+
+  g('sm-date-picker').max = dateStrLocal(today);
+  body.style.display = 'block';
+  g('sm-note').style.display = 'none';
+  smSetDateUI();
+  smUpdateNav();
+  await smLoadRecord();
+}
+
+function smSetDateUI() {
+  const d = _sm.cur;
+  g('sm-date-display').textContent = `${d.getDate()}-${OY_NOMLARI[d.getMonth() + 1]}, ${d.getFullYear()}`;
+  g('sm-date-sub').textContent     = KUN_NOMLARI_MAP[String(d.getDay())] || '';
+  g('sm-date-picker').value        = dateStrLocal(d);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  g('sm-date-picker-text').textContent = `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+function smUpdateNav() {
+  g('sm-prev-btn').disabled = !smFindLessonDate(_sm.cur, -1);
+  g('sm-next-btn').disabled = !smFindLessonDate(_sm.cur, 1);
+}
+
+function smOpenDatePicker() {
+  const inp = g('sm-date-picker');
+  if (!inp) return;
+  if (typeof inp.showPicker === 'function') {
+    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
+  }
+  inp.focus();
+  inp.click();
+}
+
+async function smChangeDate(dir) {
+  const nd = smFindLessonDate(_sm.cur, dir);
+  if (!nd) return;
+  _sm.cur = nd;
+  smSetDateUI();
+  smUpdateNav();
+  await smLoadRecord();
+}
+
+async function smOnDatePick() {
+  const val = g('sm-date-picker').value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  if (d > today) { alert('⚠️ Kelajak sanani tanlash mumkin emas'); smSetDateUI(); return; }
+  if (!smIsLessonDay(d)) { alert("⚠️ Bu kun sizning dars kuningiz emas"); smSetDateUI(); return; }
+  _sm.cur = d;
+  smSetDateUI();
+  smUpdateNav();
+  await smLoadRecord();
+}
+
+// Tanlangan kun uchun serverdagi yozuvni yuklash
+async function smLoadRecord() {
+  const my = ++_sm.recSeq;
+  const sana = smFmtSana(_sm.cur);
+  g('sm-note').style.display = 'none';
+  _sm.saved = null;
+  smSetMode('loading');
+
+  let res = null;
+  try { res = await api.get('/api/davomat/mening-darsim', { sana, maktabId: TANLANGAN_MID }); }
+  catch (e) { res = null; }
+  if (my !== _sm.recSeq) return;   // boshqa sanaga o'tib ketilgan
+
+  if (!res || !res.ok) {
+    smSetMode('none');
+    smShowNote("⚠️ Yuklab bo'lmadi. Internetni tekshirib, sanani qayta tanlang", true);
+    return;
+  }
+
+  _sm.saved = res.yozuv || null;
+  if (_sm.saved) {
+    smRenderCard(_sm.saved);
+    smSetMode('card');
+  } else {
+    smFillForm(null);
+    g('sm-cancel-btn').style.display = 'none';
+    smSetMode('form');
+  }
+}
+
+function smFillForm(rec) {
+  if (rec) {
+    smSelectStatus(rec.status || 'keldi');
+    g('sm-soat').value   = rec.dars_soat   || '';
+    g('sm-daqiqa').value = rec.dars_daqiqa || '';
+    g('sm-kech').value   = rec.kech_minut  || '';
+    g('sm-izoh').value   = rec.izoh || '';
+  } else {
+    // Yangi kun: davomiylik jadvaldan avtomatik to'ldiriladi
+    const plan = smPlanMin(_sm.cur);
+    smSelectStatus('keldi');
+    g('sm-soat').value   = plan ? Math.floor(plan / 60) : '';
+    g('sm-daqiqa').value = plan ? (plan % 60) : '';
+    g('sm-kech').value   = '';
+    g('sm-izoh').value   = '';
+  }
+  const plan = smPlanMin(_sm.cur);
+  g('sm-plan').textContent = plan ? `Jadval bo'yicha: ${smFmtDur(Math.floor(plan / 60), plan % 60)}` : '';
+}
+
+function smSelectStatus(status) {
+  _sm.status = status;
+  ['keldi', 'kelmadi', 'kech'].forEach(k => g('sm-st-' + k).classList.toggle('active', k === status));
+  g('sm-time-wrap').style.display = status === 'kelmadi' ? 'none' : 'block';
+  g('sm-kech-wrap').style.display = status === 'kech'    ? 'block' : 'none';
+}
+
+function smRenderCard(r) {
+  const st = SM_STATUS[r.status] || { icon: '•', label: r.status || '—' };
+  const h = r.dars_soat || 0, m = r.dars_daqiqa || 0;
+  g('sm-card').innerHTML = `
+    <div class="mv-card-top">
+      <span class="mv-badge-ok">✅ Saqlangan</span>
+      <span class="mv-card-time">${r.vaqt_belgilangan ? 'Belgilangan: ' + esc(r.vaqt_belgilangan) : ''}</span>
+    </div>
+
+    <div class="mv-card-label">Holat</div>
+    <div class="mv-card-title">${st.icon} ${esc(st.label)}</div>
+
+    ${r.status !== 'kelmadi' ? `
+      <div class="mv-card-label">Dars davomiyligi</div>
+      <div class="mv-card-title">${esc(smFmtDur(h, m))}</div>` : ''}
+
+    ${r.status === 'kech' && r.kech_minut ? `<div class="mv-chips"><span class="mv-chip mv-chip-warn">⏰ ${r.kech_minut} daqiqa kech</span></div>` : ''}
+
+    ${r.izoh ? `<div class="mv-card-label">Izoh</div><div class="mv-card-text">${esc(r.izoh)}</div>` : ''}
+
+    <div class="mv-actions">
+      <button type="button" class="mv-btn" onclick="smEdit()">✏️ Tahrirlash</button>
+      <button type="button" class="mv-btn mv-btn-danger" onclick="smDelete()">🗑 O'chirish</button>
+    </div>`;
+}
+
+function smEdit() {
+  if (!_sm.saved) return;
+  smFillForm(_sm.saved);
+  g('sm-cancel-btn').style.display = 'block';
+  smSetMode('form');
+}
+
+function smCancelEdit() {
+  if (_sm.saved) { smRenderCard(_sm.saved); smSetMode('card'); }
+}
+
+async function smSave() {
+  const status = _sm.status;
+  const soat   = parseInt(g('sm-soat').value, 10)   || 0;
+  const daqiqa = parseInt(g('sm-daqiqa').value, 10) || 0;
+
+  if (status !== 'kelmadi') {
+    if (soat < 0 || soat > 12 || daqiqa < 0 || daqiqa > 59) {
+      smShowNote("❌ Soat 0–12, daqiqa 0–59 oralig'ida bo'lishi kerak", true); return;
+    }
+    if (soat === 0 && daqiqa === 0) {
+      smShowNote('❌ Dars davomiyligini kiriting', true); return;
+    }
+  }
 
   const body = {
-    sana,
-    maktabId:     TANLANGAN_MID || undefined,
-    status:       _darsStatus,
-    dars_soat:    parseInt(g('dars-soat').value)    || 0,
-    dars_daqiqa:  parseInt(g('dars-daqiqa').value)  || 0,
-    kech_minut:   parseInt(g('dars-kech-minut').value) || 0,
-    izoh:         g('dars-izoh').value.trim(),
+    sana:        smFmtSana(_sm.cur),
+    maktabId:    TANLANGAN_MID || undefined,
+    status,
+    dars_soat:   status === 'kelmadi' ? 0 : soat,
+    dars_daqiqa: status === 'kelmadi' ? 0 : daqiqa,
+    kech_minut:  status === 'kech' ? (parseInt(g('sm-kech').value, 10) || 0) : 0,
+    izoh:        g('sm-izoh').value.trim(),
   };
 
-  const btn = g('dars-save-btn');
+  const btn = g('sm-save-btn');
   btn.disabled = true;
-  g('dars-btn-txt').textContent = 'Saqlanmoqda…';
-
+  btn.textContent = 'Saqlanmoqda…';
   try {
     const data = await api.post('/api/davomat/mening-darsim', body);
-    if (data.ok) {
-      msgEl.style.color = '#10b981';
-      msgEl.textContent = '✅ Muvaffaqiyatli saqlandi!';
-      setTimeout(() => { closeDarsModal(); loadSoatStatistika(); }, 900);
+    if (data && data.ok) {
+      await smLoadRecord();
+      smShowNote('✅ Saqlandi');
+      loadSoatStatistika();
     } else {
-      msgEl.style.color = '#ef4444';
-      msgEl.textContent = '❌ ' + (data.error || 'Xatolik');
+      smShowNote('❌ ' + ((data && data.error) || 'Xatolik'), true);
     }
   } catch (e) {
-    msgEl.style.color = '#ef4444';
-    msgEl.textContent = '❌ Server bilan ulanib bo\'lmadi';
+    smShowNote("❌ Server bilan ulanib bo'lmadi", true);
   } finally {
     btn.disabled = false;
-    g('dars-btn-txt').textContent = '💾 Saqlash';
+    btn.textContent = '💾 Saqlash';
+  }
+}
+
+async function smDelete() {
+  if (!confirm("Bu kundagi dars belgisi o'chirilsinmi?")) return;
+  try {
+    const data = await api.del('/api/davomat/mening-darsim', { sana: smFmtSana(_sm.cur), maktabId: TANLANGAN_MID || undefined });
+    if (data && data.ok) {
+      await smLoadRecord();
+      smShowNote("🗑 O'chirildi");
+      loadSoatStatistika();
+    } else {
+      smShowNote('❌ ' + ((data && data.error) || 'Xatolik'), true);
+    }
+  } catch (e) {
+    smShowNote("❌ Server bilan ulanib bo'lmadi", true);
   }
 }
 
