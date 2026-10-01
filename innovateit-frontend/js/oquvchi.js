@@ -82,6 +82,8 @@ function showApp() {
   const roleLine = [U.maktab, sinfLbl ? (sinfLbl + " o'quvchisi") : ''].filter(Boolean).join(', ');
   g('ouq-role').textContent = roleLine;
   g('oq-badge').textContent = U.ism || '';
+  const drawerBadge = g('oq-badge-drawer'); // mobil hamburger menyudagi profil qatori
+  if (drawerBadge) drawerBadge.textContent = U.ism || '';
 
   // Jinsiga qarab avatar — admin panelda belgilangan bo'lsa shunga mos,
   // aks holda standart sifatida o'g'il bola rasmi ko'rsatiladi
@@ -99,6 +101,8 @@ function switchTab(tab) {
   document.querySelectorAll('.oq-tab-btn').forEach(el => el.classList.remove('active'));
   g('tab-' + tab).classList.add('active');
   g('tab-btn-' + tab).classList.add('active');
+  // Mobil hamburger menyudagi mos band ham "faol" bo'lib ko'rinsin
+  document.querySelectorAll('.mn-tab-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'vazifalar') loadVazifalarim();
 }
 
