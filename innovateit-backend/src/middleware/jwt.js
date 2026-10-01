@@ -14,7 +14,11 @@ if (!SECRET || SECRET.length < 32) {
 
 // ─── Token yaratish ───────────────────────────────────────────────────────────
 function generateToken(payload) {
-  return jwt.sign(payload, SECRET, { expiresIn: EXPIRES });
+  // /api/auth/refresh eski tokenning payload'ini (iat/exp/nbf bilan) qayta
+  // beradi. jwt.sign esa payload'da "exp" bo'lsa-yu expiresIn ham berilsa xato
+  // tashlaydi ("Server xatoligi"). Shuning uchun tizim maydonlarini olib tashlaymiz.
+  const { iat, exp, nbf, ...clean } = payload || {};
+  return jwt.sign(clean, SECRET, { expiresIn: EXPIRES });
 }
 
 // ─── Token tekshirish middleware ──────────────────────────────────────────────

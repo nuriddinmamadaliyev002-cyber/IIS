@@ -11,6 +11,28 @@ const { requireAuth } = require('../middleware/jwt');
 
 const router = Router();
 
+// ─── O'qituvchi tanlagan maktabni xavfsiz aniqlash ───────────────────────────
+// Panel ?maktabId= (GET) yoki body.maktabId (POST) yuboradi. Qiymat faqat
+// tokendagi o'qituvchining o'z maktablari (maktabIdlar) ichida bo'lsa qabul
+// qilinadi; aks holda 403. Berilmasa — tokendagi asosiy maktab (eski xulq).
+function resolveTeacherMaktab(req) {
+  const allowed = (req.user.maktabIdlar || []).map(Number).filter(Number.isInteger);
+  const main    = Number(req.user.maktabId);
+  if (Number.isInteger(main) && main > 0 && !allowed.includes(main)) allowed.push(main);
+
+  const raw = (req.query && req.query.maktabId) ?? (req.body && req.body.maktabId);
+  if (raw !== undefined && raw !== null && raw !== '') {
+    const mid = parseInt(raw, 10);
+    if (!Number.isInteger(mid) || !allowed.includes(mid)) {
+      return { status: 403, error: "Bu maktab sizga biriktirilmagan" };
+    }
+    return { mid };
+  }
+  const mid = (Number.isInteger(main) && main > 0) ? main : allowed[0];
+  if (!mid) return { status: 400, error: 'Maktab biriktirilmagan' };
+  return { mid };
+}
+
 // ─── GET /api/davomat/mening-davomatim — O'qituvchi yoki O'quvchi o'z davomatini ko'radi ───
 // ⚠️  router.use(requireAuth(['admin'])) DAN OLDIN — oqituvchi/oquvchi roli uchun!
 router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (req, res) => {
@@ -109,9 +131,11 @@ router.get('/mening-davomatim', requireAuth(['oqituvchi', 'oquvchi']), async (re
 
 // ─── GET /api/davomat/soat-statistika — O'qituvchi dars soatlari statistikasi ─
 router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
-  const { ism, entityId, maktabId } = req.user;
+  const { ism, entityId } = req.user;
 
-  if (!maktabId) return res.status(400).json({ ok: false, error: 'Maktab biriktirilmagan' });
+  const sel = resolveTeacherMaktab(req);
+  if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
+  const maktabId = sel.mid;
 
   try {
     // 1) O'qituvchi ma'lumotlari (rejalangan soatlar)
@@ -148,23 +172,28 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
          COUNT(CASE WHEN status='kelmadi' THEN 1 END) AS kelmadi,
          COUNT(CASE WHEN status='kech' THEN 1 END)    AS kech
        FROM oqituvchilar_davomat
-       WHERE oqituvchi_ism LIKE $1 || '%' AND maktab_id = $2`,
+       WHERE oqituvchi_ism = $1 AND maktab_id = $2`,
       [ism, maktabId]
     );
     const st = statsRes.rows[0] || {};
 
     // 3) Oylik statistika (so'nggi 4 oy)
+    //    Sana formati ikki xil bo'lishi mumkin: DD.MM.YYYY (o'qituvchi paneli)
+    //    yoki YYYY-MM-DD (eski yozuvlar). Ikkalasini ham xavfsiz o'qiymiz.
     const oylikRes = await pool.query(
-      `SELECT
-         SPLIT_PART(sana,'-',2) AS oy,
-         SPLIT_PART(sana,'-',1) AS yil,
-         SUM(dars_soat)   AS soat,
-         SUM(dars_daqiqa) AS daqiqa,
-         COUNT(*)         AS dars_soni
-       FROM oqituvchilar_davomat
-       WHERE oqituvchi_ism = $1 AND maktab_id = $2
-       GROUP BY SPLIT_PART(sana,'-',2), SPLIT_PART(sana,'-',1)
-       ORDER BY SPLIT_PART(sana,'-',1) DESC, SPLIT_PART(sana,'-',2)::int DESC
+      `SELECT oy, yil, SUM(dars_soat) AS soat, SUM(dars_daqiqa) AS daqiqa, COUNT(*) AS dars_soni
+       FROM (
+         SELECT dars_soat, dars_daqiqa,
+           CASE WHEN sana ~ '^\\d{1,2}\\.\\d{1,2}\\.\\d{4}$' THEN SPLIT_PART(sana,'.',2)::int
+                WHEN sana ~ '^\\d{4}-\\d{1,2}-\\d{1,2}$'       THEN SPLIT_PART(sana,'-',2)::int END AS oy,
+           CASE WHEN sana ~ '^\\d{1,2}\\.\\d{1,2}\\.\\d{4}$' THEN SPLIT_PART(sana,'.',3)::int
+                WHEN sana ~ '^\\d{4}-\\d{1,2}-\\d{1,2}$'       THEN SPLIT_PART(sana,'-',1)::int END AS yil
+         FROM oqituvchilar_davomat
+         WHERE oqituvchi_ism = $1 AND maktab_id = $2
+       ) t
+       WHERE oy IS NOT NULL AND yil IS NOT NULL
+       GROUP BY yil, oy
+       ORDER BY yil DESC, oy DESC
        LIMIT 4`,
       [ism, maktabId]
     );
@@ -205,8 +234,12 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
 
 // ─── POST /api/davomat/mening-darsim — O'qituvchi o'z davomatini belgilaydi ──
 router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
-  const { ism, maktabId, entityId } = req.user;
+  const { ism, entityId } = req.user;
   const { sana, status, dars_soat, dars_daqiqa, kech_minut, izoh } = req.body;
+
+  const sel = resolveTeacherMaktab(req);
+  if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
+  const maktabId = sel.mid;
 
   if (!sana || !status) {
     return res.status(400).json({ ok: false, error: 'Sana va status kerak' });
