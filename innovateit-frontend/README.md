@@ -12,16 +12,13 @@ Backend API: `/api` (relative URL — nginx proxy orqali)
 ├── davomat.html                ← O'quvchilar davomati
 ├── nofaol.html                 ← Nofaol o'quvchilar
 ├── oqituvchilar.html           ← O'qituvchilar
-├── oqituvchilar-davomat.html   ← O'qituvchilar davomati
 ├── css/
 │   ├── style.css
 │   ├── davomat.css
 │   ├── oqituvchilar.css
-│   └── oqituvchilar-davomat.css
 └── js/
     ├── app.js
     ├── davomat.js
     ├── nofaol.js
     ├── oqituvchilar.js
-    └── oqituvchilar-davomat.js
 ```

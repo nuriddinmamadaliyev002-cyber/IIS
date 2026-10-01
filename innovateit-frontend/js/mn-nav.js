@@ -2,8 +2,8 @@
    InnovateIT School — Hamburger menyu: umumiy navigatsiya yordamchisi.
 
    index.html'dan boshqa barcha "maktab admini" panel sahifalarida
-   (nofaol.html, davomat.html, oqituvchilar.html, dars-jadvali.html,
-   oqituvchilar-davomat.html) ishlatiladi.
+   (nofaol.html, davomat.html, oqituvchilar.html, dars-jadvali.html)
+   ishlatiladi.
 
    ✅ TUZATILDI (bug: submenu bosilganda login oynasi "milt etib"
    chiqib qolardi):
@@ -29,8 +29,8 @@
    yuklanish paytidagi milt etish alohida tuzatilgan — qarang: app.js).
 ═══════════════════════════════════════════════════════════════════ */
 
-// ⚠️ MUHIM: nofaol.js / davomat.js / oqituvchilar.js / dars-jadvali.js /
-// oqituvchilar-davomat.js har birida "let U = ..." orqali sahifaning o'z
+// ⚠️ MUHIM: nofaol.js / davomat.js / oqituvchilar.js / dars-jadvali.js
+// har birida "let U = ..." orqali sahifaning o'z
 // sessiya obyekti e'lon qilinadi. `let` (va `const`) bilan yozilgan
 // o'zgaruvchilar `var`dan farqli o'laroq `window` obyektiga biriktirilmaydi
 // — LEKIN bir xil HTML sahifasidagi barcha oddiy <script src="..."> fayllari
@@ -67,8 +67,7 @@ var MN_DIRECT_TARGETS = {
   'nofaol':            { key: 'iit_nofaol_user',      page: 'nofaol.html' },
   'davomat':           { key: 'iit_davomat_user',     page: 'davomat.html' },
   'teachers':          { key: 'iit_teacher_user',     page: 'oqituvchilar.html' },
-  'teachers-jadval':   { key: 'iit_jadval_user',      page: 'dars-jadvali.html' },
-  'teachers-davomat':  { key: 'iit_teacher_dav_user', page: 'oqituvchilar-davomat.html' }
+  'teachers-jadval':   { key: 'iit_jadval_user',      page: 'dars-jadvali.html' }
 };
 
 function mnGoHome(navKey) {

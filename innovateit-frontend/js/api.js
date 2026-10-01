@@ -93,7 +93,7 @@ function handleUnauthorized() {
   // tozalash zararsiz — ular baribir ishlatilmaydi.)
   localStorage.removeItem('iit_u');
   ['iit_nofaol_user', 'iit_teacher_user', 'iit_davomat_user',
-   'iit_jadval_user', 'iit_teacher_dav_user', 'iit_pending_nav'
+   'iit_jadval_user', 'iit_pending_nav'
   ].forEach(k => sessionStorage.removeItem(k));
   // file:// va http:// ikkalasida ham to'g'ri ishlashi uchun
   const page = window.location.pathname;
@@ -239,8 +239,6 @@ const api = {
   getDavomat:         (d) => api.get('/api/davomat', d),
   getDavomatTarix:    (d) => api.get('/api/davomat/tarix', d),
   getDavomatRange:    (d) => api.get('/api/davomat/range', d),
-  saveTeacherDavomat: (d) => api.post('/api/davomat/teacher', d),
-  getTeacherDavomat:  (d) => api.get('/api/davomat/teacher', d),
 
   // ─── Dars jadvali ───
   getJadvallar: (d)     => api.get('/api/jadval', d),

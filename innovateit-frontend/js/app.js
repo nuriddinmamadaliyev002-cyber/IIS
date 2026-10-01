@@ -134,8 +134,8 @@ async function doLogin() {
 }
 
 // ─────────────────────────────────────────────
-//  Boshqa sahifalar (nofaol/davomat/oqituvchilar/dars-jadvali/
-//  oqituvchilar-davomat) hamburger menyusidan "index.html orqali"
+//  Boshqa sahifalar (nofaol/davomat/oqituvchilar/dars-jadvali)
+//  hamburger menyusidan "index.html orqali"
 //  qaytarilgan navigatsiyani yakunlaydi (qarang: js/mn-nav.js).
 // ─────────────────────────────────────────────
 function handlePendingNav() {
@@ -148,7 +148,6 @@ function handlePendingNav() {
   else if (nav === 'davomat')         openDavomat();
   else if (nav === 'teachers')        openTeachers();
   else if (nav === 'teachers-jadval') openTeachersJadval();
-  else if (nav === 'teachers-davomat')openTeachersDavomatDirect();
 }
 
 function showErr(el, msg) {
@@ -1080,12 +1079,6 @@ function openTeachersJadval() {
   const tu = buildTeacherUser();
   sessionStorage.setItem('iit_jadval_user', JSON.stringify({ ...tu, maktabId: tu.maktabId || null }));
   window.location.href = 'dars-jadvali.html';
-}
-
-// Hamburger menyu: O'qituvchilar ➜ Davomat (to'g'ridan-to'g'ri)
-function openTeachersDavomatDirect() {
-  sessionStorage.setItem('iit_teacher_dav_user', JSON.stringify(buildTeacherUser()));
-  window.location.href = 'oqituvchilar-davomat.html';
 }
 
 // Hamburger menyu: O'quvchilar ➜ Faol — joriy (faol o'quvchilar) ro'yxatiga sirg'anib o'tish

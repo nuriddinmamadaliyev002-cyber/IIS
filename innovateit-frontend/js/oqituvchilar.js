@@ -51,13 +51,11 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   if (U.isSuper) {
     setDisplay('add-form', 'none');
-    setDisplay('btn-davomat-teacher', 'none');
     setDisplay('btn-jadval-teacher', 'none');
     setDisplay('super-add-bar', 'block');
     injectSuperModals();
   } else if (U.isSuperProxy) {
     setDisplay('add-form', 'none');
-    setDisplay('btn-davomat-teacher', 'none');
     setDisplay('btn-jadval-teacher', 'none');
   } else {
     // Oddiy admin: faqat ro'yxat ko'rinadi
@@ -104,7 +102,6 @@ function toggleClearBtn() {
 }
 
 function goBack() { window.location.href = 'index.html'; }
-function openDavomat() { sessionStorage.setItem('iit_teacher_dav_user', JSON.stringify(U)); window.location.href = 'oqituvchilar-davomat.html'; }
 function openJadval()  { sessionStorage.setItem('iit_jadval_user', JSON.stringify({ ...U, maktabId: U.maktabId || null })); window.location.href = 'dars-jadvali.html'; }
 
 // ─────────────────────────────────────────────
