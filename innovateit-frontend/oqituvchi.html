@@ -241,38 +241,8 @@
           <div id="sm-note" class="mv-note" role="status" style="display:none;"></div>
           <div id="sm-loading" class="oq-loading" style="display:none;"><div class="loading-spinner"></div></div>
 
-          <!-- Saqlangan dars kartochkasi -->
-          <div id="sm-card" class="mv-card" style="display:none;"></div>
-
-          <!-- Forma -->
-          <div id="sm-form" class="mv-card" style="display:none;">
-            <div class="mv-card-label">Holat</div>
-            <div class="dars-status-row sm-field">
-              <button type="button" id="sm-st-keldi"   class="dars-status-btn active" onclick="smSelectStatus('keldi')"   style="--sc:#10b981">✅ Keldi</button>
-              <button type="button" id="sm-st-kelmadi" class="dars-status-btn"        onclick="smSelectStatus('kelmadi')" style="--sc:#ef4444">❌ Kelmadi</button>
-              <button type="button" id="sm-st-kech"    class="dars-status-btn"        onclick="smSelectStatus('kech')"    style="--sc:#8b5cf6">⏰ Kech</button>
-            </div>
-
-            <div id="sm-time-wrap">
-              <div class="mv-card-label">Dars davomiyligi</div>
-              <div class="sm-time-row">
-                <label class="sm-time-field"><input id="sm-soat" type="number" inputmode="numeric" min="0" max="12" placeholder="0"><span>soat</span></label>
-                <label class="sm-time-field"><input id="sm-daqiqa" type="number" inputmode="numeric" min="0" max="59" placeholder="0"><span>daqiqa</span></label>
-              </div>
-              <div class="sm-plan" id="sm-plan"></div>
-            </div>
-
-            <div id="sm-kech-wrap" class="sm-field" style="display:none;">
-              <div class="mv-card-label">Necha daqiqa kech qoldingiz</div>
-              <label class="sm-time-field"><input id="sm-kech" type="number" inputmode="numeric" min="0" max="600" placeholder="0"><span>daqiqa</span></label>
-            </div>
-
-            <div class="mv-card-label">Izoh (ixtiyoriy)</div>
-            <textarea class="field-input sm-field" id="sm-izoh" rows="2" maxlength="500" style="resize:vertical;font-family:inherit;"></textarea>
-
-            <button class="oq-mark-btn" id="sm-save-btn" onclick="smSave()">💾 Saqlash</button>
-            <button type="button" class="btn-cancel mv-btn-cancel" id="sm-cancel-btn" onclick="smCancelEdit()" style="display:none;">Bekor qilish</button>
-          </div>
+          <!-- Tanlangan kundagi har bir guruh uchun alohida blok (JS chizadi) -->
+          <div id="sm-groups"></div>
         </div>
       </div>
 

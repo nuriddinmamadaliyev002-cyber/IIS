@@ -1795,8 +1795,11 @@ const _sm = {
   kunlar: new Set(),   // dars kunlari (0=Yakshanba ... 6=Shanba)
   jadvallar: [],       // tanlangan maktabdagi guruhlar
   cur: null,           // tanlangan sana (Date)
-  saved: null,         // serverdagi yozuv (yo'q bo'lsa null)
-  status: 'keldi',
+  groups: [],          // tanlangan kunda dars bor guruhlar
+  recs: {},            // guruh_id -> serverdagi yozuv (har bir guruh alohida)
+  legacy: null,        // eski guruhsiz kunlik yozuv (bo'lsa)
+  edit: {},            // guruh_id -> tahrirlash rejimida
+  status: {},          // guruh_id -> formada tanlangan holat
   initSeq: 0,
   recSeq: 0,
   noteTimer: null,
@@ -1834,18 +1837,6 @@ function smToMin(t) {
   return m ? (+m[1]) * 60 + (+m[2]) : null;
 }
 
-// Tanlangan kun uchun jadval bo'yicha rejalangan daqiqalar (guruhlar yig'indisi)
-function smPlanMin(d) {
-  let total = 0;
-  _sm.jadvallar.forEach(j => {
-    const days = parseKunlarSet(j.kunlar);
-    if (!days.has(d.getDay())) return;
-    const b = smToMin(j.boshlanish), t = smToMin(j.tugash);
-    if (b !== null && t !== null && t > b) total += (t - b);
-  });
-  return total;
-}
-
 function smFmtDur(h, m) {
   const parts = [];
   if (h) parts.push(`${h} soat`);
@@ -1860,12 +1851,6 @@ function smShowNote(text, isError) {
   el.classList.toggle('mv-note-err', !!isError);
   el.style.display = 'block';
   if (!isError) _sm.noteTimer = setTimeout(() => { el.style.display = 'none'; }, 3500);
-}
-
-function smSetMode(mode) {   // 'loading' | 'card' | 'form' | 'none'
-  g('sm-loading').style.display = mode === 'loading' ? 'block' : 'none';
-  g('sm-card').style.display    = mode === 'card'    ? 'block' : 'none';
-  g('sm-form').style.display    = mode === 'form'    ? 'block' : 'none';
 }
 
 // Bo'limni ishga tushirish: guruhlardan dars kunlarini aniqlaydi
@@ -1960,12 +1945,42 @@ async function smOnDatePick() {
   await smLoadRecord();
 }
 
-// Tanlangan kun uchun serverdagi yozuvni yuklash
+// ─── Guruh yordamchilari ────────────────────────────────────────────────────
+// Tanlangan kunda dars bor guruhlar (dars_jadvali qatorlari)
+function smGroupsForDate(d) {
+  return _sm.jadvallar.filter(j => parseKunlarSet(j.kunlar).has(d.getDay()));
+}
+
+// Bitta guruhning jadval bo'yicha rejalangan davomiyligi (daqiqa)
+function smGroupPlanMin(j) {
+  const b = smToMin(j.boshlanish), t = smToMin(j.tugash);
+  return (b !== null && t !== null && t > b) ? (t - b) : 0;
+}
+
+// "Informatika • 5, 6-sinf"
+function smGroupTitle(j) {
+  const sinf = sortSinflar((j.sinflar || '').split(',').map(s => s.trim()).filter(Boolean))
+    .map(s => s.replace(/-sinf$/i, ''));
+  const sinfText = sinf.length ? sinf.join(', ') + '-sinf' : '';
+  return [j.fan || 'Guruh', sinfText].filter(Boolean).join(' • ');
+}
+
+function smGroupTime(j) {
+  return (j.boshlanish && j.tugash) ? `${j.boshlanish}–${j.tugash}` : '';
+}
+
+function smSetMode(mode) {   // 'loading' | 'groups' | 'none'
+  g('sm-loading').style.display = mode === 'loading' ? 'block' : 'none';
+  g('sm-groups').style.display  = mode === 'groups'  ? 'block' : 'none';
+}
+
+// Tanlangan kun uchun serverdagi yozuvlarni (har bir guruh alohida) yuklash
 async function smLoadRecord() {
   const my = ++_sm.recSeq;
   const sana = smFmtSana(_sm.cur);
   g('sm-note').style.display = 'none';
-  _sm.saved = null;
+  _sm.recs = {}; _sm.legacy = null; _sm.edit = {}; _sm.status = {};
+  _sm.groups = smGroupsForDate(_sm.cur);
   smSetMode('loading');
 
   let res = null;
@@ -1979,53 +1994,55 @@ async function smLoadRecord() {
     return;
   }
 
-  _sm.saved = res.yozuv || null;
-  if (_sm.saved) {
-    smRenderCard(_sm.saved);
-    smSetMode('card');
-  } else {
-    smFillForm(null);
-    g('sm-cancel-btn').style.display = 'none';
-    smSetMode('form');
-  }
+  (res.yozuvlar || []).forEach(y => {
+    if (y.guruh_id) _sm.recs[y.guruh_id] = y;
+    else            _sm.legacy = y;     // eski, guruhsiz kunlik yozuv
+  });
+  smRenderGroups();
+  smSetMode('groups');
 }
 
-function smFillForm(rec) {
-  if (rec) {
-    smSelectStatus(rec.status || 'keldi');
-    g('sm-soat').value   = rec.dars_soat   || '';
-    g('sm-daqiqa').value = rec.dars_daqiqa || '';
-    g('sm-kech').value   = rec.kech_minut  || '';
-    g('sm-izoh').value   = rec.izoh || '';
-  } else {
-    // Yangi kun: davomiylik jadvaldan avtomatik to'ldiriladi
-    const plan = smPlanMin(_sm.cur);
-    smSelectStatus('keldi');
-    g('sm-soat').value   = plan ? Math.floor(plan / 60) : '';
-    g('sm-daqiqa').value = plan ? (plan % 60) : '';
-    g('sm-kech').value   = '';
-    g('sm-izoh').value   = '';
-  }
-  const plan = smPlanMin(_sm.cur);
-  g('sm-plan').textContent = plan ? `Jadval bo'yicha: ${smFmtDur(Math.floor(plan / 60), plan % 60)}` : '';
+function smRenderGroups() {
+  let html = '';
+  if (_sm.legacy) html += smLegacyHtml(_sm.legacy);
+  _sm.groups.forEach(j => {
+    html += `<div class="mv-card sm-group" id="sm-grp-${j.id}">${smGroupInner(j)}</div>`;
+  });
+  if (!html) html = '<div class="oq-empty">📭 Bu kunda dars o\'tadigan guruh yo\'q</div>';
+  g('sm-groups').innerHTML = html;
 }
 
-function smSelectStatus(status) {
-  _sm.status = status;
-  ['keldi', 'kelmadi', 'kech'].forEach(k => g('sm-st-' + k).classList.toggle('active', k === status));
-  g('sm-time-wrap').style.display = status === 'kelmadi' ? 'none' : 'block';
-  g('sm-kech-wrap').style.display = status === 'kech'    ? 'block' : 'none';
+// Faqat bitta guruh blokini qayta chizadi (boshqa guruhlardagi kiritilgan
+// ma'lumotlar yo'qolmasligi uchun)
+function smRerenderGroup(gid) {
+  const j = _sm.groups.find(x => x.id === gid);
+  const el = g('sm-grp-' + gid);
+  if (j && el) el.innerHTML = smGroupInner(j);
 }
 
-function smRenderCard(r) {
+function smGroupHead(j, saved) {
+  const time = smGroupTime(j);
+  return `
+    <div class="sm-group-head">
+      <div class="sm-group-title">${esc(smGroupTitle(j))}</div>
+      <div class="sm-group-meta">
+        ${time ? `<span class="mv-card-time">🕒 ${esc(time)}</span>` : ''}
+        ${saved ? '<span class="mv-badge-ok">✅ Saqlangan</span>' : ''}
+      </div>
+    </div>`;
+}
+
+function smGroupInner(j) {
+  const rec = _sm.recs[j.id] || null;
+  if (rec && !_sm.edit[j.id]) return smGroupHead(j, true) + smCardHtml(j, rec);
+  return smGroupHead(j, false) + smFormHtml(j, rec);
+}
+
+function smCardHtml(j, r) {
   const st = SM_STATUS[r.status] || { icon: '•', label: r.status || '—' };
   const h = r.dars_soat || 0, m = r.dars_daqiqa || 0;
-  g('sm-card').innerHTML = `
-    <div class="mv-card-top">
-      <span class="mv-badge-ok">✅ Saqlangan</span>
-      <span class="mv-card-time">${r.vaqt_belgilangan ? 'Belgilangan: ' + esc(r.vaqt_belgilangan) : ''}</span>
-    </div>
-
+  return `
+    ${r.vaqt_belgilangan ? `<div class="mv-card-time sm-group-stamp">Belgilangan: ${esc(r.vaqt_belgilangan)}</div>` : ''}
     <div class="mv-card-label">Holat</div>
     <div class="mv-card-title">${st.icon} ${esc(st.label)}</div>
 
@@ -2033,31 +2050,117 @@ function smRenderCard(r) {
       <div class="mv-card-label">Dars davomiyligi</div>
       <div class="mv-card-title">${esc(smFmtDur(h, m))}</div>` : ''}
 
-    ${r.status === 'kech' && r.kech_minut ? `<div class="mv-chips"><span class="mv-chip mv-chip-warn">⏰ ${r.kech_minut} daqiqa kech</span></div>` : ''}
+    ${r.status === 'kech' && r.kech_minut ? `<div class="mv-chips"><span class="mv-chip mv-chip-warn">⏰ ${esc(r.kech_minut)} daqiqa kech</span></div>` : ''}
 
     ${r.izoh ? `<div class="mv-card-label">Izoh</div><div class="mv-card-text">${esc(r.izoh)}</div>` : ''}
 
     <div class="mv-actions">
-      <button type="button" class="mv-btn" onclick="smEdit()">✏️ Tahrirlash</button>
-      <button type="button" class="mv-btn mv-btn-danger" onclick="smDelete()">🗑 O'chirish</button>
+      <button type="button" class="mv-btn" onclick="smEdit(${j.id})">✏️ Tahrirlash</button>
+      <button type="button" class="mv-btn mv-btn-danger" onclick="smDelete(${j.id})">🗑 O'chirish</button>
     </div>`;
 }
 
-function smEdit() {
-  if (!_sm.saved) return;
-  smFillForm(_sm.saved);
-  g('sm-cancel-btn').style.display = 'block';
-  smSetMode('form');
+function smFormHtml(j, rec) {
+  const gid  = j.id;
+  const plan = smGroupPlanMin(j);
+  const status = rec ? (rec.status || 'keldi') : 'keldi';
+  _sm.status[gid] = status;
+
+  const soat = rec ? (rec.dars_soat   || '') : (plan ? Math.floor(plan / 60) : '');
+  const daq  = rec ? (rec.dars_daqiqa || '') : (plan ? (plan % 60) : '');
+  const kech = rec ? (rec.kech_minut  || '') : '';
+  const izoh = rec ? (rec.izoh || '') : '';
+  const btn  = (k, label, color) =>
+    `<button type="button" id="sm-st-${gid}-${k}" class="dars-status-btn${status === k ? ' active' : ''}" onclick="smSelectStatus(${gid}, '${k}')" style="--sc:${color}">${label}</button>`;
+
+  return `
+    <div class="mv-card-label">Holat</div>
+    <div class="dars-status-row sm-field">
+      ${btn('keldi', '✅ Keldi', '#10b981')}
+      ${btn('kelmadi', '❌ Kelmadi', '#ef4444')}
+      ${btn('kech', '⏰ Kech', '#8b5cf6')}
+    </div>
+
+    <div id="sm-time-wrap-${gid}" style="display:${status === 'kelmadi' ? 'none' : 'block'};">
+      <div class="mv-card-label">Dars davomiyligi</div>
+      <div class="sm-time-row">
+        <label class="sm-time-field"><input id="sm-soat-${gid}" type="number" inputmode="numeric" min="0" max="12" placeholder="0" value="${esc(soat)}"><span>soat</span></label>
+        <label class="sm-time-field"><input id="sm-daqiqa-${gid}" type="number" inputmode="numeric" min="0" max="59" placeholder="0" value="${esc(daq)}"><span>daqiqa</span></label>
+      </div>
+      <div class="sm-plan">${plan ? `Jadval bo'yicha: ${esc(smFmtDur(Math.floor(plan / 60), plan % 60))}` : ''}</div>
+    </div>
+
+    <div id="sm-kech-wrap-${gid}" class="sm-field" style="display:${status === 'kech' ? 'block' : 'none'};">
+      <div class="mv-card-label">Necha daqiqa kech qoldingiz</div>
+      <label class="sm-time-field"><input id="sm-kech-${gid}" type="number" inputmode="numeric" min="0" max="600" placeholder="0" value="${esc(kech)}"><span>daqiqa</span></label>
+    </div>
+
+    <div class="mv-card-label">Izoh (ixtiyoriy)</div>
+    <textarea class="field-input sm-field" id="sm-izoh-${gid}" rows="2" maxlength="500" style="resize:vertical;font-family:inherit;">${esc(izoh)}</textarea>
+
+    <button class="oq-mark-btn" id="sm-save-${gid}" onclick="smSave(${gid})">💾 Saqlash</button>
+    ${rec ? `<button type="button" class="btn-cancel mv-btn-cancel" onclick="smCancelEdit(${gid})">Bekor qilish</button>` : ''}`;
 }
 
-function smCancelEdit() {
-  if (_sm.saved) { smRenderCard(_sm.saved); smSetMode('card'); }
+// Eski (guruhsiz) kunlik yozuv — avvalgi versiyada saqlangan, yo'qolmasin
+function smLegacyHtml(r) {
+  const st = SM_STATUS[r.status] || { icon: '•', label: r.status || '—' };
+  const h = r.dars_soat || 0, m = r.dars_daqiqa || 0;
+  return `
+    <div class="mv-card sm-group" id="sm-legacy">
+      <div class="sm-group-head">
+        <div class="sm-group-title">Guruhsiz yozuv (eski)</div>
+        <div class="sm-group-meta"><span class="mv-badge-ok">✅ Saqlangan</span></div>
+      </div>
+      <div class="mv-card-label">Holat</div>
+      <div class="mv-card-title">${st.icon} ${esc(st.label)}${r.status !== 'kelmadi' ? ' • ' + esc(smFmtDur(h, m)) : ''}</div>
+      <div class="sm-plan">Bu yozuv guruhlar ajratilmasdan oldin saqlangan. Statistikaga qo'shiladi; guruhlar bo'yicha qayta kiritsangiz, buni o'chirib qo'ying.</div>
+      <div class="mv-actions">
+        <button type="button" class="mv-btn mv-btn-danger" onclick="smDeleteLegacy()">🗑 O'chirish</button>
+      </div>
+    </div>`;
 }
 
-async function smSave() {
-  const status = _sm.status;
-  const soat   = parseInt(g('sm-soat').value, 10)   || 0;
-  const daqiqa = parseInt(g('sm-daqiqa').value, 10) || 0;
+function smSelectStatus(gid, status) {
+  _sm.status[gid] = status;
+  ['keldi', 'kelmadi', 'kech'].forEach(k => {
+    const b = g(`sm-st-${gid}-${k}`);
+    if (b) b.classList.toggle('active', k === status);
+  });
+  g('sm-time-wrap-' + gid).style.display = status === 'kelmadi' ? 'none'  : 'block';
+  g('sm-kech-wrap-' + gid).style.display = status === 'kech'    ? 'block' : 'none';
+}
+
+function smEdit(gid) {
+  if (!_sm.recs[gid]) return;
+  _sm.edit[gid] = true;
+  smRerenderGroup(gid);
+}
+
+function smCancelEdit(gid) {
+  delete _sm.edit[gid];
+  smRerenderGroup(gid);
+}
+
+// Saqlangandan keyin faqat shu guruhning yozuvini serverdan qayta o'qiydi
+async function smRefreshOne(gid) {
+  const sana = smFmtSana(_sm.cur);
+  let res = null;
+  try { res = await api.get('/api/davomat/mening-darsim', { sana, maktabId: TANLANGAN_MID }); }
+  catch (e) { res = null; }
+  if (sana !== smFmtSana(_sm.cur)) return;   // shu orada sana almashtirilgan
+  if (res && res.ok) {
+    const y = (res.yozuvlar || []).find(x => x.guruh_id === gid);
+    if (y) _sm.recs[gid] = y; else delete _sm.recs[gid];
+  }
+  delete _sm.edit[gid];
+  smRerenderGroup(gid);
+}
+
+async function smSave(gid) {
+  const status = _sm.status[gid] || 'keldi';
+  const soat   = parseInt(g('sm-soat-' + gid).value, 10)   || 0;
+  const daqiqa = parseInt(g('sm-daqiqa-' + gid).value, 10) || 0;
 
   if (status !== 'kelmadi') {
     if (soat < 0 || soat > 12 || daqiqa < 0 || daqiqa > 59) {
@@ -2070,40 +2173,65 @@ async function smSave() {
 
   const body = {
     sana:        smFmtSana(_sm.cur),
+    guruh_id:    gid,
     maktabId:    TANLANGAN_MID || undefined,
     status,
     dars_soat:   status === 'kelmadi' ? 0 : soat,
     dars_daqiqa: status === 'kelmadi' ? 0 : daqiqa,
-    kech_minut:  status === 'kech' ? (parseInt(g('sm-kech').value, 10) || 0) : 0,
-    izoh:        g('sm-izoh').value.trim(),
+    kech_minut:  status === 'kech' ? (parseInt(g('sm-kech-' + gid).value, 10) || 0) : 0,
+    izoh:        g('sm-izoh-' + gid).value.trim(),
   };
 
-  const btn = g('sm-save-btn');
+  const btn = g('sm-save-' + gid);
   btn.disabled = true;
   btn.textContent = 'Saqlanmoqda…';
   try {
     const data = await api.post('/api/davomat/mening-darsim', body);
     if (data && data.ok) {
-      await smLoadRecord();
+      await smRefreshOne(gid);
       smShowNote('✅ Saqlandi');
+      loadSoatStatistika({ oy: _sm.cur.getMonth() + 1, yil: _sm.cur.getFullYear() });
+    } else {
+      smShowNote('❌ ' + ((data && data.error) || 'Xatolik'), true);
+      btn.disabled = false;
+      btn.textContent = '💾 Saqlash';
+    }
+  } catch (e) {
+    smShowNote("❌ Server bilan ulanib bo'lmadi", true);
+    btn.disabled = false;
+    btn.textContent = '💾 Saqlash';
+  }
+}
+
+async function smDelete(gid) {
+  if (!confirm("Bu guruhning shu kundagi dars belgisi o'chirilsinmi?")) return;
+  try {
+    const data = await api.del('/api/davomat/mening-darsim', {
+      sana: smFmtSana(_sm.cur), guruh_id: gid, maktabId: TANLANGAN_MID || undefined
+    });
+    if (data && data.ok) {
+      delete _sm.recs[gid];
+      delete _sm.edit[gid];
+      smRerenderGroup(gid);
+      smShowNote("🗑 O'chirildi");
       loadSoatStatistika({ oy: _sm.cur.getMonth() + 1, yil: _sm.cur.getFullYear() });
     } else {
       smShowNote('❌ ' + ((data && data.error) || 'Xatolik'), true);
     }
   } catch (e) {
     smShowNote("❌ Server bilan ulanib bo'lmadi", true);
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '💾 Saqlash';
   }
 }
 
-async function smDelete() {
-  if (!confirm("Bu kundagi dars belgisi o'chirilsinmi?")) return;
+async function smDeleteLegacy() {
+  if (!confirm("Eski (guruhsiz) yozuv o'chirilsinmi?")) return;
   try {
-    const data = await api.del('/api/davomat/mening-darsim', { sana: smFmtSana(_sm.cur), maktabId: TANLANGAN_MID || undefined });
+    const data = await api.del('/api/davomat/mening-darsim', {
+      sana: smFmtSana(_sm.cur), maktabId: TANLANGAN_MID || undefined
+    });
     if (data && data.ok) {
-      await smLoadRecord();
+      _sm.legacy = null;
+      const el = g('sm-legacy'); if (el) el.remove();
       smShowNote("🗑 O'chirildi");
       loadSoatStatistika({ oy: _sm.cur.getMonth() + 1, yil: _sm.cur.getFullYear() });
     } else {

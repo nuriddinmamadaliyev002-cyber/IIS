@@ -320,28 +320,26 @@ function parseSanaDMY(s) {
   return d;
 }
 
-// O'qituvchining tanlangan maktabdagi guruhlari (dars_jadvali) bo'yicha dars
-// kunlari to'plami (0=Yakshanba ... 6=Shanba). Guruh bo'lmasa — bo'sh Set.
-async function teacherLessonWeekdays(ism, maktabId) {
+// O'qituvchining tanlangan maktabdagi BITTA guruhini (dars_jadvali qatori)
+// topadi. Guruh shu o'qituvchiga va shu maktabga tegishli bo'lmasa — null.
+async function findTeacherGroup(ism, maktabId, guruhId) {
   const parts    = String(ism || '').trim().split(' ');
   const familiya = parts[0] || '';
   const ismOnly  = parts.slice(1).join(' ') || '';
   const r = await pool.query(
-    `SELECT kunlar FROM dars_jadvali
-     WHERE LOWER(TRIM(teacher_familiya)) = LOWER($1)
-       AND LOWER(TRIM(teacher_ism))      = LOWER($2)
-       AND maktab_id = $3`,
-    [familiya, ismOnly, maktabId]
+    `SELECT id, fan, kunlar FROM dars_jadvali
+     WHERE id = $1
+       AND maktab_id = $2
+       AND LOWER(TRIM(teacher_familiya)) = LOWER($3)
+       AND LOWER(TRIM(teacher_ism))      = LOWER($4)`,
+    [guruhId, maktabId, familiya, ismOnly]
   );
-  const set = new Set();
-  r.rows.forEach(row => String(row.kunlar || '').split(',').forEach(k => {
-    const n = parseInt(k.trim(), 10);
-    if (!isNaN(n)) set.add(n);
-  }));
-  return set;
+  return r.rows[0] || null;
 }
 
-// ─── GET /api/davomat/mening-darsim?sana=DD.MM.YYYY — bitta kunlik yozuv ─────
+// ─── GET /api/davomat/mening-darsim?sana=DD.MM.YYYY — kunlik yozuvlar ────────
+// Har bir guruh uchun alohida yozuv: { yozuvlar: [{ guruh_id, status, ... }] }.
+// guruh_id = null — eski (guruhsiz) kunlik yozuv.
 router.get('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   const { ism } = req.user;
   const sel = resolveTeacherMaktab(req);
@@ -354,28 +352,34 @@ router.get('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
 
   try {
     const r = await pool.query(
-      `SELECT sana, status, izoh, vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut
+      `SELECT guruh_id, sana, status, izoh, vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut
        FROM oqituvchilar_davomat
        WHERE sana = $1 AND maktab_id = $2 AND oqituvchi_ism = $3
-       ORDER BY id DESC LIMIT 1`,
+       ORDER BY guruh_id NULLS FIRST, id`,
       [sana, sel.mid, ism]
     );
-    res.json({ ok: true, yozuv: r.rows[0] || null });
+    res.json({ ok: true, yozuvlar: r.rows });
   } catch (err) {
     console.error('mening-darsim GET xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });
 
-// ─── POST /api/davomat/mening-darsim — O'qituvchi o'z davomatini belgilaydi ──
+// ─── POST /api/davomat/mening-darsim — bitta GURUH uchun dars soatini belgilash ─
+// Body: { sana, guruh_id, status, dars_soat, dars_daqiqa, kech_minut, izoh, maktabId? }
+// Bir kun + bir guruh = bitta yozuv (qayta yuborilsa yangilanadi).
 router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   const { ism, entityId } = req.user;
-  const { sana, status, dars_soat, dars_daqiqa, kech_minut, izoh } = req.body;
+  const { sana, guruh_id, status, dars_soat, dars_daqiqa, kech_minut, izoh } = req.body;
 
   const sel = resolveTeacherMaktab(req);
   if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
   const maktabId = sel.mid;
 
+  const guruhId = parseInt(guruh_id, 10);
+  if (!Number.isInteger(guruhId) || guruhId <= 0) {
+    return res.status(400).json({ ok: false, error: 'Guruh tanlanmagan' });
+  }
   if (!sana || !status) {
     return res.status(400).json({ ok: false, error: 'Sana va status kerak' });
   }
@@ -401,38 +405,42 @@ router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   if (status !== 'kech')    { kech = 0; }
 
   try {
-    // Faqat guruhi (jadvali) bor o'qituvchida dars kunlari bilan cheklanadi
-    const kunlar = await teacherLessonWeekdays(ism, maktabId);
-    if (kunlar.size && !kunlar.has(sanaDate.getDay())) {
-      return res.status(400).json({ ok: false, error: "Bu kun sizning dars kuningiz emas" });
+    // Guruh shu o'qituvchiga va shu maktabga tegishlimi?
+    const guruh = await findTeacherGroup(ism, maktabId, guruhId);
+    if (!guruh) {
+      return res.status(404).json({ ok: false, error: "Guruh topilmadi yoki sizga tegishli emas" });
     }
 
-    const teacherRes = await pool.query('SELECT fan FROM oqituvchilar WHERE id = $1', [entityId]);
-    const fan = teacherRes.rows[0]?.fan || '';
+    // Shu guruhning dars kunlari bilan cheklanadi (kunlar belgilanmagan bo'lsa — cheklov yo'q)
+    const kunlar = new Set(String(guruh.kunlar || '').split(',')
+      .map(k => parseInt(k.trim(), 10)).filter(n => !isNaN(n)));
+    if (kunlar.size && !kunlar.has(sanaDate.getDay())) {
+      return res.status(400).json({ ok: false, error: "Bu kun shu guruhning dars kuni emas" });
+    }
+
+    let fan = guruh.fan || '';
+    if (!fan) {
+      const teacherRes = await pool.query('SELECT fan FROM oqituvchilar WHERE id = $1', [entityId]);
+      fan = teacherRes.rows[0]?.fan || '';
+    }
     const now = new Date().toLocaleTimeString('uz-UZ');
 
-    // Bir kun — bir yozuv: o'chirish va qo'shish bitta tranzaksiyada
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-      await client.query(
-        'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3',
-        [sana, maktabId, ism]
-      );
-      await client.query(
-        `INSERT INTO oqituvchilar_davomat
-           (sana, maktab_id, oqituvchi_ism, fan, status, izoh,
-            vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
-        [sana, maktabId, ism, fan, status, String(izoh || '').slice(0, 500), now, soat, daqiqa, kech]
-      );
-      await client.query('COMMIT');
-    } catch (e) {
-      await client.query('ROLLBACK');
-      throw e;
-    } finally {
-      client.release();
-    }
+    await pool.query(
+      `INSERT INTO oqituvchilar_davomat
+         (sana, maktab_id, oqituvchi_ism, guruh_id, fan, status, izoh,
+          vaqt_belgilangan, dars_soat, dars_daqiqa, kech_minut)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)
+       ON CONFLICT (sana, maktab_id, oqituvchi_ism, guruh_id) WHERE guruh_id IS NOT NULL
+       DO UPDATE SET
+         fan              = EXCLUDED.fan,
+         status           = EXCLUDED.status,
+         izoh             = EXCLUDED.izoh,
+         vaqt_belgilangan = EXCLUDED.vaqt_belgilangan,
+         dars_soat        = EXCLUDED.dars_soat,
+         dars_daqiqa      = EXCLUDED.dars_daqiqa,
+         kech_minut       = EXCLUDED.kech_minut`,
+      [sana, maktabId, ism, guruhId, fan, status, String(izoh || '').slice(0, 500), now, soat, daqiqa, kech]
+    );
 
     res.json({ ok: true });
   } catch (err) {
@@ -441,7 +449,9 @@ router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   }
 });
 
-// ─── DELETE /api/davomat/mening-darsim — kunlik yozuvni o'chirish ────────────
+// ─── DELETE /api/davomat/mening-darsim — bitta guruhning kunlik yozuvini o'chirish ─
+// Body/query: { sana, guruh_id }. guruh_id berilmasa — faqat ESKI guruhsiz
+// (guruh_id IS NULL) kunlik yozuv o'chiriladi; guruhli yozuvlarga tegilmaydi.
 router.delete('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
   const { ism } = req.user;
   const sel = resolveTeacherMaktab(req);
@@ -452,11 +462,21 @@ router.delete('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => 
     return res.status(400).json({ ok: false, error: "Sana formati noto'g'ri (DD.MM.YYYY)" });
   }
 
+  const rawGid  = (req.body && req.body.guruh_id) ?? req.query.guruh_id;
+  const guruhId = parseInt(rawGid, 10);
+
   try {
-    await pool.query(
-      'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3',
-      [sana, sel.mid, ism]
-    );
+    if (Number.isInteger(guruhId) && guruhId > 0) {
+      await pool.query(
+        'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3 AND guruh_id=$4',
+        [sana, sel.mid, ism, guruhId]
+      );
+    } else {
+      await pool.query(
+        'DELETE FROM oqituvchilar_davomat WHERE sana=$1 AND maktab_id=$2 AND oqituvchi_ism=$3 AND guruh_id IS NULL',
+        [sana, sel.mid, ism]
+      );
+    }
     res.json({ ok: true });
   } catch (err) {
     console.error('mening-darsim DELETE xatolik:', err.message);
