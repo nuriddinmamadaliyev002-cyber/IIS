@@ -117,8 +117,8 @@ router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
     if (!guruh) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
 
     const result = await pool.query(
-      `SELECT dm.id, dm.mavzu, dm.uy_vazifasi, dm.mavzu_fayl, dm.vazifa_fayl,
-              dm.yaratilgan, dm.yangilangan,
+      `SELECT dm.id, dm.mavzu, dm.uy_vazifasi, dm.mavzu_fayl, dm.mavzu_fayl_nomi,
+              dm.vazifa_fayl, dm.vazifa_fayl_nomi, dm.yaratilgan, dm.yangilangan,
               (SELECT COUNT(*) FROM vazifa_javoblari vj
                 WHERE vj.vazifa_id = dm.id)::int AS javoblar_soni,
               (SELECT COUNT(*) FROM vazifa_javoblari vj
@@ -137,7 +137,7 @@ router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
 // ─── POST /api/vazifalar/guruh/:guruhId — mavzu/vazifa saqlash (upsert) ──────
 router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
   const { ism, entityId } = req.user;
-  const { sana, mavzu, uy_vazifasi, mavzu_fayl, vazifa_fayl } = req.body;
+  const { sana, mavzu, uy_vazifasi, mavzu_fayl, vazifa_fayl, mavzu_fayl_nomi, vazifa_fayl_nomi } = req.body;
   const guruhId = parseInt(req.params.guruhId);
 
   if (!guruhId || !sana) return res.status(400).json({ ok: false, error: 'guruhId va sana kerak' });
@@ -160,14 +160,21 @@ router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
     const now = hozirUZ();
     const yangiMavzuFayl = String(mavzu_fayl || '').trim();
     const yangiVazifaFayl = String(vazifa_fayl || '').trim();
+    // Asl nomlar faqat fayl bor bo'lsagina saqlanadi (fayl olib tashlansa — nom ham bo'sh)
+    const yangiMavzuNomi  = yangiMavzuFayl  ? String(mavzu_fayl_nomi  || '').trim().slice(0, 255) : '';
+    const yangiVazifaNomi = yangiVazifaFayl ? String(vazifa_fayl_nomi || '').trim().slice(0, 255) : '';
 
     // "muddat" endi ishlatilmaydi — yangi yozuvda bo'sh, mavjudida tegilmaydi
     await pool.query(
-      `INSERT INTO dars_mavzulari (guruh_id, maktab_id, sana, mavzu, uy_vazifasi, mavzu_fayl, vazifa_fayl, yaratilgan)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+      `INSERT INTO dars_mavzulari (guruh_id, maktab_id, sana, mavzu, uy_vazifasi,
+                                   mavzu_fayl, mavzu_fayl_nomi, vazifa_fayl, vazifa_fayl_nomi, yaratilgan)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)
        ON CONFLICT (guruh_id, sana) DO UPDATE
-         SET mavzu=$4, uy_vazifasi=$5, mavzu_fayl=$6, vazifa_fayl=$7, yangilangan=$8`,
-      [guruhId, guruh.maktab_id, sana, mavzu || '', uy_vazifasi || '', yangiMavzuFayl, yangiVazifaFayl, now]
+         SET mavzu=$4, uy_vazifasi=$5,
+             mavzu_fayl=$6, mavzu_fayl_nomi=$7, vazifa_fayl=$8, vazifa_fayl_nomi=$9,
+             yangilangan=$10`,
+      [guruhId, guruh.maktab_id, sana, mavzu || '', uy_vazifasi || '',
+       yangiMavzuFayl, yangiMavzuNomi, yangiVazifaFayl, yangiVazifaNomi, now]
     );
 
     // Almashtirilgan yoki olib tashlangan eski fayllarni diskdan tozalaymiz

@@ -545,6 +545,8 @@ CREATE TABLE IF NOT EXISTS dars_mavzulari (
     uy_vazifasi  TEXT    DEFAULT '',
     mavzu_fayl   TEXT    DEFAULT '',   -- mavzu uchun fayl (021)
     vazifa_fayl  TEXT    DEFAULT '',   -- uyga vazifa uchun fayl
+    mavzu_fayl_nomi  TEXT DEFAULT '',  -- mavzu faylining asl nomi (022)
+    vazifa_fayl_nomi TEXT DEFAULT '',  -- uyga vazifa faylining asl nomi (022)
     muddat       TEXT    DEFAULT '',
     yaratilgan   TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI'),
     yangilangan  TEXT    DEFAULT '',
@@ -736,6 +738,10 @@ CREATE INDEX IF NOT EXISTS idx_oqitdavomat_guruh ON oqituvchilar_davomat(guruh_i
 --  mavjud bazalarga ustun shu yerda qo'shiladi (deploy.sh har safar shu faylni
 --  ishga tushiradi). vazifa_fayl — uyga vazifa fayli, mavzu_fayl — mavzu fayli.
 ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS mavzu_fayl TEXT DEFAULT '';
+
+-- ─── Biriktirilgan fayllarning asl nomlari (migrations/022) ─────────────────
+ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS mavzu_fayl_nomi  TEXT DEFAULT '';
+ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS vazifa_fayl_nomi TEXT DEFAULT '';
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI

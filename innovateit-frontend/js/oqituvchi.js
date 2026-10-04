@@ -893,6 +893,8 @@ async function onDavomatDatePick() {
 let activeMvGuruh = null;
 // Ikkita fayl: 'mavzu' — dars mavzusi uchun, 'vazifa' — uyga vazifa uchun
 const _mv_fayllar = { mavzu: '', vazifa: '' };
+// Fayllarning foydalanuvchiga ko'rsatiladigan (asl) nomlari
+const _mv_fayl_nomlari = { mavzu: '', vazifa: '' };
 const MV_FAYL_NOMI = { mavzu: 'Bugungi dars mavzusi', vazifa: 'Uyga vazifa' };
 let _mv_saved = null;   // serverdagi saqlangan vazifa (tanlangan kunda yo'q bo'lsa null)
 let _mv_noteTimer = null;
@@ -1055,20 +1057,57 @@ async function onMvDatePick() {
 }
 
 function renderMvFaylCurrent(kind) {
-  const wrap = g(`mv-${kind}-fayl-current`);
-  const nom = _mv_fayllar[kind];
+  const wrap   = g(`mv-${kind}-fayl-current`);
+  const btn    = g(`mv-${kind}-fayl-btn`);
+  const nameEl = g(`mv-${kind}-fayl-name`);
+  const nom    = _mv_fayllar[kind];
+  const korinadigan = _mv_fayl_nomlari[kind] || nom;
+
+  // Tugma + nom: fayl tanlanmagan bo'lsa "Faylni tanlash", tanlangan bo'lsa fayl nomi va "Faylni almashtirish"
+  btn.textContent = nom ? 'Faylni almashtirish' : 'Faylni tanlash';
+  nameEl.textContent = nom ? korinadigan : 'Fayl tanlanmagan';
+  nameEl.title = nom ? korinadigan : '';
+  nameEl.classList.toggle('has-file', !!nom);
+
   if (nom) {
     wrap.style.display = 'block';
     wrap.innerHTML = `📎 <a href="${resolveUploadUrl(nom)}" target="_blank" rel="noopener">Biriktirilgan faylni ko'rish</a>
-      &nbsp;·&nbsp; <button type="button" class="oq-back-btn" style="padding:0;font-size:12.5px;display:inline;" onclick="removeMvFayl('${kind}')">❌ Olib tashlash</button>`;
+      &nbsp;·&nbsp; <button type="button" class="oq-back-btn" style="padding:0;font-size:12.5px;display:inline;" onclick="askRemoveMvFayl('${kind}')">❌ Faylni olib tashlash</button>`;
   } else {
     wrap.style.display = 'none';
     wrap.innerHTML = '';
   }
 }
 
+// ─── Faylni olib tashlash: avval tasdiqlash oynasi ────────────────────────────
+let _mv_remove_kind = null;
+
+function askRemoveMvFayl(kind) {
+  if (!_mv_fayllar[kind]) return;
+  _mv_remove_kind = kind;
+  const nom = _mv_fayl_nomlari[kind] || _mv_fayllar[kind];
+  g('mv-fayl-remove-body').innerHTML = `Rostan ham ushbu "<b>${esc(nom)}</b>" faylni olib tashlamoqchimisiz?`;
+  g('mv-fayl-remove-modal').style.display = 'flex';
+}
+
+function closeMvFaylRemoveModal() {
+  g('mv-fayl-remove-modal').style.display = 'none';
+  _mv_remove_kind = null;
+}
+
+function confirmMvFaylRemove() {
+  const kind = _mv_remove_kind;
+  closeMvFaylRemoveModal();
+  if (kind) removeMvFayl(kind);
+}
+
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && g('mv-fayl-remove-modal')?.style.display === 'flex') closeMvFaylRemoveModal();
+});
+
 function removeMvFayl(kind) {
   _mv_fayllar[kind] = '';
+  _mv_fayl_nomlari[kind] = '';
   g(`mv-${kind}-fayl-status`).textContent = '';
   renderMvFaylCurrent(kind);
 }
@@ -1086,6 +1125,7 @@ async function uploadMvFayl(kind) {
     const res = await api.uploadFile(fd);
     if (res && res.ok) {
       _mv_fayllar[kind] = res.filename;
+      _mv_fayl_nomlari[kind] = file.name;
       statusEl.textContent = '✅ Fayl yuklandi';
       renderMvFaylCurrent(kind);
     } else {
@@ -1129,6 +1169,9 @@ function fillMvForm(v) {
   g('mv-vazifa').value = v ? (v.uy_vazifasi || '') : '';
   _mv_fayllar.mavzu  = v ? (v.mavzu_fayl  || '') : '';
   _mv_fayllar.vazifa = v ? (v.vazifa_fayl || '') : '';
+  // Asl nom saqlanmagan eski yozuvlarda render diskdagi nomni ko'rsatadi
+  _mv_fayl_nomlari.mavzu  = v ? (v.mavzu_fayl_nomi  || '') : '';
+  _mv_fayl_nomlari.vazifa = v ? (v.vazifa_fayl_nomi || '') : '';
   g('mv-mavzu-fayl-status').textContent  = '';
   g('mv-vazifa-fayl-status').textContent = '';
   renderMvFaylCurrent('mavzu');
@@ -1331,7 +1374,9 @@ async function saveMavzuVazifa() {
       mavzu:       g('mv-mavzu').value.trim(),
       uy_vazifasi: g('mv-vazifa').value.trim(),
       mavzu_fayl:  _mv_fayllar.mavzu,
-      vazifa_fayl: _mv_fayllar.vazifa
+      mavzu_fayl_nomi:  _mv_fayl_nomlari.mavzu,
+      vazifa_fayl: _mv_fayllar.vazifa,
+      vazifa_fayl_nomi: _mv_fayl_nomlari.vazifa
     });
     if (res && res.ok) {
       await loadMavzuVazifa();          // serverdagi holat + kartochka

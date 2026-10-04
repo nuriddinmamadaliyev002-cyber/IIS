@@ -725,3 +725,26 @@ button, a, input, select, textarea, [role="button"] {
 .sm-group-title { font-size: 15px; font-weight: 700; color: var(--text); overflow-wrap: anywhere; flex: 1 1 160px; }
 .sm-group-meta  { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .sm-group-stamp { margin-bottom: 12px; }
+
+/* ═══ Fayl tanlash: brauzerning inglizcha "Choose File / No file chosen" o'rniga ═══ */
+.mv-pick { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.mv-pick-input { display: none; }
+.mv-pick-btn {
+  flex-shrink: 0; padding: 8px 14px; border: 1.5px solid var(--border); background: #fff;
+  border-radius: 10px; font-family: inherit; font-size: 13px; font-weight: 600;
+  color: var(--text); cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent;
+}
+.mv-pick-btn:hover  { border-color: var(--iit-indigo); background: var(--iit-indigo-tint); }
+.mv-pick-btn:active { background: var(--iit-indigo-tint2); }
+.mv-pick-name {
+  flex: 1; min-width: 0; font-size: 13px; color: var(--muted);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.mv-pick-name.has-file { color: var(--text); font-weight: 500; }
+
+/* Faylni olib tashlash tasdiqlash oynasi: "Ha, albatta" chapda, o'ng tomonida bekor qilish */
+.modal-footer.mv-fayl-remove-footer { justify-content: flex-start; flex-direction: row; flex-wrap: wrap; }
+.mv-fayl-remove-footer .btn-submit { margin-top: 0; }
+@media (max-width: 400px) {
+  .modal-footer.mv-fayl-remove-footer { flex-direction: column; }
+}
