@@ -891,7 +891,9 @@ async function onDavomatDatePick() {
 //  mavzu, uyga vazifa va ixtiyoriy fayl/rasm)
 // ═══════════════════════════════════════════
 let activeMvGuruh = null;
-let _mv_fayl = '';
+// Ikkita fayl: 'mavzu' — dars mavzusi uchun, 'vazifa' — uyga vazifa uchun
+const _mv_fayllar = { mavzu: '', vazifa: '' };
+const MV_FAYL_NOMI = { mavzu: 'Bugungi dars mavzusi', vazifa: 'Uyga vazifa' };
 let _mv_saved = null;   // serverdagi saqlangan vazifa (tanlangan kunda yo'q bo'lsa null)
 let _mv_noteTimer = null;
 
@@ -1020,44 +1022,6 @@ function updateMvNavBtns() {
   g('mv-next-btn').disabled = !findMvLessonDate(window._mv_curdate, 1);
 }
 
-// ─── Muddat maydoni: native <input type="date"> MM/DD/YYYY ko'rsatishi mumkin,
-//     shu sababli o'zimiz DD/MM/YYYY formatida matn ko'rsatamiz ───────────────
-function setMvMuddatText() {
-  const v = g('mv-muddat').value;
-  const textEl = g('mv-muddat-text');
-  const clearWrap = g('mv-muddat-clear-wrap');
-  const warnEl = g('mv-muddat-warn');
-  if (!v) {
-    textEl.textContent = 'Tanlanmagan';
-    clearWrap.style.display = 'none';
-    warnEl.style.display = 'none';
-    return;
-  }
-  const [y, m, d] = v.split('-');
-  textEl.textContent = `${d}/${m}/${y}`;
-  clearWrap.style.display = 'block';
-  warnEl.style.display = (v < dateStrLocal(new Date())) ? 'block' : 'none';
-}
-
-function openMvMuddatPicker() {
-  const inp = g('mv-muddat');
-  if (!inp) return;
-  if (typeof inp.showPicker === 'function') {
-    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
-  }
-  inp.focus();
-  inp.click();
-}
-
-function onMvMuddatPick() {
-  setMvMuddatText();
-}
-
-function clearMvMuddat() {
-  g('mv-muddat').value = '';
-  setMvMuddatText();
-}
-
 async function changeMvDate(dir) {
   const nd = findMvLessonDate(window._mv_curdate, dir);
   if (!nd) return;
@@ -1090,26 +1054,28 @@ async function onMvDatePick() {
   await loadMavzuVazifa();
 }
 
-function renderMvFaylCurrent() {
-  const wrap = g('mv-fayl-current');
-  if (_mv_fayl) {
+function renderMvFaylCurrent(kind) {
+  const wrap = g(`mv-${kind}-fayl-current`);
+  const nom = _mv_fayllar[kind];
+  if (nom) {
     wrap.style.display = 'block';
-    wrap.innerHTML = `📎 <a href="${resolveUploadUrl(_mv_fayl)}" target="_blank" rel="noopener">Biriktirilgan faylni ko'rish</a>
-      &nbsp;·&nbsp; <button type="button" class="oq-back-btn" style="padding:0;font-size:12.5px;display:inline;" onclick="removeMvFayl()">❌ Olib tashlash</button>`;
+    wrap.innerHTML = `📎 <a href="${resolveUploadUrl(nom)}" target="_blank" rel="noopener">Biriktirilgan faylni ko'rish</a>
+      &nbsp;·&nbsp; <button type="button" class="oq-back-btn" style="padding:0;font-size:12.5px;display:inline;" onclick="removeMvFayl('${kind}')">❌ Olib tashlash</button>`;
   } else {
     wrap.style.display = 'none';
     wrap.innerHTML = '';
   }
 }
 
-function removeMvFayl() {
-  _mv_fayl = '';
-  renderMvFaylCurrent();
+function removeMvFayl(kind) {
+  _mv_fayllar[kind] = '';
+  g(`mv-${kind}-fayl-status`).textContent = '';
+  renderMvFaylCurrent(kind);
 }
 
-async function uploadMvFayl() {
-  const inp = g('mv-fayl-input');
-  const statusEl = g('mv-fayl-status');
+async function uploadMvFayl(kind) {
+  const inp = g(`mv-${kind}-fayl-input`);
+  const statusEl = g(`mv-${kind}-fayl-status`);
   const file = inp.files?.[0];
   if (!file) return;
 
@@ -1119,9 +1085,9 @@ async function uploadMvFayl() {
   try {
     const res = await api.uploadFile(fd);
     if (res && res.ok) {
-      _mv_fayl = res.filename;
+      _mv_fayllar[kind] = res.filename;
       statusEl.textContent = '✅ Fayl yuklandi';
-      renderMvFaylCurrent();
+      renderMvFaylCurrent(kind);
     } else {
       statusEl.textContent = '❌ ' + (res?.error || 'Fayl yuklanmadi');
     }
@@ -1161,11 +1127,12 @@ function setMvMode(mode) {
 function fillMvForm(v) {
   g('mv-mavzu').value  = v ? (v.mavzu || '') : '';
   g('mv-vazifa').value = v ? (v.uy_vazifasi || '') : '';
-  g('mv-muddat').value = v ? (v.muddat || '') : '';
-  setMvMuddatText();
-  _mv_fayl = v ? (v.vazifa_fayl || '') : '';
-  g('mv-fayl-status').textContent = '';
-  renderMvFaylCurrent();
+  _mv_fayllar.mavzu  = v ? (v.mavzu_fayl  || '') : '';
+  _mv_fayllar.vazifa = v ? (v.vazifa_fayl || '') : '';
+  g('mv-mavzu-fayl-status').textContent  = '';
+  g('mv-vazifa-fayl-status').textContent = '';
+  renderMvFaylCurrent('mavzu');
+  renderMvFaylCurrent('vazifa');
   updateMvSaveState();
 }
 
@@ -1207,11 +1174,6 @@ async function loadMavzuVazifa() {
 }
 
 // ─── Kartochka ────────────────────────────────────────────────────────────────
-function mvFmtMuddat(iso) {
-  const [y, m, d] = String(iso).split('-');
-  return (y && m && d) ? `${d}/${m}/${y}` : iso;
-}
-
 function mvFaylHtml(nom) {
   if (!nom) return '';
   const url = esc(resolveUploadUrl(nom));
@@ -1241,22 +1203,8 @@ function mvImgFail(img) {
 
 function renderMvCard(v) {
   const wrap = g('mv-card-wrap');
-  const bugun = dateStrLocal(new Date());
-
   // Vaqt belgisi
   const vaqt = v.yangilangan ? `Tahrirlangan: ${v.yangilangan}` : (v.yaratilgan ? `Yozilgan: ${v.yaratilgan}` : '');
-
-  // Muddat
-  let muddatHtml, muddatHint = '';
-  if (v.muddat) {
-    const otgan = v.muddat < bugun;
-    muddatHtml = otgan
-      ? `<span class="mv-chip mv-chip-danger">⏰ Muddat tugagan: ${esc(mvFmtMuddat(v.muddat))}</span>`
-      : `<span class="mv-chip mv-chip-warn">📅 Muddat: ${esc(mvFmtMuddat(v.muddat))}</span>`;
-    if (otgan) muddatHint = `<div class="mv-hint-danger">O'quvchilar endi javob yubora olmaydi. Davom ettirish uchun "Tahrirlash" orqali muddatni yangilang.</div>`;
-  } else {
-    muddatHtml = `<span class="mv-chip">Muddat belgilanmagan</span>`;
-  }
 
   // Javoblar
   const jn = v.javoblar_soni || 0, bn = v.baholangan_soni || 0;
@@ -1273,14 +1221,12 @@ function renderMvCard(v) {
 
     <div class="mv-card-label">Dars mavzusi</div>
     <div class="mv-card-title">${esc(v.mavzu || '—')}</div>
+    ${mvFaylHtml(v.mavzu_fayl)}
 
     <div class="mv-card-label">Uyga vazifa</div>
     <div class="mv-card-text">${esc(v.uy_vazifasi || '—')}</div>
-
     ${mvFaylHtml(v.vazifa_fayl)}
 
-    <div class="mv-chips">${muddatHtml}</div>
-    ${muddatHint}
     ${statHtml}
 
     <div class="mv-actions">
@@ -1347,7 +1293,7 @@ async function confirmMvDelete() {
 }
 
 // Mavzu va uyga vazifa ikkalasi ham to'ldirilmaguncha "Saqlash" tugmasi faol bo'lmaydi.
-// (Muddat va fayl ixtiyoriy — ularga bog'liq emas.)
+// (Fayllar ixtiyoriy — ularga bog'liq emas.)
 function mvMissingFields() {
   const missing = [];
   if (!g('mv-mavzu').value.trim())  missing.push('dars mavzusi');
@@ -1375,14 +1321,6 @@ async function saveMavzuVazifa() {
     alert(`⚠️ Saqlash uchun to'ldiring: ${missing.join(' va ')}`);
     return;
   }
-  const muddat    = g('mv-muddat').value || '';
-  const eskiMuddat = _mv_saved ? (_mv_saved.muddat || '') : '';
-  // O'tmishdagi muddat faqat YANGI tanlansa rad etiladi — mavjud (o'tib ketgan)
-  // muddatni o'zgartirmasdan matnni tuzatish mumkin bo'lishi kerak
-  if (muddat && muddat < dateStrLocal(new Date()) && muddat !== eskiMuddat) {
-    alert("⚠️ Topshirish muddati sifatida o'tmishdagi sana tanlangan. Iltimos, muddatni bugungi yoki kelajakdagi sanaga o'zgartiring.");
-    return;
-  }
   const wasEdit = !!_mv_saved;
   const sana = dateStrLocal(window._mv_curdate);
   const btn = g('mv-save-btn');
@@ -1392,8 +1330,8 @@ async function saveMavzuVazifa() {
       sana,
       mavzu:       g('mv-mavzu').value.trim(),
       uy_vazifasi: g('mv-vazifa').value.trim(),
-      muddat,
-      vazifa_fayl: _mv_fayl
+      mavzu_fayl:  _mv_fayllar.mavzu,
+      vazifa_fayl: _mv_fayllar.vazifa
     });
     if (res && res.ok) {
       await loadMavzuVazifa();          // serverdagi holat + kartochka

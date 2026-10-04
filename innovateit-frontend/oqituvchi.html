@@ -293,27 +293,20 @@
           <textarea class="field-input" id="mv-mavzu" rows="2" oninput="updateMvSaveState()" placeholder="Masalan: Kasrlar. Qo'shish va ayirish"></textarea>
         </div>
         <div class="field-group">
+          <label class="field-label">Bugungi dars mavzusi uchun fayl biriktirish (ixtiyoriy)</label>
+          <input type="file" id="mv-mavzu-fayl-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" onchange="uploadMvFayl('mavzu')">
+          <div id="mv-mavzu-fayl-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+          <div id="mv-mavzu-fayl-current" style="display:none;font-size:12.5px;margin-top:6px;"></div>
+        </div>
+        <div class="field-group">
           <label class="field-label">Uyga vazifa</label>
           <textarea class="field-input" id="mv-vazifa" rows="3" oninput="updateMvSaveState()" placeholder="O'quvchilarga uyga vazifa matnini yozing"></textarea>
         </div>
         <div class="field-group">
-          <label class="field-label">Topshirish muddati (ixtiyoriy)</label>
-          <div class="dav-date-input-wrap" style="width:100%;margin-left:0;">
-            <div class="dav-date-input-text" id="mv-muddat-text" style="width:100%;box-sizing:border-box;padding:11px 12px;font-size:14px;" onclick="openMvMuddatPicker()">Tanlanmagan</div>
-            <input class="dav-date-input" type="date" id="mv-muddat" onchange="onMvMuddatPick()">
-          </div>
-          <div id="mv-muddat-clear-wrap" style="display:none;margin-top:6px;">
-            <button type="button" class="oq-back-btn" style="padding:0;font-size:12px;" onclick="clearMvMuddat()">✕ Muddatni tozalash</button>
-          </div>
-          <div id="mv-muddat-warn" style="display:none;margin-top:6px;font-size:12.5px;color:#dc2626;">
-            ⚠️ Bu sana allaqachon o'tib ketgan — o'quvchilar shu muddat bilan javob yubora olmaydi.
-          </div>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Fayl yoki rasm biriktirish (ixtiyoriy)</label>
-          <input type="file" id="mv-fayl-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" onchange="uploadMvFayl()">
-          <div id="mv-fayl-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
-          <div id="mv-fayl-current" style="display:none;font-size:12.5px;margin-top:6px;"></div>
+          <label class="field-label">Uyga vazifa uchun fayl biriktirish (ixtiyoriy)</label>
+          <input type="file" id="mv-vazifa-fayl-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" onchange="uploadMvFayl('vazifa')">
+          <div id="mv-vazifa-fayl-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+          <div id="mv-vazifa-fayl-current" style="display:none;font-size:12.5px;margin-top:6px;"></div>
         </div>
         <button class="oq-mark-btn" id="mv-save-btn" onclick="saveMavzuVazifa()" disabled>💾 Mavzu va vazifani saqlash</button>
         <button type="button" class="mv-btn mv-btn-cancel" id="mv-cancel-btn" onclick="cancelMvEdit()" style="display:none;">Bekor qilish</button>

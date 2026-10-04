@@ -117,7 +117,7 @@ router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
     if (!guruh) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
 
     const result = await pool.query(
-      `SELECT dm.id, dm.mavzu, dm.uy_vazifasi, dm.vazifa_fayl, dm.muddat,
+      `SELECT dm.id, dm.mavzu, dm.uy_vazifasi, dm.mavzu_fayl, dm.vazifa_fayl,
               dm.yaratilgan, dm.yangilangan,
               (SELECT COUNT(*) FROM vazifa_javoblari vj
                 WHERE vj.vazifa_id = dm.id)::int AS javoblar_soni,
@@ -137,7 +137,7 @@ router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
 // ─── POST /api/vazifalar/guruh/:guruhId — mavzu/vazifa saqlash (upsert) ──────
 router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
   const { ism, entityId } = req.user;
-  const { sana, mavzu, uy_vazifasi, muddat, vazifa_fayl } = req.body;
+  const { sana, mavzu, uy_vazifasi, mavzu_fayl, vazifa_fayl } = req.body;
   const guruhId = parseInt(req.params.guruhId);
 
   if (!guruhId || !sana) return res.status(400).json({ ok: false, error: 'guruhId va sana kerak' });
@@ -150,33 +150,33 @@ router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
     const guruh = await oqituvchiGuruhi(guruhId, ism);
     if (!guruh) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
 
-    // Avvalgi holat: muddat o'zgarganini va eski fayl almashganini bilish uchun
+    // Avvalgi fayllar: almashtirilgan yoki olib tashlangan bo'lsa diskdan tozalash uchun
     const oldRes = await pool.query(
-      `SELECT vazifa_fayl, muddat FROM dars_mavzulari WHERE guruh_id=$1 AND sana=$2`,
+      `SELECT mavzu_fayl, vazifa_fayl FROM dars_mavzulari WHERE guruh_id=$1 AND sana=$2`,
       [guruhId, sana]
     );
     const old = oldRes.rows[0] || null;
 
-    // O'tmishdagi muddatni FAQAT yangi qo'yilayotgan/o'zgartirilayotgan bo'lsa rad etamiz.
-    // Aks holda kecha berilgan vazifadagi imloviy xatoni tuzatib ham bo'lmay qoladi
-    // (eski muddat allaqachon o'tib ketgan bo'ladi).
-    const yangiMuddat = (muddat || '').trim();
-    if (yangiMuddat && yangiMuddat < bugungiSanaISO() && yangiMuddat !== ((old && old.muddat) || ''))
-      return res.status(400).json({ ok: false, error: "Topshirish muddati sifatida o'tmishdagi sana tanlab bo'lmaydi" });
-
     const now = hozirUZ();
-    const yangiFayl = vazifa_fayl || '';
+    const yangiMavzuFayl = String(mavzu_fayl || '').trim();
+    const yangiVazifaFayl = String(vazifa_fayl || '').trim();
 
+    // "muddat" endi ishlatilmaydi — yangi yozuvda bo'sh, mavjudida tegilmaydi
     await pool.query(
-      `INSERT INTO dars_mavzulari (guruh_id, maktab_id, sana, mavzu, uy_vazifasi, vazifa_fayl, muddat, yaratilgan)
+      `INSERT INTO dars_mavzulari (guruh_id, maktab_id, sana, mavzu, uy_vazifasi, mavzu_fayl, vazifa_fayl, yaratilgan)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
        ON CONFLICT (guruh_id, sana) DO UPDATE
-         SET mavzu=$4, uy_vazifasi=$5, vazifa_fayl=$6, muddat=$7, yangilangan=$8`,
-      [guruhId, guruh.maktab_id, sana, mavzu || '', uy_vazifasi || '', yangiFayl, yangiMuddat, now]
+         SET mavzu=$4, uy_vazifasi=$5, mavzu_fayl=$6, vazifa_fayl=$7, yangilangan=$8`,
+      [guruhId, guruh.maktab_id, sana, mavzu || '', uy_vazifasi || '', yangiMavzuFayl, yangiVazifaFayl, now]
     );
 
-    // Fayl almashtirilgan yoki olib tashlangan bo'lsa — eskisini diskdan tozalaymiz
-    if (old && old.vazifa_fayl && old.vazifa_fayl !== yangiFayl) faylniOchirish(old.vazifa_fayl);
+    // Almashtirilgan yoki olib tashlangan eski fayllarni diskdan tozalaymiz
+    // (yangi ro'yxatda hali ishlatilayotgan fayl o'chib ketmasligi uchun tekshiramiz)
+    if (old) {
+      for (const f of [old.mavzu_fayl, old.vazifa_fayl]) {
+        if (f && f !== yangiMavzuFayl && f !== yangiVazifaFayl) faylniOchirish(f);
+      }
+    }
 
     res.json({ ok: true });
   } catch (err) {
@@ -210,7 +210,7 @@ router.delete('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) =>
       await client.query('BEGIN');
 
       const row = await client.query(
-        `SELECT id, vazifa_fayl FROM dars_mavzulari WHERE guruh_id=$1 AND sana=$2 FOR UPDATE`,
+        `SELECT id, mavzu_fayl, vazifa_fayl FROM dars_mavzulari WHERE guruh_id=$1 AND sana=$2 FOR UPDATE`,
         [guruhId, sana]
       );
       if (row.rowCount === 0) {
@@ -231,7 +231,7 @@ router.delete('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) =>
         `SELECT COUNT(*)::int AS n FROM vazifa_javoblari WHERE vazifa_id=$1`, [vazifaId]
       );
       ochirilganJavoblar = cnt.rows[0].n;
-      fayllar = [row.rows[0].vazifa_fayl, ...jf.rows.map(r => r.fayl_nomi)];
+      fayllar = [row.rows[0].mavzu_fayl, row.rows[0].vazifa_fayl, ...jf.rows.map(r => r.fayl_nomi)];
 
       await client.query(`DELETE FROM dars_mavzulari WHERE id=$1`, [vazifaId]);
       await client.query('COMMIT');
@@ -361,7 +361,7 @@ router.get('/mening-vazifalarim', requireAuth(['oquvchi']), async (req, res) => 
     }
 
     const result = await pool.query(
-      `SELECT dm.id, dm.sana, dm.mavzu, dm.uy_vazifasi, dm.vazifa_fayl, dm.muddat,
+      `SELECT dm.id, dm.sana, dm.mavzu, dm.uy_vazifasi, dm.mavzu_fayl, dm.vazifa_fayl,
               dj.fan, dj.teacher_ism, dj.teacher_familiya,
               vj.id AS javob_id, vj.javob_matn, vj.javob_fayl, vj.holat,
               vj.baho, vj.oqituvchi_izohi

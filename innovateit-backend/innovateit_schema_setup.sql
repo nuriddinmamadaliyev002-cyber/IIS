@@ -543,7 +543,8 @@ CREATE TABLE IF NOT EXISTS dars_mavzulari (
     sana         TEXT    NOT NULL,
     mavzu        TEXT    DEFAULT '',
     uy_vazifasi  TEXT    DEFAULT '',
-    vazifa_fayl  TEXT    DEFAULT '',
+    mavzu_fayl   TEXT    DEFAULT '',   -- mavzu uchun fayl (021)
+    vazifa_fayl  TEXT    DEFAULT '',   -- uyga vazifa uchun fayl
     muddat       TEXT    DEFAULT '',
     yaratilgan   TEXT    DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI'),
     yangilangan  TEXT    DEFAULT '',
@@ -729,6 +730,12 @@ CREATE UNIQUE INDEX IF NOT EXISTS uq_oqitdavomat_guruh
   ON oqituvchilar_davomat (sana, maktab_id, oqituvchi_ism, guruh_id)
   WHERE guruh_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_oqitdavomat_guruh ON oqituvchilar_davomat(guruh_id);
+
+-- ─── Dars mavzusi uchun alohida fayl (migrations/021) ───────────────────────
+--  Yuqoridagi CREATE TABLE IF NOT EXISTS mavjud jadvalga tegmaydi, shuning uchun
+--  mavjud bazalarga ustun shu yerda qo'shiladi (deploy.sh har safar shu faylni
+--  ishga tushiradi). vazifa_fayl — uyga vazifa fayli, mavzu_fayl — mavzu fayli.
+ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS mavzu_fayl TEXT DEFAULT '';
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
