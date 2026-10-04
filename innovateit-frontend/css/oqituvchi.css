@@ -652,18 +652,6 @@ button, a, input, select, textarea, [role="button"] {
 .mv-chip-danger { background: #fdeaea; color: #b42318; border-color: #f4c2c2; }
 .mv-hint-danger { font-size: 12.5px; line-height: 1.45; color: var(--danger); margin-bottom: 10px; }
 
-.mv-stat {
-  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
-  border-top: 1px solid var(--border); padding-top: 12px; margin: 4px 0 14px;
-  font-size: 13px; color: var(--text);
-}
-.mv-stat-empty { color: var(--muted); }
-.mv-link {
-  background: none; border: none; padding: 6px 0; font-family: inherit;
-  font-size: 13px; font-weight: 600; color: var(--iit-indigo); cursor: pointer;
-}
-.mv-link:hover { text-decoration: underline; }
-
 /* Tahrirlash / O'chirish — barmoq uchun kamida 44px */
 .mv-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
 .mv-btn {
@@ -684,10 +672,6 @@ button, a, input, select, textarea, [role="button"] {
   font-size: 13px; font-weight: 600; color: var(--success); background: #e8f6ee;
 }
 .mv-note.mv-note-err { color: #b42318; background: #fdeaea; }
-.mv-edit-warn {
-  margin-top: 14px; padding: 10px 12px; border-radius: 10px;
-  font-size: 12.5px; line-height: 1.45; color: #92590a; background: #fef3e2;
-}
 
 /* O'chirishni tasdiqlash tugmasi — qizil */
 .btn-submit.mv-btn-danger-fill { background: var(--danger); }

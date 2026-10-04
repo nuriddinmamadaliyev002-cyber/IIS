@@ -292,7 +292,6 @@ function switchTab(tab) {
   if (tab === 'soat')   { loadSoatStatistika(); initSoatMark(); }
   if (tab === 'guruh')    initGuruhTab();
   if (tab === 'mavzu')    loadMvGuruhlarim();
-  if (tab === 'vazifalar') loadVazifalarniTekshirish();
 }
 
 // ═══════════════════════════════════════════
@@ -1151,16 +1150,6 @@ function setMvMode(mode) {
   g('mv-form-wrap').style.display  = (mode === 'empty' || mode === 'edit') ? 'block' : 'none';
   g('mv-cancel-btn').style.display = mode === 'edit' ? 'block' : 'none';
   g('mv-save-btn').textContent     = mode === 'edit' ? '💾 Yangilash' : '💾 Mavzu va vazifani saqlash';
-
-  // Javoblar allaqachon kelgan bo'lsa — tahrirlashdan oldin ogohlantiramiz
-  const warn = g('mv-edit-warn');
-  const jn = _mv_saved ? (_mv_saved.javoblar_soni || 0) : 0;
-  if (mode === 'edit' && jn > 0) {
-    warn.textContent = `ℹ️ ${jn} ta o'quvchi allaqachon javob yuborgan. Vazifa matnini o'zgartirsangiz, ular eski topshiriqqa javob bergan bo'ladi.`;
-    warn.style.display = 'block';
-  } else {
-    warn.style.display = 'none';
-  }
 }
 
 // Formani berilgan vazifa bilan to'ldiradi (null bo'lsa — tozalaydi)
@@ -1249,13 +1238,6 @@ function renderMvCard(v) {
   // Vaqt belgisi
   const vaqt = v.yangilangan ? `Tahrirlangan: ${v.yangilangan}` : (v.yaratilgan ? `Yozilgan: ${v.yaratilgan}` : '');
 
-  // Javoblar
-  const jn = v.javoblar_soni || 0, bn = v.baholangan_soni || 0;
-  const statHtml = jn === 0
-    ? `<div class="mv-stat mv-stat-empty">Hali javob kelmagan</div>`
-    : `<div class="mv-stat"><span>👥 ${jn} ta javob keldi${bn ? `, ${bn} tasi baholangan` : ''}</span>
-         <button type="button" class="mv-link" onclick="openMvJavoblar()">Javoblarni ko'rish</button></div>`;
-
   wrap.innerHTML = `
     <div class="mv-card-top">
       <span class="mv-badge-ok">✅ Saqlangan</span>
@@ -1270,15 +1252,11 @@ function renderMvCard(v) {
     <div class="mv-card-text">${esc(v.uy_vazifasi || '—')}</div>
     ${mvFaylHtml(v.vazifa_fayl)}
 
-    ${statHtml}
-
     <div class="mv-actions">
       <button type="button" class="mv-btn" onclick="editMvVazifa()">✏️ Tahrirlash</button>
       <button type="button" class="mv-btn mv-btn-danger" onclick="openMvDeleteModal()">🗑 O'chirish</button>
     </div>`;
 }
-
-function openMvJavoblar() { switchTab('vazifalar'); }
 
 function editMvVazifa() {
   if (!_mv_saved) return;
@@ -2222,100 +2200,5 @@ async function smDeleteLegacy() {
     }
   } catch (e) {
     smShowNote("❌ Server bilan ulanib bo'lmadi", true);
-  }
-}
-
-// ═══════════════════════════════════════════
-//  VAZIFALARNI TEKSHIRISH (o'quvchilar yuborgan
-//  uy vazifasi javoblarini ko'rish va baholash)
-// ═══════════════════════════════════════════
-let _vazifaHolat = 'yuborilgan';
-
-function switchVazifaHolat(chipEl, holat) {
-  _vazifaHolat = holat;
-  document.querySelectorAll('#tab-vazifalar .sinf-chip').forEach(c => c.classList.remove('active'));
-  chipEl.classList.add('active');
-  loadVazifalarniTekshirish();
-}
-
-async function loadVazifalarniTekshirish() {
-  const wrap = g('vazifalar-tekshirish-content');
-  wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
-
-  try {
-    const res = await api.getVazifalarTekshirish(_vazifaHolat);
-    const javoblar = (res && res.ok) ? (res.javoblar || []) : [];
-
-    if (!javoblar.length) {
-      wrap.innerHTML = '<div class="oq-empty">📭 Bu bo\'limda hozircha yozuv yo\'q</div>';
-      return;
-    }
-
-    let html = '';
-    javoblar.forEach(j => {
-      const sinfText = (j.sinflar || '').split(',').filter(Boolean)
-        .map(s => s.replace(/-sinf$/i, '')).join(', ');
-      const bahoBadge = j.holat === 'tekshirilgan'
-        ? `<span class="dav-stat-pill k">✅ Baho: ${esc(j.baho ?? '—')}</span>`
-        : `<span class="dav-stat-pill s">⏳ Tekshirilmagan</span>`;
-
-      html += `
-        <div class="guruh-card" style="cursor:default;">
-          <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-            <div>
-              <div style="font-weight:600;">${esc(j.oquvchi_familiya)} ${esc(j.oquvchi_ism)} <span style="color:var(--muted);font-weight:400;">(${esc(sinfText)}-sinf)</span></div>
-              <div style="font-size:12.5px;color:var(--muted);margin-top:2px;">${esc(j.fan || '')} • ${esc(j.sana)} — ${esc(j.mavzu || 'mavzu kiritilmagan')}</div>
-            </div>
-            ${bahoBadge}
-          </div>
-          <div style="margin-top:10px;font-size:13.5px;line-height:1.5;">
-            <b>Uyga vazifa:</b> ${esc(j.uy_vazifasi || '—')}
-            ${j.vazifa_fayl ? `<div style="margin-top:4px;"><a href="${esc(resolveUploadUrl(j.vazifa_fayl))}" target="_blank" rel="noopener">📎 Sizning biriktirgan faylingiz</a></div>` : ''}
-          </div>
-          <div style="margin-top:8px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
-            <b>O'quvchi javobi:</b> ${esc(j.javob_matn || '—')}
-            ${(j.javob_fayllar || []).length ? `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px;">` +
-              j.javob_fayllar.map(f => `<a href="${esc(resolveUploadUrl(f.fayl_nomi))}" target="_blank" rel="noopener">📎 ${esc(f.original_nomi || f.fayl_nomi)}</a>`).join('') +
-              `</div>` : ''}
-          </div>
-          ${j.holat === 'tekshirilgan' ? `
-            <div style="margin-top:8px;font-size:12.5px;color:var(--muted);">💬 Izoh: ${esc(j.oqituvchi_izohi || '—')}</div>
-          ` : `
-            <div class="field-group" style="margin-top:10px;display:flex;gap:8px;align-items:flex-end;flex-wrap:wrap;">
-              <div style="flex:0 0 90px;">
-                <label class="field-label">Baho</label>
-                <input class="field-input" type="number" min="1" max="5" id="vz-baho-${j.id}" placeholder="1-5">
-              </div>
-              <div style="flex:1 1 200px;">
-                <label class="field-label">Izoh (ixtiyoriy)</label>
-                <input class="field-input" type="text" id="vz-izoh-${j.id}" placeholder="Yaxshi bajarilgan, davom eting">
-              </div>
-              <button class="btn-primary" style="padding:9px 16px;" onclick="baholaVazifa(${j.id})">Baholash</button>
-            </div>
-          `}
-        </div>`;
-    });
-
-    wrap.innerHTML = html;
-  } catch (e) {
-    wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
-  }
-}
-
-async function baholaVazifa(javobId) {
-  const bahoEl = g('vz-baho-' + javobId);
-  const izohEl = g('vz-izoh-' + javobId);
-  const baho = bahoEl.value ? parseInt(bahoEl.value) : null;
-  if (!baho) { alert('Baho kiriting'); return; }
-
-  try {
-    const res = await api.baholaVazifaJavobi(javobId, { baho, izoh: izohEl.value.trim() });
-    if (res && res.ok) {
-      loadVazifalarniTekshirish();
-    } else {
-      alert(res?.error || 'Baholashda xatolik yuz berdi');
-    }
-  } catch (e) {
-    alert('Baholashda xatolik yuz berdi');
   }
 }

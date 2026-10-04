@@ -72,7 +72,6 @@
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="mavzu" onclick="switchTab('mavzu')">📘 Mavzu / Vazifa berish</button>
-      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="vazifalar" onclick="switchTab('vazifalar')">📝 Vazifalarni tekshirish</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
@@ -84,7 +83,6 @@
     <button class="oq-tab-btn" id="tab-btn-guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
     <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
     <button class="oq-tab-btn" id="tab-btn-mavzu" onclick="switchTab('mavzu')">📘 Mavzu / Vazifa berish</button>
-    <button class="oq-tab-btn" id="tab-btn-vazifalar" onclick="switchTab('vazifalar')">📝 Vazifalarni tekshirish</button>
     <button class="oq-tab-btn" id="tab-btn-soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
   </div>
 
@@ -287,7 +285,6 @@
 
         <!-- Forma: yangi vazifa yozish yoki mavjudini tahrirlash -->
         <div id="mv-form-wrap">
-        <div id="mv-edit-warn" class="mv-edit-warn" style="display:none;"></div>
         <div class="field-group" style="margin-top:16px;">
           <label class="field-label">Bugungi dars mavzusi</label>
           <textarea class="field-input" id="mv-mavzu" rows="2" oninput="updateMvSaveState()" placeholder="Masalan: Kasrlar. Qo'shish va ayirish"></textarea>
@@ -321,16 +318,6 @@
         <div id="mv-save-hint" style="display:none;font-size:12.5px;color:var(--muted);margin-top:8px;text-align:center;"></div>
         </div><!-- /mv-form-wrap -->
       </div>
-    </div>
-
-    <!-- ══ VAZIFALARNI TEKSHIRISH TAB ══ -->
-    <div class="oq-tab-page" id="tab-vazifalar">
-      <div class="chip-row" style="margin-bottom:14px;">
-        <div class="sinf-chip active" data-holat="yuborilgan" onclick="switchVazifaHolat(this,'yuborilgan')">⏳ Yangi</div>
-        <div class="sinf-chip" data-holat="tekshirilgan" onclick="switchVazifaHolat(this,'tekshirilgan')">✅ Baholangan</div>
-        <div class="sinf-chip" data-holat="hammasi" onclick="switchVazifaHolat(this,'hammasi')">📋 Hammasi</div>
-      </div>
-      <div id="vazifalar-tekshirish-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>
 
   </div>
