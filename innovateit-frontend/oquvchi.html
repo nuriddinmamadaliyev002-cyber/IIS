@@ -63,25 +63,31 @@
       <span class="admin-badge oq-drawer-badge" id="oq-badge-drawer"></span>
       <!-- Mobil menyu bandlari (≤768px) — desktopda .mn-mobile-item yashirin, u yerda
            pastdagi .oq-tabnav ishlatiladi. Ikkalasi ham switchTab() ni chaqiradi. -->
-      <button type="button" class="mn-mobile-item mn-tab-item active" data-tab="davomat" onclick="switchTab('davomat')">📋 Davomatim</button>
-      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvalim</button>
-      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="vazifalar" onclick="switchTab('vazifalar')">📝 Vazifalarim</button>
+      <button type="button" class="mn-mobile-item mn-tab-item active" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="davomat" onclick="switchTab('davomat')">📋 Davomat</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="vazifalar" onclick="switchTab('vazifalar')">📝 Mavzu va uyga vazifalar</button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
   </div>
 
   <!-- TAB NAV -->
   <div class="oq-tabnav">
-    <button class="oq-tab-btn active" id="tab-btn-davomat" onclick="switchTab('davomat')">📋 Davomatim</button>
-    <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvalim</button>
-    <button class="oq-tab-btn" id="tab-btn-vazifalar" onclick="switchTab('vazifalar')">📝 Vazifalarim</button>
+    <button class="oq-tab-btn active" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
+    <button class="oq-tab-btn" id="tab-btn-davomat" onclick="switchTab('davomat')">📋 Davomat</button>
+    <button class="oq-tab-btn" id="tab-btn-vazifalar" onclick="switchTab('vazifalar')">📝 Mavzu va uyga vazifalar</button>
   </div>
 
   <div class="oq-content">
 
-    <!-- ══ DAVOMATIM TAB ══ -->
-    <div class="oq-tab-page active" id="tab-davomat">
-      <div class="oq-section-title" id="ouq-dav-title">📋 Mening davomatim</div>
+    <!-- ══ DARS JADVALI TAB ══ -->
+    <div class="oq-tab-page active" id="tab-jadval">
+      <div class="oq-section-title">📅 Dars jadvali</div>
+      <div id="ouq-jadval-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
+    </div>
+
+    <!-- ══ DAVOMAT TAB ══ -->
+    <div class="oq-tab-page" id="tab-davomat">
+      <div class="oq-section-title" id="ouq-dav-title">📋 Davomat</div>
       <div class="ouq-oy-nav">
         <button class="ouq-oy-nav-btn" onclick="changeDavomatimOy(-1)" title="Oldingi oy">‹</button>
         <span class="ouq-oy-label" id="ouq-oy-label">—</span>
@@ -91,15 +97,21 @@
       <div id="ouq-dav-list"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>
 
-    <!-- ══ JADVAL TAB ══ -->
-    <div class="oq-tab-page" id="tab-jadval">
-      <div class="oq-section-title">📅 Dars jadvalim</div>
-      <div id="ouq-jadval-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
-    </div>
-
-    <!-- ══ VAZIFALARIM TAB ══ -->
+    <!-- ══ MAVZU VA UYGA VAZIFALAR TAB (faqat ko'rish) ══ -->
     <div class="oq-tab-page" id="tab-vazifalar">
-      <div class="oq-section-title">📝 Vazifalarim</div>
+      <div class="oq-section-title">📝 Mavzu va uyga vazifalar</div>
+      <div class="dav-date-bar">
+        <button class="dav-date-nav-btn" id="vzm-prev-btn" onclick="changeVzmDate(-1)">‹</button>
+        <div style="text-align:center;flex:1;min-width:0;">
+          <div class="dav-date-display" id="vzm-date-display" style="min-width:0;">—</div>
+          <div class="dav-date-sub" id="vzm-date-sub">—</div>
+        </div>
+        <button class="dav-date-nav-btn" id="vzm-next-btn" onclick="changeVzmDate(1)">›</button>
+        <div class="dav-date-input-wrap">
+          <div class="dav-date-input-text" id="vzm-date-picker-text" onclick="openVzmDatePicker()">—</div>
+          <input class="dav-date-input" type="date" id="vzm-date-picker" onchange="onVzmDatePick()">
+        </div>
+      </div>
       <div id="ouq-vazifalar-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>
 

@@ -11,7 +11,7 @@
 //
 //  O'QUVCHI:
 //    GET    /api/vazifalar/mening-vazifalarim          — o'ziga tegishli vazifalar
-//    POST   /api/vazifalar/:vazifaId/javob             — javob yuborish/tahrirlash
+//    POST   /api/vazifalar/:vazifaId/javob             — O'CHIRILGAN (403): o'quvchi faqat ko'radi
 //
 // ─────────────────────────────────────────────────────────────────────────────
 const { Router }      = require('express');
@@ -382,96 +382,12 @@ router.get('/mening-vazifalarim', requireAuth(['oquvchi']), async (req, res) => 
   }
 });
 
-// ─── POST /api/vazifalar/:vazifaId/javob — javob yuborish/tahrirlash ─────────
-//  Body: { javob_matn, javob_fayllar: [{ fayl_nomi, original_nomi }, ...] }
-//  javob_fayllar — o'quvchi hozir ko'rib turgan TO'LIQ fayllar ro'yxati
-//  (avval yuklanganlar + yangi qo'shilganlar, olib tashlanganlar bo'lmagan
-//  holda). Server har safar mavjud fayllarni shu ro'yxat bilan almashtiradi.
-router.post('/:vazifaId/javob', requireAuth(['oquvchi']), async (req, res) => {
-  const { entityId, sinf } = req.user;
-  const { javob_matn } = req.body;
-  let { javob_fayllar } = req.body;
-  const vazifaId = parseInt(req.params.vazifaId);
-
-  if (!Array.isArray(javob_fayllar)) javob_fayllar = [];
-  javob_fayllar = javob_fayllar
-    .filter(f => f && (f.fayl_nomi || '').trim())
-    .slice(0, MAX_JAVOB_FAYL);
-
-  if (!vazifaId) return res.status(400).json({ ok: false, error: 'vazifaId kerak' });
-  if (!entityId) return res.status(400).json({ ok: false, error: "O'quvchi ID topilmadi" });
-  if (!(javob_matn || '').trim() && javob_fayllar.length === 0)
-    return res.status(400).json({ ok: false, error: 'Javob matni yoki fayl kerak' });
-
-  try {
-    // Vazifa shu o'quvchiga tegishli ekanini tekshiramiz — o'z o'qituvchisining
-    // guruhi va o'z sinfiga mos bo'lishi shart
-    const checkRes = await pool.query(
-      `SELECT dm.id, dm.muddat FROM dars_mavzulari dm
-       JOIN dars_jadvali dj ON dj.id = dm.guruh_id
-       JOIN oqituvchilar o ON LOWER(TRIM(o.familiya))=LOWER(TRIM(dj.teacher_familiya)) AND LOWER(TRIM(o.ism))=LOWER(TRIM(dj.teacher_ism))
-       JOIN oqituvchi_oquvchilar oo ON oo.oqituvchi_id = o.id AND oo.oquvchi_id = $2
-       WHERE dm.id = $1`,
-      [vazifaId, entityId]
-    );
-    if (checkRes.rowCount === 0) return res.status(404).json({ ok: false, error: 'Vazifa topilmadi' });
-
-    // Muddat qo'yilgan bo'lsa va u allaqachon o'tib ketgan bo'lsa — javob
-    // yuborish/tahrirlash bloklanadi. O'qituvchi muddatni bugun yoki
-    // kelajakka surmaguncha o'quvchi hech narsa yubora olmaydi.
-    const muddat = checkRes.rows[0].muddat;
-    if ((muddat || '').trim() && muddat < bugungiSanaISO()) {
-      return res.status(400).json({ ok: false, error: "Topshirish muddati tugagan. O'qituvchi muddatni yangilamaguncha javob yuborib bo'lmaydi." });
-    }
-
-    // Allaqachon baholangan javobni o'zgartirib bo'lmaydi
-    const existing = await pool.query(
-      `SELECT id, holat FROM vazifa_javoblari WHERE vazifa_id=$1 AND oquvchi_id=$2`,
-      [vazifaId, entityId]
-    );
-    if (existing.rowCount > 0 && existing.rows[0].holat === 'tekshirilgan') {
-      return res.status(400).json({ ok: false, error: 'Bu vazifa allaqachon baholangan, javobni o\'zgartirib bo\'lmaydi' });
-    }
-
-    const now = new Date().toLocaleString('uz-UZ');
-    const client = await pool.connect();
-    try {
-      await client.query('BEGIN');
-
-      const upsertRes = await client.query(
-        `INSERT INTO vazifa_javoblari (vazifa_id, oquvchi_id, javob_matn, yuborilgan_vaqt, holat)
-         VALUES ($1,$2,$3,$4,'yuborilgan')
-         ON CONFLICT (vazifa_id, oquvchi_id) DO UPDATE
-           SET javob_matn=$3, yuborilgan_vaqt=$4, holat='yuborilgan'
-         RETURNING id`,
-        [vazifaId, entityId, javob_matn || '', now]
-      );
-      const javobId = upsertRes.rows[0].id;
-
-      // Fayllar ro'yxatini to'liq almashtiramiz (eskilarini o'chirib, yangilarini yozamiz)
-      await client.query('DELETE FROM vazifa_javob_fayllari WHERE javob_id=$1', [javobId]);
-      for (let i = 0; i < javob_fayllar.length; i++) {
-        const f = javob_fayllar[i];
-        await client.query(
-          `INSERT INTO vazifa_javob_fayllari (javob_id, fayl_nomi, original_nomi, tartib)
-           VALUES ($1,$2,$3,$4)`,
-          [javobId, f.fayl_nomi, f.original_nomi || '', i]
-        );
-      }
-
-      await client.query('COMMIT');
-    } catch (err) {
-      await client.query('ROLLBACK');
-      throw err;
-    } finally {
-      client.release();
-    }
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('vazifalar/javob POST xatolik:', err.message);
-    res.status(500).json({ ok: false, error: 'Server xatoligi' });
-  }
+// ─── POST /api/vazifalar/:vazifaId/javob — O'CHIRILGAN ──────────────────────
+//  O'quvchilar endi mavzu va uyga vazifalarni FAQAT ko'ra oladi: matn yoki fayl
+//  bilan javob yuborish/tahrirlash imkoniyati yo'q. Eski frontend yoki to'g'ridan-
+//  to'g'ri API so'rovlari ham javob yubora olmasligi uchun endpoint rad etadi.
+router.post('/:vazifaId/javob', requireAuth(['oquvchi']), (req, res) => {
+  res.status(403).json({ ok: false, error: "O'quvchilar vazifaga javob yubora olmaydi — faqat ko'rishi mumkin" });
 });
 
 module.exports = router;

@@ -1,7 +1,8 @@
 // ═══════════════════════════════════════════════════
 //  InnovateIT — O'quvchi Panel JS
 //  Telegram orqali biriktirilgan o'quvchilar shu web
-//  panel orqali o'z davomati va dars jadvalini ko'radi
+//  panel orqali dars jadvali, davomat hamda mavzu va uyga
+//  vazifalarni FAQAT KO'RADI (javob yuborish yo'q)
 //  (avvalgi mini-app native dashboard sahifasi o'rniga)
 // ═══════════════════════════════════════════════════
 
@@ -93,8 +94,10 @@ function showApp() {
   }
 
   loadDavomatim();
-  loadJadvalim();
+  ouqJadvalPromise = loadJadvalim();
 }
+
+let ouqJadvalPromise = null; // dars kunlari "Mavzu va uyga vazifalar" ochilishidan oldin tayyor bo'lishi uchun
 
 function switchTab(tab) {
   document.querySelectorAll('.oq-tab-page').forEach(el => el.classList.remove('active'));
@@ -103,11 +106,11 @@ function switchTab(tab) {
   g('tab-btn-' + tab).classList.add('active');
   // Mobil hamburger menyudagi mos band ham "faol" bo'lib ko'rinsin
   document.querySelectorAll('.mn-tab-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
-  if (tab === 'vazifalar') loadVazifalarim();
+  if (tab === 'vazifalar') openVazifalarTab();
 }
 
 // ═══════════════════════════════════════════
-//  DAVOMATIM
+//  DAVOMAT
 // ═══════════════════════════════════════════
 let davomatimSana    = new Date(); // joriy ko'rib turilgan oy/yil
 let davomatimRecords = [];         // shu oy uchun yuklangan barcha yozuvlar
@@ -216,8 +219,13 @@ function formatSana(sana) {
 }
 
 // ═══════════════════════════════════════════
-//  DARS JADVALIM
+//  DARS JADVALI
 // ═══════════════════════════════════════════
+// O'quvchining dars o'tiladigan hafta kunlari (Date.getDay() qiymatlari: 1=Du ... 6=Sha).
+// Bo'sh bo'lsa — jadval topilmagan, shunda "Mavzu va uyga vazifalar" sana kartasida
+// har qanday kunni tanlash mumkin (o'qituvchi paneli bilan bir xil mantiq).
+let ouqDarsKunlari = new Set();
+
 async function loadJadvalim() {
   const wrap = g('ouq-jadval-content');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
@@ -236,6 +244,11 @@ async function loadJadvalim() {
     }
 
     const jadvallar = data.jadvallar || [];
+    ouqDarsKunlari = new Set();
+    jadvallar.forEach(j => {
+      (j.kunlar || '').split(',').map(k => parseInt(k.trim(), 10))
+        .filter(n => n >= 0 && n <= 6).forEach(n => ouqDarsKunlari.add(n));
+    });
     if (!jadvallar.length) {
       wrap.innerHTML = '<div class="oq-empty">📅 Dars jadvali hali kiritilmagan</div>';
       return;
@@ -290,19 +303,17 @@ async function loadJadvalim() {
 }
 
 // ═══════════════════════════════════════════
-//  VAZIFALARIM (mavzu / uyga vazifa + javob yuborish)
+//  MAVZU VA UYGA VAZIFALAR (faqat ko'rish)
+//  Yuqorida sana kartasi: o'quvchining dars kuniga mos
+//  kun uchun yuborilgan mavzu, uyga vazifa va (bo'lsa)
+//  o'qituvchi biriktirgan fayl ko'rsatiladi.
 // ═══════════════════════════════════════════
-let vazifalarimList = [];
-const MAX_VZM_FAYL = 5;
-// vazifaId -> hozirgi ko'rinayotgan fayllar ro'yxati [{fayl_nomi, original_nomi}]
-const vzmFayllarState = {};
-// vazifaId -> fayl qo'shish/o'chirish paytida qayta chizilganda yo'qolmasligi uchun
-// hali yuborilmagan javob matni qoralamasi
-const vzmMatnDraft = {};
+let vazifalarimList = [];   // serverdan kelgan barcha mavzu/vazifalar
+let vzmCurDate      = null; // hozir tanlangan sana (Date, 00:00 mahalliy)
+let vzmLoaded       = false;
 
-function vzmMatnSaqlash(vazifaId) {
-  const matnEl = g('vzm-matn-' + vazifaId);
-  if (matnEl) vzmMatnDraft[vazifaId] = matnEl.value;
+function dateStrLocal(d) {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
 function resolveUploadUrl(filename) {
@@ -312,12 +323,91 @@ function resolveUploadUrl(filename) {
   return `${base}/uploads/${filename}`;
 }
 
-// muddat (YYYY-MM-DD) bugungi kundan oldinmi — bo'lsa muddat tugagan
-function muddatOtganmi(muddat) {
-  if (!(muddat || '').trim()) return false;
-  const d = new Date();
-  const bugun = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-  return muddat < bugun;
+function vzmBugun() { const t = new Date(); t.setHours(0, 0, 0, 0); return t; }
+
+// Dars kuni ekanmi? Jadval topilmasa — har kun dars kuni deb hisoblanadi
+function vzmIsLessonDay(d) {
+  return !ouqDarsKunlari.size || ouqDarsKunlari.has(d.getDay());
+}
+
+// fromDate dan dir (-1 oldin / +1 keyin) yo'nalishda eng yaqin dars kuni; bugundan keyingisi yo'q
+function vzmFindLessonDate(fromDate, dir) {
+  const today = vzmBugun();
+  const d = new Date(fromDate); d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 400; i++) {            // ~1 yilgacha orqaga qaraydi
+    d.setDate(d.getDate() + dir);
+    if (dir > 0 && d > today) return null;
+    if (vzmIsLessonDay(d)) return new Date(d);
+  }
+  return null;
+}
+
+async function openVazifalarTab() {
+  if (ouqJadvalPromise) { try { await ouqJadvalPromise; } catch (_) {} } // dars kunlari tayyor bo'lsin
+
+  if (!vzmCurDate) {
+    const today = vzmBugun();
+    vzmCurDate = vzmIsLessonDay(today) ? today : (vzmFindLessonDate(today, -1) || today);
+  }
+  g('vzm-date-picker').max = dateStrLocal(vzmBugun());
+  setVzmDateUI();
+  updateVzmNavBtns();
+  await loadVazifalarim();
+}
+
+function setVzmDateUI() {
+  const d = vzmCurDate;
+  g('vzm-date-display').textContent = `${d.getDate()}-${OY_NOMLARI[d.getMonth() + 1]}, ${d.getFullYear()}`;
+  g('vzm-date-sub').textContent     = KUN_NOMLARI_MAP[String(d.getDay())] || '';
+  g('vzm-date-picker').value        = dateStrLocal(d);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  g('vzm-date-picker-text').textContent = `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+function updateVzmNavBtns() {
+  g('vzm-prev-btn').disabled = !vzmFindLessonDate(vzmCurDate, -1);
+  g('vzm-next-btn').disabled = !vzmFindLessonDate(vzmCurDate, 1);
+}
+
+function openVzmDatePicker() {
+  const inp = g('vzm-date-picker');
+  if (!inp) return;
+  if (typeof inp.showPicker === 'function') {
+    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
+  }
+  inp.focus();
+  inp.click();
+}
+
+function changeVzmDate(dir) {
+  const nd = vzmFindLessonDate(vzmCurDate, dir);
+  if (!nd) return;
+  vzmCurDate = nd;
+  setVzmDateUI();
+  updateVzmNavBtns();
+  renderVazifalarim();
+}
+
+function onVzmDatePick() {
+  const val = g('vzm-date-picker').value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+
+  if (d > vzmBugun()) {
+    alert('⚠️ Kelajak sanani tanlash mumkin emas');
+    setVzmDateUI();
+    return;
+  }
+  if (!vzmIsLessonDay(d)) {
+    alert("⚠️ Bu kun sizning dars kuningiz emas");
+    setVzmDateUI();
+    return;
+  }
+  vzmCurDate = d;
+  setVzmDateUI();
+  updateVzmNavBtns();
+  renderVazifalarim();
 }
 
 async function loadVazifalarim() {
@@ -330,201 +420,39 @@ async function loadVazifalarim() {
       wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
       return;
     }
-
     vazifalarimList = data.vazifalar || [];
-    if (!vazifalarimList.length) {
-      wrap.innerHTML = '<div class="oq-empty">📭 Hozircha vazifa yo\'q</div>';
-      return;
-    }
-
+    vzmLoaded = true;
     renderVazifalarim();
   } catch (e) {
     wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
   }
 }
 
-// Yuborilgan fayllar ro'yxatini (link'lar) chizadi — faqat ko'rsatish uchun
-function renderVzmFayllarKorish(fayllar) {
-  if (!fayllar || !fayllar.length) return '';
-  return `<div style="margin-top:4px;display:flex;flex-direction:column;gap:2px;">` +
-    fayllar.map(f => `<a href="${esc(resolveUploadUrl(f.fayl_nomi))}" target="_blank" rel="noopener">📎 ${esc(f.original_nomi || f.fayl_nomi)}</a>`).join('') +
-    `</div>`;
-}
-
-// Tahrirlash rejimidagi fayl maydoni: hozirgi fayllar (✕ bilan o'chiriladigan) + qo'shish tugmasi
-function renderVzmFaylEditor(vazifaId) {
-  const fayllar = vzmFayllarState[vazifaId] || [];
-  const chiplar = fayllar.map((f, idx) => `
-    <span style="display:inline-flex;align-items:center;gap:5px;background:var(--bg-soft,#f8fafc);border:1px solid var(--border,#e2e8f0);border-radius:6px;padding:4px 8px;font-size:12.5px;margin:2px 4px 2px 0;">
-      📎 ${esc(f.original_nomi || f.fayl_nomi)}
-      <span style="cursor:pointer;color:#e11d48;font-weight:700;" onclick="removeVzmFayl(${vazifaId}, ${idx})" title="O'chirish">✕</span>
-    </span>`).join('');
-
-  const limitYetildi = fayllar.length >= MAX_VZM_FAYL;
-
-  return `
-    <div class="field-group">
-      <label class="field-label">Fayllar (${fayllar.length}/${MAX_VZM_FAYL})</label>
-      <div id="vzm-fayl-chips-${vazifaId}" style="margin-bottom:6px;">${chiplar}</div>
-      ${!limitYetildi ? `
-        <input type="file" id="vzm-fayl-${vazifaId}" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx"
-               onchange="handleVzmFaylTanlash(${vazifaId})">
-      ` : `<div style="font-size:12px;color:var(--muted);">Maksimal ${MAX_VZM_FAYL} ta fayl biriktirish mumkin</div>`}
-      <div id="vzm-fayl-status-${vazifaId}" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
-    </div>`;
-}
-
+// Tanlangan sana uchun mavzu/vazifa kartalari — faqat ko'rsatish
 function renderVazifalarim() {
   const wrap = g('ouq-vazifalar-content');
+  if (!vzmLoaded || !vzmCurDate) return;
 
-  wrap.innerHTML = vazifalarimList.map(v => {
+  const tanlangan = dateStrLocal(vzmCurDate);
+  const kunVazifalari = vazifalarimList.filter(v => (v.sana || '').slice(0, 10) === tanlangan);
+
+  if (!kunVazifalari.length) {
+    wrap.innerHTML = '<div class="oq-empty">📭 Bu kun uchun mavzu va uyga vazifa yuborilmagan</div>';
+    return;
+  }
+
+  wrap.innerHTML = kunVazifalari.map(v => {
     const teacherIsm = `${v.teacher_familiya || ''} ${v.teacher_ism || ''}`.trim();
     const hasHomework = (v.uy_vazifasi || '').trim().length > 0;
-
-    // Fayllar holatini bir marta ishga tushiramiz (serverdan kelgan mavjud fayllar bilan)
-    if (!vzmFayllarState[v.id]) {
-      vzmFayllarState[v.id] = (v.javob_fayllar || []).map(f => ({ fayl_nomi: f.fayl_nomi, original_nomi: f.original_nomi || f.fayl_nomi }));
-    }
-
-    let statusBlock;
-    const muddatTugagan = muddatOtganmi(v.muddat);
-
-    if (!v.javob_id) {
-      // Hali javob yuborilmagan
-      if (hasHomework && muddatTugagan) {
-        statusBlock = `
-          <div style="margin-top:10px;font-size:13px;color:#dc2626;background:#fef2f2;border-radius:8px;padding:10px;">
-            ⏰ Topshirish muddati tugagan. Javob yuborish uchun o'qituvchingiz muddatni yangilashi kerak.
-          </div>`;
-      } else {
-        statusBlock = hasHomework ? `
-        <div class="field-group" style="margin-top:10px;">
-          <label class="field-label">Javobingiz</label>
-          <textarea class="field-input" id="vzm-matn-${v.id}" rows="3" placeholder="Javobingizni shu yerga yozing">${esc(vzmMatnDraft[v.id] || '')}</textarea>
-        </div>
-        ${renderVzmFaylEditor(v.id)}
-        <button class="btn-primary" style="padding:9px 16px;" onclick="yuborVazifa(${v.id})">📤 Yuborish</button>
-      ` : '';
-      }
-    } else if (v.holat === 'tekshirilgan') {
-      // Baholangan — tahrirlab bo'lmaydi
-      statusBlock = `
-        <div style="margin-top:10px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
-          <b>Sizning javobingiz:</b> ${esc(v.javob_matn || '—')}
-          ${renderVzmFayllarKorish(v.javob_fayllar)}
-        </div>
-        <div style="margin-top:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
-          <span class="ouq-stat-pill k">✅ Baho <b>${esc(v.baho ?? '—')}</b></span>
-        </div>
-        ${v.oqituvchi_izohi ? `<div style="margin-top:6px;font-size:12.5px;color:var(--muted);">💬 ${esc(v.oqituvchi_izohi)}</div>` : ''}
-      `;
-    } else {
-      // Yuborilgan, hali tekshirilmagan — tahrirlash mumkin (agar muddat o'tmagan bo'lsa)
-      statusBlock = `
-        <div style="margin-top:10px;font-size:13.5px;line-height:1.5;background:var(--bg-soft,#f8fafc);border-radius:8px;padding:10px;">
-          <b>Sizning javobingiz:</b> ${esc(v.javob_matn || '—')}
-          ${renderVzmFayllarKorish(v.javob_fayllar)}
-        </div>
-        <div style="margin-top:8px;">
-          <span class="ouq-stat-pill s">⏳ Tekshirilmoqda</span>
-          ${muddatTugagan
-            ? `<span style="margin-left:10px;font-size:12.5px;color:#dc2626;">⏰ Muddat tugagani uchun tahrirlab bo'lmaydi</span>`
-            : `<button class="oq-back-btn" style="padding:0;margin-left:10px;font-size:12.5px;" onclick="toggleVazifaTahrir(${v.id})">✏️ Javobni tahrirlash</button>`}
-        </div>
-        ${!muddatTugagan ? `
-        <div id="vzm-edit-${v.id}" style="display:none;margin-top:10px;">
-          <div class="field-group">
-            <label class="field-label">Javobingiz</label>
-            <textarea class="field-input" id="vzm-matn-${v.id}" rows="3">${esc(vzmMatnDraft[v.id] !== undefined ? vzmMatnDraft[v.id] : (v.javob_matn || ''))}</textarea>
-          </div>
-          ${renderVzmFaylEditor(v.id)}
-          <button class="btn-primary" style="padding:9px 16px;" onclick="yuborVazifa(${v.id})">💾 Yangilash</button>
-        </div>` : ''}
-      `;
-    }
-
     return `
       <div class="ouq-dav-row" style="display:block;">
-        <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:8px;">
-          <div>
-            <div style="font-weight:600;">${esc(v.fan || '—')}</div>
-            <div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(formatSana(v.sana))} • ${esc(teacherIsm)}</div>
-          </div>
-          ${v.muddat ? `<span style="font-size:11.5px;color:var(--muted);white-space:nowrap;">⏰ Muddat: ${esc(formatSana(v.muddat))}</span>` : ''}
-        </div>
+        <div style="font-weight:600;">${esc(v.fan || '—')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(formatSana(v.sana))}${teacherIsm ? ' • ' + esc(teacherIsm) : ''}</div>
         ${v.mavzu ? `<div style="margin-top:8px;font-size:13.5px;"><b>Mavzu:</b> ${esc(v.mavzu)}</div>` : ''}
-        ${hasHomework ? `<div style="margin-top:4px;font-size:13.5px;"><b>Uyga vazifa:</b> ${esc(v.uy_vazifasi)}</div>` : '<div style="margin-top:4px;font-size:12.5px;color:var(--muted);">Bu darsga uyga vazifa berilmagan</div>'}
-        ${v.vazifa_fayl ? `<div style="margin-top:4px;font-size:12.5px;"><a href="${esc(resolveUploadUrl(v.vazifa_fayl))}" target="_blank" rel="noopener">📎 O'qituvchi biriktirgan fayl</a></div>` : ''}
-        ${statusBlock}
+        ${hasHomework
+          ? `<div style="margin-top:4px;font-size:13.5px;"><b>Uyga vazifa:</b> ${esc(v.uy_vazifasi)}</div>`
+          : '<div style="margin-top:4px;font-size:12.5px;color:var(--muted);">Bu darsga uyga vazifa berilmagan</div>'}
+        ${v.vazifa_fayl ? `<div style="margin-top:6px;font-size:12.5px;"><a href="${esc(resolveUploadUrl(v.vazifa_fayl))}" target="_blank" rel="noopener">📎 O'qituvchi biriktirgan fayl</a></div>` : ''}
       </div>`;
   }).join('');
-}
-
-// Fayl tanlangach — darhol serverga yuklaymiz va ro'yxatga qo'shamiz
-async function handleVzmFaylTanlash(vazifaId) {
-  const faylEl = g('vzm-fayl-' + vazifaId);
-  const statusEl = g('vzm-fayl-status-' + vazifaId);
-  const file = faylEl?.files?.[0];
-  if (!file) return;
-
-  const fayllar = vzmFayllarState[vazifaId] || (vzmFayllarState[vazifaId] = []);
-  if (fayllar.length >= MAX_VZM_FAYL) {
-    if (statusEl) statusEl.textContent = `❌ Maksimal ${MAX_VZM_FAYL} ta fayl`;
-    return;
-  }
-
-  if (statusEl) statusEl.textContent = '⏳ Fayl yuklanmoqda...';
-  const fd = new FormData();
-  fd.append('file', file);
-  try {
-    const upRes = await api.uploadFile(fd);
-    if (!upRes || !upRes.ok) {
-      if (statusEl) statusEl.textContent = '❌ ' + (upRes?.error || 'Fayl yuklanmadi');
-      return;
-    }
-    fayllar.push({ fayl_nomi: upRes.filename, original_nomi: file.name });
-    if (statusEl) statusEl.textContent = '✅ Fayl yuklandi';
-    vzmMatnSaqlash(vazifaId);
-    renderVazifalarim();
-  } catch (e) {
-    if (statusEl) statusEl.textContent = '❌ Fayl yuklanmadi';
-  }
-}
-
-// Ro'yxatdan bitta faylni olib tashlash (hali "Yuborish/Yangilash" bosilmagan bo'lsa)
-function removeVzmFayl(vazifaId, idx) {
-  const fayllar = vzmFayllarState[vazifaId];
-  if (!fayllar) return;
-  fayllar.splice(idx, 1);
-  vzmMatnSaqlash(vazifaId);
-  renderVazifalarim();
-}
-
-function toggleVazifaTahrir(vazifaId) {
-  const el = g('vzm-edit-' + vazifaId);
-  if (el) el.style.display = (el.style.display === 'none') ? 'block' : 'none';
-}
-
-async function yuborVazifa(vazifaId) {
-  const matnEl = g('vzm-matn-' + vazifaId);
-  const javob_matn = (matnEl?.value || '').trim();
-  const javob_fayllar = vzmFayllarState[vazifaId] || [];
-
-  if (!javob_matn && javob_fayllar.length === 0) {
-    alert('Javob matni yoki fayl biriktiring');
-    return;
-  }
-
-  try {
-    const res = await api.yuborVazifaJavobi(vazifaId, { javob_matn, javob_fayllar });
-    if (res && res.ok) {
-      delete vzmMatnDraft[vazifaId];
-      delete vzmFayllarState[vazifaId]; // serverdan qayta yuklanadi
-      await loadVazifalarim();
-    } else {
-      alert(res?.error || 'Yuborishda xatolik yuz berdi');
-    }
-  } catch (e) {
-    alert('Yuborishda xatolik yuz berdi');
-  }
 }
