@@ -1696,73 +1696,92 @@ async function loadJadval() {
 }
 
 // ═══════════════════════════════════════════
-//  DARS SOATLARI STATISTIKASI
+//  DARS SOATLARI — OYLIK STATISTIKA
+//  ‹ Sentabr › bilan oylar bo'ylab yuriladi. Kelajak oyga
+//  chiqib bo'lmaydi; birinchi yozuvli oydan oldinga ham.
 // ═══════════════════════════════════════════
-let _soatReqSeq = 0;   // maktab tez almashtirilganda eski javob yangisini bosib ketmasin
-async function loadSoatStatistika() {
-  const wrap = g('soat-content');
-  wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
-  const mySeq = ++_soatReqSeq;
+const _so = { oy: null, yil: null, birinchi: null, seq: 0 };
+
+function soNow() { const d = new Date(); return { oy: d.getMonth() + 1, yil: d.getFullYear() }; }
+function soIdx(o) { return o.yil * 12 + o.oy; }
+
+// Navigatsiya qobig'i bir marta chiziladi — oy almashganda faqat #so-body yangilanadi
+function soEnsureShell() {
+  if (g('so-body')) return;
+  g('soat-content').innerHTML = `
+    <div class="oq-section-title">📊 Oylik statistika</div>
+    <div class="dav-date-bar">
+      <button class="dav-date-nav-btn" id="so-prev-btn" onclick="soChangeMonth(-1)">‹</button>
+      <div style="text-align:center;flex:1;">
+        <div class="dav-date-display" id="so-month-display">—</div>
+        <div class="dav-date-sub">dars soatlari</div>
+      </div>
+      <button class="dav-date-nav-btn" id="so-next-btn" onclick="soChangeMonth(1)">›</button>
+    </div>
+    <div id="so-body"></div>`;
+}
+
+function soUpdateNav() {
+  const cur = { oy: _so.oy, yil: _so.yil };
+  g('so-month-display').textContent = `${OY_NOMLARI[cur.oy]}, ${cur.yil}`;
+  g('so-next-btn').disabled = soIdx(cur) >= soIdx(soNow());
+  g('so-prev-btn').disabled = !_so.birinchi || soIdx(cur) <= soIdx(_so.birinchi);
+}
+
+function soChangeMonth(dir) {
+  let oy = _so.oy + dir, yil = _so.yil;
+  if (oy < 1)  { oy = 12; yil--; }
+  if (oy > 12) { oy = 1;  yil++; }
+  if (dir > 0 && soIdx({ oy, yil }) > soIdx(soNow())) return;
+  if (dir < 0 && _so.birinchi && soIdx({ oy, yil }) < soIdx(_so.birinchi)) return;
+  loadSoatStatistika({ oy, yil });
+}
+
+// opts yo'q bo'lsa — hozir ko'rsatilayotgan oy (birinchi marta: joriy oy) yangilanadi
+async function loadSoatStatistika(opts) {
+  soEnsureShell();
+  if (opts && opts.oy) { _so.oy = opts.oy; _so.yil = opts.yil; }
+  else if (!_so.oy)    { const n = soNow(); _so.oy = n.oy; _so.yil = n.yil; }
+  soUpdateNav();
+
+  const body = g('so-body');
+  body.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+  const mySeq = ++_so.seq;   // oy/maktab tez almashtirilganda eski javob yangisini bosib ketmasin
 
   try {
-    const params = TANLANGAN_MID ? { maktabId: TANLANGAN_MID } : {};
-    const data = await api.get('/api/davomat/soat-statistika', params);
-    if (mySeq !== _soatReqSeq) return;   // bu so'rov eskirgan
+    const params = { oy: _so.oy, yil: _so.yil };
+    if (TANLANGAN_MID) params.maktabId = TANLANGAN_MID;
+    const data = await api.get('/api/davomat/soat-oylik', params);
+    if (mySeq !== _so.seq) return;
     if (!data || !data.ok) {
-      if (data && data.error) {
-        wrap.innerHTML = '<div class="oq-empty">' + esc(data.error) + '</div>';
-        return;
-      }
-      wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
+      body.innerHTML = '<div class="oq-empty">' + esc((data && data.error) || "⚠️ Ma'lumot yuklanmadi") + '</div>';
       return;
     }
 
-    const t  = data.teacher    || {};
+    _so.birinchi = data.birinchi || null;
+    soUpdateNav();
+
     const st = data.statistika || {};
-    const oy = data.oylik      || [];
-
-    const kunNomlar = (t.kunlar || '').split(',').map(k => KUN_NOMLARI_MAP[k.trim()] || k.trim()).filter(Boolean).join(', ') || '—';
-    const rejaStr = (t.rejaSoat || t.rejaDaqiqa) ? `${t.rejaSoat}h ${t.rejaDaqiqa}min` : '—';
-    const foiz = st.jamiDars > 0 ? Math.round((st.keldi + st.kech) / st.jamiDars * 100) : 0;
-
-    let html = `
-      <div class="soat-info-karta">
-        <div class="soat-info-row"><span>📚 Fan</span><strong>${esc(t.fan||'—')}</strong></div>
-        <div class="soat-info-row"><span>📅 Dars kunlari</span><strong>${esc(kunNomlar)}</strong></div>
-        <div class="soat-info-row"><span>🕐 Dars vaqti</span><strong>${esc(t.boshlanish||'—')} – ${esc(t.tugash||'—')}</strong></div>
-        <div class="soat-info-row"><span>📚 Sinflar</span><strong>${esc(t.sinflar||'—')}</strong></div>
-        <div class="soat-info-row"><span>⏱️ Kunlik reja</span><strong>${rejaStr}</strong></div>
-        <div class="soat-info-row"><span>📆 Dars kunlari soni</span><strong>${t.kunSoni||0} kun/hafta</strong></div>
-      </div>
-
-      <div class="oq-section-title">📊 Umumiy statistika (davomat: ${foiz}%)</div>
-      <div class="soat-stats-grid">
-        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#10b981">${st.haqSoat||0}h</div><div class="soat-stat-lbl">O'tilgan soat</div></div>
-        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#8b5cf6">${st.jamiDars||0}</div><div class="soat-stat-lbl">Jami dars</div></div>
-        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#10b981">${st.keldi||0}</div><div class="soat-stat-lbl">Keldi</div></div>
-        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#ef4444">${st.kelmadi||0}</div><div class="soat-stat-lbl">Kelmadi</div></div>
-      </div>`;
-
-    if (oy.length) {
-      html += `<div class="oq-section-title">📆 Oylik ko'rsatkich</div>`;
-      oy.forEach(o => {
-        const oyNom = OY_NOMLARI[parseInt(o.oy)] || o.oy;
-        const soatJami = parseInt(o.soat||0) + Math.floor(parseInt(o.daqiqa||0)/60);
-        const daqJami  = parseInt(o.daqiqa||0) % 60;
-        html += `
-          <div class="soat-oylik-karta">
-            <div class="soat-oylik-oy">${esc(oyNom)} ${o.yil||''}</div>
-            <div>
-              <div class="soat-oylik-soat">${soatJami}h ${daqJami}min</div>
-              <div class="soat-oylik-dars">${o.dars_soni||0} dars</div>
-            </div>
-          </div>`;
-      });
+    if (!st.jamiDars) {
+      body.innerHTML = '<div class="oq-empty">📭 Bu oyda dars belgilanmagan</div>';
+      return;
     }
 
-    wrap.innerHTML = html;
+    const soatStr = `${st.haqSoat || 0}h` + (st.haqDaq ? ` ${st.haqDaq}min` : '');
+    body.innerHTML = `
+      <div class="soat-stats-grid">
+        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#10b981">${soatStr}</div><div class="soat-stat-lbl">O'tilgan soat</div></div>
+        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#8b5cf6">${st.jamiDars}</div><div class="soat-stat-lbl">Jami dars</div></div>
+        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#10b981">${st.keldi || 0}</div><div class="soat-stat-lbl">Keldi</div></div>
+        <div class="soat-stat-karta"><div class="soat-stat-num" style="color:#ef4444">${st.kelmadi || 0}</div><div class="soat-stat-lbl">Kelmadi</div></div>
+      </div>
+      <div class="mv-chips">
+        <span class="mv-chip">📈 Davomat: ${st.foiz || 0}%</span>
+        ${st.kech ? `<span class="mv-chip mv-chip-warn">⏰ Kech kelgan: ${st.kech} ta</span>` : ''}
+      </div>`;
   } catch (e) {
-    wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
+    if (mySeq !== _so.seq) return;
+    body.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
   }
 }
 
@@ -2067,7 +2086,7 @@ async function smSave() {
     if (data && data.ok) {
       await smLoadRecord();
       smShowNote('✅ Saqlandi');
-      loadSoatStatistika();
+      loadSoatStatistika({ oy: _sm.cur.getMonth() + 1, yil: _sm.cur.getFullYear() });
     } else {
       smShowNote('❌ ' + ((data && data.error) || 'Xatolik'), true);
     }
@@ -2086,7 +2105,7 @@ async function smDelete() {
     if (data && data.ok) {
       await smLoadRecord();
       smShowNote("🗑 O'chirildi");
-      loadSoatStatistika();
+      loadSoatStatistika({ oy: _sm.cur.getMonth() + 1, yil: _sm.cur.getFullYear() });
     } else {
       smShowNote('❌ ' + ((data && data.error) || 'Xatolik'), true);
     }

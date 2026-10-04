@@ -232,6 +232,85 @@ router.get('/soat-statistika', requireAuth(['oqituvchi']), async (req, res) => {
   }
 });
 
+// ─── GET /api/davomat/soat-oylik?oy=9&yil=2026 — bir oylik dars soatlari ─────
+// O'qituvchi panelidagi "‹ Sentabr ›" oylik statistika uchun. Sana formati
+// ikki xil bo'lishi mumkin: DD.MM.YYYY (o'qituvchi paneli) yoki YYYY-MM-DD
+// (eski yozuvlar) — ikkalasi ham o'qiladi. Barcha oylar bitta so'rovda
+// guruhlanadi (hajmi kichik), shundan so'rangan oy va eng birinchi oy olinadi.
+router.get('/soat-oylik', requireAuth(['oqituvchi']), async (req, res) => {
+  const { ism } = req.user;
+
+  const sel = resolveTeacherMaktab(req);
+  if (sel.error) return res.status(sel.status).json({ ok: false, error: sel.error });
+  const maktabId = sel.mid;
+
+  const now = new Date();
+  const oy  = parseInt(req.query.oy, 10)  || (now.getMonth() + 1);
+  const yil = parseInt(req.query.yil, 10) || now.getFullYear();
+  if (oy < 1 || oy > 12 || yil < 2000 || yil > 2100) {
+    return res.status(400).json({ ok: false, error: "Oy yoki yil noto'g'ri" });
+  }
+
+  try {
+    const r = await pool.query(
+      `SELECT oy, yil,
+              COALESCE(SUM(dars_soat), 0)   AS soat,
+              COALESCE(SUM(dars_daqiqa), 0) AS daqiqa,
+              COUNT(*)                                       AS jami,
+              COUNT(*) FILTER (WHERE status = 'keldi')       AS keldi,
+              COUNT(*) FILTER (WHERE status = 'kelmadi')     AS kelmadi,
+              COUNT(*) FILTER (WHERE status = 'kech')        AS kech
+       FROM (
+         SELECT status, dars_soat, dars_daqiqa,
+           CASE WHEN sana ~ '^\\d{1,2}\\.\\d{1,2}\\.\\d{4}$' THEN SPLIT_PART(sana,'.',2)::int
+                WHEN sana ~ '^\\d{4}-\\d{1,2}-\\d{1,2}$'       THEN SPLIT_PART(sana,'-',2)::int END AS oy,
+           CASE WHEN sana ~ '^\\d{1,2}\\.\\d{1,2}\\.\\d{4}$' THEN SPLIT_PART(sana,'.',3)::int
+                WHEN sana ~ '^\\d{4}-\\d{1,2}-\\d{1,2}$'       THEN SPLIT_PART(sana,'-',1)::int END AS yil
+         FROM oqituvchilar_davomat
+         WHERE oqituvchi_ism = $1 AND maktab_id = $2
+       ) t
+       WHERE oy BETWEEN 1 AND 12 AND yil IS NOT NULL
+       GROUP BY yil, oy`,
+      [ism, maktabId]
+    );
+
+    // Eng birinchi yozuvli oy — frontend "‹" tugmasini shu yerda to'xtatadi
+    let birinchi = null;
+    r.rows.forEach(row => {
+      const idx = row.yil * 12 + row.oy;
+      if (!birinchi || idx < birinchi.idx) birinchi = { idx, oy: row.oy, yil: row.yil };
+    });
+
+    const row = r.rows.find(x => x.oy === oy && x.yil === yil);
+    const jami = row ? parseInt(row.jami, 10) : 0;
+    const keldi = row ? parseInt(row.keldi, 10) : 0;
+    const kech  = row ? parseInt(row.kech, 10)  : 0;
+
+    let haqSoat = row ? parseInt(row.soat, 10)   : 0;
+    let haqDaq  = row ? parseInt(row.daqiqa, 10) : 0;
+    haqSoat += Math.floor(haqDaq / 60);
+    haqDaq   = haqDaq % 60;
+
+    res.json({
+      ok: true,
+      oy, yil,
+      birinchi: birinchi ? { oy: birinchi.oy, yil: birinchi.yil } : null,
+      statistika: {
+        jamiDars: jami,
+        keldi,
+        kelmadi:  row ? parseInt(row.kelmadi, 10) : 0,
+        kech,
+        haqSoat,
+        haqDaq,
+        foiz: jami > 0 ? Math.round((keldi + kech) / jami * 100) : 0,
+      },
+    });
+  } catch (err) {
+    console.error('soat-oylik xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 // ─── Yordamchilar: sana (DD.MM.YYYY) va o'qituvchining dars kunlari ──────────
 function parseSanaDMY(s) {
   const m = /^(\d{2})\.(\d{2})\.(\d{4})$/.exec(String(s || '').trim());
