@@ -65,6 +65,9 @@
   pointer-events: none !important;
 }
 
+/* Desktopda faqat mobil uchun mo'ljallangan bo'lim nomi ko'rinmaydi */
+.tb-mobile-only { display: none; }
+
 /* ── Drawer ichidagi profil qatori: avatar + ism (ko'chirilgan admin-badge)
    + ✕ yopish tugmasi. Desktopda bu o'ram divlar "contents" bo'lib,
    ichidagi haqiqiy admin-badge topbar qatorida xuddi avvalgidek chiqadi —
@@ -155,6 +158,33 @@
   .topbar-right > .nofaol-count { display: none !important; }
 
   .topbar-hamburger { display: inline-flex !important; z-index: 250 !important; }
+
+  /* ✅ Topbar sarlavhasi (bo'lim nomi) endi QIRQILMAYDI: qolgan butun
+     kenglikni egallaydi, sig'masa keyingi qatorga o'tadi. Ikki qatorli:
+     tepada kichik maktab nomi, pastda qalin bo'lim nomi. Barcha admin
+     sahifalarida bir xil ko'rinadi. */
+  .topbar-brand {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    line-height: 1.15 !important;
+    letter-spacing: .04em !important;
+    font-size: 13px !important;
+  }
+  .topbar-brand::before { display: none !important; }
+  .topbar-brand .tb-school {
+    display: block;
+    font-size: 10px;
+    font-weight: 600;
+    opacity: .85;
+  }
+  .topbar-brand .tb-sep { display: none; }
+  .topbar-brand .tb-section { display: block; font-size: 13px; font-weight: 700; }
+  .tb-mobile-only { display: inline; }
 
   /* html/body: drawer yopiq holatda ekrandan tashqarida turgani uchun
      gorizontal scroll paydo bo'lmasin. ✅ MUHIM: bu faqat <html>'ga

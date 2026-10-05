@@ -203,10 +203,11 @@ async function showApp() {
 
   // Yuqori chap burchakdagi brand nomi — oddiy admin uchun o'z maktabi nomi,
   // superadmin uchun standart "InnovateIT School"
-  const brandEl = g('topbar-brand');
+  const brandEl = g('tb-school') || g('topbar-brand');
   if (brandEl) {
     brandEl.textContent = (!U.isSuper && U.maktabNomi) ? U.maktabNomi : 'InnovateIT School';
   }
+  setTopbarSection(U.isSuper ? "O'quvchilar" : "Faol o'quvchilar");
 
   // Body'ga super-admin class qo'shish/olib tashlash
   if (U.isSuper) {
@@ -239,7 +240,19 @@ async function showApp() {
   // (portfolio tab olib tashlandi — index.html dan)
 }
 
+// Mobil topbar'dagi bo'lim nomi (faqat mobilda ko'rinadi; desktopda yashirin)
+function setTopbarSection(txt) {
+  const el = g('tb-section');
+  if (el && txt) el.textContent = txt;
+}
+
+const TAB_TITLES = {
+  s: "O'quvchilar", a: 'Adminlar', b: 'Buxgalterlar', m: 'Maktablar',
+  sr: "So'rovlar", oq: "O'qituvchilar", pf: 'Portfolio', bl: 'Blog', sl: 'Sales'
+};
+
 function switchTab(t) {
+  if (TAB_TITLES[t]) setTopbarSection(TAB_TITLES[t]);
   const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf', 'bl', 'sl'];
   allTabs.forEach(id => {
     const el = g('tab-' + id);
@@ -1079,12 +1092,14 @@ function openTeachersJadval() {
 
 // Hamburger menyu: O'quvchilar ➜ Faol — joriy (faol o'quvchilar) ro'yxatiga sirg'anib o'tish
 function scrollToStudentsList() {
+  setTopbarSection("Faol o'quvchilar");
   const el = document.querySelector('#tab-s .table-card') || g('tab-s');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
 // Hamburger menyu: O'quvchilar ➜ Yangi o'quvchi qo'shish — forma tomon sirg'anib o'tish
 function scrollToAddStudent() {
+  setTopbarSection("Yangi o'quvchi qo'shish");
   const el = g('add-student-form');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }

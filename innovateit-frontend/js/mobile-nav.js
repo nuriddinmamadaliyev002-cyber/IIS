@@ -48,6 +48,16 @@
 
     topbar.dataset.mobileNavReady = '1';
 
+    // Brend ichidagi maktab nomi (.tb-school): maktab admini bo'lsa JWT'dagi
+    // maktab nomini ko'rsatadi (index.html buni app.js orqali o'zi qo'yadi).
+    try {
+      var tbSchool = topbar.querySelector('.tb-school');
+      if (tbSchool && tbSchool.id !== 'tb-school' && typeof api !== 'undefined' && api.getUser) {
+        var tu = api.getUser();
+        if (tu && !tu.isSuper && tu.maktabNomi) tbSchool.textContent = tu.maktabNomi;
+      }
+    } catch (e) { /* jim */ }
+
     var btn = document.createElement('button');
     btn.type = 'button';
     btn.className = 'topbar-hamburger';
