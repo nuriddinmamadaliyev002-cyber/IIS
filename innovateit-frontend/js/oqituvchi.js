@@ -338,6 +338,7 @@ function switchTab(tab) {
 // ═══════════════════════════════════════════
 let activeGuruhSinf = null;
 let guruhOquvchilarMap = new Map(); // sinf -> Set(oquvchiId)
+let guruhMavjudIds = new Map(); // sinf -> Set(oquvchiId): o'qituvchiga ALLAQACHON biriktirilganlar (yangi guruh yaratilganda ularni saqlab qolish uchun)
 let guruhOquvchilarNames = new Map(); // sinf -> Map(oquvchiId -> "Familiya Ism") — tasdiqlash oynasi uchun
 let editingGuruhId = null;
 let pendingGuruhData = null; // tasdiqlash oynasi kutayotgan ma'lumotlar
@@ -455,9 +456,14 @@ async function loadGuruhOquvchilar(sinf) {
     // Ism-familiyalarni keshlab qo'yamiz — tasdiqlash oynasida ko'rsatish uchun kerak bo'ladi
     guruhOquvchilarNames.set(sinf, new Map(data.oquvchilar.map(o => [o.id, `${o.familiya} ${o.ism}`])));
 
+    // Avval biriktirilgan o'quvchilarni eslab qolamiz (yangi guruh saqlanganda o'chib ketmasligi uchun)
+    guruhMavjudIds.set(sinf, new Set(data.oquvchilar.filter(o => o.biriktirilgan).map(o => o.id)));
+
+    // Yangi guruh yaratishda dastlab HECH KIM tanlanmagan bo'ladi.
+    // Faqat mavjud guruhni tahrirlashda (editingGuruhId) biriktirilganlar belgilangan holda chiqadi.
     const savedIds = guruhOquvchilarMap.get(sinf);
     listEl.innerHTML = data.oquvchilar.map(o => {
-      const isChecked = savedIds !== undefined ? savedIds.has(o.id) : o.biriktirilgan;
+      const isChecked = savedIds !== undefined ? savedIds.has(o.id) : (editingGuruhId ? o.biriktirilgan : false);
       return `
         <label class="guruh-oquv-item ${isChecked ? 'checked' : ''}">
           <input type="checkbox" class="guruh-oq-cb" data-id="${o.id}" ${isChecked ? 'checked' : ''} onchange="onGuruhCbChange(this)">
@@ -466,7 +472,9 @@ async function loadGuruhOquvchilar(sinf) {
     }).join('');
 
     if (!guruhOquvchilarMap.has(sinf)) {
-      const initIds = new Set(data.oquvchilar.filter(o => o.biriktirilgan).map(o => o.id));
+      const initIds = editingGuruhId
+        ? new Set(data.oquvchilar.filter(o => o.biriktirilgan).map(o => o.id))
+        : new Set();
       guruhOquvchilarMap.set(sinf, initIds);
     }
     updateGuruhSelectedCount();
@@ -525,6 +533,7 @@ function clearGuruhForm() {
   activeGuruhSinf = null;
   guruhOquvchilarMap.clear();
   guruhOquvchilarNames.clear();
+  guruhMavjudIds.clear();
   pendingGuruhData = null;
   editingGuruhId = null;
   navRelease('guruhEdit');
@@ -549,7 +558,11 @@ function saveGuruh() {
   // Bir nechta sinfda o'quvchi belgilangan bo'lishi mumkin (guruhOquvchilarMap),
   // shuning uchun faqat hozir ekranda ko'ringan sinfni emas, balki
   // barcha belgilangan sinflarni birlashtirib, o'sish tartibida yuboramiz.
-  const effectiveSinflar = sortSinflar([...new Set([...sinflar, ...guruhOquvchilarMap.keys()])]);
+  let effectiveSinflar = sortSinflar([...new Set([...sinflar, ...guruhOquvchilarMap.keys()])]);
+  // Yangi guruh yaratishda o'quvchisi tanlanmagan sinf guruhga kiritilmaydi
+  if (!editingGuruhId) {
+    effectiveSinflar = effectiveSinflar.filter(sn => (guruhOquvchilarMap.get(sn)?.size || 0) > 0);
+  }
 
   const totalOquvchi = [...guruhOquvchilarMap.values()].reduce((acc, s) => acc + s.size, 0);
   if (totalOquvchi === 0) { msgEl.style.color = '#ef4444'; msgEl.textContent = '⚠️ Kamida 1 o\'quvchi tanlang'; return; }
@@ -636,7 +649,17 @@ async function actuallySaveGuruh({ effectiveSinflar, kunlar, boshlanish, tugash 
 
     if (guruhOquvchilarMap.size > 0) {
       saveCurrentGuruhCheckboxState();
-      const promises = [...guruhOquvchilarMap.entries()].map(([sinf, ids]) =>
+      let entries = [...guruhOquvchilarMap.entries()];
+      if (!wasEditing) {
+        // Yangi guruh: backend (oquvchi-birik) sinf bo'yicha avvalgi birikmalarni to'liq
+        // almashtiradi. Ekranda tanlanmagan (lekin avvalgi guruhlarga tegishli) o'quvchilar
+        // o'chib ketmasligi uchun — ularni yangi tanlovga qo'shib yuboramiz; o'quvchisi
+        // tanlanmagan sinflarga umuman tegmaymiz.
+        entries = entries
+          .filter(([, ids]) => ids.size > 0)
+          .map(([sinf, ids]) => [sinf, new Set([...(guruhMavjudIds.get(sinf) || []), ...ids])]);
+      }
+      const promises = entries.map(([sinf, ids]) =>
         api.post('/api/teachers/oquvchi-birik', {
           teacherId: TEACHER_ID, oquvchiIds: [...ids], sinf, maktabId: TANLANGAN_MID,
         })
