@@ -597,6 +597,28 @@ WHERE COALESCE(vj.javob_fayl, '') <> ''
   );
 
 
+-- ─── 30. O'QUVCHILARNI BAHOLASH (migrations/023) ─────────────────────────────
+--  Dars kuni bo'yicha 1–5 ball: uyga vazifa / darsdagi faolligi / darsdagi xulqi.
+CREATE TABLE IF NOT EXISTS oquvchi_baholar (
+    id            SERIAL PRIMARY KEY,
+    guruh_id      INTEGER NOT NULL REFERENCES dars_jadvali(id) ON DELETE CASCADE,
+    maktab_id     INTEGER REFERENCES maktablar(id)   ON DELETE SET NULL,
+    oquvchi_id    INTEGER NOT NULL REFERENCES oquvchilar(id) ON DELETE CASCADE,
+    sana          TEXT    NOT NULL,                       -- dars sanasi (YYYY-MM-DD)
+    kategoriya    TEXT    NOT NULL
+                  CHECK (kategoriya IN ('uy_vazifa', 'faollik', 'xulq')),
+    baho          SMALLINT NOT NULL CHECK (baho BETWEEN 1 AND 5),
+    izoh          TEXT    NOT NULL DEFAULT '',            -- ixtiyoriy izoh
+    baholagan_id  INTEGER REFERENCES oqituvchilar(id) ON DELETE SET NULL,
+    yaratilgan    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    yangilangan   TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE (guruh_id, oquvchi_id, sana, kategoriya)
+);
+
+CREATE INDEX IF NOT EXISTS idx_oquvchi_baholar_guruh_sana ON oquvchi_baholar (guruh_id, sana);
+CREATE INDEX IF NOT EXISTS idx_oquvchi_baholar_oquvchi    ON oquvchi_baholar (oquvchi_id, sana);
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
@@ -745,7 +767,7 @@ ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS vazifa_fayl_nomi TEXT DEFAUL
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
---  Barcha 28 ta jadval yaratildi
+--  Barcha 29 ta jadval yaratildi
 -- ════════════════════════════════════════════════════════════════════════════
 \echo '✅ IIS schema muvaffaqiyatli yaratildi!'
 \echo '   Jadvallar: maktablar, adminlar, buxgalterlar, oquvchilar,'

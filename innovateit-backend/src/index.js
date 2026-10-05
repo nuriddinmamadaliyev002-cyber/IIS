@@ -24,6 +24,7 @@ const blogRouter       = require('./routes/blog');
 const ssrRouter        = require('./routes/ssr');
 const salesRouter      = require('./routes/sales');
 const vazifalarRouter  = require('./routes/vazifalar');
+const baholarRouter     = require('./routes/baholar');
 const { requireAuth }  = require('./middleware/jwt');
 
 
@@ -165,6 +166,7 @@ app.use('/api/blog',            blogRouter);
 app.use('/ssr',                 ssrRouter);
 app.use('/api/sales',           salesRouter);
 app.use('/api/vazifalar',       vazifalarRouter);
+app.use('/api/baholar',         baholarRouter);
 app.use('/miniapp', express.static(path.join(__dirname, '../../telegram-bot/miniapp')));
 
 

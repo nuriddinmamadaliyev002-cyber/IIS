@@ -253,6 +253,9 @@ const api = {
   baholaVazifaJavobi:  (javobId, d)    => api.post(`/api/vazifalar/javob/${javobId}/baholash`, d),
   getMeningVazifalarim: ()             => api.get('/api/vazifalar/mening-vazifalarim'),
   yuborVazifaJavobi:   (vazifaId, d)   => api.post(`/api/vazifalar/${vazifaId}/javob`, d),
+  // ─── O'quvchilarni baholash (uyga vazifa / faollik / xulq, 1–5) ───
+  getGuruhBaholar:     (guruhId, sana) => api.get(`/api/baholar/guruh/${guruhId}`, { sana }),
+  saveGuruhBaholar:    (guruhId, d)    => api.post(`/api/baholar/guruh/${guruhId}`, d),
 
   // ─── O'qituvchilar ───
   getTeachers:         (d) => api.get('/api/teachers', d),

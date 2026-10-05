@@ -127,6 +127,32 @@
         <div id="guruh-dav-list" class="dav-sinf-grid"></div>
         <button class="oq-mark-btn" onclick="saveGuruhDavomat()">💾 Davomatni saqlash</button>
       </div>
+
+      <!-- Guruh o'quvchilarini baholash: uyga vazifa / darsdagi faolligi / darsdagi xulqi (1–5) -->
+      <div id="guruh-baho-wrap" style="display:none;">
+        <button class="oq-back-btn" onclick="closeGuruhBaho()">← Guruhlarga qaytish</button>
+        <div class="oq-section-title" id="guruh-baho-title">Baholash</div>
+
+        <div class="dav-date-bar">
+          <button class="dav-date-nav-btn" id="bh-prev-btn" onclick="changeBhDate(-1)">‹</button>
+          <div style="text-align:center;">
+            <div class="dav-date-display" id="bh-date-display">—</div>
+            <div class="dav-date-sub" id="bh-date-sub">—</div>
+          </div>
+          <button class="dav-date-nav-btn" id="bh-next-btn" onclick="changeBhDate(1)">›</button>
+          <div class="dav-date-input-wrap">
+            <div class="dav-date-input-text" id="bh-date-picker-text" onclick="openBhDatePicker()">—</div>
+            <input class="dav-date-input" type="date" id="bh-date-picker" onchange="onBhDatePick()">
+          </div>
+        </div>
+
+        <!-- Kategoriya chiplari (filtr): bosilganda shu kategoriya bo'yicha baho qo'yiladi -->
+        <div class="dav-stats-bar" id="bh-chips"></div>
+        <div class="bh-hint" id="bh-hint"></div>
+
+        <div id="guruh-baho-list" class="dav-sinf-grid"></div>
+        <button class="oq-mark-btn" id="bh-save-btn" onclick="saveGuruhBaho()">💾 Baholarni saqlash</button>
+      </div>
     </div>
 
 

@@ -628,6 +628,7 @@ const KUN_QISQA = { '1':'Du', '2':'Se', '3':'Cho', '4':'Pay', '5':'Ju', '6':'Sha
 
 async function loadGuruhlarim() {
   closeGuruhDavomat();
+  closeGuruhBaho();
   const wrap = g('guruhlar-list');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
 
@@ -662,7 +663,10 @@ async function loadGuruhlarim() {
             <div class="guruh-card-edit">✏️</div>
           </div>
           <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
-          <button type="button" class="oq-back-btn" style="padding:0;margin-top:8px;font-size:12px;" onclick="openGuruhDavomat(${j.id}, event)">📋 Davomat belgilash</button>
+          <div class="guruh-card-links">
+            <button type="button" class="oq-back-btn" onclick="openGuruhDavomat(${j.id}, event)">📋 Davomat belgilash</button>
+            <button type="button" class="oq-back-btn" onclick="openGuruhBaho(${j.id}, event)">⭐ O'quvchilarni baholash</button>
+          </div>
         </div>`;
     }).join('');
   } catch (e) {
@@ -1583,6 +1587,338 @@ function closeGuruhDavomat() {
   if (listWrap) listWrap.style.display = 'block';
   if (davWrap)  davWrap.style.display  = 'none';
   activeDavomatGuruh = null;
+}
+
+
+// ═══════════════════════════════════════════
+//  O'QUVCHILARNI BAHOLASH (guruh kartasidan)
+//  Dars kuni bo'yicha 3 kategoriya: uyga vazifa,
+//  darsdagi faolligi, darsdagi xulqi — 1 dan 5 gacha
+//  ball, izoh ixtiyoriy. Ma'lumot oquvchi_id orqali.
+// ═══════════════════════════════════════════
+const BH_KATEGORIYALAR = [
+  { key: 'uy_vazifa', label: 'Uyga vazifa',       icon: '📚' },
+  { key: 'faollik',   label: 'Darsdagi faolligi', icon: '🙋' },
+  { key: 'xulq',      label: 'Darsdagi xulqi',    icon: '🤝' },
+];
+const BH_IZOH_MAX = 300; // backend (routes/baholar.js) bilan bir xil
+
+// BH — ochiq baholash oynasining holati (yopiq bo'lsa null):
+//   baho / izoh — o'qituvchi hozir ko'rib turgan qiymatlar,  server — bazadagi qiymatlar
+//   (kalit: "kategoriya:oquvchiId"),  open — izoh maydoni ochiq kalitlar
+let BH = null;
+
+function bhKey(kat, oid) { return `${kat}:${oid}`; }
+
+function bhIsLessonDay(date) {
+  if (!BH || !BH.kunlar.size) return true;
+  return BH.kunlar.has(date.getDay());
+}
+
+// Davomatdagi findLessonDate bilan bir xil: kelajakka chiqib ketmaydi
+function bhFindLessonDate(fromDate, dir) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  let d = new Date(fromDate); d.setHours(0, 0, 0, 0);
+  for (let i = 0; i < 14; i++) {
+    d.setDate(d.getDate() + dir);
+    if (dir > 0 && d > today) return null;
+    if (bhIsLessonDay(d)) return new Date(d);
+  }
+  return null;
+}
+
+// Serverdagi holatga nisbatan o'zgargan yozuvlar (saqlash va "saqlanmagan" tekshiruvi uchun).
+// baho: null — bazadagi bahoni olib tashlash
+function bhCollectChanges() {
+  if (!BH) return [];
+  const keys = new Set([...Object.keys(BH.baho), ...Object.keys(BH.server)]);
+  const out = [];
+  keys.forEach(k => {
+    const now  = BH.baho[k] || null;
+    const old  = BH.server[k];
+    const izoh = now ? String(BH.izoh[k] || '').trim() : '';
+    if (!now && !old) return;
+    if (now && old && old.baho === now && (old.izoh || '') === izoh) return;
+    const [kat, oid] = k.split(':');
+    out.push({ oquvchi_id: parseInt(oid, 10), kategoriya: kat, baho: now, izoh });
+  });
+  return out;
+}
+
+async function openGuruhBaho(guruhId, event) {
+  if (event) event.stopPropagation();
+  const jd = LAST_GURUHLAR.find(x => x.id === guruhId);
+  if (!jd) return;
+
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  BH = {
+    guruh: jd, kunlar: parseKunlarSet(jd.kunlar), curdate: today, kat: BH_KATEGORIYALAR[0].key,
+    oquvchilar: [], baho: {}, izoh: {}, server: {}, open: new Set(), saving: false, seq: 0,
+  };
+  let start = bhIsLessonDay(today) ? today : bhFindLessonDate(today, -1);
+  BH.curdate = start || today;
+
+  g('guruhlar-list-wrap').style.display = 'none';
+  g('guruh-davomat-wrap').style.display = 'none';
+  g('guruh-baho-wrap').style.display = 'block';
+  navPush('baho', closeGuruhBaho, 'guruhlar');
+
+  const sinflarText = sortSinflar((jd.sinflar || '').split(',').filter(Boolean))
+    .map(s => s.replace(/-sinf$/i, '') + '-sinf').join(', ');
+  g('guruh-baho-title').textContent = `⭐ ${sinflarText} — baholash`;
+
+  g('bh-date-picker').max = dateStrLocal(today);
+  setBhDateUI();
+  updateBhNavBtns();
+  await loadBaho();
+}
+
+function setBhDateUI() {
+  const d = BH.curdate;
+  g('bh-date-display').textContent = `${d.getDate()}-${OY_NOMLARI[d.getMonth() + 1]}, ${d.getFullYear()}`;
+  g('bh-date-sub').textContent     = KUN_NOMLARI_MAP[String(d.getDay())] || '';
+  g('bh-date-picker').value        = dateStrLocal(d);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  g('bh-date-picker-text').textContent = `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+function updateBhNavBtns() {
+  g('bh-prev-btn').disabled = !bhFindLessonDate(BH.curdate, -1);
+  g('bh-next-btn').disabled = !bhFindLessonDate(BH.curdate, 1);
+}
+
+function openBhDatePicker() {
+  const inp = g('bh-date-picker');
+  if (!inp) return;
+  if (typeof inp.showPicker === 'function') {
+    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
+  }
+  inp.focus();
+  inp.click();
+}
+
+// Saqlanmagan baholar bo'lsa, sanani almashtirishdan oldin so'raydi
+function bhConfirmLeave() {
+  if (!bhCollectChanges().length) return true;
+  return confirm("Saqlanmagan baholar bor. Sanani o'zgartirsangiz, ular yo'qoladi. Davom etasizmi?");
+}
+
+async function changeBhDate(dir) {
+  if (!BH) return;
+  const nd = bhFindLessonDate(BH.curdate, dir);
+  if (!nd) return;
+  if (!bhConfirmLeave()) return;
+  BH.curdate = nd;
+  setBhDateUI();
+  updateBhNavBtns();
+  await loadBaho();
+}
+
+async function onBhDatePick() {
+  if (!BH) return;
+  const val = g('bh-date-picker').value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+
+  if (d > today)            { alert('⚠️ Kelajak sanani tanlash mumkin emas'); setBhDateUI(); return; }
+  if (!bhIsLessonDay(d))    { alert('⚠️ Bu kun guruhingiz uchun dars kuni emas'); setBhDateUI(); return; }
+  if (!bhConfirmLeave())    { setBhDateUI(); return; }
+
+  BH.curdate = d;
+  setBhDateUI();
+  updateBhNavBtns();
+  await loadBaho();
+}
+
+async function loadBaho() {
+  const st   = BH;
+  const seq  = ++st.seq; // sana tez almashtirilsa, eskirgan javob natijani buzmasligi uchun
+  const list = g('guruh-baho-list');
+  list.className = 'dav-sinf-grid';
+  list.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+  g('bh-save-btn').disabled = true;
+
+  try {
+    const res = await api.getGuruhBaholar(st.guruh.id, dateStrLocal(st.curdate));
+    if (BH !== st || seq !== st.seq) return;
+    if (!res || !res.ok) {
+      list.innerHTML = `<div class="oq-empty">⚠️ ${esc((res && res.error) || "Ma'lumot yuklanmadi")}</div>`;
+      return;
+    }
+    st.oquvchilar = res.oquvchilar || [];
+    st.baho = {}; st.izoh = {}; st.server = {}; st.open = new Set();
+    (res.baholar || []).forEach(b => {
+      const k = bhKey(b.kategoriya, b.oquvchi_id);
+      st.baho[k]   = b.baho;
+      st.izoh[k]   = b.izoh || '';
+      st.server[k] = { baho: b.baho, izoh: b.izoh || '' };
+    });
+    g('bh-save-btn').disabled = !st.oquvchilar.length;
+    renderBaho();
+  } catch (e) {
+    if (BH === st && seq === st.seq) list.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
+  }
+}
+
+function setBhKat(kat) {
+  if (!BH || !BH_KATEGORIYALAR.some(c => c.key === kat)) return;
+  BH.kat = kat;
+  renderBaho();
+}
+
+function bhSetBaho(oid, n) {
+  if (!BH) return;
+  const k = bhKey(BH.kat, oid);
+  if (BH.baho[k] === n) {            // xuddi shu ballga qayta bosilsa — baho olib tashlanadi
+    delete BH.baho[k]; delete BH.izoh[k]; BH.open.delete(k);
+  } else {
+    BH.baho[k] = n;
+  }
+  renderBaho();
+}
+
+function bhToggleNote(oid) {
+  if (!BH) return;
+  const k = bhKey(BH.kat, oid);
+  if (!BH.baho[k]) return;
+  if (BH.open.has(k)) BH.open.delete(k); else BH.open.add(k);
+  renderBaho();
+  if (BH.open.has(k)) {
+    const inp = document.querySelector(`.bh-note-input[data-oid="${oid}"]`);
+    if (inp) inp.focus();
+  }
+}
+
+function renderBaho() {
+  if (!BH) return;
+  const kat = BH.kat;
+  const cur = BH_KATEGORIYALAR.find(c => c.key === kat);
+
+  // Chiplar (filtr): har birida shu kategoriya bo'yicha baholanganlar soni
+  g('bh-chips').innerHTML = BH_KATEGORIYALAR.map(c => {
+    const n = BH.oquvchilar.filter(o => BH.baho[bhKey(c.key, o.id)]).length;
+    return `<button type="button" class="dav-stat-pill bh-chip${c.key === kat ? ' active' : ''}" data-kat="${c.key}">${c.icon} ${esc(c.label)} <b>${n}</b></button>`;
+  }).join('') + `<span class="dav-stat-pill total" style="margin-left:auto;">Jami <b>${BH.oquvchilar.length}</b></span>`;
+  g('bh-hint').textContent = `${cur.icon} ${cur.label}: har bir o'quvchiga 1 dan 5 gacha baho qo'ying. Izoh — ixtiyoriy.`;
+
+  const wrap = g('guruh-baho-list');
+  if (!BH.oquvchilar.length) {
+    wrap.className = '';
+    wrap.innerHTML = '<div class="oq-empty">📭 Guruhga o\'quvchi biriktirilmagan</div>';
+    return;
+  }
+  wrap.className = 'dav-sinf-grid';
+
+  const groups = {};
+  BH.oquvchilar.forEach(o => { (groups[o.sinf] ||= []).push(o); });
+
+  wrap.innerHTML = sortSinflar(Object.keys(groups)).map(sinf => {
+    const list  = groups[sinf];
+    const vals  = list.map(o => BH.baho[bhKey(kat, o.id)]).filter(Boolean);
+    const avg   = vals.length ? (vals.reduce((a, b) => a + b, 0) / vals.length).toFixed(1) : '—';
+    return `
+      <div class="dav-sinf-card">
+        <div class="dav-sinf-header">
+          <div class="dav-sinf-title">
+            <span class="sinf-badge">${esc(String(sinf).replace(/-sinf$/i, '') + '-sinf')}</span>
+            <span style="font-size:11px;color:var(--muted);font-weight:400;">${list.length} o'quvchi</span>
+          </div>
+          <div class="dav-sinf-mini-stats">
+            <span class="dav-mini-s k" title="O'rtacha ball">⭐ ${avg}</span>
+            <span class="dav-mini-s l" title="Baholanganlar">${vals.length}/${list.length}</span>
+          </div>
+        </div>
+        <div class="dav-student-list">
+          ${list.map((o, i) => {
+            const fullIsm = `${o.familiya || ''} ${o.ism || ''}`.trim();
+            const k       = bhKey(kat, o.id);
+            const baho    = BH.baho[k] || 0;
+            const izoh    = BH.izoh[k] || '';
+            const isOpen  = BH.open.has(k);
+            return `
+              <div class="bh-student">
+                <div class="dav-student-row bh-row">
+                  <span class="dav-student-num">${i + 1}</span>
+                  <span class="dav-student-name" title="${esc(fullIsm)}">${esc(fullIsm)}</span>
+                  <div class="bh-btns">
+                    ${[1, 2, 3, 4, 5].map(n =>
+                      `<button type="button" class="bh-n-btn${baho === n ? ' active-' + n : ''}" data-oid="${o.id}" data-baho="${n}" title="${n} ball">${n}</button>`
+                    ).join('')}
+                    <button type="button" class="bh-note-btn${izoh ? ' has-izoh' : ''}${isOpen ? ' open' : ''}" data-oid="${o.id}"
+                      ${baho ? '' : 'disabled'} title="${baho ? 'Izoh (ixtiyoriy)' : 'Avval baho qo\'ying'}">💬</button>
+                  </div>
+                </div>
+                ${isOpen ? `<div class="bh-note-row"><input type="text" class="bh-note-input" data-oid="${o.id}" maxlength="${BH_IZOH_MAX}" placeholder="Izoh (ixtiyoriy)" value="${esc(izoh)}"></div>` : ''}
+              </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+// Event delegation: ism/izoh matni inline onclick ichiga umuman qo'yilmaydi
+document.addEventListener('click', (e) => {
+  if (!BH) return;
+  const nb = e.target.closest('.bh-n-btn');
+  if (nb) { bhSetBaho(parseInt(nb.dataset.oid, 10), parseInt(nb.dataset.baho, 10)); return; }
+  const nt = e.target.closest('.bh-note-btn');
+  if (nt && !nt.disabled) { bhToggleNote(parseInt(nt.dataset.oid, 10)); return; }
+  const ch = e.target.closest('.bh-chip');
+  if (ch) setBhKat(ch.dataset.kat);
+});
+
+// Izoh yozilganda qayta chizilmaydi (kursor/fokus yo'qolmasligi uchun) — faqat holat yangilanadi
+document.addEventListener('input', (e) => {
+  const inp = e.target.closest && e.target.closest('.bh-note-input');
+  if (!inp || !BH) return;
+  BH.izoh[bhKey(BH.kat, parseInt(inp.dataset.oid, 10))] = inp.value.slice(0, BH_IZOH_MAX);
+});
+
+async function saveGuruhBaho() {
+  const st = BH;
+  if (!st || st.saving) return;
+  const yozuvlar = bhCollectChanges();
+  if (!yozuvlar.length) {
+    alert("ℹ️ O'zgarish yo'q — saqlash uchun baho qo'ying yoki o'zgartiring");
+    return;
+  }
+
+  const btn = g('bh-save-btn');
+  st.saving = true;
+  btn.disabled = true;
+  btn.textContent = '⏳ Saqlanmoqda...';
+  try {
+    const res = await api.saveGuruhBaholar(st.guruh.id, { sana: dateStrLocal(st.curdate), baholar: yozuvlar });
+    if (res && res.ok) {
+      yozuvlar.forEach(y => {
+        const k = bhKey(y.kategoriya, y.oquvchi_id);
+        if (y.baho) st.server[k] = { baho: y.baho, izoh: y.izoh };
+        else        delete st.server[k];
+      });
+      if (BH === st) renderBaho();
+      alert(`✅ Baholar saqlandi: ${res.saqlandi} ta` + (res.ochirildi ? `, ${res.ochirildi} ta olib tashlandi` : ''));
+    } else {
+      alert((res && res.error) || 'Saqlashda xatolik yuz berdi');
+    }
+  } catch (e) {
+    alert('❌ Server xatoligi');
+  } finally {
+    st.saving = false;
+    btn.textContent = '💾 Baholarni saqlash';
+    btn.disabled = !st.oquvchilar.length;
+  }
+}
+
+function closeGuruhBaho() {
+  navRelease('baho');
+  const listWrap = g('guruhlar-list-wrap'), bhWrap = g('guruh-baho-wrap');
+  if (bhWrap && bhWrap.style.display !== 'none') {
+    if (listWrap) listWrap.style.display = 'block';
+    bhWrap.style.display = 'none';
+  }
+  BH = null;
 }
 
 

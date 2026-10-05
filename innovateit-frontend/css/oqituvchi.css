@@ -449,6 +449,50 @@ button, a, input, select, textarea, [role="button"] {
 .dav-s-btn.active-sababli { background: #fffbeb; border-color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.15); }
 .dav-s-btn.active-kech    { background: #f5f3ff; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
 
+/* ── Guruh kartasidagi linklar (Davomat / Baholash) ── */
+.guruh-card-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; }
+.guruh-card-links .oq-back-btn { padding: 0; font-size: 12px; }
+
+/* ── O'quvchilarni baholash ── */
+button.dav-stat-pill { font-family: inherit; cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent; }
+.bh-chip:hover { border-color: var(--iit-indigo); }
+.bh-chip.active { border-color: var(--iit-indigo); background: #e8f1fb; color: var(--iit-indigo); box-shadow: 0 0 0 3px rgba(22,112,196,.14); }
+.bh-hint { font-size: 12px; color: var(--muted); margin: -4px 2px 12px; }
+
+.bh-btns { display: flex; gap: 3px; flex-shrink: 0; align-items: center; }
+.bh-n-btn {
+  width: 28px; height: 26px; border-radius: 7px; border: 2px solid var(--border); background: none;
+  cursor: pointer; font-size: 12.5px; font-weight: 700; font-family: 'DM Mono', monospace; color: var(--muted);
+  display: flex; align-items: center; justify-content: center; transition: all .15s; -webkit-tap-highlight-color: transparent;
+}
+.bh-n-btn:hover { transform: scale(1.1); }
+.bh-n-btn.active-1 { background: #fef2f2; border-color: #dc2626; color: #dc2626; box-shadow: 0 0 0 3px rgba(220,38,38,.15); }
+.bh-n-btn.active-2 { background: #fff7ed; border-color: #ea580c; color: #ea580c; box-shadow: 0 0 0 3px rgba(234,88,12,.15); }
+.bh-n-btn.active-3 { background: #fffbeb; border-color: #d97706; color: #d97706; box-shadow: 0 0 0 3px rgba(217,119,6,.15); }
+.bh-n-btn.active-4 { background: #f7fee7; border-color: #65a30d; color: #4d7c0f; box-shadow: 0 0 0 3px rgba(101,163,13,.15); }
+.bh-n-btn.active-5 { background: #f0fdf4; border-color: #16a34a; color: #15803d; box-shadow: 0 0 0 3px rgba(22,163,74,.15); }
+
+.bh-note-btn {
+  width: 28px; height: 26px; margin-left: 4px; border-radius: 7px; border: 2px solid transparent; background: none;
+  cursor: pointer; font-size: 13px; opacity: .85; transition: all .15s; -webkit-tap-highlight-color: transparent;
+}
+.bh-note-btn:hover:not(:disabled) { transform: scale(1.1); }
+.bh-note-btn:disabled { opacity: .25; cursor: not-allowed; filter: grayscale(1); }
+.bh-note-btn.has-izoh { background: #e8f1fb; border-color: var(--iit-indigo); }
+.bh-note-btn.open { border-color: var(--iit-indigo); }
+.bh-note-row { padding: 0 8px 8px 32px; }
+.bh-note-input {
+  width: 100%; box-sizing: border-box; padding: 8px 10px; font-size: 13px; font-family: inherit;
+  border: 1.5px solid var(--border); border-radius: 8px; background: #fff; color: var(--text); outline: none;
+}
+.bh-note-input:focus { border-color: var(--iit-indigo); }
+
+@media (max-width: 480px) {
+  .bh-row { flex-wrap: wrap; }
+  .bh-btns { width: 100%; padding-left: 24px; box-sizing: border-box; }
+  .bh-note-row { padding-left: 8px; }
+}
+
 @media (max-width: 640px) {
   .dav-date-bar { justify-content: center; }
   .dav-date-input-wrap { margin-left: 0; }
