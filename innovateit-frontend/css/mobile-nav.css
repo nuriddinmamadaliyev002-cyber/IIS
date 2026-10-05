@@ -561,10 +561,22 @@
     min-width: 240px;
     margin-top: 8px;
     padding: 6px;
-    background: #101b34;
+    /* Shaffof "shisha" (glass) ko'rinish: orqadagi sahifa matni (masalan
+       "O'quvchilar ro'yxati") butunlay to'silmaydi, xira bo'lib ko'rinib turadi.
+       backdrop-filter qo'llab-quvvatlanmaydigan eski brauzerlar uchun
+       fon yetarlicha to'q (zaxira rang) qoldirilgan. */
+    background: rgba(15,84,147,.92);
+    border: 1px solid rgba(255,255,255,.32);
     border-radius: 12px;
-    box-shadow: 0 14px 36px rgba(6,34,61,.35);
+    box-shadow: 0 14px 36px rgba(6,34,61,.28), inset 0 1px 0 rgba(255,255,255,.35);
     z-index: 300;
+  }
+  @supports ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+    .topbar:has(#mn-acc-students) .mn-acc-body {
+      background: rgba(15,84,147,.55);
+      -webkit-backdrop-filter: blur(10px) saturate(1.6);
+      backdrop-filter: blur(10px) saturate(1.6);
+    }
   }
   /* sichqoncha toggle'dan dropdown'ga o'tayotganda "bo'shliq"da yopilib qolmasin */
   .topbar:has(#mn-acc-students) .mn-acc-body::before {
@@ -592,18 +604,19 @@
     text-align: left;
     white-space: nowrap;
     cursor: pointer;
+    text-shadow: 0 1px 2px rgba(6,34,61,.35);
     transform: none;
     order: 0; /* #btn-nofaol{order:1} ta'siridan holi */
     transition: background .15s, border-color .15s;
   }
   .topbar:has(#mn-acc-students) .mn-acc-body > button:hover {
-    background: rgba(5,191,246,.16);
-    border-left-color: var(--iit-cyan, #05BFF6);
+    background: rgba(255,255,255,.18);
+    border-left-color: #fff;
     color: #fff;
   }
   .topbar:has(#mn-acc-students) .mn-acc-body > button.active {
-    background: rgba(5,191,246,.24);
-    border-left-color: var(--iit-cyan, #05BFF6);
+    background: rgba(255,255,255,.26);
+    border-left-color: #fff;
     font-weight: 700;
   }
 
