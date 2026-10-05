@@ -79,66 +79,46 @@ function handleAuthResult(data) {
   ROL      = data.rol;
   USER_ISM = data.ism;
 
-  // ─── Admin → to'liq web panelga redirect ──────────────────────────────
-  // Admin Telegram Mini App emas, to'liq brauzer panelida ishlashi kerak
-  if (ROL === 'admin') {
-    const redirectUrl = `${WEB_PANEL_URL}?tg_token=${encodeURIComponent(data.token)}`;
-    if (tg && tg.openLink) {
-      showAdminRedirect(redirectUrl, { role: 'admin', maktabNomi: data.maktabNomi });
-    } else {
-      window.location.href = redirectUrl;
-    }
+  // ─── Barcha rollar → to'liq web panelga DARROV yo'naltiriladi ──────────
+  // Oraliq "Siz ... sifatida kirdingiz" ekrani yo'q: rol aniqlanishi bilan
+  // (yagona rol bo'lsa darrov, bir nechta bo'lsa — tanlangandan keyin)
+  // brauzerdagi tegishli panel ochiladi va token URL orqali uzatiladi.
+  const tok = encodeURIComponent(data.token);
+  const ism = encodeURIComponent(USER_ISM || '');
+  const panelUrls = {
+    admin:     `${WEB_PANEL_URL}?tg_token=${tok}`,
+    buxgalter: `${WEB_PANEL_URL}/buxgalter.html?tg_token=${tok}&tg_ism=${ism}`,
+    sales:     `${WEB_PANEL_URL}/sales.html?tg_token=${tok}&tg_ism=${ism}`,
+    oqituvchi: `${WEB_PANEL_URL}/oqituvchi.html?tg_token=${tok}&tg_ism=${ism}`,
+    oquvchi:   `${WEB_PANEL_URL}/oquvchi.html?tg_token=${tok}&tg_ism=${ism}`,
+  };
+
+  if (panelUrls[ROL]) {
+    goToPanel(panelUrls[ROL]);
     return;
   }
-  // ─── Buxgalter → to'liq buxgalter web paneliga redirect ────────────────
-  // Buxgalter kirishi FAQAT shu yo'l orqali — bot faqat tekshiruv vositachisi,
-  // haqiqiy ish esa to'liq CRM (buxgalter.html) da davom etadi.
-  if (ROL === 'buxgalter') {
-    const buxUrl = `${WEB_PANEL_URL}/buxgalter.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
-    if (tg && tg.openLink) {
-      showAdminRedirect(buxUrl, { role: 'buxgalter' });
-    } else {
-      window.location.href = buxUrl;
-    }
-    return;
-  }
-  // ─── Sales → to'liq sales web paneliga redirect ─────────────────────────
-  if (ROL === 'sales') {
-    const salesUrl = `${WEB_PANEL_URL}/sales.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
-    if (tg && tg.openLink) {
-      showAdminRedirect(salesUrl, { role: 'sales' });
-    } else {
-      window.location.href = salesUrl;
-    }
-    return;
-  }
-  // ─── O'qituvchi → to'liq o'qituvchi web paneliga redirect ───────────────
-  // Endi o'qituvchi mini-appda ishlamaydi — barcha funksiyalar (sinflar,
-  // dars jadvali, dars soatlari, davomat belgilash) oqituvchi.html'da.
-  if (ROL === 'oqituvchi') {
-    const oqUrl = `${WEB_PANEL_URL}/oqituvchi.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
-    if (tg && tg.openLink) {
-      showAdminRedirect(oqUrl, { role: 'oqituvchi', avatar: data.avatar });
-    } else {
-      window.location.href = oqUrl;
-    }
-    return;
-  }
-  // ─── O'quvchi → to'liq o'quvchi web paneliga redirect ───────────────────
-  // Endi o'quvchi mini-appda ishlamaydi — davomat va dars jadvali
-  // oquvchi.html'da (faqat ko'rish, o'qituvchi/admin tomonidan belgilanadi).
-  if (ROL === 'oquvchi') {
-    const ouqUrl = `${WEB_PANEL_URL}/oquvchi.html?tg_token=${encodeURIComponent(data.token)}&tg_ism=${encodeURIComponent(USER_ISM || '')}`;
-    if (tg && tg.openLink) {
-      showAdminRedirect(ouqUrl, { role: 'oquvchi', avatar: data.avatar });
-    } else {
-      window.location.href = ouqUrl;
-    }
-    return;
-  }
-  // ──────────────────────────────────────────────────────────────────────
 
   showDashboard(data);
+}
+
+// ─── Web panelni darrov ochish ────────────────────────────────────────────────
+// Telegram ichida: tashqi brauzerda ochadi va Mini App'ni yopadi (foydalanuvchi
+// chatga qaytadi). Telegram tashqarisida (oddiy brauzer): to'g'ridan-to'g'ri o'tadi.
+function goToPanel(url) {
+  // Rol tanlash ekrani qolib ketmasligi uchun avvalgi "Tekshirilmoqda" holatiga qaytaramiz
+  showPage('loadingPage');
+  const loadPage = document.getElementById('loadingPage');
+  loadPage.innerHTML = `
+    <div class="pulse-logo">🏫</div>
+    <div class="loading-label dot-anim">Panel ochilmoqda</div>`;
+
+  if (tg && tg.openLink) {
+    tg.openLink(url);
+    // openLink so'rovi Telegram'ga yetib borishi uchun biroz kutib, Mini App'ni yopamiz
+    setTimeout(() => { try { tg.close(); } catch (_) {} }, 400);
+  } else {
+    window.location.href = url;
+  }
 }
 
 // ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────
@@ -484,88 +464,6 @@ function showKutish(tgId, holat) {
 // Kutish sahifasini yopish
 function kutishClose() {
   if (tg) tg.close();
-}
-
-// ═══════════════════════════════════════════
-//  ADMIN / BUXGALTER — WEB PANELGA YO'NALTIRISH
-// ═══════════════════════════════════════════
-function showAdminRedirect(url, opts) {
-  const cfg = {
-    admin: {
-      icon: '🖥️',
-      title: opts?.maktabNomi
-        ? `Siz ${opts.maktabNomi} admini sifatida kirdingiz`
-        : 'Siz Admin sifatida kirdingiz',
-      desc: "Admin paneli to'liq brauzerda ochiladi.<br>O'quvchilar va davomatni u yerda boshqaring.",
-      btn: "🌐 Admin panelni ochish",
-    },
-    buxgalter: {
-      icon: '💼', title: 'Siz Buxgalter sifatida kirdingiz',
-      desc: "Buxgalter paneli to'liq brauzerda ochiladi.<br>To'lovlarni u yerda boshqaring.",
-      btn: "💼 Buxgalter panelni ochish",
-    },
-    sales: {
-      icon: '🎯', title: 'Siz Sales xodimi sifatida kirdingiz',
-      desc: "Sales paneli to'liq brauzerda ochiladi.<br>Arizalarni u yerda boshqaring.",
-      btn: "🎯 Sales panelni ochish",
-    },
-    oqituvchi: {
-      icon: '<img src="img/oqituvchi-icon.png" alt="" style="width:100%;height:100%;object-fit:contain;">', title: "Siz O'qituvchi sifatida kirdingiz",
-      desc: "O'qituvchi paneli to'liq brauzerda ochiladi.<br>Sinflar, dars jadvali va davomatni u yerda boshqaring.",
-      btn: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi panelni ochish',
-    },
-    oquvchi: {
-      icon: '<img src="img/oquvchi-icon-erkak.png" alt="" style="width:100%;height:100%;object-fit:contain;">', title: "Siz O'quvchi sifatida kirdingiz",
-      desc: "O'quvchi paneli to'liq brauzerda ochiladi.<br>Davomatingiz va dars jadvalingizni u yerda ko'ring.",
-      btn: '<img src="img/oquvchi-icon-erkak.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'quvchi panelni ochish',
-    },
-  }[opts?.role || 'admin'];
-
-  // O'qituvchi/o'quvchi tanlagan (yoki admin belgilagan) jinsiga qarab
-  // belgini almashtiramiz — standart holatda o'g'il bola rasmi ko'rsatiladi
-  if (opts?.role === 'oqituvchi') {
-    const iconFile = opts.avatar === 'ayol'  ? 'img/oqituvchi-icon-ayol.png'
-                    : opts.avatar === 'erkak' ? 'img/oqituvchi-icon-erkak.png'
-                    : 'img/oqituvchi-icon.png';
-    cfg.icon = `<img src="${iconFile}" alt="" style="width:100%;height:100%;object-fit:contain;">`;
-    cfg.btn  = `<img src="${iconFile}" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O'qituvchi panelni ochish`;
-  }
-  if (opts?.role === 'oquvchi') {
-    const iconFile = opts.avatar === 'ayol' ? 'img/oquvchi-icon-ayol.png' : 'img/oquvchi-icon-erkak.png';
-    cfg.icon = `<img src="${iconFile}" alt="" style="width:100%;height:100%;object-fit:contain;">`;
-    cfg.btn  = `<img src="${iconFile}" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O'quvchi panelni ochish`;
-  }
-
-  showPage('loadingPage');
-  const loadPage = document.getElementById('loadingPage');
-  loadPage.innerHTML = `
-    <div style="display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 24px;text-align:center;">
-      <div style="width:88px;height:88px;background:rgba(255,255,255,0.28);border:1px solid rgba(255,255,255,0.45);box-shadow:0 8px 24px rgba(15,84,147,0.22);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:42px;padding:14px;box-sizing:border-box;">${cfg.icon}</div>
-      <div>
-        <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:#06223D;">${cfg.title}</div>
-        <div style="font-size:14px;color:#06223D;line-height:1.5;">${cfg.desc}</div>
-      </div>
-      <button onclick="openAdminPanel()" style="
-        background:#fff;
-        color:#0F5493;border:none;border-radius:16px;
-        padding:16px 32px;font-size:16px;font-weight:700;
-        cursor:pointer;width:100%;max-width:280px;
-        box-shadow:0 6px 20px rgba(15,84,147,0.28);
-      ">${cfg.btn}</button>
-      <div style="font-size:12px;color:#06223D;opacity:.85;">
-        Brauzerda avtomatik kirasiz
-      </div>
-    </div>`;
-  // URL ni global ga saqlaymiz
-  window._adminPanelUrl = url;
-}
-
-function openAdminPanel() {
-  if (tg && tg.openLink) {
-    tg.openLink(window._adminPanelUrl);
-  } else {
-    window.location.href = window._adminPanelUrl;
-  }
 }
 
 // ═══════════════════════════════════════════
