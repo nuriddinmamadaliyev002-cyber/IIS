@@ -42,10 +42,32 @@ let STEP           = 1;
 // ═══════════════════════════════════════════
 //  SAHIFA
 // ═══════════════════════════════════════════
+// InnovateIT brend rangi (CRM topbar bilan bir xil: --iit-cyan)
+const BRAND_CYAN = '#05BFF6';
+
 function showPage(id) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(id).classList.add('active');
+  applyTelegramChrome(id);
 }
+
+// Yuklanish / rol tanlash ekrani brend gradienti bilan ko'rinadi — Telegram'ning
+// o'z sarlavhasi (tepadagi oq panel) va orqa foni ham shunga moslanadi.
+// Boshqa sahifalarda Telegram mavzusining standart ranglariga qaytariladi.
+function applyTelegramChrome(pageId) {
+  if (!tg) return;
+  try {
+    if (pageId === 'loadingPage') {
+      tg.setHeaderColor(BRAND_CYAN);
+      tg.setBackgroundColor(BRAND_CYAN);
+    } else {
+      tg.setHeaderColor('bg_color');
+      tg.setBackgroundColor(tg.themeParams?.bg_color || '#ffffff');
+    }
+  } catch (_) { /* eski Telegram versiyalarida mavjud emas — e'tibor bermaymiz */ }
+}
+
+applyTelegramChrome('loadingPage');
 
 // ═══════════════════════════════════════════
 //  INIT — Sahifa ochilganda
@@ -149,21 +171,22 @@ function showRoleChooser(tgId, roles) {
   const loadPage = document.getElementById('loadingPage');
   loadPage.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 24px;text-align:center;">
-      <div style="font-size:18px;font-weight:700;">Qaysi sifatida kirasiz?</div>
-      <div style="font-size:13px;color:var(--hint);margin-bottom:8px;">
+      <div style="font-size:18px;font-weight:700;color:#fff;">Kim sifatida tizimga kirmoqchisiz?</div>
+      <div style="font-size:13px;color:rgba(255,255,255,.88);margin-bottom:8px;">
         Siz bir nechta rolga bog'langansiz — birini tanlang
       </div>
       ${roles.map(r => `
         <button onclick="chooseRole(${tgId}, '${r.rol}', ${r.entityId})" style="
           display:flex;align-items:center;gap:12px;width:100%;max-width:300px;
-          background:var(--card-bg,#fff);border:1px solid var(--border,#e5e7eb);
+          background:#fff;border:none;color:#0f172a;
+          box-shadow:0 4px 14px rgba(15,84,147,.18);
           border-radius:14px;padding:14px 18px;font-size:15px;font-weight:600;
           cursor:pointer;text-align:left;
         ">
           <span style="font-size:22px;">${iconFor(r)}</span>
           <span>
             <div>${r.roleLabel || (rolLabels[r.rol] || {}).label || r.rol}</div>
-            <div style="font-size:12px;font-weight:400;color:var(--hint);">${r.ism}</div>
+            <div style="font-size:12px;font-weight:400;color:#64748b;">${r.ism}</div>
           </span>
         </button>
       `).join('')}

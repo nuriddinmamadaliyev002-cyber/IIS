@@ -34,7 +34,15 @@
       align-items: center;
       justify-content: center;
       gap: 20px;
+      /* InnovateIT brend gradienti (CRM topbar bilan bir xil ranglar) */
+      background: linear-gradient(160deg, #05BFF6 0%, #05BFF6 18%, #5CB6F5 62%, #3E9BDC 100%);
+      color: #fff;
     }
+    #loadingPage .pulse-logo {
+      background: rgba(255,255,255,0.22);
+      box-shadow: 0 0 40px rgba(255,255,255,0.35);
+    }
+    #loadingPage .loading-label { color: rgba(255,255,255,0.9); }
     .pulse-logo {
       width: 88px; height: 88px;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
