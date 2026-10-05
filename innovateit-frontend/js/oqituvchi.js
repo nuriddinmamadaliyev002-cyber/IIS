@@ -703,7 +703,7 @@ async function loadGuruhlarim() {
           </div>
           <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
           <div class="guruh-card-links">
-            <button type="button" class="oq-back-btn" onclick="openGuruhDavomat(${j.id}, event)">📋 Davomat belgilash</button>
+            <button type="button" class="oq-back-btn" onclick="openGuruhDavomat(${j.id}, event)">📋 Davomatni belgilash</button>
             <button type="button" class="oq-back-btn" onclick="openGuruhBaho(${j.id}, event)">⭐ O'quvchilarni baholash</button>
             <button type="button" class="oq-back-btn" onclick="openMvGuruh(${j.id}, event)">📘 Mavzu / Uyga vazifa</button>
           </div>
