@@ -171,8 +171,8 @@ function showRoleChooser(tgId, roles) {
   const loadPage = document.getElementById('loadingPage');
   loadPage.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 24px;text-align:center;">
-      <div style="font-size:18px;font-weight:700;color:#fff;">Kim sifatida tizimga kirmoqchisiz?</div>
-      <div style="font-size:13px;color:rgba(255,255,255,.88);margin-bottom:8px;">
+      <div style="font-size:18px;font-weight:700;color:#06223D;">Kim sifatida tizimga kirmoqchisiz?</div>
+      <div style="font-size:13px;color:#06223D;margin-bottom:8px;">
         Siz bir nechta rolga bog'langansiz — birini tanlang
       </div>
       ${roles.map(r => `
@@ -540,19 +540,19 @@ function showAdminRedirect(url, opts) {
   const loadPage = document.getElementById('loadingPage');
   loadPage.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:24px;padding:40px 24px;text-align:center;">
-      <div style="width:88px;height:88px;background:linear-gradient(135deg,#6c63ff,#a78bfa);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:42px;">${cfg.icon}</div>
+      <div style="width:88px;height:88px;background:rgba(255,255,255,0.28);border:1px solid rgba(255,255,255,0.45);box-shadow:0 8px 24px rgba(15,84,147,0.22);border-radius:24px;display:flex;align-items:center;justify-content:center;font-size:42px;padding:14px;box-sizing:border-box;">${cfg.icon}</div>
       <div>
-        <div style="font-size:20px;font-weight:700;margin-bottom:8px;">${cfg.title}</div>
-        <div style="font-size:14px;color:var(--hint);line-height:1.5;">${cfg.desc}</div>
+        <div style="font-size:20px;font-weight:700;margin-bottom:8px;color:#06223D;">${cfg.title}</div>
+        <div style="font-size:14px;color:#06223D;line-height:1.5;">${cfg.desc}</div>
       </div>
       <button onclick="openAdminPanel()" style="
-        background:linear-gradient(135deg,#6c63ff,#a78bfa);
-        color:#fff;border:none;border-radius:16px;
-        padding:16px 32px;font-size:16px;font-weight:600;
+        background:#fff;
+        color:#0F5493;border:none;border-radius:16px;
+        padding:16px 32px;font-size:16px;font-weight:700;
         cursor:pointer;width:100%;max-width:280px;
-        box-shadow:0 4px 20px rgba(108,99,255,0.4);
+        box-shadow:0 6px 20px rgba(15,84,147,0.28);
       ">${cfg.btn}</button>
-      <div style="font-size:12px;color:var(--hint);">
+      <div style="font-size:12px;color:#06223D;opacity:.85;">
         Brauzerda avtomatik kirasiz
       </div>
     </div>`;
