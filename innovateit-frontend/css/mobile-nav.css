@@ -172,7 +172,7 @@
      tugma va ochiladigan panel bir xil tarafda, bir-biriga bog'liq
      holda ko'rinadi (ilgari ular qarama-qarshi tomonlarda bo'lib,
      bir-biridan uzilib qolgan edi). TO'LIQ BALANDLIKDA (ekranning
-     tepasidan tagigacha) ochiladi, kengligi ekran kengligining 50%i.
+     tepasidan tagigacha) ochiladi, kengligi ekran kengligining 80%i.
      Hamburger tugmasi yuqorida alohida z-index bilan har doim
      bosiladigan holda qoladi; drawer ichida esa o'zining ✕ yopish
      tugmasi (.mn-drawer-close) bor. */
@@ -182,7 +182,7 @@
     left: 0 !important;
     right: auto !important;
     bottom: 0 !important;
-    width: 50% !important;
+    width: 80% !important;
     flex: none !important;
     flex-direction: column !important;
     align-items: stretch !important;
