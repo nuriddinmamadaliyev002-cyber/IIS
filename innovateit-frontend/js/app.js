@@ -217,7 +217,6 @@ async function showApp() {
     g('admin-col').style.display    = '';
     g('admin-selector-wrap').style.display = 'flex';
     const amalCol = g('amal-col'); if(amalCol) amalCol.style.display = 'none';
-    g('btn-davomat').style.display   = 'none';
     g('mn-acc-teachers').style.display = 'none';  // Superadmin uchun tab ichida bor
     g('btn-nofaol').style.display    = '';
     g('add-student-form').style.display = 'none';
@@ -229,7 +228,6 @@ async function showApp() {
     // Oddiy admin - selector va tabs yashiriladi
     g('tabs-row').style.display = 'none';
     g('admin-selector-wrap').style.display = 'none';
-    g('btn-davomat').style.display  = '';
     g('mn-acc-teachers').style.display = '';
     g('btn-nofaol').style.display   = '';
     g('add-student-form').style.display = 'block';
@@ -275,13 +273,11 @@ async function onAdminSelect() {
 
   if (!val) {
     viewingAdmin = null;
-    g('btn-davomat').style.display   = 'none';
     g('add-student-form').style.display = 'none';
     g('btn-add-student-nav').style.display = 'none';
   } else {
     const found = ADMINS.find(a => String(a.id) === String(val));
     viewingAdmin = found ? { id: found.id, ism: found.ism, maktab_id: found.maktab_id, maktab_nomi: found.maktab_nomi } : null;
-    g('btn-davomat').style.display   = '';
     g('add-student-form').style.display = 'block';
     g('btn-add-student-nav').style.display = 'block';
   }
