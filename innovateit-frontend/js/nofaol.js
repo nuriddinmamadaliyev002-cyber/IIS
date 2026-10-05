@@ -57,6 +57,16 @@ function applyFilters() {
   );
   renderTbl(FILTERED);
   renderMob(FILTERED);
+  updateListCount(FILTERED.length, NS.length);
+}
+
+// Ro'yxat sarlavhasidagi son: filtrsiz — "Jami: 12", filtr bilan — "Topildi: 3 / 12"
+function updateListCount(shown, total) {
+  const el = g('list-count');
+  if (!el) return;
+  const filtered = shown !== total;
+  el.textContent = filtered ? 'Topildi: ' + shown + ' / ' + total : 'Jami: ' + total;
+  el.classList.toggle('filtered', filtered);
 }
 
 function renderTbl(d) {

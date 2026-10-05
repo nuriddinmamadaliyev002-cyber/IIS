@@ -386,6 +386,16 @@ select.field-input option:not([value=""]) {
   .table-header { flex-direction: row; align-items: center; justify-content: space-between; padding: 16px 24px; }
 }
 .table-title { font-size: 14px; font-weight: 600; }
+/* Ro'yxat sarlavhasidagi o'quvchilar soni (faol va nofaol sahifalar) */
+.list-count {
+  display: inline-block; vertical-align: 1px; margin-left: 6px;
+  padding: 2px 10px; border-radius: 20px;
+  font-size: 12px; font-weight: 600; letter-spacing: 0;
+  color: #1d4ed8; background: #eff4ff; border: 1px solid #c7d7fb;
+  white-space: nowrap;
+}
+.list-count:empty { display: none; }
+.list-count.filtered { color: #b45309; background: #fff7ed; border-color: #fed7aa; }
 .filters { display: flex; gap: 8px; flex-wrap: wrap; }
 
 .search-wrapper {
