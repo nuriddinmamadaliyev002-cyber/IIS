@@ -452,6 +452,9 @@ button, a, input, select, textarea, [role="button"] {
 /* ── Guruh kartasidagi linklar (Davomat / Baholash) ── */
 .guruh-card-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; }
 .guruh-card-links .oq-back-btn { padding: 0; font-size: 12px; }
+/* "Guruhlarim" ro'yxatida kartaning o'zi bosilmaydi, havolalar ustida ham kursor standart holatda qoladi */
+#guruhlar-list .guruh-card,
+#guruhlar-list .guruh-card-links .oq-back-btn { cursor: default; }
 
 /* ── O'quvchilarni baholash ── */
 button.dav-stat-pill { font-family: inherit; cursor: pointer; transition: all .15s; -webkit-tap-highlight-color: transparent; }
