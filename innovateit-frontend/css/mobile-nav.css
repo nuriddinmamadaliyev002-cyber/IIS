@@ -118,6 +118,7 @@
 .mn-mobile-item {
   display: none;
 }
+.mn-school-chip { display: none; }
 .mn-label-mobile  { display: none; }
 .mn-label-desktop { display: inline; }
 
@@ -534,14 +535,13 @@
     transition: background .15s, color .15s;
   }
   .topbar:has(#mn-acc-students) .mn-acc-caret { font-size: 11px; line-height: 1; transition: transform .2s ease; }
-  .topbar:has(#mn-acc-students) .mn-acc:hover > .mn-acc-toggle,
+  .topbar:has(#mn-acc-students) .mn-acc-toggle:hover,
   .topbar:has(#mn-acc-students) .mn-acc.mn-acc-open > .mn-acc-toggle,
   .topbar:has(#mn-acc-students) .mn-group > button:hover {
     background: rgba(255,255,255,.2);
     color: #fff;
     transform: none;
   }
-  .topbar:has(#mn-acc-students) .mn-acc:hover > .mn-acc-toggle .mn-acc-caret,
   .topbar:has(#mn-acc-students) .mn-acc.mn-acc-open > .mn-acc-toggle .mn-acc-caret { transform: rotate(180deg); }
 
   /* Joriy bo'lim — oq "tabletka" (dropdown ichidagi band active bo'lsa,
@@ -572,7 +572,8 @@
     position: absolute;
     left: 0; right: 0; top: -10px; height: 10px;
   }
-  .topbar:has(#mn-acc-students) .mn-acc:not(.mn-acc-suppress):hover > .mn-acc-body,
+  /* Submenu faqat BOSILGANDA ochiladi (hover bilan emas) — .mn-acc-open klassini
+     mobile-nav.js toggle bosilganda qo'yadi/olib tashlaydi */
   .topbar:has(#mn-acc-students) .mn-acc.mn-acc-open > .mn-acc-body { display: block; }
 
   .topbar:has(#mn-acc-students) .mn-acc-body > button {
@@ -644,6 +645,30 @@
     color: #fff;
   }
   .topbar:has(#mn-acc-students) .btn-logout { order: 9; margin-left: 8px; }
+
+  /* ── Maktab nomi (masalan "10-MAKTAB"): maktab admini uchun chap yuqori burchakdagi
+     brend o'rniga profil (avatar + ism) ning CHAP tomonida chiqadi, menyu
+     (O'quvchilar · O'qituvchilar · Dars jadvali) esa eng chapga suriladi.
+     Superadmin uchun (maktabi yo'q) brend avvalgidek qoladi.
+     .has-school-chip klassini mobile-nav.js qo'yadi. ── */
+  .topbar:has(#mn-acc-students).has-school-chip .topbar-brand { display: none; }
+  .topbar:has(#mn-acc-students).has-school-chip .topbar-right { margin-left: 0; }
+  .topbar:has(#mn-acc-students).has-school-chip .mn-school-chip {
+    display: inline-flex;
+    align-items: center;
+    order: 4;
+    flex-shrink: 0;
+    margin-right: 6px;
+    padding: 5px 12px;
+    border-radius: 20px;
+    background: rgba(255,255,255,.18);
+    color: #fff;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: .07em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
 
   /* "Faol o'quvchilar" va "Yangi o'quvchi qo'shish" — desktopda ham ALOHIDA
      ko'rinishlar (avval ikkalasi bir sahifada aralash turardi). Standart:

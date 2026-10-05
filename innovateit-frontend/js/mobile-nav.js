@@ -123,6 +123,26 @@
       new MutationObserver(updateAvatar).observe(badge, { childList: true, characterData: true, subtree: true });
     }
 
+    // Desktop: maktab nomi (masalan "10-maktab") admin ismining chap tomonida
+    // chiqadi. Nom brenddagi .tb-school'dan olinadi (index.html'da app.js, qolgan
+    // sahifalarda yuqoridagi kod yozadi) va u o'zgarsa — chip ham yangilanadi.
+    // Brend "InnovateIT School" bo'lsa (superadmin) chip ko'rsatilmaydi.
+    var tbSchoolEl = topbar.querySelector('.tb-school');
+    var schoolChip = document.createElement('span');
+    schoolChip.className = 'mn-school-chip';
+    right.insertBefore(schoolChip, drawerHead.nextSibling);
+    function syncSchoolChip() {
+      if (!tbSchoolEl) return;
+      var name = (tbSchoolEl.textContent || '').trim();
+      var show = !!name && name !== 'InnovateIT School';
+      schoolChip.textContent = show ? name : '';
+      topbar.classList.toggle('has-school-chip', show);
+    }
+    syncSchoolChip();
+    if (tbSchoolEl && window.MutationObserver) {
+      new MutationObserver(syncSchoolChip).observe(tbSchoolEl, { childList: true, characterData: true, subtree: true });
+    }
+
     var overlay = makeOverlay(topbar);
 
     function isMobile() {
@@ -171,7 +191,6 @@
       if (toggleBtn) {
         var acc = findAncestor(toggleBtn, 'mn-acc', right);
         if (acc) {
-          acc.classList.remove('mn-acc-suppress');
           var willOpen = !acc.classList.contains('mn-acc-open');
           acc.classList.toggle('mn-acc-open', willOpen);
           toggleBtn.setAttribute('aria-expanded', String(willOpen));
@@ -182,10 +201,7 @@
       var el = e.target;
       while (el && el !== right) {
         if (el.tagName === 'BUTTON' || el.tagName === 'A') {
-          // Desktop: band bosilgach dropdown yopiladi; sichqoncha hali ustida
-          // tursa ham qayta ochilmaydi (mouseleave'gacha "suppress").
-          var ownAcc = findAncestor(el, 'mn-acc', right);
-          if (ownAcc && !isMobile()) ownAcc.classList.add('mn-acc-suppress');
+          // Desktop: band bosilgach dropdown yopiladi (closeMenu → resetAccordions)
           closeMenu();
           break;
         }
@@ -193,23 +209,18 @@
       }
     });
 
-    // Desktop dropdown: sichqoncha chiqib ketsa yoki tashqari bosilsa yopiladi
+    // Desktop dropdown: faqat BOSISH bilan ochiladi (hover bilan emas).
+    // Sichqoncha chiqib ketganda yopilmaydi — tashqarida bosilsa, band tanlansa
+    // yoki Esc bosilsa yopiladi.
     var accList = right.querySelectorAll('.mn-acc');
-    for (var a = 0; a < accList.length; a++) {
-      (function (acc) {
-        acc.addEventListener('mouseleave', function () {
-          if (isMobile()) return;
-          acc.classList.remove('mn-acc-suppress');
-          acc.classList.remove('mn-acc-open');
-          var t = acc.querySelector('.mn-acc-toggle');
-          if (t) t.setAttribute('aria-expanded', 'false');
-        });
-      })(accList[a]);
-    }
     document.addEventListener('click', function (e) {
       if (isMobile()) return;
       if (findAncestor(e.target, 'mn-acc', null)) return;
-      for (var b = 0; b < accList.length; b++) accList[b].classList.remove('mn-acc-open');
+      for (var b = 0; b < accList.length; b++) {
+        accList[b].classList.remove('mn-acc-open');
+        var t = accList[b].querySelector('.mn-acc-toggle');
+        if (t) t.setAttribute('aria-expanded', 'false');
+      }
     });
 
     document.addEventListener('keydown', function (e) {
