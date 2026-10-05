@@ -28,15 +28,15 @@ window.addEventListener('DOMContentLoaded', async () => {
       U = JSON.parse(saved);
     } else {
       const token = localStorage.getItem('innovateit_token');
-      if (!token) { window.location.href = 'index.html'; return; }
+      if (!token) { iitGoLogin(); return; }
       try {
         const payload = JSON.parse(atob(token.split('.')[1]));
-        if (payload.exp * 1000 < Date.now()) { window.location.href = 'index.html'; return; }
+        if (payload.exp * 1000 < Date.now()) { iitGoLogin(); return; }
         U = { username: payload.username, parol: '', ism: payload.ism || payload.username, maktabId: payload.maktabId || null };
         sessionStorage.setItem('iit_jadval_user', JSON.stringify(U));
-      } catch { window.location.href = 'index.html'; return; }
+      } catch { iitGoLogin(); return; }
     }
-  } catch { window.location.href = 'index.html'; return; }
+  } catch { iitGoLogin(); return; }
 
   const badge = g('jad-badge');
   badge.textContent = U.ism;

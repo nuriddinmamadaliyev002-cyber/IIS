@@ -163,8 +163,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function doLogout() {
   U = null; TEACHER_ID = null;
-  api.logout();
-  localStorage.removeItem('iit_oq_u');
+  iitClearAllSessions();
+  iitMarkLoggedOut();
   clearSavedNavState();
 
   // Bu panel faqat Telegram orqali kiriladi — "index.html" (admin login)ga

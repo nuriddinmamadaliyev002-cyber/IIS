@@ -11,9 +11,9 @@ let FILTERED = [];
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     const saved = sessionStorage.getItem('iit_nofaol_user');
-    if (!saved) { window.location.href = 'index.html'; return; }
+    if (!saved) { iitGoLogin(); return; }
     U = JSON.parse(saved);
-  } catch (e) { window.location.href = 'index.html'; return; }
+  } catch (e) { iitGoLogin(); return; }
 
   const badge = g('nofaol-badge');
   if (U.isSuperProxy) {

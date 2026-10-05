@@ -83,6 +83,13 @@ window.addEventListener('DOMContentLoaded', async () => {
   // login ekranini ko'rsatamiz. Aks holda showApp() allaqachon uni
   // yashirgan. Ikkala holatda ham boot-overlay endi olib tashlanadi.
   if (!_sessionRestored) {
+    // Telegram orqali kirgan admin chiqqan bo'lsa — login formasi foydasiz,
+    // "chiqdingiz" ekrani ko'rsatiladi. Superadmin login formasiga
+    // ?login=1 (index.html?login=1) orqali kiradi.
+    if (iitIsTelegramSession() && !_params.has('login')) {
+      iitShowLoggedOut();
+      return;
+    }
     g('login-screen').style.display = 'flex';
   }
   hideBootOverlay();
@@ -163,24 +170,16 @@ function doLogout() {
   // ("innovateit_token") esa localStorage'da qolib ketaverardi — ya'ni
   // foydalanuvchi to'liq chiqib ketmagan bo'lardi. Endi tokenni ham
   // aniq tozalaymiz.
-  if (typeof api !== 'undefined' && api && typeof api.logout === 'function') {
-    api.logout();
-  }
+  if (typeof iitClearAllSessions === 'function') iitClearAllSessions();
+  else if (typeof api !== 'undefined' && api && typeof api.logout === 'function') api.logout();
+  if (wasTelegram && typeof iitMarkLoggedOut === 'function') iitMarkLoggedOut();
   document.body.classList.remove('super-admin');
 
   // Telegram orqali kirgan admin — botga yoki Mini App'ga qaytarilmaydi,
   // to'liq chiqib ketadi: brauzer oynasini yopishga harakat qilamiz;
   // (xavfsizlik sabab) yopilmasa — sodda "chiqdingiz" ekrani ko'rsatiladi.
   if (wasTelegram) {
-    window.close();
-    document.documentElement.innerHTML = `
-      <div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;
-                  justify-content:center;gap:14px;font-family:system-ui,sans-serif;
-                  background:#0f172a;color:#e5e7eb;text-align:center;padding:24px;box-sizing:border-box;">
-        <div style="font-size:44px;">✅</div>
-        <div style="font-size:18px;font-weight:600;">Siz tizimdan chiqdingiz</div>
-        <div style="font-size:14px;color:#9ca3af;max-width:280px;">Ushbu oynani yopishingiz mumkin.</div>
-      </div>`;
+    iitShowLoggedOut();
     return;
   }
 

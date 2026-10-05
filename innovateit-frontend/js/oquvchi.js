@@ -64,8 +64,8 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function doLogout() {
   U = null;
-  api.logout();
-  localStorage.removeItem('iit_ouq_u');
+  iitClearAllSessions();
+  iitMarkLoggedOut();
   clearSavedTab();
 
   // Bu panel faqat Telegram orqali kiriladi — admin login sahifasiga

@@ -104,35 +104,26 @@ function mnGoHome(navKey) {
    to'g'ridan-to'g'ri shu sahifaning o'zida "Siz tizimdan chiqdingiz"
    yakuniy ekrani ko'rsatiladi (oyna yopilishga harakat qilinadi). */
 function mnLogout(sessionKey) {
-  if (sessionKey) sessionStorage.removeItem(sessionKey);
-  localStorage.removeItem('iit_u');
-
-  // ✅ Asosiy JWT tokenni ham tozalash — aks holda haqiqiy "chiqish"
-  // bo'lmaydi (token hali ham amal qilib qolaveradi).
-  if (typeof api !== 'undefined' && api && typeof api.logout === 'function') {
-    api.logout();
-  } else {
-    localStorage.removeItem('innovateit_token');
-  }
-
   var u = (typeof U !== 'undefined' && U) ? U : {};
+  var isRealLogin = !!u.username;   // superadmin (login/parol)
 
-  // Haqiqiy login/parol bilan kirgan (superadmin) — index.html'dagi
-  // login formaga qaytarib, u yerda qayta kirishi mumkin.
-  if (u.username) {
-    window.location.href = 'index.html';
+  // ✅ TUZATILDI (bug: "Chiqish"dan keyin "Orqaga" bosilsa login formasi
+  // chiqib qolardi): avval faqat JORIY sahifaning session-kaliti tozalanardi,
+  // boshqa sahifalarniki (davomat, dars jadvali, ...) qolib ketardi. Endi
+  // BARCHA sessiya kalitlari va token tozalanadi.
+  if (typeof iitClearAllSessions === 'function') iitClearAllSessions();
+  else { if (sessionKey) sessionStorage.removeItem(sessionKey); localStorage.removeItem('iit_u'); localStorage.removeItem('innovateit_token'); }
+
+  // Haqiqiy login/parol bilan kirgan (superadmin) — login formaga qaytaramiz
+  // (replace: "Orqaga" tugmasi bilan himoyalangan sahifaga qaytib bo'lmasin).
+  if (isRealLogin) {
+    window.location.replace('index.html');
     return;
   }
 
-  // Maktab admini (Telegram orqali) yoki proxy sessiya — login formasi
-  // ularga foydasiz, shu sabab to'g'ridan-to'g'ri "chiqdingiz" ekrani.
+  // Maktab admini (Telegram orqali) — login formasi foydasiz: to'liq chiqish.
+  if (typeof iitMarkLoggedOut === 'function') iitMarkLoggedOut();
+  if (typeof iitShowLoggedOut === 'function') { iitShowLoggedOut(); return; }
   try { window.close(); } catch (e) {}
-  document.documentElement.innerHTML =
-    '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;' +
-    'justify-content:center;gap:14px;font-family:system-ui,sans-serif;' +
-    'background:#0f172a;color:#e5e7eb;text-align:center;padding:24px;box-sizing:border-box;">' +
-    '<div style="font-size:44px;">✅</div>' +
-    '<div style="font-size:18px;font-weight:600;">Siz tizimdan chiqdingiz</div>' +
-    '<div style="font-size:14px;color:#9ca3af;max-width:280px;">Ushbu oynani yopishingiz mumkin.</div>' +
-    '</div>';
+  document.documentElement.innerHTML = '<div style="padding:40px;text-align:center;font-family:system-ui;">Siz tizimdan chiqdingiz</div>';
 }

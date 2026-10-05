@@ -34,9 +34,9 @@ window.addEventListener('pageshow', () => {
 window.addEventListener('DOMContentLoaded', async () => {
   try {
     const saved = sessionStorage.getItem('iit_teacher_user');
-    if (!saved) { window.location.href = 'index.html'; return; }
+    if (!saved) { iitGoLogin(); return; }
     U = JSON.parse(saved);
-  } catch { window.location.href = 'index.html'; return; }
+  } catch { iitGoLogin(); return; }
 
   const badge = g('admin-badge');
   if (U.isSuper) {

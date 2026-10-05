@@ -67,9 +67,10 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function doLogout() {
   U = null; LEADS = [];
-  api.logout();
-  localStorage.removeItem('iit_sales_u');
-  window.location.href = 'index.html';
+  iitClearAllSessions();
+  // Sales xodimi faqat Telegram orqali kiradi — login formasi foydasiz
+  if (iitIsTelegramSession()) { iitMarkLoggedOut(); iitShowLoggedOut(); return; }
+  window.location.replace('index.html');
 }
 
 function showApp() {

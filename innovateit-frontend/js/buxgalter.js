@@ -119,8 +119,11 @@ window.addEventListener('DOMContentLoaded', () => {
 
 function doLogout() {
   U = null; ALL_DATA = []; FILTERED = []; COL_FILTERS = {};
+  if (typeof iitClearAllSessions === 'function') iitClearAllSessions();
   localStorage.removeItem('iit_bux_u');
-  window.location.href = 'index.html';
+  // Buxgalter faqat Telegram orqali kiradi — login formasi foydasiz
+  if (iitIsTelegramSession()) { iitMarkLoggedOut(); iitShowLoggedOut(); return; }
+  window.location.replace('index.html');
 }
 
 function showApp() {

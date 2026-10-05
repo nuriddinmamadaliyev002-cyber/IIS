@@ -24,7 +24,18 @@ const TOKEN_KEY = window.API_TOKEN_KEY_OVERRIDE || 'innovateit_token';
 
 const tokenStore = {
   get()          { return localStorage.getItem(TOKEN_KEY); },
-  set(t)         { localStorage.setItem(TOKEN_KEY, t); },
+  set(t)         {
+    localStorage.setItem(TOKEN_KEY, t);
+    // Yangi token = yangi kirish: oldingi "chiqdingiz" belgisi bekor bo'ladi.
+    // Telegram orqali kirgan (superadmin bo'lmagan) foydalanuvchini eslab qolamiz —
+    // chiqqandan keyin ularni login formasiga emas, "chiqdingiz" ekraniga yo'naltiramiz.
+    try {
+      localStorage.removeItem('iit_tg_loggedout');
+      const p = JSON.parse(atob(t.split('.')[1]));
+      if (p.isSuper)                localStorage.removeItem('iit_tg_session');
+      else if (p.role !== 'viewer') localStorage.setItem('iit_tg_session', '1');
+    } catch (_) {}
+  },
   clear()        { localStorage.removeItem(TOKEN_KEY); },
   isExpired(t) {
     try {
@@ -95,6 +106,12 @@ function handleUnauthorized() {
   ['iit_nofaol_user', 'iit_teacher_user', 'iit_davomat_user',
    'iit_jadval_user', 'iit_pending_nav'
   ].forEach(k => sessionStorage.removeItem(k));
+  // Telegram orqali kirgan foydalanuvchi uchun login formasi foydasiz —
+  // "Seans tugadi" ekrani ko'rsatiladi (qayta kirish: Telegram bot orqali).
+  if (iitIsTelegramSession() && !window.location.pathname.includes('portfolio')) {
+    iitShowLoggedOut();
+    return;
+  }
   // file:// va http:// ikkalasida ham to'g'ri ishlashi uchun
   const page = window.location.pathname;
   const isFile = window.location.protocol === 'file:';
@@ -403,3 +420,75 @@ const api = {
     return r.json();
   },
 };
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  Chiqish / sessiya himoyasi (Telegram orqali kirgan foydalanuvchilar)
+//  ─────────────────────────────────────────────────────────────────────────
+//  Maktab admini, o'qituvchi, buxgalter, sales va o'quvchi login/parol bilan
+//  EMAS, Telegram bot orqali kiradi. Ular chiqqanda (yoki seansi tugaganda)
+//  index.html'dagi login formasi ularga foydasiz. Shu sabab:
+//    • "Chiqish" bosilganda barcha sessiya kalitlari tozalanadi;
+//    • himoyalangan sahifaga (masalan "Orqaga" tugmasi bilan) qaytilsa,
+//      login formasi emas, "Siz tizimdan chiqdingiz" ekrani ko'rsatiladi.
+//  Superadmin (login/parol) esa avvalgidek index.html'ga qaytariladi.
+// ═══════════════════════════════════════════════════════════════════════════
+function iitIsTelegramSession() {
+  return localStorage.getItem('iit_tg_session') === '1';
+}
+
+// Chiqish paytida bir marta chaqiriladi — sabab: foydalanuvchi o'zi chiqdi
+function iitMarkLoggedOut() {
+  localStorage.setItem('iit_tg_loggedout', '1');
+}
+
+// Barcha panel sessiya kalitlarini (token bilan birga) tozalaydi
+function iitClearAllSessions() {
+  tokenStore.clear();
+  ['iit_u', 'iit_bux_u', 'iit_sales_u', 'iit_oq_u', 'iit_ouq_u'
+  ].forEach(k => localStorage.removeItem(k));
+  ['iit_nofaol_user', 'iit_teacher_user', 'iit_davomat_user',
+   'iit_jadval_user', 'iit_pending_nav'
+  ].forEach(k => sessionStorage.removeItem(k));
+}
+
+function iitShowLoggedOut() {
+  const manual = localStorage.getItem('iit_tg_loggedout') === '1';
+  const title  = manual ? 'Siz tizimdan chiqdingiz' : 'Seans muddati tugadi';
+  const hint   = manual
+    ? 'Ushbu oynani yopishingiz mumkin.'
+    : 'Qayta kirish uchun Telegram botdan foydalaning.';
+  try { window.close(); } catch (_) {}
+  document.documentElement.innerHTML =
+    '<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+    '<title>InnovateIT School</title></head>' +
+    '<body style="margin:0;">' +
+    '<div style="min-height:100vh;display:flex;flex-direction:column;align-items:center;' +
+    'justify-content:center;gap:14px;font-family:system-ui,sans-serif;' +
+    'background:#0f172a;color:#e5e7eb;text-align:center;padding:24px;box-sizing:border-box;">' +
+    '<div style="font-size:44px;">' + (manual ? '✅' : '⏱️') + '</div>' +
+    '<div style="font-size:18px;font-weight:600;">' + title + '</div>' +
+    '<div style="font-size:14px;color:#9ca3af;max-width:280px;">' + hint + '</div>' +
+    '</div></body>';
+}
+
+// Sessiya yo'q bo'lganda: Telegram foydalanuvchi → "chiqdingiz" ekrani,
+// superadmin → login formasi (history'ga yangi yozuv qo'shmasdan)
+function iitGoLogin() {
+  if (iitIsTelegramSession()) { iitShowLoggedOut(); return; }
+  window.location.replace('index.html');
+}
+
+// Himoyalangan sahifalar yuklanganda chaqiriladi
+function iitRequireSession() {
+  if (api.isLoggedIn()) return true;
+  iitGoLogin();
+  return false;
+}
+
+// "Orqaga" tugmasi bilan brauzer keshidan (bfcache) tiklangan sahifa —
+// sessiya tugagan bo'lsa, eski ma'lumotlarni ko'rsatmaymiz
+window.addEventListener('pageshow', function (e) {
+  if (!e.persisted) return;
+  if (window.location.pathname.includes('portfolio')) return;
+  if (!api.isLoggedIn() && iitIsTelegramSession()) iitShowLoggedOut();
+});
