@@ -151,6 +151,10 @@ function showRoleChooser(tgId, roles) {
   const loadPage = document.getElementById('loadingPage');
   loadPage.innerHTML = `
     <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 24px;text-align:center;">
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-bottom:14px;">
+        <img src="img/logo-mark.png" alt="InnovateIT School logotipi" style="width:64px;height:64px;object-fit:contain;flex-shrink:0;">
+        <div style="text-align:left;font-size:24px;font-weight:800;line-height:1.05;color:#fff;letter-spacing:-.3px;text-shadow:0 1px 6px rgba(6,34,61,.18);">Innovate<br>IT School</div>
+      </div>
       <div style="font-size:18px;font-weight:700;color:#06223D;">Kim sifatida tizimga kirmoqchisiz?</div>
       <div style="font-size:13px;color:#06223D;margin-bottom:8px;">
         Siz bir nechta rolga bog'langansiz — birini tanlang
