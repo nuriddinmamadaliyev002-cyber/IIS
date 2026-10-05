@@ -46,6 +46,7 @@ window.addEventListener('DOMContentLoaded', () => {
     };
     localStorage.setItem('iit_ouq_u', JSON.stringify(U));
     window.history.replaceState({}, '', window.location.pathname);
+    clearSavedTab(); // botdan yangi kirish — oxirgi ko'rilgan tab emas, boshidan boshlanadi
     showApp();
     return;
   }
@@ -65,6 +66,7 @@ function doLogout() {
   U = null;
   api.logout();
   localStorage.removeItem('iit_ouq_u');
+  clearSavedTab();
 
   // Bu panel faqat Telegram orqali kiriladi — admin login sahifasiga
   // qaytarish noto'g'ri. Shu sababli saytdan butunlay chiqib ketamiz:
@@ -95,15 +97,36 @@ function showApp() {
 
   loadDavomatim();
   ouqJadvalPromise = loadJadvalim();
+  restoreSavedTab(); // sahifa yangilanganda (refresh) oxirgi ochiq bo'lgan bo'limga qaytamiz
 }
 
 let ouqJadvalPromise = null; // dars kunlari "Mavzu va uyga vazifalar" ochilishidan oldin tayyor bo'lishi uchun
+
+// Oxirgi ochiq bo'lim brauzer tabi (sessionStorage) doirasida eslab qolinadi: sahifa
+// yangilansa shu bo'limda qolamiz, tab yopilsa yoki chiqilsa — boshidan (Dars jadvali).
+const OUQ_TABS    = ['jadval', 'davomat', 'vazifalar', 'baholar'];
+const OUQ_TAB_KEY = 'iit_ouq_tab';
+
+function saveTab(tab) {
+  try { sessionStorage.setItem(OUQ_TAB_KEY, tab); } catch (_) { /* private rejim va h.k. — jim o'tamiz */ }
+}
+function clearSavedTab() {
+  try { sessionStorage.removeItem(OUQ_TAB_KEY); } catch (_) {}
+}
+function restoreSavedTab() {
+  let tab = null;
+  try { tab = sessionStorage.getItem(OUQ_TAB_KEY); } catch (_) {}
+  if (!tab || tab === 'jadval' || !OUQ_TABS.includes(tab)) return;
+  if (!g('tab-' + tab) || !g('tab-btn-' + tab)) return;
+  switchTab(tab);
+}
 
 function switchTab(tab) {
   document.querySelectorAll('.oq-tab-page').forEach(el => el.classList.remove('active'));
   document.querySelectorAll('.oq-tab-btn').forEach(el => el.classList.remove('active'));
   g('tab-' + tab).classList.add('active');
   g('tab-btn-' + tab).classList.add('active');
+  saveTab(tab);
   // Mobil hamburger menyudagi mos band ham "faol" bo'lib ko'rinsin
   document.querySelectorAll('.mn-tab-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'vazifalar') openVazifalarTab();
