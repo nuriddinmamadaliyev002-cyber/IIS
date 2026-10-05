@@ -385,7 +385,6 @@ button, a, input, select, textarea, [role="button"] {
 .guruh-card:hover { box-shadow: var(--shadow); border-color: var(--iit-indigo); }
 .guruh-card-top { display: flex; align-items: center; justify-content: space-between; }
 .guruh-card-sinf { font-size: 14px; font-weight: 700; color: var(--text); }
-.guruh-card-edit { font-size: 15px; opacity: .6; }
 .guruh-card-detail { font-size: 12px; color: var(--muted); margin-top: 4px; }
 
 /* ── Guruh davomati: sana navigatsiyasi (admin paneldagi davomat.css uslubi) ── */

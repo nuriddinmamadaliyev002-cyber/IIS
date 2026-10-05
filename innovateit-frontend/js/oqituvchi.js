@@ -817,7 +817,6 @@ async function loadGuruhTahrir() {
         <div class="guruh-card" onclick="editGuruh(${j.id})">
           <div class="guruh-card-top">
             <div class="guruh-card-sinf">📚 ${esc(sinflarText || '—')}</div>
-            <div class="guruh-card-edit">✏️</div>
           </div>
           <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
         </div>`;
@@ -863,8 +862,31 @@ async function editGuruh(id) {
   });
   if (sinflar.length) {
     activeGuruhSinf = sinflar[sinflar.length - 1];
+    // Ekranda faqat oxirgi sinf ochiladi, lekin guruhdagi BOSHQA sinflarning
+    // (masalan 6-sinf) biriktirilgan o'quvchilari ham "Tanlangan o'quvchilar"
+    // ro'yxatida ko'rinishi uchun ularni oldindan yuklab qo'yamiz.
+    await Promise.all(
+      sinflar.filter(s => s !== activeGuruhSinf).map(s => preloadGuruhSinf(s))
+    );
     await loadGuruhOquvchilar(activeGuruhSinf);
   }
+}
+
+// Tahrirlash rejimi: sinfni ekranda ochmasdan, uning biriktirilgan o'quvchilarini
+// va ismlarini xotiraga yuklaydi (checkbox ro'yxatini chizmaydi).
+async function preloadGuruhSinf(sinf) {
+  if (!TANLANGAN_MID || !TEACHER_ID) return;
+  try {
+    const data = await api.get('/api/teachers/sinf-oquvchilar', {
+      sinf, maktabId: TANLANGAN_MID, teacherId: TEACHER_ID,
+    });
+    if (!data || !data.ok || !data.oquvchilar.length) return;
+    guruhOquvchilarNames.set(sinf, new Map(data.oquvchilar.map(o => [o.id, `${o.familiya} ${o.ism}`])));
+    guruhMavjudIds.set(sinf, new Set(data.oquvchilar.filter(o => o.biriktirilgan).map(o => o.id)));
+    if (!guruhOquvchilarMap.has(sinf)) {
+      guruhOquvchilarMap.set(sinf, new Set(data.oquvchilar.filter(o => o.biriktirilgan).map(o => o.id)));
+    }
+  } catch (e) { /* jim: bu sinf xotiraga yuklanmasa, saqlashda unga tegilmaydi */ }
 }
 
 // Tahrirlash formasidan "Guruhlarni tahrirlash" ro'yxatiga qaytish (saqlamasdan)
