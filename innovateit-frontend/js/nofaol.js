@@ -69,7 +69,7 @@ function renderTbl(d) {
   tb.innerHTML = d.map((s, i) => `<tr>
     <td class="mono">${i + 1}</td>
     <td><strong>${s.familiya}</strong> ${s.ism}</td>
-    <td><span class="maktab-badge">${s.maktabId || '—'}</span></td>
+    <td><span class="maktab-badge">${maktabKo(s)}</span></td>
     <td><span class="sinf-badge">${s.sinf || '—'}</span></td>
     <td class="mono">${s.telefon || '—'}</td>
     <td class="mono">${fTug(s.tug)}</td>
@@ -105,7 +105,7 @@ function renderMob(d) {
           <div class="sc-name">${s.familiya} ${s.ism}</div>
           <div class="sc-num">#${i + 1}</div>
           <div class="sc-tags">
-            <span class="maktab-badge">${s.maktabId || '—'}-maktab</span>
+            <span class="maktab-badge">${maktabKo(s)}</span>
             <span class="sinf-badge">${s.sinf || '—'}</span>
           </div>
         </div>
@@ -127,11 +127,21 @@ function renderMob(d) {
     </div>`).join('');
 }
 
+// Faol ro'yxat bilan bir xil: superadmin maktab nomini, maktab admini esa
+// avval maktabInfo ni, bo'lmasa maktab nomini ko'radi (ID raqami emas!).
+function maktabKo(s) {
+  return (U && U.isSuper)
+    ? (s.maktab || '—')
+    : (s.maktabInfo || s.maktab || '—');
+}
+
 function updMaktabF() {
   const sel  = g('f-maktab-f'), cur = sel.value;
-  const list = [...new Set(NS.map(s => s.maktabId).filter(Boolean))].sort((a, b) => Number(a) - Number(b));
+  const map  = new Map();
+  NS.forEach(s => { if (s.maktabId) map.set(String(s.maktabId), s.maktab || String(s.maktabId)); });
+  const list = [...map.entries()].sort((a, b) => a[1].localeCompare(b[1], 'uz', { numeric: true }));
   sel.innerHTML = '<option value="">Barcha maktab</option>' +
-    list.map(m => `<option${String(m) === String(cur) ? ' selected' : ''}>${m}</option>`).join('');
+    list.map(([id, nomi]) => `<option value="${id}"${id === String(cur) ? ' selected' : ''}>${nomi}</option>`).join('');
 }
 
 // ─── ♻️ FAOLLASHTIRISH ───

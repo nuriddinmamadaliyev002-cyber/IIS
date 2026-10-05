@@ -279,11 +279,11 @@ router.post('/inactive', async (req, res) => {
     await client.query(
       `INSERT INTO nofaol_oquvchilar
          (ism, familiya, sinf, telefon, telefon2, tug, manzil,
-          qoshilgan, boshlagan, chiqgan, izoh, maktab_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12)`,
+          qoshilgan, boshlagan, chiqgan, izoh, maktab_id, maktab_info)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
       [s.ism, s.familiya, s.sinf, s.telefon, s.telefon2,
        s.tug, s.manzil, s.qoshilgan, s.boshlagan,
-       p.chiqgan || todayUZ(), izoh, s.maktab_id]
+       p.chiqgan || todayUZ(), izoh, s.maktab_id, s.maktab_info || '']
     );
     await client.query('DELETE FROM oquvchilar WHERE id=$1', [s.id]);
     await client.query('COMMIT');
@@ -303,8 +303,15 @@ router.get('/inactive', async (req, res) => {
 
   try {
     const query  = isSuper
-      ? 'SELECT * FROM nofaol_oquvchilar ORDER BY id'
-      : 'SELECT * FROM nofaol_oquvchilar WHERE maktab_id=$1 ORDER BY id';
+      ? `SELECT n.*, m.nomi AS maktab_nomi
+         FROM nofaol_oquvchilar n
+         LEFT JOIN maktablar m ON m.id = n.maktab_id
+         ORDER BY n.id`
+      : `SELECT n.*, m.nomi AS maktab_nomi
+         FROM nofaol_oquvchilar n
+         LEFT JOIN maktablar m ON m.id = n.maktab_id
+         WHERE n.maktab_id=$1
+         ORDER BY n.id`;
     const params = isSuper ? [] : [maktabId];
 
     const result = await pool.query(query, params);
@@ -315,6 +322,8 @@ router.get('/inactive', async (req, res) => {
         ism:       r.ism,
         familiya:  r.familiya,
         maktabId:  r.maktab_id,
+        maktab:    r.maktab_nomi || String(r.maktab_id || ''),
+        maktabInfo: r.maktab_info || '',
         sinf:      r.sinf,
         telefon:   r.telefon,
         telefon2:  r.telefon2,
@@ -359,10 +368,10 @@ router.post('/activate', async (req, res) => {
     await client.query(
       `INSERT INTO oquvchilar
          (ism, familiya, sinf, telefon, telefon2, tug, manzil,
-          qoshilgan, boshlagan, maktab_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)`,
+          qoshilgan, boshlagan, maktab_id, maktab_info)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
       [s.ism, s.familiya, s.sinf, s.telefon, s.telefon2,
-       s.tug, s.manzil, s.qoshilgan, s.boshlagan, s.maktab_id]
+       s.tug, s.manzil, s.qoshilgan, s.boshlagan, s.maktab_id, s.maktab_info || '']
     );
     await client.query('DELETE FROM nofaol_oquvchilar WHERE id=$1', [s.id]);
 

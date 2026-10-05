@@ -765,6 +765,11 @@ ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS mavzu_fayl TEXT DEFAULT '';
 ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS mavzu_fayl_nomi  TEXT DEFAULT '';
 ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS vazifa_fayl_nomi TEXT DEFAULT '';
 
+-- ─── Nofaol o'quvchida maktab_info saqlanishi (migrations/024) ──────────────
+--  Faol ro'yxatda maktab nomi o'rnida ko'rsatiladigan matn nofaolga o'tganda
+--  yo'qolmasligi uchun.
+ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT '';
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
 --  Barcha 29 ta jadval yaratildi
