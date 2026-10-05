@@ -70,6 +70,7 @@
            yuqoridagi .oq-tabnav ishlatiladi. Ikkalasi ham switchTab() ni chaqiradi. -->
       <button type="button" class="mn-mobile-item mn-tab-item active" data-tab="guruhlar" onclick="switchTab('guruhlar')">👥 Guruhlarim</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="tahrir" onclick="switchTab('tahrir')">✏️ Guruhlarni tahrirlash</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="mavzu" onclick="switchTab('mavzu')">📘 Mavzu / Vazifa berish</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
@@ -81,6 +82,7 @@
   <div class="oq-tabnav">
     <button class="oq-tab-btn active" id="tab-btn-guruhlar" onclick="switchTab('guruhlar')">👥 Guruhlarim</button>
     <button class="oq-tab-btn" id="tab-btn-guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
+    <button class="oq-tab-btn" id="tab-btn-tahrir" onclick="switchTab('tahrir')">✏️ Guruhlarni tahrirlash</button>
     <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
     <button class="oq-tab-btn" id="tab-btn-mavzu" onclick="switchTab('mavzu')">📘 Mavzu / Vazifa berish</button>
     <button class="oq-tab-btn" id="tab-btn-soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
@@ -156,6 +158,15 @@
     </div>
 
 
+    <!-- ══ GURUHLARNI TAHRIRLASH TAB ══ -->
+    <!-- Ro'yxatdan guruh tanlansa, tahrirlash formasi "tab-guruh" sahifasida (editGuruh) ochiladi -->
+    <div class="oq-tab-page" id="tab-tahrir">
+      <div class="oq-section-title">✏️ Qaysi guruhni tahrirlaysiz?</div>
+      <div id="tahrir-list">
+        <div class="oq-loading"><div class="loading-spinner"></div></div>
+      </div>
+    </div>
+
     <!-- ══ JADVAL TAB ══ -->
     <div class="oq-tab-page" id="tab-jadval">
       <div id="jadval-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
@@ -164,7 +175,7 @@
     <!-- ══ GURUH YARATISH TAB ══ -->
     <div class="oq-tab-page" id="tab-guruh">
       <!-- Faqat tahrirlash rejimida ko'rinadi (editGuruh) — guruhlar ro'yxatiga qaytaradi -->
-      <button type="button" class="oq-back-btn" id="guruh-back-btn" style="display:none;" onclick="backToGuruhlar()">← Guruhlarga qaytish</button>
+      <button type="button" class="oq-back-btn" id="guruh-back-btn" style="display:none;" onclick="backToGuruhTahrir()">← Guruhlarga qaytish</button>
       <div class="oq-section-title" id="guruh-form-title">➕ Sinf o'quvchilaridan o'zingiz uchun guruh yarating</div>
       <div id="guruh-maktab-warn" class="oq-empty" style="display:none;">⚠️ Avval maktab tanlang</div>
 
@@ -416,7 +427,7 @@
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_teacher_token';</script>
 <script src="js/api.js"></script>
-<script src="js/oqituvchi.js?v=20261005"></script>
+<script src="js/oqituvchi.js?v=20261006"></script>
 <script src="js/mobile-nav.js"></script>
 <script>
 // ⚠️ MUHIM: bu yerga haqiqiy bot username'ini kiriting

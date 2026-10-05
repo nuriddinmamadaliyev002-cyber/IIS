@@ -25,7 +25,7 @@ function esc(s) {
 // Faol tab URL hash (#jadval) va sessionStorage'da saqlanadi. Refresh
 // qilinganda showApp() shu yerdan o'qib, foydalanuvchini o'sha tabga qaytaradi.
 // Tanlangan maktab ham shu tarzda saqlanadi.
-const OQ_TABS       = ['guruhlar', 'guruh', 'jadval', 'mavzu', 'soat'];
+const OQ_TABS       = ['guruhlar', 'guruh', 'tahrir', 'jadval', 'mavzu', 'soat'];
 const OQ_TAB_KEY    = 'iit_oq_tab';
 const OQ_MAKTAB_KEY = 'iit_oq_maktab';
 
@@ -306,6 +306,7 @@ function onMaktabChange() {
   try { sessionStorage.setItem(OQ_MAKTAB_KEY, String(TANLANGAN_MID)); } catch (e) {}
   closeGuruhDavomat();
   loadGuruhlarim();
+  if (g('tab-tahrir').classList.contains('active')) loadGuruhTahrir();
   loadJadval();
   clearGuruhForm();
   if (g('tab-guruh').classList.contains('active')) initGuruhTab();
@@ -325,6 +326,7 @@ function switchTab(tab) {
   g('tab-' + tab).classList.add('active');
 
   if (tab === 'guruhlar') loadGuruhlarim();
+  if (tab === 'tahrir')   loadGuruhTahrir();
   if (tab === 'jadval')   loadJadval();
   if (tab === 'soat')   { loadSoatStatistika(); initSoatMark(); }
   if (tab === 'guruh')    initGuruhTab();
@@ -621,6 +623,7 @@ async function actuallySaveGuruh({ effectiveSinflar, kunlar, boshlanish, tugash 
   const btn = g('guruh-save-btn');
   btn.disabled = true;
   g('guruh-btn-txt').textContent = 'Saqlanmoqda…';
+  const wasEditing = !!editingGuruhId;
 
   try {
     const r = await api.post('/api/jadval/mening-jadvalim', {
@@ -646,7 +649,7 @@ async function actuallySaveGuruh({ effectiveSinflar, kunlar, boshlanish, tugash 
     msgEl.textContent = '✅ Guruh muvaffaqiyatli saqlandi!';
     setTimeout(() => {
       clearGuruhForm();
-      switchTab('guruhlar');
+      switchTab(wasEditing ? 'tahrir' : 'guruhlar');
     }, 900);
   } catch (e) {
     msgEl.style.color = '#ef4444';
@@ -695,9 +698,8 @@ async function loadGuruhlarim() {
 
       return `
         <div class="guruh-card">
-          <div class="guruh-card-top" onclick="editGuruh(${j.id})">
+          <div class="guruh-card-top">
             <div class="guruh-card-sinf">📚 ${esc(sinflarText || '—')}</div>
-            <div class="guruh-card-edit">✏️</div>
           </div>
           <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
           <div class="guruh-card-links">
@@ -711,17 +713,70 @@ async function loadGuruhlarim() {
   }
 }
 
+// ─── "Guruhlarni tahrirlash" bo'limi: guruhlar ro'yxati (qalamcha bilan) ───
+async function loadGuruhTahrir() {
+  clearGuruhForm(); // tahrirlash formasi ochiq qolgan bo'lsa, tozalaymiz
+  const wrap = g('tahrir-list');
+  wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+
+  if (!TANLANGAN_MID) {
+    wrap.innerHTML = '<div class="oq-empty">⚠️ Avval maktabni tanlang</div>';
+    return;
+  }
+
+  try {
+    const data = await api.get('/api/jadval/mening-jadvalim-oqituvchi', { maktabId: TANLANGAN_MID });
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+
+    LAST_GURUHLAR = data.jadvallar || [];
+    if (!LAST_GURUHLAR.length) {
+      wrap.innerHTML = '<div class="oq-empty">📭 Hali guruh yaratmagansiz.<br>"➕ Guruh yaratish" bo\'limidan boshlang.</div>';
+      return;
+    }
+
+    wrap.innerHTML = LAST_GURUHLAR.map(j => {
+      const sinflar = sortSinflar((j.sinflar || '').split(',').filter(Boolean));
+      const sinflarText = sinflar.map(s => s.replace(/-sinf$/i, '')).join(', ') +
+        (sinflar.length ? ('-sinf' + (sinflar.length > 1 ? 'lar' : '')) : '');
+      const kunlar = (j.kunlar || '').split(',').map(k => KUN_QISQA[k.trim()] || k.trim()).filter(Boolean).join(', ');
+
+      return `
+        <div class="guruh-card" onclick="editGuruh(${j.id})">
+          <div class="guruh-card-top">
+            <div class="guruh-card-sinf">📚 ${esc(sinflarText || '—')}</div>
+            <div class="guruh-card-edit">✏️</div>
+          </div>
+          <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
+        </div>`;
+    }).join('');
+  } catch (e) {
+    wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
+  }
+}
+
+// Tahrirlash formasi "tab-guruh" sahifasida ochiladi, lekin menyuda
+// "Guruhlarni tahrirlash" bandi faol ko'rinadi (refresh'da ham shu bo'limga qaytiladi)
+function markTabActive(tab) {
+  document.querySelectorAll('.oq-tab-btn').forEach(b => b.classList.toggle('active', b.id === 'tab-btn-' + tab));
+  document.querySelectorAll('.mn-tab-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
+  saveActiveTab(tab);
+}
+
 async function editGuruh(id) {
   const j = LAST_GURUHLAR.find(x => x.id === id);
   if (!j) return;
 
   switchTab('guruh');
   clearGuruhForm();
+  markTabActive('tahrir');
   editingGuruhId = id;
   g('guruh-form-title').textContent = "✏️ Guruhni tahrirlash";
   g('guruh-delete-wrap').style.display = 'block';
   g('guruh-back-btn').style.display = 'block';
-  navPush('guruhEdit', backToGuruhlar, 'guruh');
+  navPush('guruhEdit', backToGuruhTahrir, 'guruh');
 
   const [bs, bm] = (j.boshlanish || '08:00').split(':');
   const [ts, tm] = (j.tugash || '14:00').split(':');
@@ -742,10 +797,10 @@ async function editGuruh(id) {
   }
 }
 
-// Tahrirlash sahifasidan "Guruhlarim" ro'yxatiga qaytish (saqlamasdan)
-function backToGuruhlar() {
+// Tahrirlash formasidan "Guruhlarni tahrirlash" ro'yxatiga qaytish (saqlamasdan)
+function backToGuruhTahrir() {
   clearGuruhForm();
-  switchTab('guruhlar');
+  switchTab('tahrir');
 }
 
 async function deleteGuruh() {
@@ -773,7 +828,7 @@ async function deleteGuruh() {
     }
 
     clearGuruhForm();
-    switchTab('guruhlar');
+    switchTab('tahrir');
   } catch (e) {
     g('guruh-msg').style.color = '#ef4444';
     g('guruh-msg').textContent = "❌ Server bilan ulanib bo'lmadi";
