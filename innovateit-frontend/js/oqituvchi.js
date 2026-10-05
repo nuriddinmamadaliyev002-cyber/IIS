@@ -21,6 +21,33 @@ function esc(s) {
   }[c]));
 }
 
+// ─── Sahifani yangilaganda (refresh) joriy bo'limni eslab qolish ──────────
+// Faol tab URL hash (#jadval) va sessionStorage'da saqlanadi. Refresh
+// qilinganda showApp() shu yerdan o'qib, foydalanuvchini o'sha tabga qaytaradi.
+// Tanlangan maktab ham shu tarzda saqlanadi.
+const OQ_TABS       = ['guruhlar', 'guruh', 'jadval', 'mavzu', 'soat'];
+const OQ_TAB_KEY    = 'iit_oq_tab';
+const OQ_MAKTAB_KEY = 'iit_oq_maktab';
+
+function saveActiveTab(tab) {
+  try { sessionStorage.setItem(OQ_TAB_KEY, tab); } catch (e) {}
+  try { history.replaceState(history.state, '', '#' + tab); } catch (e) {}
+}
+
+function getSavedTab() {
+  const fromHash = (location.hash || '').replace('#', '');
+  if (OQ_TABS.includes(fromHash)) return fromHash;
+  try {
+    const fromSession = sessionStorage.getItem(OQ_TAB_KEY);
+    if (OQ_TABS.includes(fromSession)) return fromSession;
+  } catch (e) {}
+  return 'guruhlar';
+}
+
+function clearSavedNavState() {
+  try { sessionStorage.removeItem(OQ_TAB_KEY); sessionStorage.removeItem(OQ_MAKTAB_KEY); } catch (e) {}
+}
+
 // "6-sinf", "11-sinf" kabi qiymatlarni sonlar bo'yicha o'sish tartibida saralaydi
 function sortSinflar(arr) {
   return [...arr].sort((a, b) => parseInt(a, 10) - parseInt(b, 10));
@@ -117,6 +144,7 @@ window.addEventListener('DOMContentLoaded', () => {
       avatar:      payload?.avatar || null,
     };
     localStorage.setItem('iit_oq_u', JSON.stringify(U));
+    clearSavedNavState(); // Telegram'dan yangi kirish — standart (Guruhlarim) tabdan boshlanadi
     window.history.replaceState({}, '', window.location.pathname);
     showApp();
     return;
@@ -137,6 +165,7 @@ function doLogout() {
   U = null; TEACHER_ID = null;
   api.logout();
   localStorage.removeItem('iit_oq_u');
+  clearSavedNavState();
 
   // Bu panel faqat Telegram orqali kiriladi — "index.html" (admin login)ga
   // qaytarish noto'g'ri. Shu sababli saytdan butunlay chiqib ketamiz:
@@ -173,13 +202,18 @@ function showApp() {
   if (MAKTABLAR_RO.length > 1) {
     sel.innerHTML = MAKTABLAR_RO.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('');
     TANLANGAN_MID = MAKTABLAR_RO[0].id;
+    // Refresh'dan oldin tanlangan maktab hali ham ro'yxatda bo'lsa — shuni tiklaymiz
+    let savedMaktab = null;
+    try { savedMaktab = sessionStorage.getItem(OQ_MAKTAB_KEY); } catch (e) {}
+    const savedM = MAKTABLAR_RO.find(m => String(m.id) === savedMaktab);
+    if (savedM) TANLANGAN_MID = savedM.id;
     sel.value = TANLANGAN_MID;
     initMaktabPicker(); // native <select> o'rniga o'zbekcha tanlash oynasi (select yashirin qoladi)
   } else if (MAKTABLAR_RO.length === 1) {
     TANLANGAN_MID = MAKTABLAR_RO[0].id;
   }
 
-  switchTab('guruhlar');
+  switchTab(getSavedTab()); // refresh qilinganda o'sha bo'limda qolish
 }
 
 // ─── Maktab tanlagich ────────────────────────────
@@ -269,6 +303,7 @@ function pickMaktab(val) {
 
 function onMaktabChange() {
   TANLANGAN_MID = g('oq-maktab-selector').value;
+  try { sessionStorage.setItem(OQ_MAKTAB_KEY, String(TANLANGAN_MID)); } catch (e) {}
   closeGuruhDavomat();
   loadGuruhlarim();
   loadJadval();
@@ -279,6 +314,8 @@ function onMaktabChange() {
 
 // ─── Tab almashtirish ─────────────────────────────
 function switchTab(tab) {
+  if (!OQ_TABS.includes(tab)) tab = 'guruhlar';
+  saveActiveTab(tab);
   navDropOtherTabs(tab);
   document.querySelectorAll('.oq-tab-btn').forEach(b => b.classList.remove('active'));
   document.querySelectorAll('.oq-tab-page').forEach(p => p.classList.remove('active'));
