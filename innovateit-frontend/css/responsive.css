@@ -206,6 +206,10 @@ button, a, input, select, textarea, [role="button"] {
   }
   .table-title { font-size: 13px; }
   .filters { display: flex; flex-wrap: wrap; gap: 6px; }
+  /* Faol o'quvchilar sahifasida qidiruv inputi .search-wrapper ichida —
+     o'ramning o'zi ham butun qatorni egallashi kerak, aks holda select'lar
+     bilan bir qatorga siqilib, yozuvlar kesilib qoladi. */
+  .search-wrapper { flex: 1 1 100% !important; width: 100% !important; min-width: 0 !important; }
   .search-input {
     width: 100% !important;
     min-width: unset !important;
