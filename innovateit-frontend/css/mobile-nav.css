@@ -186,6 +186,15 @@
   .topbar-brand .tb-section { display: block; font-size: 13px; font-weight: 700; }
   .tb-mobile-only { display: inline; }
 
+  /* ✅ "Faol o'quvchilar" va "Yangi o'quvchi qo'shish" — telefonda ALOHIDA
+     ko'rinishlar. Standart: faqat ro'yxat; forma yashirin. Menyudan
+     "Yangi o'quvchi qo'shish" tanlanganda (body.mn-view-add) — faqat forma.
+     !important inline `display` ni (app.js rolga qarab qo'yadi) bosib o'tadi,
+     lekin mn-view-add faqat forma ko'rinadigan holatlarda qo'yiladi. */
+  #tab-s > #add-student-form { display: none !important; }
+  body.mn-view-add #tab-s > #add-student-form { display: block !important; }
+  body.mn-view-add #tab-s > .table-card { display: none !important; }
+
   /* html/body: drawer yopiq holatda ekrandan tashqarida turgani uchun
      gorizontal scroll paydo bo'lmasin. ✅ MUHIM: bu faqat <html>'ga
      qo'yiladi, <body>'ga EMAS — agar ikkalasiga ham qo'yilsa, brauzer

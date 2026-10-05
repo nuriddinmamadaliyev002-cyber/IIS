@@ -253,6 +253,7 @@ const TAB_TITLES = {
 
 function switchTab(t) {
   if (TAB_TITLES[t]) setTopbarSection(TAB_TITLES[t]);
+  setMobileStudentView('list');
   const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf', 'bl', 'sl'];
   allTabs.forEach(id => {
     const el = g('tab-' + id);
@@ -367,7 +368,11 @@ async function addStudent() {
       maktabInfo: maktab ? String(maktab) + '-maktab' : '',
       date: new Date().toLocaleDateString('uz-UZ')
     });
-    if (r.ok) { clearF(); await loadStudents(); toast("✅ O'quvchi qo'shildi!", 'success'); }
+    if (r.ok) {
+      clearF(); await loadStudents(); toast("✅ O'quvchi qo'shildi!", 'success');
+      // Mobilda forma alohida ko'rinish — saqlangach Faol ro'yxatiga qaytamiz
+      if (window.innerWidth <= 768) scrollToStudentsList();
+    }
     else toast('❌ ' + r.error, 'error');
   } catch (e) { toast('❌ Xatolik', 'error'); }
   bl('submit-btn', 'spinner', 'btn-txt', false, 'Saqlash');
@@ -1091,8 +1096,16 @@ function openTeachersJadval() {
 }
 
 // Hamburger menyu: O'quvchilar ➜ Faol — joriy (faol o'quvchilar) ro'yxatiga sirg'anib o'tish
+// Mobilda "Faol" va "Yangi o'quvchi qo'shish" alohida ko'rinishlar: bir vaqtda
+// faqat bittasi ko'rinadi (body.mn-view-add — mobile-nav.css, faqat ≤768px).
+// Desktopda bu klass hech narsaga ta'sir qilmaydi.
+function setMobileStudentView(view) {
+  document.body.classList.toggle('mn-view-add', view === 'add');
+}
+
 function scrollToStudentsList() {
   setTopbarSection("Faol o'quvchilar");
+  setMobileStudentView('list');
   const el = document.querySelector('#tab-s .table-card') || g('tab-s');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -1100,6 +1113,7 @@ function scrollToStudentsList() {
 // Hamburger menyu: O'quvchilar ➜ Yangi o'quvchi qo'shish — forma tomon sirg'anib o'tish
 function scrollToAddStudent() {
   setTopbarSection("Yangi o'quvchi qo'shish");
+  setMobileStudentView('add');
   const el = g('add-student-form');
   if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
