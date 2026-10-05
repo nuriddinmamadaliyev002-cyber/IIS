@@ -256,6 +256,7 @@ const api = {
   // ─── O'quvchilarni baholash (uyga vazifa / faollik / xulq, 1–5) ───
   getGuruhBaholar:     (guruhId, sana) => api.get(`/api/baholar/guruh/${guruhId}`, { sana }),
   saveGuruhBaholar:    (guruhId, d)    => api.post(`/api/baholar/guruh/${guruhId}`, d),
+  getMeningBaholarim:  ()              => api.get('/api/baholar/mening-baholarim'),
 
   // ─── O'qituvchilar ───
   getTeachers:         (d) => api.get('/api/teachers', d),

@@ -7,6 +7,10 @@
 //         — { sana, baholar: [{ oquvchi_id, kategoriya, baho, izoh }] }
 //           baho 1–5 bo'lsa yoziladi (upsert), null bo'lsa o'chiriladi
 //
+//  O'QUVCHI:
+//    GET  /api/baholar/mening-baholarim
+//         — o'zining barcha baholari, dars kuni va guruh bo'yicha jamlangan
+//
 //  Kategoriyalar: uy_vazifa (uyga vazifa), faollik (darsdagi faolligi),
 //                 xulq (darsdagi xulqi)
 //
@@ -198,6 +202,48 @@ router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   } finally {
     client.release();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  O'QUVCHI — o'z baholarini ko'rish (faqat o'qish)
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── GET /api/baholar/mening-baholarim ────────────────────────────────────────
+// Faqat tokendagi o'quvchining (entityId) baholari qaytadi. Bog'lanish
+// oquvchi_id orqali, shuning uchun ism/sinf bo'yicha taxmin qilinmaydi.
+// Javob: { darslar: [{ sana, guruh_id, fan, teacher_ism, teacher_familiya,
+//                      baholar: { uy_vazifa: {baho, izoh}, faollik: {...}, xulq: {...} } }] }
+router.get('/mening-baholarim', requireAuth(['oquvchi']), async (req, res) => {
+  const { entityId } = req.user;
+  if (!entityId) return res.status(400).json({ ok: false, error: "O'quvchi ID topilmadi" });
+
+  try {
+    const r = await pool.query(
+      `SELECT b.sana, b.guruh_id, b.kategoriya, b.baho, b.izoh,
+              dj.fan, dj.teacher_ism, dj.teacher_familiya
+         FROM oquvchi_baholar b
+         JOIN dars_jadvali dj ON dj.id = b.guruh_id
+        WHERE b.oquvchi_id = $1
+        ORDER BY b.sana DESC, b.guruh_id ASC`,
+      [entityId]
+    );
+
+    const map = new Map();
+    for (const row of r.rows) {
+      const key = `${row.sana}|${row.guruh_id}`;
+      if (!map.has(key)) {
+        map.set(key, {
+          sana: row.sana, guruh_id: row.guruh_id, fan: row.fan || '',
+          teacher_ism: row.teacher_ism, teacher_familiya: row.teacher_familiya, baholar: {},
+        });
+      }
+      map.get(key).baholar[row.kategoriya] = { baho: row.baho, izoh: row.izoh || '' };
+    }
+    res.json({ ok: true, darslar: [...map.values()] });
+  } catch (err) {
+    console.error('baholar/mening-baholarim GET xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });
 

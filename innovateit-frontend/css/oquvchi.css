@@ -60,3 +60,26 @@
   .ouq-dav-date { font-size: 12px; }
   .ouq-dav-badge { font-size: 11px; padding: 3px 8px; }
 }
+
+/* ── Baholarim (faqat ko'rish) ── */
+.bhm-list { margin-top: 10px; display: flex; flex-direction: column; gap: 8px; }
+.bhm-item { padding: 9px 12px; background: var(--bg); border-radius: 10px; }
+.bhm-item-top { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 4px 10px; }
+.bhm-label { font-size: 13px; font-weight: 600; color: var(--text); }
+.bhm-score {
+  font-size: 12px; font-weight: 700; padding: 3px 10px; border-radius: 8px; white-space: nowrap;
+  display: inline-flex; align-items: center; gap: 5px;
+}
+.bhm-score b { font-family: 'DM Mono', monospace; font-size: 13px; }
+.bhm-stars { letter-spacing: 1px; font-size: 12px; }
+.bhm-1 { background: #fef2f2; color: #dc2626; }
+.bhm-2 { background: #fff7ed; color: #ea580c; }
+.bhm-3 { background: #fffbeb; color: #d97706; }
+.bhm-4 { background: #f7fee7; color: #4d7c0f; }
+.bhm-5 { background: #f0fdf4; color: #15803d; }
+.bhm-none { font-size: 12px; color: var(--muted); }
+.bhm-izoh { margin-top: 6px; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+@media (max-width: 380px) {
+  .bhm-score { font-size: 11px; padding: 3px 8px; }
+  .bhm-stars { display: none; }
+}

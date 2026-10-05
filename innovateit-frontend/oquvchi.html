@@ -66,6 +66,7 @@
       <button type="button" class="mn-mobile-item mn-tab-item active" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="davomat" onclick="switchTab('davomat')">📋 Davomat</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="vazifalar" onclick="switchTab('vazifalar')">📝 Mavzu va uyga vazifalar</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="baholar" onclick="switchTab('baholar')">⭐ Baholarim</button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
   </div>
@@ -75,6 +76,7 @@
     <button class="oq-tab-btn active" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
     <button class="oq-tab-btn" id="tab-btn-davomat" onclick="switchTab('davomat')">📋 Davomat</button>
     <button class="oq-tab-btn" id="tab-btn-vazifalar" onclick="switchTab('vazifalar')">📝 Mavzu va uyga vazifalar</button>
+    <button class="oq-tab-btn" id="tab-btn-baholar" onclick="switchTab('baholar')">⭐ Baholarim</button>
   </div>
 
   <div class="oq-content">
@@ -113,6 +115,24 @@
         </div>
       </div>
       <div id="ouq-vazifalar-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
+    </div>
+
+    <!-- ══ BAHOLARIM TAB (faqat ko'rish) ══ -->
+    <div class="oq-tab-page" id="tab-baholar">
+      <div class="oq-section-title">⭐ Baholarim</div>
+      <div class="dav-date-bar">
+        <button class="dav-date-nav-btn" id="bhm-prev-btn" onclick="changeBhmDate(-1)">‹</button>
+        <div style="text-align:center;flex:1;min-width:0;">
+          <div class="dav-date-display" id="bhm-date-display" style="min-width:0;">—</div>
+          <div class="dav-date-sub" id="bhm-date-sub">—</div>
+        </div>
+        <button class="dav-date-nav-btn" id="bhm-next-btn" onclick="changeBhmDate(1)">›</button>
+        <div class="dav-date-input-wrap">
+          <div class="dav-date-input-text" id="bhm-date-picker-text" onclick="openBhmDatePicker()">—</div>
+          <input class="dav-date-input" type="date" id="bhm-date-picker" onchange="onBhmDatePick()">
+        </div>
+      </div>
+      <div id="ouq-baholar-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>
 
   </div>

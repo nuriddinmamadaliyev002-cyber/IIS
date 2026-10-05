@@ -1801,7 +1801,7 @@ function renderBaho() {
     const n = BH.oquvchilar.filter(o => BH.baho[bhKey(c.key, o.id)]).length;
     return `<button type="button" class="dav-stat-pill bh-chip${c.key === kat ? ' active' : ''}" data-kat="${c.key}">${c.icon} ${esc(c.label)} <b>${n}</b></button>`;
   }).join('') + `<span class="dav-stat-pill total" style="margin-left:auto;">Jami <b>${BH.oquvchilar.length}</b></span>`;
-  g('bh-hint').textContent = `${cur.icon} ${cur.label}: har bir o'quvchiga 1 dan 5 gacha baho qo'ying. Izoh — ixtiyoriy.`;
+  g('bh-hint').textContent = `${cur.icon} ${cur.label}: har bir o'quvchiga 1 dan 5 gacha baho qo'ying. Izoh — ixtiyoriy, o'quvchiga ham ko'rinadi.`;
 
   const wrap = g('guruh-baho-list');
   if (!BH.oquvchilar.length) {

@@ -107,6 +107,7 @@ function switchTab(tab) {
   // Mobil hamburger menyudagi mos band ham "faol" bo'lib ko'rinsin
   document.querySelectorAll('.mn-tab-item').forEach(b => b.classList.toggle('active', b.dataset.tab === tab));
   if (tab === 'vazifalar') openVazifalarTab();
+  if (tab === 'baholar')   openBaholarTab();
 }
 
 // ═══════════════════════════════════════════
@@ -454,6 +455,160 @@ function renderVazifalarim() {
           ? `<div style="margin-top:4px;font-size:13.5px;"><b>Uyga vazifa:</b> ${esc(v.uy_vazifasi)}</div>`
           : '<div style="margin-top:4px;font-size:12.5px;color:var(--muted);">Bu darsga uyga vazifa berilmagan</div>'}
         ${v.vazifa_fayl ? `<div style="margin-top:6px;font-size:12.5px;"><a href="${esc(resolveUploadUrl(v.vazifa_fayl))}" target="_blank" rel="noopener">📎 Uyga vazifa fayli</a></div>` : ''}
+      </div>`;
+  }).join('');
+}
+
+
+// ═══════════════════════════════════════════
+//  BAHOLARIM (faqat ko'rish)
+//  Sana kartasi orqali dars kunlari bo'yicha o'qituvchi
+//  qo'ygan ballar: uyga vazifa, darsdagi faolligi,
+//  darsdagi xulqi (1 dan 5 gacha) va ixtiyoriy izoh.
+//  Dars kunlari va sana tanlash mantiqi "Mavzu va uyga
+//  vazifalar" bilan bir xil.
+// ═══════════════════════════════════════════
+const BHM_KATEGORIYALAR = [
+  { key: 'uy_vazifa', label: 'Uyga vazifa',       icon: '📚' },
+  { key: 'faollik',   label: 'Darsdagi faolligi', icon: '🙋' },
+  { key: 'xulq',      label: 'Darsdagi xulqi',    icon: '🤝' },
+];
+
+let baholarimList = [];   // serverdan kelgan barcha dars kunlari (guruh bo'yicha)
+let bhmCurDate    = null; // hozir tanlangan sana (Date, 00:00 mahalliy)
+let bhmLoaded     = false;
+let bhmSeq        = 0;    // eskirgan javob yangisini bosib ketmasligi uchun
+
+async function openBaholarTab() {
+  if (ouqJadvalPromise) { try { await ouqJadvalPromise; } catch (_) {} } // dars kunlari tayyor bo'lsin
+
+  if (!bhmCurDate) {
+    const today = vzmBugun();
+    bhmCurDate = vzmIsLessonDay(today) ? today : (vzmFindLessonDate(today, -1) || today);
+  }
+  g('bhm-date-picker').max = dateStrLocal(vzmBugun());
+  setBhmDateUI();
+  updateBhmNavBtns();
+  await loadBaholarim();
+}
+
+function setBhmDateUI() {
+  const d = bhmCurDate;
+  g('bhm-date-display').textContent = `${d.getDate()}-${OY_NOMLARI[d.getMonth() + 1]}, ${d.getFullYear()}`;
+  g('bhm-date-sub').textContent     = KUN_NOMLARI_MAP[String(d.getDay())] || '';
+  g('bhm-date-picker').value        = dateStrLocal(d);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  g('bhm-date-picker-text').textContent = `${dd}/${mm}/${d.getFullYear()}`;
+}
+
+function updateBhmNavBtns() {
+  g('bhm-prev-btn').disabled = !vzmFindLessonDate(bhmCurDate, -1);
+  g('bhm-next-btn').disabled = !vzmFindLessonDate(bhmCurDate, 1);
+}
+
+function openBhmDatePicker() {
+  const inp = g('bhm-date-picker');
+  if (!inp) return;
+  if (typeof inp.showPicker === 'function') {
+    try { inp.showPicker(); return; } catch (e) { /* fallback pastda */ }
+  }
+  inp.focus();
+  inp.click();
+}
+
+function changeBhmDate(dir) {
+  const nd = vzmFindLessonDate(bhmCurDate, dir);
+  if (!nd) return;
+  bhmCurDate = nd;
+  setBhmDateUI();
+  updateBhmNavBtns();
+  renderBaholarim();
+}
+
+function onBhmDatePick() {
+  const val = g('bhm-date-picker').value;
+  if (!val) return;
+  const d = new Date(val + 'T00:00:00');
+
+  if (d > vzmBugun()) {
+    alert('⚠️ Kelajak sanani tanlash mumkin emas');
+    setBhmDateUI();
+    return;
+  }
+  if (!vzmIsLessonDay(d)) {
+    alert("⚠️ Bu kun sizning dars kuningiz emas");
+    setBhmDateUI();
+    return;
+  }
+  bhmCurDate = d;
+  setBhmDateUI();
+  updateBhmNavBtns();
+  renderBaholarim();
+}
+
+async function loadBaholarim() {
+  const wrap = g('ouq-baholar-content');
+  const seq  = ++bhmSeq;
+  wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
+
+  try {
+    const data = await api.getMeningBaholarim();
+    if (seq !== bhmSeq) return;
+    if (!data || !data.ok) {
+      wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
+      return;
+    }
+    baholarimList = data.darslar || [];
+    bhmLoaded = true;
+    renderBaholarim();
+  } catch (e) {
+    if (seq === bhmSeq) wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
+  }
+}
+
+// ★★★★☆ — faqat ko'rsatish uchun (baho 1..5 oralig'ida ekani serverda kafolatlangan)
+function bhmStars(n) {
+  const v = Math.max(0, Math.min(5, parseInt(n, 10) || 0));
+  return '★'.repeat(v) + '☆'.repeat(5 - v);
+}
+
+// Tanlangan sana uchun kartalar (bir kunda bir nechta guruh bo'lishi mumkin)
+function renderBaholarim() {
+  const wrap = g('ouq-baholar-content');
+  if (!bhmLoaded || !bhmCurDate) return;
+
+  const tanlangan = dateStrLocal(bhmCurDate);
+  const kun = baholarimList.filter(d => (d.sana || '').slice(0, 10) === tanlangan);
+
+  if (!kun.length) {
+    wrap.innerHTML = '<div class="oq-empty">📭 Bu kun uchun baho qo\'yilmagan</div>';
+    return;
+  }
+
+  wrap.innerHTML = kun.map(d => {
+    const teacherIsm = `${d.teacher_familiya || ''} ${d.teacher_ism || ''}`.trim();
+    const rows = BHM_KATEGORIYALAR.map(c => {
+      const b = (d.baholar || {})[c.key];
+      const score = b
+        ? `<span class="bhm-score bhm-${parseInt(b.baho, 10)}"><span class="bhm-stars">${bhmStars(b.baho)}</span> <b>${parseInt(b.baho, 10)}</b>/5</span>`
+        : '<span class="bhm-none">Baho qo\'yilmagan</span>';
+      const izoh = b && b.izoh ? `<div class="bhm-izoh">💬 ${esc(b.izoh)}</div>` : '';
+      return `
+        <div class="bhm-item">
+          <div class="bhm-item-top">
+            <span class="bhm-label">${c.icon} ${esc(c.label)}</span>
+            ${score}
+          </div>
+          ${izoh}
+        </div>`;
+    }).join('');
+
+    return `
+      <div class="ouq-dav-row" style="display:block;">
+        <div style="font-weight:600;">${esc(d.fan || '—')}</div>
+        <div style="font-size:12px;color:var(--muted);margin-top:2px;">${esc(formatSana(d.sana))}${teacherIsm ? ' • ' + esc(teacherIsm) : ''}</div>
+        <div class="bhm-list">${rows}</div>
       </div>`;
   }).join('');
 }
