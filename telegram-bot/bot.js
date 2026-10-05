@@ -44,9 +44,9 @@ bot.onText(/\/start/, async (msg) => {
 
   const ism = msg.from.first_name || 'Foydalanuvchi';
   bot.sendMessage(chatId,
-    `Assalomu alaykum, *${ism}*! 👋\n\nInnovateIT School boshqaruv tizimiga kirish uchun quyidagi tugmani bosing:\n\n` +
+    `Assalomu alaykum, *${ism}*! 👋\n\nInnovateIT School tizimiga kirish uchun quyidagi tugmani bosing:\n\n` +
     `🆔 Sizning Telegram ID'ingiz: \`${userId}\`\n` +
-    `_(Agar hali biriktirilmagan bo'lsangiz, bu raqamni superadminga yuboring)_`,
+    `_(Agar hali tizimga biriktirilmagan bo'lsangiz, bu raqamni maktabingiz adminiga yuboring)_`,
     {
       parse_mode: 'Markdown',
       reply_markup: {
