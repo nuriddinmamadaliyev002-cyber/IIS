@@ -508,7 +508,52 @@ function selectAllOquvchilar(val) {
   updateGuruhSelectedCount();
 }
 
+// Barcha sinflardan belgilangan o'quvchilarni "Sinf — Familiya Ism" ko'rinishida
+// DARS KUNLARI tepasida ko'rsatadi (sinf almashtirilganda ham yo'qolmaydi).
+function renderGuruhTanlanganlar() {
+  const wrap = g('guruh-tanlanganlar'), list = g('guruh-tanlanganlar-list');
+  if (!wrap || !list) return;
+  const items = [];
+  sortSinflar([...guruhOquvchilarMap.keys()]).forEach(sinf => {
+    const set = guruhOquvchilarMap.get(sinf);
+    if (!set || !set.size) return;
+    const namesMap = guruhOquvchilarNames.get(sinf) || new Map();
+    const sinfLabel = sinf.replace(/-sinf$/i, '') + '-sinf';
+    // Ro'yxat tartibida (serverdan kelgan), nomi noma'lum bo'lsa oxirida
+    const ordered = [...namesMap.keys()].filter(id => set.has(id));
+    set.forEach(id => { if (!namesMap.has(id)) ordered.push(id); });
+    ordered.forEach(id => {
+      items.push(`
+        <span class="guruh-tanlangan-item">
+          <span class="gt-sinf">${esc(sinfLabel)}</span>
+          <span>${esc(namesMap.get(id) || ('#' + id))}</span>
+          <button type="button" class="gt-del" title="Olib tashlash" onclick="removeGuruhTanlangan('${esc(sinf)}', ${id})">✕</button>
+        </span>`);
+    });
+  });
+  wrap.style.display = items.length ? 'block' : 'none';
+  g('guruh-tanlanganlar-count').textContent = items.length ? `(jami ${items.length} ta)` : '';
+  list.innerHTML = items.join('');
+}
+
+// Tanlanganlar ro'yxatidan bitta o'quvchini olib tashlash
+function removeGuruhTanlangan(sinf, id) {
+  const set = guruhOquvchilarMap.get(sinf);
+  if (set) set.delete(id);
+  // Shu sinf hozir ekranda ochiq bo'lsa — checkbox belgisini ham olib tashlaymiz
+  if (sinf === activeGuruhSinf) {
+    g('guruh-oquvchilar-list').querySelectorAll('.guruh-oq-cb').forEach(cb => {
+      if (parseInt(cb.dataset.id) === id) {
+        cb.checked = false;
+        cb.closest('.guruh-oquv-item')?.classList.remove('checked');
+      }
+    });
+  }
+  updateGuruhSelectedCount();
+}
+
 function updateGuruhSelectedCount() {
+  renderGuruhTanlanganlar();
   const cbs = g('guruh-oquvchilar-list').querySelectorAll('.guruh-oq-cb');
   const checked = [...cbs].filter(cb => cb.checked).length;
   const allSelected = [...guruhOquvchilarMap.values()].reduce((acc, s) => acc + s.size, 0);
@@ -534,6 +579,7 @@ function clearGuruhForm() {
   guruhOquvchilarMap.clear();
   guruhOquvchilarNames.clear();
   guruhMavjudIds.clear();
+  renderGuruhTanlanganlar();
   pendingGuruhData = null;
   editingGuruhId = null;
   navRelease('guruhEdit');
