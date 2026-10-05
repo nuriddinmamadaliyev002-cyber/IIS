@@ -101,15 +101,10 @@
         </div>
       </div>
 
-      <!-- ✅ O'qituvchilar — accordion -->
-      <div class="mn-acc" id="mn-acc-teachers">
-        <button type="button" class="mn-acc-toggle">
-          <span>O'qituvchilar</span><span class="mn-acc-caret">⌄</span>
-        </button>
-        <div class="mn-acc-body">
-          <button class="btn-teachers" id="btn-teachers" onclick="openTeachers()"><span class="mn-label-mobile">Ma'lumotnoma</span><span class="mn-label-desktop">O'qituvchilar</span></button>
-          <button class="mn-mobile-item" onclick="openTeachersJadval()">Dars jadvali</button>
-        </div>
+      <!-- ✅ O'qituvchilar va Dars jadvali — alohida (ochilmaydigan) menyu bandlari -->
+      <div class="mn-group" id="mn-acc-teachers">
+        <button class="btn-teachers" id="btn-teachers" onclick="openTeachers()">O'qituvchilar</button>
+        <button class="mn-mobile-item" onclick="openTeachersJadval()">Dars jadvali</button>
       </div>
 
       <button class="btn-logout" id="btn-logout-nav" onclick="doLogout()">Chiqish</button>

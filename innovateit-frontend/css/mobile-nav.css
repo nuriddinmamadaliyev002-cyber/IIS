@@ -110,7 +110,8 @@
    topbar-right qatorida avvalgidek chiqadi. Faqat mobil submenu
    elementlari (.mn-mobile-item, .mn-acc-toggle) desktopda yashiriladi. ── */
 .mn-acc,
-.mn-acc-body {
+.mn-acc-body,
+.mn-group {
   display: contents;
 }
 .mn-acc-toggle,
@@ -318,7 +319,8 @@
 
   /* ── Accordion — mobilda haqiqiy blok elementlar sifatida, ochiladigan
      (pastga tushadigan) submenu ko'rinishida ── */
-  .mn-acc {
+  .mn-acc,
+  .mn-group {
     display: block !important;
     width: 100% !important;
   }
