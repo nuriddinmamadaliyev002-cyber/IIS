@@ -23,10 +23,13 @@
   // qoladi (masalan davomat.html'da "O'quvchilar" guruhi, chunki joriy
   // sahifa shu guruhga tegishli); qolganlari yopiladi. Shu tufayli
   // "Davomat"ga o'tganda submenu birdan yopilib-yopiq bo'lib qolmaydi.
+  // Desktopda submenu (dropdown) hech qachon o'z-o'zidan ochiq turmaydi —
+  // standart-ochiq holat faqat telefon drawer'iga tegishli.
   function resetAccordions(right) {
     var accs = right.querySelectorAll('.mn-acc');
+    var mobile = window.innerWidth <= MOBILE_BREAKPOINT;
     for (var i = 0; i < accs.length; i++) {
-      var shouldOpen = accs[i].hasAttribute('data-default-open');
+      var shouldOpen = mobile && accs[i].hasAttribute('data-default-open');
       accs[i].classList.toggle('mn-acc-open', shouldOpen);
       var toggle = accs[i].querySelector('.mn-acc-toggle');
       if (toggle) toggle.setAttribute('aria-expanded', String(shouldOpen));
@@ -114,6 +117,11 @@
       avatar.textContent = txt ? txt.charAt(0).toUpperCase() : '';
     }
     updateAvatar();
+    // Desktopda avatar menyu ochilishini kutmaydi — admin-badge matni
+    // (login/showApp ichida keyinroq yoziladi) o'zgargan zahoti yangilanadi.
+    if (badge && window.MutationObserver) {
+      new MutationObserver(updateAvatar).observe(badge, { childList: true, characterData: true, subtree: true });
+    }
 
     var overlay = makeOverlay(topbar);
 
@@ -163,6 +171,7 @@
       if (toggleBtn) {
         var acc = findAncestor(toggleBtn, 'mn-acc', right);
         if (acc) {
+          acc.classList.remove('mn-acc-suppress');
           var willOpen = !acc.classList.contains('mn-acc-open');
           acc.classList.toggle('mn-acc-open', willOpen);
           toggleBtn.setAttribute('aria-expanded', String(willOpen));
@@ -173,11 +182,34 @@
       var el = e.target;
       while (el && el !== right) {
         if (el.tagName === 'BUTTON' || el.tagName === 'A') {
+          // Desktop: band bosilgach dropdown yopiladi; sichqoncha hali ustida
+          // tursa ham qayta ochilmaydi (mouseleave'gacha "suppress").
+          var ownAcc = findAncestor(el, 'mn-acc', right);
+          if (ownAcc && !isMobile()) ownAcc.classList.add('mn-acc-suppress');
           closeMenu();
           break;
         }
         el = el.parentNode;
       }
+    });
+
+    // Desktop dropdown: sichqoncha chiqib ketsa yoki tashqari bosilsa yopiladi
+    var accList = right.querySelectorAll('.mn-acc');
+    for (var a = 0; a < accList.length; a++) {
+      (function (acc) {
+        acc.addEventListener('mouseleave', function () {
+          if (isMobile()) return;
+          acc.classList.remove('mn-acc-suppress');
+          acc.classList.remove('mn-acc-open');
+          var t = acc.querySelector('.mn-acc-toggle');
+          if (t) t.setAttribute('aria-expanded', 'false');
+        });
+      })(accList[a]);
+    }
+    document.addEventListener('click', function (e) {
+      if (isMobile()) return;
+      if (findAncestor(e.target, 'mn-acc', null)) return;
+      for (var b = 0; b < accList.length; b++) accList[b].classList.remove('mn-acc-open');
     });
 
     document.addEventListener('keydown', function (e) {

@@ -369,8 +369,8 @@ async function addStudent() {
     });
     if (r.ok) {
       clearF(); await loadStudents(); toast("✅ O'quvchi qo'shildi!", 'success');
-      // Mobilda forma alohida ko'rinish — saqlangach Faol ro'yxatiga qaytamiz
-      if (window.innerWidth <= 768) scrollToStudentsList();
+      // Forma alohida ko'rinish (mobil va desktopda) — saqlangach Faol ro'yxatiga qaytamiz
+      scrollToStudentsList();
     }
     else toast('❌ ' + r.error, 'error');
   } catch (e) { toast('❌ Xatolik', 'error'); }
@@ -1107,9 +1107,13 @@ function openTeachersJadval() {
 // Hamburger menyu: O'quvchilar ➜ Faol — joriy (faol o'quvchilar) ro'yxatiga sirg'anib o'tish
 // Mobilda "Faol" va "Yangi o'quvchi qo'shish" alohida ko'rinishlar: bir vaqtda
 // faqat bittasi ko'rinadi (body.mn-view-add — mobile-nav.css, faqat ≤768px).
-// Desktopda bu klass hech narsaga ta'sir qilmaydi.
+// Endi bu desktopda ham xuddi shunday ishlaydi (mobile-nav.css, ≥769px blok).
 function setMobileStudentView(view) {
   document.body.classList.toggle('mn-view-add', view === 'add');
+  // Menyuda joriy bo'lim (Faol / Yangi o'quvchi qo'shish) belgilanib turadi
+  const faolBtn = g('btn-faol-nav'), addBtn = g('btn-add-student-nav');
+  if (faolBtn) faolBtn.classList.toggle('active', view !== 'add');
+  if (addBtn)  addBtn.classList.toggle('active', view === 'add');
 }
 
 function scrollToStudentsList() {

@@ -473,3 +473,192 @@
     z-index: 198;
   }
 }
+
+/* ═══════════════════════════════════════════════════════════════════
+   DESKTOP MENYU (≥769px) — telefon drawer'idagi tuzilma bilan BIR XIL:
+
+     O'quvchilar ▾  (Faol · Nofaol · Yangi o'quvchi qo'shish)
+     O'qituvchilar
+     Dars jadvali
+                                         [avatar] Ism   N o'quvchi   Chiqish
+
+   Yangi HTML kerak emas: mobil drawer uchun allaqachon mavjud bo'lgan
+   .mn-acc / .mn-group / .mn-mobile-item elementlari desktopda gorizontal
+   menyu va ochiladigan (dropdown) submenuga aylantiriladi. Qoidalar faqat
+   "O'quvchilar" accordion'i bor (#mn-acc-students) maktab-admin sahifalariga
+   tegadi (index, nofaol, davomat, oqituvchilar, dars-jadvali) — buxgalter,
+   sales, o'qituvchi panellari o'zgarmaydi.
+═══════════════════════════════════════════════════════════════════ */
+@media (min-width: 769px) {
+  .topbar:has(#mn-acc-students) { gap: 12px; }
+  .topbar:has(#mn-acc-students) .topbar-brand { flex-shrink: 0; }
+  /* Bo'lim nomi ("· Nofaol o'quvchilar") desktopda brendda takrorlanmaydi — joriy bo'lim
+     menyuda ajratib ko'rsatiladi; shu tufayli menyu barcha sahifalarda bir xil joyda turadi */
+  .topbar:has(#mn-acc-students) .topbar-brand .tb-sep,
+  .topbar:has(#mn-acc-students) .topbar-brand .tb-section { display: none; }
+
+  /* Menyu qatori: chapdan o'ngga — nav, bo'sh joy (spacer), profil, chiqish.
+     overflow:visible — aks holda dropdown topbar chegarasida qirqilib qoladi */
+  .topbar:has(#mn-acc-students) .topbar-right {
+    flex: 1 1 auto;
+    min-width: 0;
+    overflow: visible;
+    justify-content: flex-start;
+    gap: 4px;
+    margin-left: 18px;
+  }
+  .topbar:has(#mn-acc-students) .topbar-right::before { content: ''; order: 3; flex: 1 1 auto; }
+
+  /* ── Yuqori daraja bandlar: O'quvchilar ▾ · O'qituvchilar · Dars jadvali ── */
+  .topbar:has(#mn-acc-students) .mn-acc        { display: block; position: relative; order: 1; }
+  .topbar:has(#mn-acc-students) .mn-group      { display: flex; align-items: center; gap: 4px; order: 2; }
+
+  .topbar:has(#mn-acc-students) .mn-acc-toggle,
+  .topbar:has(#mn-acc-students) .mn-group > button {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 8px 14px;
+    margin: 0;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    transform: none;
+    order: 0; /* index.html'dagi global #btn-teachers{order:2} qoidasini bekor qiladi — DOM tartibi: O'qituvchilar → Dars jadvali */
+    transition: background .15s, color .15s;
+  }
+  .topbar:has(#mn-acc-students) .mn-acc-caret { font-size: 11px; line-height: 1; transition: transform .2s ease; }
+  .topbar:has(#mn-acc-students) .mn-acc:hover > .mn-acc-toggle,
+  .topbar:has(#mn-acc-students) .mn-acc.mn-acc-open > .mn-acc-toggle,
+  .topbar:has(#mn-acc-students) .mn-group > button:hover {
+    background: rgba(255,255,255,.2);
+    color: #fff;
+    transform: none;
+  }
+  .topbar:has(#mn-acc-students) .mn-acc:hover > .mn-acc-toggle .mn-acc-caret,
+  .topbar:has(#mn-acc-students) .mn-acc.mn-acc-open > .mn-acc-toggle .mn-acc-caret { transform: rotate(180deg); }
+
+  /* Joriy bo'lim — oq "tabletka" (dropdown ichidagi band active bo'lsa,
+     uning guruhi ham ajralib turadi) */
+  .topbar:has(#mn-acc-students) .mn-group > button.active,
+  .topbar:has(#mn-acc-students) .mn-acc:has(.mn-acc-body > .active) > .mn-acc-toggle {
+    background: rgba(255,255,255,.95);
+    color: var(--iit-indigo-deep, #0F5493);
+  }
+
+  /* ── Dropdown (mobil accordion body'ning desktop ko'rinishi) ── */
+  .topbar:has(#mn-acc-students) .mn-acc-body {
+    display: none;
+    position: absolute;
+    top: 100%;
+    left: 0;
+    min-width: 240px;
+    margin-top: 8px;
+    padding: 6px;
+    background: #101b34;
+    border-radius: 12px;
+    box-shadow: 0 14px 36px rgba(6,34,61,.35);
+    z-index: 300;
+  }
+  /* sichqoncha toggle'dan dropdown'ga o'tayotganda "bo'shliq"da yopilib qolmasin */
+  .topbar:has(#mn-acc-students) .mn-acc-body::before {
+    content: '';
+    position: absolute;
+    left: 0; right: 0; top: -10px; height: 10px;
+  }
+  .topbar:has(#mn-acc-students) .mn-acc:not(.mn-acc-suppress):hover > .mn-acc-body,
+  .topbar:has(#mn-acc-students) .mn-acc.mn-acc-open > .mn-acc-body { display: block; }
+
+  .topbar:has(#mn-acc-students) .mn-acc-body > button {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 11px 14px;
+    border: none;
+    border-left: 3px solid transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #fff;
+    font-family: 'DM Sans', sans-serif;
+    font-size: 13.5px;
+    font-weight: 500;
+    text-align: left;
+    white-space: nowrap;
+    cursor: pointer;
+    transform: none;
+    order: 0; /* #btn-nofaol{order:1} ta'siridan holi */
+    transition: background .15s, border-color .15s;
+  }
+  .topbar:has(#mn-acc-students) .mn-acc-body > button:hover {
+    background: rgba(5,191,246,.16);
+    border-left-color: var(--iit-cyan, #05BFF6);
+    color: #fff;
+  }
+  .topbar:has(#mn-acc-students) .mn-acc-body > button.active {
+    background: rgba(5,191,246,.24);
+    border-left-color: var(--iit-cyan, #05BFF6);
+    font-weight: 700;
+  }
+
+  /* ── O'ng tomon: profil (avatar + ism), hisoblagich, chiqish ── */
+  .topbar:has(#mn-acc-students) .mn-drawer-avatar {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    order: 5;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: #fff;
+    color: #16233f;
+    font-weight: 700;
+    font-size: 14px;
+    flex-shrink: 0;
+  }
+  .topbar:has(#mn-acc-students) .mn-drawer-avatar:empty { display: none; }
+  .topbar:has(#mn-acc-students) .admin-selector-wrap { order: 4; margin-right: 6px; }
+  .topbar:has(#mn-acc-students) .admin-badge { order: 5; }
+  .topbar:has(#mn-acc-students) .admin-badge:not(.super) {
+    background: none;
+    border: none;
+    color: #fff;
+    font-size: 13px;
+    font-weight: 600;
+    padding: 0 8px 0 2px;
+    max-width: 220px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .topbar:has(#mn-acc-students) .maktab-badge { order: 6; }
+  .topbar:has(#mn-acc-students) .stat-badge,
+  .topbar:has(#mn-acc-students) .nofaol-count { order: 6; }
+  .topbar:has(#mn-acc-students) .stat-badge {
+    background: rgba(255,255,255,.18);
+    border: none;
+    color: #fff;
+  }
+  .topbar:has(#mn-acc-students) .btn-logout { order: 9; margin-left: 8px; }
+
+  /* "Faol o'quvchilar" va "Yangi o'quvchi qo'shish" — desktopda ham ALOHIDA
+     ko'rinishlar (avval ikkalasi bir sahifada aralash turardi). Standart:
+     ro'yxat; menyudan "Yangi o'quvchi qo'shish" tanlansa — faqat forma. */
+  #tab-s > #add-student-form { display: none !important; }
+  body.mn-view-add #tab-s > #add-student-form { display: block !important; }
+  body.mn-view-add #tab-s > .table-card { display: none !important; }
+}
+
+/* Tor desktop/planshet (769–1024px): joy yetishmasligi uchun ikkinchi darajali
+   elementlar (hisoblagichlar) yashiriladi, profil ismi qisqaradi */
+@media (min-width: 769px) and (max-width: 1024px) {
+  .topbar:has(#mn-acc-students) .stat-badge,
+  .topbar:has(#mn-acc-students) .nofaol-count { display: none; }
+  .topbar:has(#mn-acc-students) .admin-badge:not(.super) { max-width: 130px; }
+  .topbar:has(#mn-acc-students) .mn-acc-toggle,
+  .topbar:has(#mn-acc-students) .mn-group > button { padding: 8px 10px; font-size: 13px; }
+}
