@@ -72,7 +72,6 @@
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="tahrir" onclick="switchTab('tahrir')">✏️ Guruhlarni tahrirlash</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
-      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="mavzu" onclick="switchTab('mavzu')">📘 Mavzu / Vazifa berish</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
@@ -84,7 +83,6 @@
     <button class="oq-tab-btn" id="tab-btn-guruh" onclick="switchTab('guruh'); clearGuruhForm();">➕ Guruh yaratish</button>
     <button class="oq-tab-btn" id="tab-btn-tahrir" onclick="switchTab('tahrir')">✏️ Guruhlarni tahrirlash</button>
     <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
-    <button class="oq-tab-btn" id="tab-btn-mavzu" onclick="switchTab('mavzu')">📘 Mavzu / Vazifa berish</button>
     <button class="oq-tab-btn" id="tab-btn-soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
   </div>
 
@@ -154,6 +152,69 @@
 
         <div id="guruh-baho-list" class="dav-sinf-grid"></div>
         <button class="oq-mark-btn" id="bh-save-btn" onclick="saveGuruhBaho()">💾 Baholarni saqlash</button>
+      </div>
+
+      <!-- Guruh uchun dars mavzusi va uyga vazifa (guruh kartasidan ochiladi) -->
+      <div id="mv-editor-wrap" style="display:none;">
+        <button class="oq-back-btn" onclick="closeMvEditor()">← Guruhlarga qaytish</button>
+        <div class="oq-section-title" id="mv-editor-title">Mavzu va vazifa</div>
+
+        <!-- Sana navigatsiyasi: faqat guruhning dars kunlari -->
+        <div class="dav-date-bar">
+          <button class="dav-date-nav-btn" id="mv-prev-btn" onclick="changeMvDate(-1)">‹</button>
+          <div style="text-align:center;">
+            <div class="dav-date-display" id="mv-date-display">—</div>
+            <div class="dav-date-sub" id="mv-date-sub">—</div>
+          </div>
+          <button class="dav-date-nav-btn" id="mv-next-btn" onclick="changeMvDate(1)">›</button>
+          <div class="dav-date-input-wrap">
+            <div class="dav-date-input-text" id="mv-date-picker-text" onclick="openMvDatePicker()">—</div>
+            <input class="dav-date-input" type="date" id="mv-date-picker" onchange="onMvDatePick()">
+          </div>
+        </div>
+
+        <div id="mv-saved-note" class="mv-note" role="status" style="display:none;"></div>
+
+        <!-- Yuklanmoqda -->
+        <div id="mv-loading" class="oq-loading" style="display:none;"><div class="loading-spinner"></div></div>
+
+        <!-- Saqlangan vazifa kartochkasi (ko'rish rejimi) -->
+        <div id="mv-card-wrap" class="mv-card" style="display:none;"></div>
+
+        <!-- Forma: yangi vazifa yozish yoki mavjudini tahrirlash -->
+        <div id="mv-form-wrap">
+        <div class="field-group" style="margin-top:16px;">
+          <label class="field-label">Bugungi dars mavzusi</label>
+          <textarea class="field-input" id="mv-mavzu" rows="2" oninput="updateMvSaveState()" placeholder="Masalan: Kasrlar. Qo'shish va ayirish"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Bugungi dars mavzusi uchun fayl biriktirish (ixtiyoriy)</label>
+          <div class="mv-pick">
+            <input type="file" class="mv-pick-input" id="mv-mavzu-fayl-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" onchange="uploadMvFayl('mavzu')">
+            <button type="button" class="mv-pick-btn" id="mv-mavzu-fayl-btn" onclick="document.getElementById('mv-mavzu-fayl-input').click()">Faylni tanlash</button>
+            <span class="mv-pick-name" id="mv-mavzu-fayl-name">Fayl tanlanmagan</span>
+          </div>
+          <div id="mv-mavzu-fayl-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+          <div id="mv-mavzu-fayl-current" style="display:none;font-size:12.5px;margin-top:6px;"></div>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Uyga vazifa</label>
+          <textarea class="field-input" id="mv-vazifa" rows="3" oninput="updateMvSaveState()" placeholder="O'quvchilarga uyga vazifa matnini yozing"></textarea>
+        </div>
+        <div class="field-group">
+          <label class="field-label">Uyga vazifa uchun fayl biriktirish (ixtiyoriy)</label>
+          <div class="mv-pick">
+            <input type="file" class="mv-pick-input" id="mv-vazifa-fayl-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" onchange="uploadMvFayl('vazifa')">
+            <button type="button" class="mv-pick-btn" id="mv-vazifa-fayl-btn" onclick="document.getElementById('mv-vazifa-fayl-input').click()">Faylni tanlash</button>
+            <span class="mv-pick-name" id="mv-vazifa-fayl-name">Fayl tanlanmagan</span>
+          </div>
+          <div id="mv-vazifa-fayl-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
+          <div id="mv-vazifa-fayl-current" style="display:none;font-size:12.5px;margin-top:6px;"></div>
+        </div>
+        <button class="oq-mark-btn" id="mv-save-btn" onclick="saveMavzuVazifa()" disabled>💾 Mavzu va vazifani saqlash</button>
+        <button type="button" class="mv-btn mv-btn-cancel" id="mv-cancel-btn" onclick="cancelMvEdit()" style="display:none;">Bekor qilish</button>
+        <div id="mv-save-hint" style="display:none;font-size:12.5px;color:var(--muted);margin-top:8px;text-align:center;"></div>
+        </div><!-- /mv-form-wrap -->
       </div>
     </div>
 
@@ -287,76 +348,6 @@
 
     </div>
 
-    <!-- ══ MAVZU / VAZIFA BERISH TAB ══ -->
-    <div class="oq-tab-page" id="tab-mavzu">
-      <div id="mv-guruhlar-wrap">
-        <div class="oq-section-title">📘 Qaysi guruhga mavzu/vazifa yozasiz?</div>
-        <div id="mv-guruhlar-list"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
-      </div>
-
-      <div id="mv-editor-wrap" style="display:none;">
-        <button class="oq-back-btn" onclick="closeMvEditor()">← Guruhlarga qaytish</button>
-        <div class="oq-section-title" id="mv-editor-title">Mavzu va vazifa</div>
-
-        <!-- Sana navigatsiyasi: faqat guruhning dars kunlari -->
-        <div class="dav-date-bar">
-          <button class="dav-date-nav-btn" id="mv-prev-btn" onclick="changeMvDate(-1)">‹</button>
-          <div style="text-align:center;">
-            <div class="dav-date-display" id="mv-date-display">—</div>
-            <div class="dav-date-sub" id="mv-date-sub">—</div>
-          </div>
-          <button class="dav-date-nav-btn" id="mv-next-btn" onclick="changeMvDate(1)">›</button>
-          <div class="dav-date-input-wrap">
-            <div class="dav-date-input-text" id="mv-date-picker-text" onclick="openMvDatePicker()">—</div>
-            <input class="dav-date-input" type="date" id="mv-date-picker" onchange="onMvDatePick()">
-          </div>
-        </div>
-
-        <div id="mv-saved-note" class="mv-note" role="status" style="display:none;"></div>
-
-        <!-- Yuklanmoqda -->
-        <div id="mv-loading" class="oq-loading" style="display:none;"><div class="loading-spinner"></div></div>
-
-        <!-- Saqlangan vazifa kartochkasi (ko'rish rejimi) -->
-        <div id="mv-card-wrap" class="mv-card" style="display:none;"></div>
-
-        <!-- Forma: yangi vazifa yozish yoki mavjudini tahrirlash -->
-        <div id="mv-form-wrap">
-        <div class="field-group" style="margin-top:16px;">
-          <label class="field-label">Bugungi dars mavzusi</label>
-          <textarea class="field-input" id="mv-mavzu" rows="2" oninput="updateMvSaveState()" placeholder="Masalan: Kasrlar. Qo'shish va ayirish"></textarea>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Bugungi dars mavzusi uchun fayl biriktirish (ixtiyoriy)</label>
-          <div class="mv-pick">
-            <input type="file" class="mv-pick-input" id="mv-mavzu-fayl-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" onchange="uploadMvFayl('mavzu')">
-            <button type="button" class="mv-pick-btn" id="mv-mavzu-fayl-btn" onclick="document.getElementById('mv-mavzu-fayl-input').click()">Faylni tanlash</button>
-            <span class="mv-pick-name" id="mv-mavzu-fayl-name">Fayl tanlanmagan</span>
-          </div>
-          <div id="mv-mavzu-fayl-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
-          <div id="mv-mavzu-fayl-current" style="display:none;font-size:12.5px;margin-top:6px;"></div>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Uyga vazifa</label>
-          <textarea class="field-input" id="mv-vazifa" rows="3" oninput="updateMvSaveState()" placeholder="O'quvchilarga uyga vazifa matnini yozing"></textarea>
-        </div>
-        <div class="field-group">
-          <label class="field-label">Uyga vazifa uchun fayl biriktirish (ixtiyoriy)</label>
-          <div class="mv-pick">
-            <input type="file" class="mv-pick-input" id="mv-vazifa-fayl-input" accept=".jpg,.jpeg,.png,.gif,.webp,.pdf,.doc,.docx" onchange="uploadMvFayl('vazifa')">
-            <button type="button" class="mv-pick-btn" id="mv-vazifa-fayl-btn" onclick="document.getElementById('mv-vazifa-fayl-input').click()">Faylni tanlash</button>
-            <span class="mv-pick-name" id="mv-vazifa-fayl-name">Fayl tanlanmagan</span>
-          </div>
-          <div id="mv-vazifa-fayl-status" style="font-size:12px;color:var(--muted);margin-top:4px;"></div>
-          <div id="mv-vazifa-fayl-current" style="display:none;font-size:12.5px;margin-top:6px;"></div>
-        </div>
-        <button class="oq-mark-btn" id="mv-save-btn" onclick="saveMavzuVazifa()" disabled>💾 Mavzu va vazifani saqlash</button>
-        <button type="button" class="mv-btn mv-btn-cancel" id="mv-cancel-btn" onclick="cancelMvEdit()" style="display:none;">Bekor qilish</button>
-        <div id="mv-save-hint" style="display:none;font-size:12.5px;color:var(--muted);margin-top:8px;text-align:center;"></div>
-        </div><!-- /mv-form-wrap -->
-      </div>
-    </div>
-
   </div>
 </div>
 
@@ -427,7 +418,7 @@
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_teacher_token';</script>
 <script src="js/api.js"></script>
-<script src="js/oqituvchi.js?v=20261006"></script>
+<script src="js/oqituvchi.js?v=20261007"></script>
 <script src="js/mobile-nav.js"></script>
 <script>
 // ⚠️ MUHIM: bu yerga haqiqiy bot username'ini kiriting

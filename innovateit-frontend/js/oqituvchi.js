@@ -25,7 +25,7 @@ function esc(s) {
 // Faol tab URL hash (#jadval) va sessionStorage'da saqlanadi. Refresh
 // qilinganda showApp() shu yerdan o'qib, foydalanuvchini o'sha tabga qaytaradi.
 // Tanlangan maktab ham shu tarzda saqlanadi.
-const OQ_TABS       = ['guruhlar', 'guruh', 'tahrir', 'jadval', 'mavzu', 'soat'];
+const OQ_TABS       = ['guruhlar', 'guruh', 'tahrir', 'jadval', 'soat'];
 const OQ_TAB_KEY    = 'iit_oq_tab';
 const OQ_MAKTAB_KEY = 'iit_oq_maktab';
 
@@ -330,7 +330,6 @@ function switchTab(tab) {
   if (tab === 'jadval')   loadJadval();
   if (tab === 'soat')   { loadSoatStatistika(); initSoatMark(); }
   if (tab === 'guruh')    initGuruhTab();
-  if (tab === 'mavzu')    loadMvGuruhlarim();
 }
 
 // ═══════════════════════════════════════════
@@ -669,6 +668,7 @@ const KUN_QISQA = { '1':'Du', '2':'Se', '3':'Cho', '4':'Pay', '5':'Ju', '6':'Sha
 async function loadGuruhlarim() {
   closeGuruhDavomat();
   closeGuruhBaho();
+  closeMvEditor();
   const wrap = g('guruhlar-list');
   wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
 
@@ -705,6 +705,7 @@ async function loadGuruhlarim() {
           <div class="guruh-card-links">
             <button type="button" class="oq-back-btn" onclick="openGuruhDavomat(${j.id}, event)">📋 Davomat belgilash</button>
             <button type="button" class="oq-back-btn" onclick="openGuruhBaho(${j.id}, event)">⭐ O'quvchilarni baholash</button>
+            <button type="button" class="oq-back-btn" onclick="openMvGuruh(${j.id}, event)">📘 Mavzu / Uyga vazifa</button>
           </div>
         </div>`;
     }).join('');
@@ -1017,58 +1018,18 @@ function findMvLessonDate(fromDate, dir) {
   return null;
 }
 
-async function loadMvGuruhlarim() {
-  closeMvEditor();
-  const wrap = g('mv-guruhlar-list');
-  wrap.innerHTML = '<div class="oq-loading"><div class="loading-spinner"></div></div>';
-
-  if (!TANLANGAN_MID) {
-    wrap.innerHTML = '<div class="oq-empty">⚠️ Avval maktabni tanlang</div>';
-    return;
-  }
-
-  try {
-    const data = await api.get('/api/jadval/mening-jadvalim-oqituvchi', { maktabId: TANLANGAN_MID });
-    if (!data || !data.ok) {
-      wrap.innerHTML = '<div class="oq-empty">⚠️ Ma\'lumot yuklanmadi</div>';
-      return;
-    }
-
-    LAST_GURUHLAR = data.jadvallar || [];
-    if (!LAST_GURUHLAR.length) {
-      wrap.innerHTML = '<div class="oq-empty">📭 Hali guruh yaratmagansiz.<br>"➕ Guruh yaratish" bo\'limidan boshlang.</div>';
-      return;
-    }
-
-    wrap.innerHTML = LAST_GURUHLAR.map(j => {
-      const sinflar = sortSinflar((j.sinflar || '').split(',').filter(Boolean));
-      const sinflarText = sinflar.map(s => s.replace(/-sinf$/i, '')).join(', ') +
-        (sinflar.length ? ('-sinf' + (sinflar.length > 1 ? 'lar' : '')) : '');
-      const kunlar = (j.kunlar || '').split(',').map(k => KUN_QISQA[k.trim()] || k.trim()).filter(Boolean).join(', ');
-
-      return `
-        <div class="guruh-card" onclick="openMvGuruh(${j.id})">
-          <div class="guruh-card-top">
-            <div class="guruh-card-sinf">📚 ${esc(sinflarText || '—')}</div>
-            <div class="guruh-card-edit">📘</div>
-          </div>
-          <div class="guruh-card-detail">🗓️ ${esc(kunlar) || '—'} &nbsp;·&nbsp; 🕐 ${esc(j.boshlanish) || '—'}–${esc(j.tugash) || '—'}</div>
-        </div>`;
-    }).join('');
-  } catch (e) {
-    wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
-  }
-}
-
-async function openMvGuruh(guruhId) {
+async function openMvGuruh(guruhId, event) {
+  if (event) event.stopPropagation();
   const j = LAST_GURUHLAR.find(x => x.id === guruhId);
   if (!j) return;
   activeMvGuruh = j;
   window._mv_kunlar = parseKunlarSet(j.kunlar);
 
-  g('mv-guruhlar-wrap').style.display = 'none';
+  g('guruhlar-list-wrap').style.display = 'none';
+  g('guruh-davomat-wrap').style.display = 'none';
+  g('guruh-baho-wrap').style.display = 'none';
   g('mv-editor-wrap').style.display = 'block';
-  navPush('mvEditor', closeMvEditor, 'mavzu');
+  navPush('mvEditor', closeMvEditor, 'guruhlar');
 
   const sinflarSet  = new Set((j.sinflar || '').split(',').filter(Boolean));
   const sinflarText = sortSinflar([...sinflarSet]).map(s => s.replace(/-sinf$/i, '') + '-sinf').join(', ');
@@ -1087,8 +1048,11 @@ async function openMvGuruh(guruhId) {
 
 function closeMvEditor() {
   navRelease('mvEditor');
-  g('mv-editor-wrap').style.display = 'none';
-  g('mv-guruhlar-wrap').style.display = 'block';
+  const mvWrap = g('mv-editor-wrap'), listWrap = g('guruhlar-list-wrap');
+  if (mvWrap && mvWrap.style.display !== 'none') {
+    mvWrap.style.display = 'none';
+    if (listWrap) listWrap.style.display = 'block';
+  }
   closeMvDeleteModal();
   activeMvGuruh = null;
   _mv_saved = null;
