@@ -359,7 +359,7 @@ button, a, input, select, textarea, [role="button"] {
 /* ── Guruhlarim ro'yxati ── */
 .guruh-card {
   background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
-  padding: 14px 16px; margin-bottom: 10px; cursor: pointer;
+  padding: 14px 16px; margin-bottom: 16px; cursor: pointer;
   transition: box-shadow .15s, border-color .15s;
 }
 .guruh-card:hover { box-shadow: var(--shadow); border-color: var(--iit-indigo); }
@@ -450,7 +450,7 @@ button, a, input, select, textarea, [role="button"] {
 .dav-s-btn.active-kech    { background: #f5f3ff; border-color: #7c3aed; box-shadow: 0 0 0 3px rgba(124,58,237,.15); }
 
 /* ── Guruh kartasidagi linklar (Davomat / Baholash) ── */
-.guruh-card-links { display: flex; flex-wrap: wrap; gap: 6px 18px; margin-top: 8px; }
+.guruh-card-links { display: flex; flex-wrap: wrap; gap: 10px 18px; margin-top: 14px; }
 .guruh-card-links .oq-back-btn { padding: 0; font-size: 12px; }
 /* "Guruhlarim" ro'yxatida kartaning o'zi bosilmaydi (kursor standart), faqat havolalar ustida pointer */
 #guruhlar-list .guruh-card { cursor: default; }
