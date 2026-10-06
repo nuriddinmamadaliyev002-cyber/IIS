@@ -102,9 +102,12 @@
   </div>
 
   <!-- MAKTAB ADMINI: bazadan o'qituvchi qidirib, o'z maktabiga biriktirish -->
-  <div id="admin-attach-bar" style="display:none;margin-bottom:16px;">
+  <div id="admin-attach-bar" style="display:none;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
     <button class="btn-submit" style="max-width:340px;" onclick="openAttachModal()">
       🔎 Bazadan o'qituvchi biriktirish
+    </button>
+    <button class="btn-submit btn-add-new" style="max-width:300px;" onclick="openAddModal()">
+      ➕ Yangi o'qituvchi qo'shish
     </button>
   </div>
 
@@ -486,6 +489,75 @@
     <div id="attach-results" class="att-results"></div>
     <div class="modal-footer">
       <button class="btn-cancel" onclick="closeAttachModal()">Yopish</button>
+      <button class="btn-cancel btn-add-new" onclick="openAddFromAttach()">➕ Yangi o'qituvchi</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Maktab admini — bazada yo'q o'qituvchini yangi qo'shish -->
+<div class="modal-overlay" id="add-modal" onclick="if(event.target===this)closeAddModal()">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">➕ Yangi o'qituvchi qo'shish</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px;line-height:1.5;">
+      Qo'shilgan o'qituvchi umumiy bazaga tushadi va maktabingizga avtomatik biriktiriladi.
+      Superadmin va boshqa maktab adminlari ham uni bazadan ko'ra oladi.
+    </div>
+    <div class="form-grid">
+      <div class="field-group">
+        <label class="field-label">Familiya</label>
+        <input class="field-input" id="an-familiya" placeholder="Yusupova" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Ism</label>
+        <input class="field-input" id="an-ism" placeholder="Nodira" autocomplete="off">
+      </div>
+      <div class="field-group">
+        <label class="field-label">Fan</label>
+        <select class="field-input" id="an-fan">
+          <option value="">— Tanlang —</option>
+          <option value="Matematika">Matematika</option>
+          <option value="Ingliz tili">Ingliz tili</option>
+          <option value="IT">IT</option>
+        </select>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Telefon</label>
+        <div class="tel-wrap">
+          <input class="field-input tel-input" id="an-tel" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel">
+          <div class="tel-hint" id="an-tel-hint"></div>
+        </div>
+      </div>
+      <div class="field-group">
+        <label class="field-label">Qo'sh. telefon <span style="font-weight:400;text-transform:none;font-size:10px;">(ixtiyoriy)</span></label>
+        <div class="tel-wrap">
+          <input class="field-input tel-input" id="an-tel2" placeholder="+998 __ ___ __ __" maxlength="17" inputmode="tel">
+          <div class="tel-hint" id="an-tel2-hint"></div>
+        </div>
+      </div>
+    </div>
+    <div id="an-err" style="display:none;color:#dc2626;font-size:13px;margin-top:4px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" onclick="closeAddModal()">Bekor qilish</button>
+      <button class="btn-submit" id="an-save-btn" onclick="submitAddTeacher()">Saqlash</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Yangi o'qituvchi qo'shishdan oldin tasdiqlash (bazada yo'qligiga ishonchmi?) -->
+<div class="modal-overlay" id="add-confirm-modal" onclick="if(event.target===this)closeAddConfirm()">
+  <div class="modal">
+    <div class="modal-drag"></div>
+    <div class="modal-title">⚠️ O'qituvchi bazada yo'qligiga ishonchingiz komilmi?</div>
+    <div style="font-size:13.5px;line-height:1.6;margin-bottom:10px;">
+      Siz <b id="ac-name"></b> ni yangi o'qituvchi sifatida qo'shmoqchisiz.
+      Takroriy yozuv ro'yxatni chalkashtiradi, shuning uchun avval o'qituvchi umumiy bazada yo'qligini tekshiring.
+    </div>
+    <div id="ac-similar"></div>
+    <div id="ac-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;"></div>
+    <div class="modal-footer">
+      <button class="btn-cancel" id="ac-cancel-btn" onclick="closeAddConfirm()">Bekor qilish</button>
+      <button class="btn-submit" id="ac-yes-btn" onclick="confirmAddTeacher()">Ha, ishonchim komil</button>
     </div>
   </div>
 </div>

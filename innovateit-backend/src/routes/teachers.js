@@ -1,6 +1,6 @@
 // ─── Teachers routes ───────────────────────────────
 // GET    /api/teachers              — ro'yxat
-// POST   /api/teachers              — qo'shish
+// POST   /api/teachers              — qo'shish (superadmin; maktab admini — o'z maktabiga avtomatik biriktiriladi)
 // PUT    /api/teachers              — tahrirlash
 // DELETE /api/teachers              — o'chirish
 // POST   /api/teachers/maktab       — superadmin: maktab biriktirish
@@ -310,10 +310,50 @@ router.get('/', async (req, res) => {
 // ─── POST /api/teachers — qo'shish (faqat superadmin) ───
 router.post('/', async (req, res) => {
   const p = req.body;
-  const { username, isSuper } = req.user;
-  if (!isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin o'qituvchi qo'sha oladi" });
+  const { isSuper, maktabId } = req.user;
+  // Superadmin — istalgan o'qituvchi qo'sha oladi (maktabga keyin biriktiriladi).
+  // Maktab admini — bazaga YANGI o'qituvchi qo'shadi va u avtomatik o'z maktabiga
+  // biriktiriladi. Umumiy bazaga tushgani uchun superadmin va boshqa maktab
+  // adminlari ham uni ko'radi (GET / va /qidiruv orqali).
+  if (!isSuper && !maktabId)
+    return res.status(403).json({ ok: false, error: "Faqat superadmin yoki maktab admini o'qituvchi qo'sha oladi" });
   if (!(p.ism||'').trim())      return res.status(400).json({ ok: false, error: 'Ism kiritilmagan' });
   if (!(p.familiya||'').trim()) return res.status(400).json({ ok: false, error: 'Familiya kiritilmagan' });
+
+  if (!isSuper) {
+    // Maktab admini uchun qat'iyroq tekshiruv (superadmin yo'li o'zgarmagan)
+    const telDigits  = String(p.telefon  || '').replace(/\D/g, '');
+    const tel2Digits = String(p.telefon2 || '').replace(/\D/g, '');
+    if (p.ism.trim().length > 60 || p.familiya.trim().length > 60)
+      return res.status(400).json({ ok: false, error: 'Ism yoki familiya juda uzun' });
+    if (!(p.fan||'').trim() || p.fan.trim().length > 40)
+      return res.status(400).json({ ok: false, error: 'Fan tanlanmagan' });
+    if (!/^998\d{9}$/.test(telDigits))
+      return res.status(400).json({ ok: false, error: "Telefon formati noto'g'ri (+998 XX XXX XX XX)" });
+    if (tel2Digits && !/^998\d{9}$/.test(tel2Digits))
+      return res.status(400).json({ ok: false, error: "Qo'shimcha telefon formati noto'g'ri" });
+
+    // Aynan o'sha o'qituvchi (familiya+ism va telefon bir xil) bazada bor bo'lsa — takror qo'shmaymiz
+    const nameKey = stripApos(`${p.familiya} ${p.ism}`).toLowerCase().replace(/\s+/g, ' ').trim();
+    let dup;
+    try {
+      dup = await pool.query(
+        `SELECT id FROM oqituvchilar
+          WHERE translate(lower(familiya || ' ' || ism), $1, '') = $2
+            AND regexp_replace(COALESCE(telefon, ''), '\\D', '', 'g') = $3
+          LIMIT 1`,
+        [APOSTROFLAR, nameKey, telDigits]
+      );
+    } catch (err) {
+      console.error('POST /teachers (dublikat tekshiruvi) xatolik:', err.message);
+      return res.status(500).json({ ok: false, error: 'Server xatoligi' });
+    }
+    if (dup.rowCount > 0)
+      return res.status(409).json({
+        ok: false,
+        error: "Bunday o'qituvchi bazada allaqachon mavjud. «Bazadan o'qituvchi biriktirish» orqali qidirib biriktiring."
+      });
+  }
 
   const client = await pool.connect();
   try {
@@ -328,10 +368,17 @@ router.post('/', async (req, res) => {
     const teacherId = ins.rows[0].id;
 
     // Superadmin o'qituvchi qo'shganda avtomatik biriktirmaymiz
-    // (superadmin maktabga ega emas, biriktirish keyinroq qilinadi)
+    // (superadmin maktabga ega emas, biriktirish keyinroq qilinadi).
+    // Maktab admini qo'shganda — o'z maktabiga avtomatik biriktiramiz.
+    if (!isSuper) {
+      await client.query(
+        `INSERT INTO oqituvchi_maktablar (oqituvchi_id, maktab_id) VALUES ($1, $2)`,
+        [teacherId, maktabId]
+      );
+    }
 
     await client.query('COMMIT');
-    res.json({ ok: true });
+    res.json({ ok: true, teacherId });
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('POST /teachers xatolik:', err.message);

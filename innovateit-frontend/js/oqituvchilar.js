@@ -60,7 +60,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   } else {
     // Oddiy admin: ro'yxat + bazadan o'qituvchi biriktirish + Telegram ID
     setDisplay('add-form', 'none');
-    setDisplay('admin-attach-bar', 'block');
+    setDisplay('admin-attach-bar', 'flex');
   }
 
   setupTel('f-tel',  'f-tel-hint');
@@ -71,6 +71,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   setupTel('sa-tel2','sa-tel2-hint');
   setupTel('se-tel', 'se-tel-hint');
   setupTel('se-tel2','se-tel2-hint');
+  setupTel('an-tel',  'an-tel-hint');
+  setupTel('an-tel2', 'an-tel2-hint');
 
   await loadTeachers();
   initPortfolioTab();
@@ -1181,6 +1183,125 @@ async function refreshTeachersList() {
   await loadTeachersQuiet();
   applyFilter();
   const c = g('total-count'); if (c) c.textContent = T.length + " o'qituvchi";
+}
+
+// ─────────────────────────────────────────────
+//  MAKTAB ADMINI: BAZADA YO'Q O'QITUVCHINI YANGI QO'SHISH
+//  1) forma → 2) "bazada yo'qligiga ishonchingiz komilmi?" → 3) saqlash
+// ─────────────────────────────────────────────
+let AN_SEQ = 0;   // tasdiqlash oynasidagi "o'xshashlar" qidiruvi uchun (kech kelgan javoblarni e'tiborsiz qoldirish)
+
+function openAddModal(prefill) {
+  if (!U || U.isSuper || U.isSuperProxy) return;
+  ['an-familiya', 'an-ism', 'an-tel', 'an-tel2'].forEach(id => setValue(id, ''));
+  setValue('an-fan', '');
+  ['an-tel-hint', 'an-tel2-hint'].forEach(id => { const el = g(id); if (el) { el.textContent = ''; el.className = 'tel-hint'; } });
+  ['an-tel', 'an-tel2'].forEach(id => { const el = g(id); if (el) el.className = 'field-input tel-input'; });
+  const err = g('an-err'); if (err) { err.style.display = 'none'; err.textContent = ''; }
+
+  // Qidiruv oynasidan kelgan bo'lsa — yozilgan matnni familiya/ism ga qo'yamiz (tahrirlash mumkin)
+  const q = String((prefill && prefill.q) || '').trim().replace(/\s+/g, ' ');
+  if (q) {
+    const parts = q.split(' ');
+    setValue('an-familiya', parts[0] || '');
+    setValue('an-ism', parts.slice(1).join(' '));
+  }
+
+  const btn = g('an-save-btn'); if (btn) { btn.disabled = false; btn.textContent = 'Saqlash'; }
+  const m = g('add-modal'); if (m) m.classList.add('show');
+  setTimeout(() => { const f = g(q ? (g('an-ism').value ? 'an-fan' : 'an-ism') : 'an-familiya'); if (f) f.focus(); }, 50);
+}
+
+function openAddFromAttach() {
+  const q = g('attach-search')?.value || '';
+  closeAttachModal();
+  openAddModal({ q });
+}
+
+function closeAddModal() {
+  closeAddConfirm();
+  const m = g('add-modal'); if (m) m.classList.remove('show');
+}
+
+// 1-qadam: forma tekshiruvi → tasdiqlash oynasini ochish
+function submitAddTeacher() {
+  const fam  = g('an-familiya').value.trim();
+  const ism  = g('an-ism').value.trim();
+  const fan  = g('an-fan').value;
+  const tel  = g('an-tel').value.trim();
+  const tel2 = g('an-tel2').value.trim();
+  const err  = g('an-err');
+  const showErr = msg => { if (err) { err.textContent = msg; err.style.display = 'block'; } };
+
+  if (!fam || !ism)            { showErr('Familiya va ismni kiriting'); return; }
+  if (!fan)                    { showErr('Fanni tanlang'); return; }
+  if (!tel)                    { showErr('Telefon raqamni kiriting'); return; }
+  if (!isTelOk(tel))           { showErr("Telefon formati noto'g'ri (+998 XX XXX XX XX)"); return; }
+  if (tel2 && !isTelOk(tel2))  { showErr("Qo'sh. telefon formati noto'g'ri"); return; }
+  if (err) err.style.display = 'none';
+
+  openAddConfirm(fam, ism);
+}
+
+// 2-qadam: "Ha, ishonchim komil" / "Bekor qilish"
+async function openAddConfirm(fam, ism) {
+  g('ac-name').textContent = (fam + ' ' + ism).trim();
+  const err = g('ac-err'); if (err) { err.style.display = 'none'; err.textContent = ''; }
+  const yes = g('ac-yes-btn'); if (yes) { yes.disabled = false; yes.textContent = 'Ha, ishonchim komil'; }
+  const no  = g('ac-cancel-btn'); if (no) no.disabled = false;
+  const box = g('ac-similar'); if (box) box.innerHTML = '';
+  const m = g('add-confirm-modal'); if (m) m.classList.add('show');
+
+  // Bazada o'xshash ism-familiyalar bormi — ogohlantirish uchun (xato bo'lsa jim o'tamiz)
+  const seq = ++AN_SEQ;
+  try {
+    const r = await api.searchTeachers((fam + ' ' + ism).trim());
+    if (seq !== AN_SEQ || !r.ok || !(r.teachers || []).length || !box) return;
+    const items = r.teachers.slice(0, 5).map(t => {
+      const where = t.meningMaktabimda
+        ? 'sizning maktabingizda'
+        : ((t.boshqaMaktablar || []).length ? 'boshqa maktabda: ' + t.boshqaMaktablar.map(esc2).join(', ') : 'hech qaysi maktabga biriktirilmagan');
+      return '<li><b>' + esc2(t.familiya) + ' ' + esc2(t.ism) + '</b> — ' + esc2(t.fan || '—')
+        + (t.telefon ? ', ' + esc2(t.telefon) : '') + ' (' + where + ')</li>';
+    }).join('');
+    box.innerHTML = '<div class="ac-similar">⚠️ Bazada o\'xshash o\'qituvchilar topildi:<ul>' + items + '</ul>'
+      + '<div class="ac-hint">Ular orasida kerakli o\'qituvchi bo\'lsa, «Bekor qilish» ni bosing va «Bazadan o\'qituvchi biriktirish» orqali biriktiring.</div></div>';
+  } catch (_) { /* tasdiqlash oynasi baribir ishlayveradi */ }
+}
+
+function closeAddConfirm() {
+  AN_SEQ++;
+  const m = g('add-confirm-modal'); if (m) m.classList.remove('show');
+}
+
+// 3-qadam: saqlash
+async function confirmAddTeacher() {
+  const yes = g('ac-yes-btn'), no = g('ac-cancel-btn');
+  const err = g('ac-err');
+  const showErr = msg => { if (err) { err.textContent = msg; err.style.display = 'block'; } };
+  if (err) err.style.display = 'none';
+
+  const body = {
+    ism:        g('an-ism').value.trim(),
+    familiya:   g('an-familiya').value.trim(),
+    fan:        g('an-fan').value,
+    telefon:    g('an-tel').value.trim(),
+    telefon2:   g('an-tel2').value.trim()
+  };
+  if (yes) { yes.disabled = true; yes.textContent = 'Saqlanmoqda…'; }
+  if (no)  no.disabled = true;
+  try {
+    const r = await api.addTeacher(body);
+    if (r.ok) {
+      toast("✅ O'qituvchi qo'shildi va maktabingizga biriktirildi", 'success');
+      closeAddModal();
+      await refreshTeachersList();
+      return;
+    }
+    showErr(r.error || "Qo'shishda xatolik");
+  } catch { showErr("Server bilan aloqa yo'q"); }
+  if (yes) { yes.disabled = false; yes.textContent = 'Ha, ishonchim komil'; }
+  if (no)  no.disabled = false;
 }
 
 // ─────────────────────────────────────────────
