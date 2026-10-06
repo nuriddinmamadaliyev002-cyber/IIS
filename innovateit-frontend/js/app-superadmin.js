@@ -109,13 +109,14 @@ let TG_ENTITIES = {}; // { admin: [], buxgalter: [], oqituvchi: [], oquvchi: [] 
 
 async function loadTgBirikmalar() {
   try {
-    const [bir, adm, bux, tea, stu, sal] = await Promise.all([
+    const [bir, adm, bux, tea, stu, sal, dir] = await Promise.all([
       api.getTgBirikmalar(),
       api.getAdmins(),
       api.getBiriktirmalar(),
       api.getTeachers(),
       api.getStudents({ limit: 9999 }),
       api.getSalesXodimlar(),
+      api.getDirektorlar(),
     ]);
 
     TG_ENTITIES = {
@@ -124,6 +125,7 @@ async function loadTgBirikmalar() {
       oqituvchi: (tea.ok     ? tea.teachers      : []),
       oquvchi:   (stu.ok     ? stu.students      : []),
       sales:     (sal.ok     ? (sal.xodimlar || []) : []),
+      direktor:  (dir.ok     ? (dir.direktorlar || []) : []),
     };
 
     if (bir.ok) renderTgBirikmalar(bir.birikmalar);
@@ -137,7 +139,7 @@ function renderTgBirikmalar(list) {
     tb.innerHTML = '<tr><td colspan="6" style="text-align:center;padding:24px;opacity:.5">Birikma yo\'q</td></tr>';
     return;
   }
-  const rolLabels = { admin:'👤 Admin', buxgalter:'💼 Buxgalter', oqituvchi:'<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi', oquvchi:'🎓 O\'quvchi', sales:'🎯 Sales' };
+  const rolLabels = { admin:'👤 Admin', buxgalter:'💼 Buxgalter', oqituvchi:'<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi', oquvchi:'🎓 O\'quvchi', sales:'🎯 Sales', direktor:'🏛 Direktor' };
   tb.innerHTML = list.map(b => `
     <tr>
       <td><code>${b.telegram_id}</code></td>
@@ -159,7 +161,7 @@ function onTgRolChange() {
 
   if (!rol) { wrap.style.display = 'none'; return; }
 
-  const labels = { admin:"Admin tanlang", buxgalter:"Buxgalter tanlang", oqituvchi:"O'qituvchi tanlang", oquvchi:"O'quvchi tanlang", sales:"Sales xodimi tanlang" };
+  const labels = { admin:"Admin tanlang", buxgalter:"Buxgalter tanlang", oqituvchi:"O'qituvchi tanlang", oquvchi:"O'quvchi tanlang", sales:"Sales xodimi tanlang", direktor:"Direktor tanlang" };
   label.textContent = labels[rol] || 'Foydalanuvchi';
 
   const list = TG_ENTITIES[rol] || [];

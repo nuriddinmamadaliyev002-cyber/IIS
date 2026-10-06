@@ -89,6 +89,7 @@ function handleAuthResult(data) {
     admin:     `${WEB_PANEL_URL}?tg_token=${tok}`,
     buxgalter: `${WEB_PANEL_URL}/buxgalter.html?tg_token=${tok}&tg_ism=${ism}`,
     sales:     `${WEB_PANEL_URL}/sales.html?tg_token=${tok}&tg_ism=${ism}`,
+    direktor:  `${WEB_PANEL_URL}/direktor.html?tg_token=${tok}&tg_ism=${ism}`,
     oqituvchi: `${WEB_PANEL_URL}/oqituvchi.html?tg_token=${tok}&tg_ism=${ism}`,
     oquvchi:   `${WEB_PANEL_URL}/oquvchi.html?tg_token=${tok}&tg_ism=${ism}`,
   };
@@ -127,6 +128,7 @@ function showRoleChooser(tgId, roles) {
     admin:     { icon: '🖥️', label: 'Maktab admini' },
     buxgalter: { icon: '💼', label: 'Buxgalter' },
     sales:     { icon: '🎯', label: 'Sotuv bo`limi xodimi' },
+    direktor:  { icon: '🏛', label: 'Direktor' },
     oqituvchi: { label: "O'qituvchi" },
     oquvchi:   { label: "O'quvchi" },
   };
@@ -481,6 +483,7 @@ function showDashboard(data) {
   const rolLabels = {
     admin:     '👤 Admin',
     buxgalter: '💼 Buxgalter',
+    direktor:  '🏛 Direktor',
     oqituvchi: '<img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;vertical-align:-0.15em;"> O\'qituvchi',
     oquvchi:   '🎓 O\'quvchi',
   };

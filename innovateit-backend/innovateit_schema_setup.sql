@@ -619,6 +619,17 @@ CREATE INDEX IF NOT EXISTS idx_oquvchi_baholar_guruh_sana ON oquvchi_baholar (gu
 CREATE INDEX IF NOT EXISTS idx_oquvchi_baholar_oquvchi    ON oquvchi_baholar (oquvchi_id, sana);
 
 
+-- ─── 22b. DIREKTORLAR ────────────────────────────────────────────────────────
+--  Barcha maktablarni yuqoridan kuzatuvchi rahbar (faqat Telegram orqali kiradi)
+CREATE TABLE IF NOT EXISTS direktorlar (
+    id          SERIAL PRIMARY KEY,
+    ism         TEXT   NOT NULL,
+    familiya    TEXT   NOT NULL DEFAULT '',
+    telegram_id BIGINT UNIQUE,
+    yaratilgan  TEXT   DEFAULT TO_CHAR(NOW(), 'DD.MM.YYYY')
+);
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
@@ -772,7 +783,7 @@ ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT 
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
---  Barcha 29 ta jadval yaratildi
+--  Barcha 30 ta jadval yaratildi
 -- ════════════════════════════════════════════════════════════════════════════
 \echo '✅ IIS schema muvaffaqiyatli yaratildi!'
 \echo '   Jadvallar: maktablar, adminlar, buxgalterlar, oquvchilar,'
@@ -785,3 +796,4 @@ ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT 
 \echo '              sales_xodimlar, leadlar, sales_maktablar,'
 \echo '              blog_categories, blog_posts, blog_tags, blog_post_tags,'
 \echo '              dars_mavzulari, vazifa_javoblari, vazifa_javob_fayllari'
+\echo '              direktorlar'

@@ -116,6 +116,7 @@
     <button class="tab-btn active" onclick="switchTab('s')">📋 O'quvchilar</button>
     <button class="tab-btn"        onclick="switchTab('a')">👥 Adminlar</button>
     <button class="tab-btn"        onclick="switchTab('b')">💼 Buxgalterlar</button>
+    <button class="tab-btn"        onclick="switchTab('d')">🏛 Direktorlar</button>
     <button class="tab-btn"        onclick="switchTab('m')">🏫 Maktablar</button>
     <!-- TelegramID lar tabi so'rovlar tabiga birlashtirildi -->
     <button class="tab-btn"        onclick="switchTab('sr')">📨 So'rovlar</button>
@@ -341,6 +342,42 @@
       </div>
     </div><!-- /tab-b -->
 
+    <!-- ─── DIREKTORLAR TABI ─── -->
+    <div id="tab-d" style="display:none;">
+      <div class="admin-card" style="margin-top:14px;">
+
+        <div class="card-title">➕ Yangi direktor yaratish</div>
+        <div class="create-grid" style="grid-template-columns:1fr 1fr auto;">
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Familiya</label>
+            <input class="field-input" id="dir-familiya" placeholder="Karimov" autocomplete="off">
+          </div>
+          <div class="field-group" style="margin:0">
+            <label class="field-label">Ism</label>
+            <input class="field-input" id="dir-ism" placeholder="Sardor" autocomplete="off">
+          </div>
+          <div style="display:flex;align-items:flex-end;">
+            <button class="btn-submit" onclick="createDirektor()" style="margin:0;width:100%;">
+              <span class="spinner" id="dir-spinner"></span>
+              <span id="dir-btn-txt">Yaratish</span>
+            </button>
+          </div>
+        </div>
+        <p style="font-size:12px;color:#9ca3af;margin-top:6px;">
+          📱 Yaratgach, ro'yxatdagi "Telegram bog'lash" tugmasi orqali Telegram ID'ni biriktiring — direktor Telegram Mini App orqali shu hisob bilan kiradi va barcha maktablarni ko'radi.
+        </p>
+        <p id="dir-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;"></p>
+
+        <div class="divider"></div>
+
+        <div class="card-title">🏛 Direktorlar ro'yxati</div>
+        <div class="admin-list" id="dir-list">
+          <div class="empty-state"><div class="empty-state-icon">🏛</div><p>Direktorlar yo'q</p></div>
+        </div>
+
+      </div>
+    </div><!-- /tab-d -->
+
 
 
 
@@ -398,6 +435,7 @@
               <option value="oqituvchi">O'qituvchi</option>
               <option value="oquvchi">🎓 O'quvchi</option>
               <option value="sales">🎯 Sales</option>
+              <option value="direktor">🏛 Direktor</option>
             </select>
           </div>
           <div class="field-group" id="tg-entity-wrap" style="display:none;">
@@ -902,6 +940,48 @@
   </div>
 </div>
 
+<!-- ═══ DIREKTORNI TAHRIRLASH MODALI ═══ -->
+<div class="modal-overlay" id="edit-dir-modal" onclick="if(event.target===this)closeEditDir()"
+  style="display:none;position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);
+         align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#fff;border-radius:14px;padding:24px;width:100%;max-width:420px;
+               box-shadow:0 8px 40px rgba(0,0,0,.2);">
+    <div style="font-size:16px;font-weight:700;margin-bottom:18px;">✏️ Direktorni tahrirlash</div>
+
+    <div class="field-group" style="margin-bottom:12px;">
+      <label class="field-label">Familiya</label>
+      <input class="field-input" id="edit-dir-familiya" placeholder="Karimov" autocomplete="off">
+    </div>
+    <div class="field-group" style="margin-bottom:12px;">
+      <label class="field-label">Ism</label>
+      <input class="field-input" id="edit-dir-ism" placeholder="Sardor" autocomplete="off">
+    </div>
+
+    <div class="field-group" style="margin-bottom:6px;">
+      <label class="field-label">📱 Telegram ID <span style="color:#9ca3af;font-weight:400;">(asosiy kirish usuli)</span></label>
+      <input class="field-input" id="edit-dir-tgid" type="text" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
+    </div>
+    <div class="kandidat-picker" id="edit-dir-kandidatlar">
+      <button type="button" class="kandidat-picker-trigger field-input" onclick="toggleKandidatPicker('edit-dir-kandidatlar')">
+        <span class="kandidat-picker-label">— yoki botga /start yozganlar ro'yxatidan tanlang —</span>
+        <span class="kandidat-picker-arrow">▾</span>
+      </button>
+      <div class="kandidat-picker-panel"></div>
+    </div>
+    <p style="font-size:12px;color:#9ca3af;margin:-2px 0 4px;">
+      Direktor botga <b>/start</b> yozsa, shu ro'yxatda avtomatik paydo bo'ladi.
+    </p>
+    <p id="edit-dir-tg-status" style="font-size:12px;margin:2px 0 4px;"></p>
+
+    <p id="edit-dir-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;"></p>
+
+    <div style="display:flex;gap:10px;margin-top:20px;justify-content:flex-end;flex-wrap:wrap;">
+      <button onclick="closeEditDir()" class="btn-cancel">Bekor qilish</button>
+      <button onclick="saveEditDir()" class="btn-submit">Saqlash</button>
+    </div>
+  </div>
+</div>
+
 <div class="loading-overlay" id="loading-ov"><div class="loading-spinner"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -1238,6 +1318,7 @@
 <script src="js/portfolio-tab.js"></script>
 <script src="js/blog-admin.js"></script>
 <script src="js/sales-admin.js"></script>
+<script src="js/direktor-admin.js"></script>
 <script src="js/mobile-nav.js"></script>
 
 

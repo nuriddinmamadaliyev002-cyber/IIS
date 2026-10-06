@@ -129,6 +129,8 @@ function handleUnauthorized() {
     window.location.href = baseDir + 'oqituvchi.html';
   } else if (page.includes('sales')) {
     window.location.href = baseDir + 'sales.html';
+  } else if (page.includes('direktor')) {
+    window.location.href = baseDir + 'direktor.html';
   } else {
     window.location.href = baseDir + 'index.html';
   }
@@ -165,6 +167,8 @@ async function apiReq(method, path, data = {}) {
                   || path.startsWith('/api/admins/')
                   || path === '/api/buxgalter'
                   || path.startsWith('/api/buxgalter/')
+                  || path === '/api/direktorlar'
+                  || path.startsWith('/api/direktorlar/')
                   || path === '/api/sales'
                   || path.startsWith('/api/sales/');
     if (keepAsIs) {
@@ -285,6 +289,13 @@ const api = {
   biriktirTeacher:     (d) => api.post('/api/teachers/biriktiruv', d),
   ajratTeacher:        (d) => api.del('/api/teachers/biriktiruv', d),
   mergeTeachers:       (d) => api.post('/api/teachers/merge', d),
+
+  // ─── Direktorlar (superadmin boshqaradi) ───
+  getDirektorlar:   (d) => api.get('/api/direktorlar', d),
+  createDirektor:   (d) => api.post('/api/direktorlar', d),
+  editDirektor:     (d) => api.put(`/api/direktorlar/${d.id}`, d),
+  deleteDirektor:   (d) => api.del(`/api/direktorlar/${d.id}`, d),
+  getDirektorMe:    (d) => api.get('/api/direktorlar/me', d),
 
   // ─── Buxgalter ───
   getBiriktirmalar: (d) => api.get('/api/buxgalter', d),
@@ -444,7 +455,7 @@ function iitMarkLoggedOut() {
 // Barcha panel sessiya kalitlarini (token bilan birga) tozalaydi
 function iitClearAllSessions() {
   tokenStore.clear();
-  ['iit_u', 'iit_bux_u', 'iit_sales_u', 'iit_oq_u', 'iit_ouq_u'
+  ['iit_u', 'iit_bux_u', 'iit_sales_u', 'iit_dir_u', 'iit_oq_u', 'iit_ouq_u'
   ].forEach(k => localStorage.removeItem(k));
   ['iit_nofaol_user', 'iit_teacher_user', 'iit_davomat_user',
    'iit_jadval_user', 'iit_pending_nav'

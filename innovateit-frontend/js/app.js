@@ -246,14 +246,14 @@ function setTopbarSection(txt) {
 }
 
 const TAB_TITLES = {
-  s: "O'quvchilar", a: 'Adminlar', b: 'Buxgalterlar', m: 'Maktablar',
+  s: "O'quvchilar", a: 'Adminlar', b: 'Buxgalterlar', d: 'Direktorlar', m: 'Maktablar',
   sr: "So'rovlar", oq: "O'qituvchilar", pf: 'Portfolio', bl: 'Blog', sl: 'Sales'
 };
 
 function switchTab(t) {
   if (TAB_TITLES[t]) setTopbarSection(TAB_TITLES[t]);
   setMobileStudentView('list');
-  const allTabs = ['s', 'a', 'b', 'm', 'sr', 'oq', 'pf', 'bl', 'sl'];
+  const allTabs = ['s', 'a', 'b', 'd', 'm', 'sr', 'oq', 'pf', 'bl', 'sl'];
   allTabs.forEach(id => {
     const el = g('tab-' + id);
     if (el) el.style.display = (t === id) ? 'block' : 'none';
@@ -262,6 +262,7 @@ function switchTab(t) {
     b.classList.toggle('active', allTabs[i] === t)
   );
   if (t === 'b')  loadBuxgalterlar();
+  if (t === 'd' && typeof loadDirektorlar === 'function') loadDirektorlar();
   if (t === 'm')  loadMaktablar();
   if (t === 'sr' && typeof loadSorovlar === 'function') loadSorovlar();
   if (t === 'oq') loadTeachersTab();

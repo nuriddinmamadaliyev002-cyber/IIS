@@ -58,6 +58,11 @@ async function buildAuthResponse(tgUser, tgId) {
        WHERE o.id=$1`,
       [entity_id]
     );
+  } else if (entity_table === 'direktorlar') {
+    entityRes = await pool.query(
+      `SELECT id, ism, familiya FROM direktorlar WHERE id=$1`,
+      [entity_id]
+    );
   } else if (entity_table === 'sales_xodimlar') {
     entityRes = await pool.query(
       `SELECT s.id, s.ism, s.familiya,
@@ -106,6 +111,9 @@ async function buildAuthResponse(tgUser, tgId) {
     tokenPayload.maktablar   = (entity.maktablar   || []).filter(Boolean);
     tokenPayload.maktabIdlar = (entity.maktab_idlar || []).filter(Boolean);
   }
+  if (rol === 'direktor') {
+    tokenPayload.id = entity_id; // maktabga bog'lanmagan — barcha maktablarni ko'radi
+  }
   if (rol === 'oquvchi') {
     tokenPayload.maktabId = entity.maktab_id || null;
     tokenPayload.maktab   = entity.maktab    || '';
@@ -135,6 +143,8 @@ async function buildAuthResponse(tgUser, tgId) {
   roleLabel = 'Buxgalter';
 } else if (rol === 'sales') {
   roleLabel = "Sotuv bo'limi xodimi";
+} else if (rol === 'direktor') {
+  roleLabel = 'Direktor';
 }
 
   
@@ -483,6 +493,7 @@ router.get('/birikmalar', requireAuth(['admin']), async (req, res) => {
            WHEN tu.entity_table = 'buxgalterlar'  THEN (SELECT ism||' '||familiya FROM buxgalterlar  WHERE id=tu.entity_id)
            WHEN tu.entity_table = 'oqituvchilar'  THEN (SELECT ism||' '||familiya FROM oqituvchilar  WHERE id=tu.entity_id)
            WHEN tu.entity_table = 'oquvchilar'    THEN (SELECT ism||' '||familiya FROM oquvchilar    WHERE id=tu.entity_id)
+           WHEN tu.entity_table = 'direktorlar'   THEN (SELECT ism||' '||familiya FROM direktorlar   WHERE id=tu.entity_id)
            WHEN tu.entity_table = 'sales_xodimlar' THEN (SELECT ism||' '||familiya FROM sales_xodimlar WHERE id=tu.entity_id)
          END AS fish
        FROM telegram_users tu
@@ -523,6 +534,7 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
     oqituvchi:  'oqituvchilar',
     oquvchi:    'oquvchilar',
     sales:      'sales_xodimlar',
+    direktor:   'direktorlar',
   };
   const entityTable = tableMappings[rol];
   if (!entityTable)

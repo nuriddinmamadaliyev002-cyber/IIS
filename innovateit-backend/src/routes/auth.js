@@ -63,7 +63,7 @@ router.post('/login-viewer', async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh — tokenni yangilash ──────────────────────────────
-router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi', 'sales']), (req, res) => {
+router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi', 'sales', 'direktor']), (req, res) => {
   // Barcha JWT maydonlarini saqlab yangi token berish
   const token = generateToken(req.user);
   res.json({ ok: true, token });
