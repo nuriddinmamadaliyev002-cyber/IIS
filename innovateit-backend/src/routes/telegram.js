@@ -278,57 +278,15 @@ router.get('/check/:telegramId/:rol', async (req, res) => {
   }
 });
 
-// ─── POST /api/telegram/anketa ───────────────────────────────────────────────
-// Miniapp dan kelgan anketa ma'lumotlari saqlanadi
-router.post('/anketa', async (req, res) => {
-  const { telegramId, telegramIsm, pozitsiya, fan, fish, maktablar, sinf, telefon } = req.body;
-
-  if (!telegramId || !fish?.trim() || !telefon?.trim() || !pozitsiya?.trim()) {
-    return res.status(400).json({ ok: false, error: "Barcha majburiy maydonlar to'ldirilmagan" });
-  }
-
-  try {
-    // Allaqachon biriktirilgan bo'lsa
-    const tgCheck = await pool.query(
-      'SELECT id FROM telegram_users WHERE telegram_id=$1', [telegramId]
-    );
-    if (tgCheck.rowCount > 0) {
-      return res.status(409).json({ ok: false, error: "Bu Telegram ID allaqachon tizimda ro'yxatdan o'tgan" });
-    }
-
-    // fan ustuni yo'q bo'lsa ham xatolik chiqmasligi uchun ALTER TABLE (birinchi marta)
-    await pool.query(`
-      ALTER TABLE anketa_sorovlar ADD COLUMN IF NOT EXISTS fan TEXT DEFAULT ''
-    `).catch(() => {});
-
-    // Anketa saqlash (mavjud bo'lsa yangilash) — id ni qaytarish
-    const sorovRes = await pool.query(
-      `INSERT INTO anketa_sorovlar (telegram_id, telegram_ism, pozitsiya, fan, fish, maktablar, sinf, telefon, holat)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'kutilmoqda')
-       ON CONFLICT (telegram_id) DO UPDATE SET
-         telegram_ism = EXCLUDED.telegram_ism,
-         pozitsiya    = EXCLUDED.pozitsiya,
-         fan          = EXCLUDED.fan,
-         fish         = EXCLUDED.fish,
-         maktablar    = EXCLUDED.maktablar,
-         sinf         = EXCLUDED.sinf,
-         telefon      = EXCLUDED.telefon,
-         holat        = 'kutilmoqda',
-         yuborilgan   = TO_CHAR(NOW(), 'DD.MM.YYYY HH24:MI')
-       RETURNING id`,
-      [telegramId, telegramIsm || '', pozitsiya.trim(), fan || '',
-       fish.trim(), maktablar || '', sinf || '-', telefon.trim()]
-    );
-    const sorovId = sorovRes.rows[0].id;
-
-    // Bot orqali superadminga xabar yuborish (inline tugmalar bilan)
-    await notifySuperAdmin({ sorovId, telegramId, telegramIsm, pozitsiya, fan, fish, maktablar, sinf, telefon });
-
-    res.json({ ok: true });
-  } catch (err) {
-    console.error('anketa saqlash xatolik:', err.message);
-    res.status(500).json({ ok: false, error: 'Server xatoligi' });
-  }
+// ─── POST /api/telegram/anketa — O'CHIRILGAN ─────────────────────────────────
+// Foydalanuvchilardan ariza qabul qilinmaydi: Telegram ID'ni faqat superadmin
+// (yoki o'quvchi uchun maktab admini) /birikdir orqali biriktiradi.
+// Eski Mini App versiyalari yuborsa ham, endi hech narsa yozilmaydi.
+router.post('/anketa', (req, res) => {
+  res.status(410).json({
+    ok: false,
+    error: "Ariza qabul qilinmaydi. Maktab adminingizga murojaat qiling."
+  });
 });
 
 // ─── GET /api/telegram/anketa — so'rovlar ro'yxati (superadmin) ──────────────

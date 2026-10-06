@@ -33,12 +33,6 @@ let USER_ISM     = null;
 let allItems     = [];
 let currentList  = null;
 
-// Anketa holati
-let anketaPoz      = null;
-let anketaFan      = null; // o'qituvchi uchun fan
-let anketaMaktablar = []; // tanlangan maktablar
-let STEP           = 1;
-
 // ═══════════════════════════════════════════
 //  SAHIFA
 // ═══════════════════════════════════════════
@@ -195,8 +189,8 @@ window.addEventListener('DOMContentLoaded', async () => {
   const tgId = tgUser?.id;
 
   if (!tgId) {
-    // Test rejimi (brauzerda ochilganda)
-    showKutish(null, 'Bot orqali oching');
+    // Brauzerda to'g'ridan-to'g'ri ochilgan (Telegram ichida emas)
+    showKutish(null, 'brauzer');
     return;
   }
 
@@ -211,259 +205,52 @@ window.addEventListener('DOMContentLoaded', async () => {
       showRoleChooser(tgId, data.roles);
     } else if (data.found) {
       handleAuthResult(data);
-    } else if (data.anketaHolat === 'kutilmoqda') {
-      // So'rov yuborilgan, kutilmoqda
-      showKutish(tgId, 'kutilmoqda');
-    } else if (data.anketaHolat === 'rad etildi') {
-      // Rad etilgan — kutish sahifasida xabar + qayta ariza berish tugmasi
-      showKutish(tgId, 'rad etildi');
     } else {
-      // Yangi foydalanuvchi — anketa
-      await loadMaktablarAnketa();
-      showPage('anketaPage');
-      renderSteps();
+      // Telegram ID hech qaysi rolga biriktirilmagan.
+      // Ariza qabul qilinmaydi — maktab adminiga murojaat qilish kerak.
+      showKutish(tgId, 'biriktirilmagan');
     }
   } catch (e) {
     console.error(e);
-    showPage('anketaPage');
-    renderSteps();
+    showKutish(tgId, 'xatolik');
   }
 });
 
-// ═══════════════════════════════════════════
-//  ANKETA — QADAM BOSHQARUVI
-// ═══════════════════════════════════════════
-function renderSteps() {
-  const ind = document.getElementById('stepIndicator');
-  ind.innerHTML = [1,2,3].map(i =>
-    `<div class="step-dot ${i === STEP ? 'active' : i < STEP ? 'done' : ''}"></div>`
-  ).join('');
-}
-
-function goStep(n) {
-  document.getElementById('step' + STEP).style.display = 'none';
-  STEP = n;
-  document.getElementById('step' + STEP).style.display = 'block';
-  renderSteps();
-}
-
-// Pozitsiya tanlash
-function selectPoz(val) {
-  anketaPoz = val;
-  document.querySelectorAll('.poz-card').forEach(c => c.classList.remove('selected'));
-  document.getElementById('poz-' + val)?.classList.add('selected');
-
-  // Fan tanlash maydonini faqat o'qituvchi uchun ko'rsatish
-  const fanWrap = document.getElementById('fan-wrap');
-  if (fanWrap) fanWrap.style.display = val === 'oqituvchi' ? 'block' : 'none';
-
-  // O'quvchi tanlaganda fan reset
-  if (val !== 'oqituvchi') {
-    anketaFan = null;
-    document.querySelectorAll('.fan-card').forEach(c => c.classList.remove('selected'));
-  }
-}
-
-// Fan tanlash (o'qituvchi uchun)
-function selectFan(fan) {
-  anketaFan = fan;
-  document.querySelectorAll('.fan-card').forEach(c => c.classList.remove('selected'));
-  // ID da bo'sh joy o'rniga '-' ishlatilgan
-  const fanId = 'fan-' + fan.replace(/ /g, '-');
-  document.getElementById(fanId)?.classList.add('selected');
-}
-
-// Qadam 1 → 2
-function step1Next() {
-  const fish = document.getElementById('a-fish').value.trim();
-  const err  = document.getElementById('err1');
-  err.classList.remove('show');
-
-  if (!anketaPoz) { err.textContent = '❌ Pozitsiyani tanlang'; err.classList.add('show'); return; }
-  if (anketaPoz === 'oqituvchi' && !anketaFan) {
-    err.textContent = '❌ Qaysi fandan dars berishingizni tanlang';
-    err.classList.add('show');
-    return;
-  }
-  if (!fish) { err.textContent = '❌ Familiya va ismni kiriting'; err.classList.add('show'); return; }
-
-  // Sinf maydonini pozitsiyaga qarab ko'rsatish
-  document.getElementById('sinf-wrap').style.display =
-    anketaPoz === 'oquvchi' ? 'block' : 'none';
-
-  goStep(2);
-  loadMaktablarAnketa();
-}
-
-// Maktab tanlash
-function toggleMaktab(nomi) {
-  const idx = anketaMaktablar.indexOf(nomi);
-  if (idx === -1) anketaMaktablar.push(nomi);
-  else anketaMaktablar.splice(idx, 1);
-
-  document.querySelectorAll('.maktab-item').forEach(el => {
-    const n = el.dataset.nomi;
-    el.classList.toggle('selected', anketaMaktablar.includes(n));
-    const chk = el.querySelector('.maktab-check');
-    if (chk) chk.textContent = anketaMaktablar.includes(n) ? '✓' : '';
-  });
-}
-
-// Qadam 2 → 3
-function step2Next() {
-  const boshqaEl = document.getElementById('a-maktab-boshqa');
-  const boshqa   = boshqaEl.value.trim();
-  const err      = document.getElementById('err2');
-  err.classList.remove('show');
-
-  // Maktablar to'plami
-  let maktabStr = anketaMaktablar.join(', ');
-  if (boshqa) maktabStr = maktabStr ? maktabStr + ', ' + boshqa : boshqa;
-
-  if (!maktabStr) { err.textContent = '❌ Kamida bitta maktab tanlang yoki kiriting'; err.classList.add('show'); return; }
-
-  const sinf = document.getElementById('a-sinf').value.trim();
-  const pozLabels = { oqituvchi:"O'qituvchi", oquvchi:"O'quvchi", xodim:"Xodim", boshqa:"Boshqa" };
-
-  // Yakuniy ko'rib chiqish
-  document.getElementById('s-poz').textContent   = pozLabels[anketaPoz] || anketaPoz;
-  document.getElementById('s-fish').textContent  = document.getElementById('a-fish').value.trim();
-  document.getElementById('s-maktab').textContent = maktabStr;
-  if (sinf) {
-    document.getElementById('s-sinf').textContent = sinf;
-    document.getElementById('s-sinf-row').style.display = 'block';
-  }
-
-  goStep(3);
-}
-
-// So'rov yuborish
-async function submitAnketa() {
-  const btn   = document.getElementById('submitBtn');
-  const err   = document.getElementById('err3');
-  err.classList.remove('show');
-
-  const telefon = document.getElementById('a-telefon').value.trim();
-  if (!telefon) { err.textContent = '❌ Telefon raqamini kiriting'; err.classList.add('show'); return; }
-
-  const boshqa  = document.getElementById('a-maktab-boshqa').value.trim();
-  let maktabStr = anketaMaktablar.join(', ');
-  if (boshqa) maktabStr = maktabStr ? maktabStr + ', ' + boshqa : boshqa;
-
-  btn.disabled = true;
-  btn.textContent = 'Yuborilmoqda...';
-
-  try {
-    const res = await fetch(`${API_BASE}/telegram/anketa`, {
-      method:  'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        telegramId:  tgUser?.id,
-        telegramIsm: tgUser ? `${tgUser.first_name || ''} ${tgUser.last_name || ''}`.trim() : '',
-        pozitsiya:   anketaPoz,
-        fan:         anketaFan || '',
-        fish:        document.getElementById('a-fish').value.trim(),
-        maktablar:   maktabStr,
-        sinf:        document.getElementById('a-sinf').value.trim() || '-',
-        telefon
-      })
-    });
-    const data = await res.json();
-
-    if (data.ok) {
-      showKutish(tgUser?.id, 'kutilmoqda');
-    } else {
-      err.textContent = '❌ ' + (data.error || 'Xatolik yuz berdi');
-      err.classList.add('show');
-    }
-  } catch(e) {
-    err.textContent = '❌ Server bilan ulanib bo\'lmadi';
-    err.classList.add('show');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '📨 So\'rov yuborish';
-  }
-}
-
-// Maktablarni anketa uchun yuklash
-async function loadMaktablarAnketa() {
-  const container = document.getElementById('maktablar-list');
-  try {
-    const res  = await fetch(`${API_BASE}/maktablar`);
-    if (!res.ok) throw new Error('Server xatoligi: ' + res.status);
-    const data = await res.json();
-    const list = data.maktablar || [];
-
-    if (!list.length) {
-      container.innerHTML = '<div style="color:var(--hint);font-size:14px">Maktablar mavjud emas. Quyida yozing.</div>';
-      document.getElementById('a-maktab-boshqa').style.display = 'block';
-      return;
-    }
-    container.innerHTML = list.map(m => `
-      <div class="maktab-item" data-nomi="${m.nomi}" onclick="toggleMaktab('${m.nomi}')">
-        <div class="maktab-check"></div>
-        <div class="maktab-name">${m.nomi}</div>
-      </div>`).join('') +
-      '<div class="maktab-item" data-nomi="__boshqa__" onclick="toggleBoshqa()" id="boshqa-item"><div class="maktab-check" id="boshqa-chk"></div><div class="maktab-name">Boshqa...</div></div>';
-  } catch(e) {
-    console.error('loadMaktablarAnketa xatolik:', e);
-    container.innerHTML = '<div style="color:#f87171;font-size:14px">⚠️ Maktablar yuklanmadi. Quyida qo\'lda kiriting.</div>';
-    document.getElementById('a-maktab-boshqa').style.display = 'block';
-  }
-}
-
-function toggleBoshqa() {
-  const el = document.getElementById('a-maktab-boshqa');
-  el.style.display = el.style.display === 'none' ? 'block' : 'none';
-  document.getElementById('boshqa-item').classList.toggle('selected');
-}
 
 // ═══════════════════════════════════════════
-//  KUTISH SAHIFASI
+//  KUTISH / XABAR SAHIFASI
+//  holat: 'biriktirilmagan' | 'xatolik' | 'brauzer'
 // ═══════════════════════════════════════════
 function showKutish(tgId, holat) {
   showPage('kutishPage');
 
+  const idRow   = document.getElementById('kutishCard');
+  const iconEl  = document.getElementById('kutishIcon');
+  const titleEl = document.getElementById('kutishTitle');
+  const subEl   = document.getElementById('kutishSub');
+  const btnEl   = document.getElementById('kutishBtn');
+
   document.getElementById('kutishId').textContent = tgId || '—';
+  idRow.style.display = tgId ? 'block' : 'none';
+  btnEl.style.display = 'block';
+  btnEl.textContent   = 'Yopish';
+  btnEl.onclick       = () => { if (tg) tg.close(); };
 
-  const holatEl  = document.getElementById('kutishHolat');
-  const iconEl   = document.getElementById('kutishIcon');
-  const titleEl  = document.getElementById('kutishTitle');
-  const subEl    = document.getElementById('kutishSub');
-  const btnEl    = document.getElementById('kutishBtn');
-
-  if (holat === 'kutilmoqda') {
-    holatEl.textContent  = '⏳ Kutilmoqda';
-    holatEl.className    = 'status-badge status-pending';
-    iconEl.textContent   = '⏳';
-    titleEl.textContent  = 'So\'rovingiz yuborildi!';
-    subEl.textContent    = 'Superadmin ko\'rib chiqadi va tez orada tasdiqlaydi. Tasdiqlangandan so\'ng bildirishnoma keladi.';
-    btnEl.textContent    = 'Tushundim';
-    btnEl.style.display  = 'block';
-    btnEl.onclick        = () => { if (tg) tg.close(); };
-  } else if (holat === 'rad etildi') {
-    holatEl.textContent  = '❌ Rad etildi';
-    holatEl.className    = 'status-badge status-no';
-    iconEl.textContent   = '❌';
-    titleEl.textContent  = 'So\'rovingiz rad etildi';
-    subEl.innerHTML      = 'Qo\'shimcha ma\'lumot uchun <a href="https://t.me/InnovateIT_School_Manager" style="color:var(--accent2)">@InnovateIT_School_Manager</a> ga murojaat qiling.';
-    btnEl.textContent    = 'Qaytadan ariza berish';
-    btnEl.style.display  = 'block';
-    btnEl.onclick        = async () => {
-      anketaPoz = null; anketaFan = null; anketaMaktablar = []; STEP = 1;
-      // Maktablar ro'yxatini spinner holatiga qaytarish
-      const container = document.getElementById('maktablar-list');
-      if (container) container.innerHTML = '<div class="loading"><div class="spinner"></div></div>';
-      document.getElementById('a-maktab-boshqa').style.display = 'none';
-      document.getElementById('a-maktab-boshqa').value = '';
-      showPage('anketaPage');
-      renderSteps();
-      goStep(1);
-      await loadMaktablarAnketa();
-    };
+  if (holat === 'biriktirilmagan') {
+    iconEl.textContent  = '🔒';
+    titleEl.textContent = 'Siz hali tizimga biriktirilmagansiz';
+    subEl.textContent   = 'Iltimos, maktab adminingizga murojaat qiling va quyidagi Telegram ID\'ni unga yuboring.';
+  } else if (holat === 'xatolik') {
+    iconEl.textContent  = '⚠️';
+    titleEl.textContent = 'Xatolik yuz berdi';
+    subEl.textContent   = 'Serverga ulanib bo\'lmadi. Birozdan keyin qayta urinib ko\'ring.';
+    btnEl.textContent   = 'Qayta urinish';
+    btnEl.onclick       = () => window.location.reload();
   } else {
-    holatEl.textContent  = holat || '—';
-    btnEl.style.display  = 'none';
+    iconEl.textContent  = '🤖';
+    titleEl.textContent = 'Telegram bot orqali oching';
+    subEl.textContent   = 'Bu sahifa faqat @InnovateITSchoolbot orqali ishlaydi.';
+    btnEl.style.display = 'none';
   }
 }
 
@@ -471,6 +258,7 @@ function showKutish(tgId, holat) {
 function kutishClose() {
   if (tg) tg.close();
 }
+
 
 // ═══════════════════════════════════════════
 //  DASHBOARD

@@ -32,7 +32,8 @@ function logKandidat(from) {
 //    Haqiqiy kirish esa Mini App orqali tekshiriladi: superadmin panelida
 //    Telegram ID biriktirilgan bo'lsagina, foydalanuvchi o'ziga tegishli
 //    panelga (masalan buxgalter.html) avtomatik yo'naltiriladi. Biriktirilmagan
-//    bo'lsa — Mini App anketa (so'rov) formasini ko'rsatadi.
+//    bo'lsa — Mini App "maktab adminiga murojaat qiling" xabarini
+//    ko'rsatadi (ariza/anketa qabul qilinmaydi).
 bot.onText(/\/start/, async (msg) => {
   const userId = msg.from.id;
   const chatId = msg.chat.id;

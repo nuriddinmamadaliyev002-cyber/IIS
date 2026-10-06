@@ -15,132 +15,21 @@
   <div class="loading-label dot-anim">Tekshirilmoqda</div>
 </div>
 
-<!-- ════════ ANKETA ════════ -->
-<div id="anketaPage" class="page">
-  <div class="anketa-header">
-    <div class="logo">🏫</div>
-    <h1>InnovateIT School</h1>
-    <p>Tizimga kirish uchun ma'lumotlaringizni kiriting</p>
-  </div>
-  <div class="anketa-body">
-    <div class="step-indicator" id="stepIndicator"></div>
-
-    <!-- Qadam 1: Pozitsiya -->
-    <div id="step1">
-      <div class="field-group">
-        <div class="field-label">Pozitsiyangizni tanlang <span class="req">*</span></div>
-        <div class="pozitsiya-grid">
-          <div class="poz-card" onclick="selectPoz('oqituvchi')" id="poz-oqituvchi">
-            <div class="poz-icon"><img src="img/oqituvchi-icon.png" alt="" style="height:1em;width:1em;object-fit:contain;"></div>
-            <div class="poz-label">O'qituvchi</div>
-          </div>
-          <div class="poz-card" onclick="selectPoz('oquvchi')" id="poz-oquvchi">
-            <div class="poz-icon">🎓</div>
-            <div class="poz-label">O'quvchi</div>
-          </div>
-
-        </div>
-      </div>
-      <!-- Fan tanlash (faqat o'qituvchi uchun) -->
-      <div class="field-group" id="fan-wrap" style="display:none">
-        <div class="field-label">Qaysi fandan dars berasiz? <span class="req">*</span></div>
-        <div class="fan-grid" id="fan-grid">
-          <div class="fan-card" onclick="selectFan('Matematika')" id="fan-Matematika">
-            <div class="fan-icon">📐</div>
-            <div class="fan-label">Matematika</div>
-          </div>
-          <div class="fan-card" onclick="selectFan('IT')" id="fan-IT">
-            <div class="fan-icon">💻</div>
-            <div class="fan-label">IT</div>
-          </div>
-          <div class="fan-card" onclick="selectFan('Ingliz tili')" id="fan-Ingliz-tili">
-            <div class="fan-icon">🌍</div>
-            <div class="fan-label">Ingliz tili</div>
-          </div>
-        </div>
-      </div>
-      <div class="field-group">
-        <div class="field-label">Familiya va ismingiz <span class="req">*</span></div>
-        <input class="field-input" id="a-fish" placeholder="Karimov Sardor" type="text" autocomplete="off">
-      </div>
-      <button class="btn-primary" onclick="step1Next()">Davom etish →</button>
-      <div class="err-msg" id="err1"></div>
-    </div>
-
-    <!-- Qadam 2: Maktab va sinf -->
-    <div id="step2" style="display:none">
-      <div class="field-group">
-        <div class="field-label">Qaysi maktab(lar)da? <span class="req">*</span></div>
-        <div class="maktab-list" id="maktablar-list">
-          <div class="loading"><div class="spinner"></div></div>
-        </div>
-        <input class="field-input" id="a-maktab-boshqa" placeholder="Yoki maktab nomini yozing..." type="text" style="margin-top:10px;display:none">
-      </div>
-      <div class="field-group" id="sinf-wrap" style="display:none">
-        <div class="field-label">O'qiyotgan sinfi <span class="req">*</span></div>
-        <select class="field-input" id="a-sinf">
-          <option value="">— Sinfni tanlang —</option>
-          <option value="1-sinf">1-sinf</option>
-          <option value="2-sinf">2-sinf</option>
-          <option value="3-sinf">3-sinf</option>
-          <option value="4-sinf">4-sinf</option>
-          <option value="5-sinf">5-sinf</option>
-          <option value="6-sinf">6-sinf</option>
-          <option value="7-sinf">7-sinf</option>
-          <option value="8-sinf">8-sinf</option>
-          <option value="9-sinf">9-sinf</option>
-          <option value="10-sinf">10-sinf</option>
-          <option value="11-sinf">11-sinf</option>
-        </select>
-      </div>
-      <button class="btn-primary" onclick="step2Next()">Davom etish →</button>
-      <button class="btn-secondary" onclick="goStep(1)">← Orqaga</button>
-      <div class="err-msg" id="err2"></div>
-    </div>
-
-    <!-- Qadam 3: Telefon -->
-    <div id="step3" style="display:none">
-      <div class="field-group">
-        <div class="field-label">Telefon raqamingiz <span class="req">*</span></div>
-        <input class="field-input" id="a-telefon" placeholder="+998 90 123 45 67" type="tel" autocomplete="off">
-      </div>
-
-      <div style="background:var(--second);border-radius:var(--radius);padding:16px;margin-bottom:16px;">
-        <div style="font-size:13px;color:var(--hint);margin-bottom:10px;">📋 Ma'lumotlaringiz</div>
-        <div style="font-size:14px;line-height:1.8;">
-          <div><span style="color:var(--hint)">Pozitsiya:</span> <strong id="s-poz">—</strong></div>
-          <div><span style="color:var(--hint)">FISh:</span> <strong id="s-fish">—</strong></div>
-          <div><span style="color:var(--hint)">Maktab:</span> <strong id="s-maktab">—</strong></div>
-          <div id="s-sinf-row" style="display:none"><span style="color:var(--hint)">Sinf:</span> <strong id="s-sinf">—</strong></div>
-        </div>
-      </div>
-
-      <button class="btn-primary" id="submitBtn" onclick="submitAnketa()">📨 So'rov yuborish</button>
-      <button class="btn-secondary" onclick="goStep(2)">← Orqaga</button>
-      <div class="err-msg" id="err3"></div>
-    </div>
-  </div>
-</div>
-
-<!-- ════════ KUTISH ════════ -->
+<!-- ════════ KUTISH / XABAR ════════ -->
 <div id="kutishPage" class="page">
-  <div class="kutish-icon" id="kutishIcon">⏳</div>
-  <div class="kutish-title" id="kutishTitle">So'rovingiz yuborildi!</div>
+  <div class="kutish-icon" id="kutishIcon">🔒</div>
+  <div class="kutish-title" id="kutishTitle">Siz hali tizimga biriktirilmagansiz</div>
   <div class="kutish-sub" id="kutishSub">
-    Superadmin ko'rib chiqadi va tez orada tasdiqlaydi. Tasdiqlangandan so'ng bildirishnoma keladi.
+    Iltimos, maktab adminingizga murojaat qiling.
   </div>
   <div class="kutish-card" id="kutishCard">
-    <div class="kutish-card-row">
-      <span class="kutish-card-key">Holat</span>
-      <span class="status-badge status-pending" id="kutishHolat">⏳ Kutilmoqda</span>
-    </div>
     <div class="kutish-card-row">
       <span class="kutish-card-key">Telegram ID</span>
       <span class="kutish-card-val" id="kutishId">—</span>
     </div>
   </div>
   <button class="btn-primary" id="kutishBtn" onclick="kutishClose()" style="max-width:320px;margin-top:8px;">
-    Tushundim
+    Yopish
   </button>
 </div>
 
