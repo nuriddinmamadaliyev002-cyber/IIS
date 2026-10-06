@@ -171,7 +171,7 @@ function tgBadgeTeacher(t) {
 // Maktab admini uchun Telegram indikatori — bosilganda ID biriktirish oynasi ochiladi
 function tgBadgeAdmin(t) {
   const bound = !!t.telegram_id;
-  const title = bound ? `Telegram bog'langan (ID: ${t.telegram_id})` : "Telegram bog'lanmagan — bosib biriktiring";
+  const title = bound ? `Telegram bog'langan (ID: ${t.telegram_id}) — bosib o'zgartiring yoki ajrating` : "Telegram bog'lanmagan — bosib biriktiring";
   const icon = `<svg viewBox="0 0 240 240" width="16" height="16" aria-hidden="true">
     <circle cx="120" cy="120" r="120" fill="#229ED9"/>
     <path fill="#fff" d="M181.585 71.9563L155.478 189.6C153.516 198.114 148.495 200.225 141.436 196.245L102.98 167.898L84.4183 185.783C82.3057 187.895 80.5382 189.663 76.5568 189.663L79.3121 150.474L150.171 86.4441C153.267 83.6889 149.494 82.1552 145.36 84.9105L57.8047 141.056L19.8676 129.169C11.5019 126.535 11.3494 120.809 21.6033 116.828L170.845 59.5711C177.789 57.0027 183.865 61.1462 181.585 71.9563Z"/>
@@ -1200,13 +1200,28 @@ function openTgModal(teacherId) {
   const bound = !!t.telegram_id;
   g('tg-status').innerHTML = bound
     ? '<span style="color:#059669;">✅ Bog\'langan (ID: ' + esc2(t.telegram_id) + ') — o\'qituvchi bot orqali paneliga kira oladi.</span>'
-      + '<br><span style="color:var(--muted);">Biriktirilgan ID ni o\'zgartirish yoki ajratish uchun superadminga murojaat qiling.</span>'
+      + '<br><span style="color:var(--muted);">Yangi ID kiritib o\'zgartirishingiz yoki ajratishingiz mumkin.</span>'
     : '<span style="color:#dc2626;">❌ Hali bog\'lanmagan — o\'qituvchi bot orqali kira olmaydi.</span>';
-  setDisplay('tg-input-wrap', bound ? 'none' : '');
-  setDisplay('tg-save-btn',   bound ? 'none' : '');
+
+  // O'qituvchi bir nechta maktabda ishlasa — o'zgarish hammasiga ta'sir qiladi
+  const warn = g('tg-warn');
+  if (warn) {
+    const multi = bound && (t.maktablar || []).length > 1;
+    warn.style.display = multi ? 'block' : 'none';
+    warn.textContent = multi
+      ? "⚠️ Bu o'qituvchi boshqa maktab(lar)da ham ishlaydi. Telegram ID ni o'zgartirish yoki ajratish uning barcha maktablardagi kirishiga ta'sir qiladi."
+      : '';
+  }
+
+  const lbl = g('tg-input-label'); if (lbl) lbl.textContent = bound ? 'Yangi Telegram ID' : 'Telegram ID';
+  setDisplay('tg-input-wrap', '');
+  setDisplay('tg-save-btn', '');
+  setDisplay('tg-unbind-btn', bound ? '' : 'none');
+  const txt = g('tg-btn-txt'); if (txt) txt.textContent = bound ? "O'zgartirish" : 'Biriktirish';
+  const ub = g('tg-unbind-btn'); if (ub) ub.disabled = false;
 
   const m = g('tg-modal'); if (m) m.classList.add('show');
-  if (!bound) setTimeout(() => g('tg-id-input')?.focus(), 50);
+  setTimeout(() => g('tg-id-input')?.focus(), 50);
 }
 
 function closeTgModal() {
@@ -1216,11 +1231,14 @@ function closeTgModal() {
 
 async function saveTgBind() {
   const t = T.find(x => x.id === TG_TEACHER_ID); if (!t) return;
+  const wasBound = !!t.telegram_id;
+  const btnLabel = wasBound ? "O'zgartirish" : 'Biriktirish';
   const val = (g('tg-id-input')?.value || '').trim();
   const err = g('tg-err');
   const showErr = msg => { if (err) { err.textContent = msg; err.style.display = 'block'; } };
 
   if (!/^\d{5,15}$/.test(val)) { showErr("Telegram ID faqat raqamlardan iborat bo'lishi kerak (masalan: 123456789)"); return; }
+  if (wasBound && String(t.telegram_id) === val) { showErr("Bu ID allaqachon shu o'qituvchiga biriktirilgan"); return; }
   if (err) err.style.display = 'none';
 
   setBtnLoading('tg-save-btn', 'tg-spinner', 'tg-btn-txt', true, 'Saqlanmoqda…');
@@ -1232,14 +1250,46 @@ async function saveTgBind() {
       entityId: t.id
     });
     if (r.ok) {
-      toast("✅ Telegram ID biriktirildi", 'success');
+      toast(wasBound ? "✅ Telegram ID o'zgartirildi" : '✅ Telegram ID biriktirildi', 'success');
       closeTgModal();
       await refreshTeachersList();
     } else {
       showErr(r.error || 'Biriktirishda xatolik');
     }
-  } catch { showErr('Server bilan aloqa yo\'q'); }
-  setBtnLoading('tg-save-btn', 'tg-spinner', 'tg-btn-txt', false, 'Biriktirish');
+  } catch { showErr("Server bilan aloqa yo'q"); }
+  setBtnLoading('tg-save-btn', 'tg-spinner', 'tg-btn-txt', false, btnLabel);
+}
+
+// Maktab admini: o'qituvchining Telegram ID sini ajratish
+async function unbindTg() {
+  const t = T.find(x => x.id === TG_TEACHER_ID); if (!t || !t.telegram_id) return;
+  const multi = (t.maktablar || []).length > 1;
+  const ok = confirm(
+    '"' + (t.familiya + ' ' + t.ism).trim() + "\" o'qituvchining Telegram ID sini ajratasizmi?\n\n" +
+    "O'qituvchi bot orqali paneliga kira olmaydi." +
+    (multi ? "\nU boshqa maktab(lar)da ham ishlaydi — u yerlarda ham kira olmaydi." : '')
+  );
+  if (!ok) return;
+
+  const err = g('tg-err');
+  const showErr = msg => { if (err) { err.textContent = msg; err.style.display = 'block'; } };
+  if (err) err.style.display = 'none';
+
+  const btn = g('tg-unbind-btn'); if (btn) btn.disabled = true;
+  try {
+    const r = await api.tgAjrat(t.telegram_id, 'oqituvchi', t.id);
+    if (r.ok) {
+      toast('✅ Telegram ID ajratildi', 'success');
+      closeTgModal();
+      await refreshTeachersList();
+    } else {
+      showErr(r.error || 'Ajratishda xatolik');
+      if (btn) btn.disabled = false;
+    }
+  } catch {
+    showErr("Server bilan aloqa yo'q");
+    if (btn) btn.disabled = false;
+  }
 }
 
 // ─────────────────────────────────────────────

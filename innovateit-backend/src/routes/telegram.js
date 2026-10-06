@@ -554,14 +554,18 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
 //  entity'ga bog'langan bo'lishi mumkinligi uchun). Faqat ?rol= berilsa —
 //  o'sha rolga tegishli BARCHA birikmalarni ajratadi. Hech narsa berilmasa —
 //  shu telegram_id ga tegishli BARCHA rollarni ajratadi.
-//  Oddiy maktab admini — FAQAT rol=oquvchi va entityId majburiy, va faqat
-//  o'z maktabidagi o'quvchidan ajrata oladi.
+//  Oddiy maktab admini — rol=oquvchi yoki rol=oqituvchi (entityId majburiy),
+//  va faqat o'z maktabidagi o'quvchi/o'qituvchidan ajrata oladi.
 router.delete('/birikdir/:tgId', requireAuth(['admin']), async (req, res) => {
   const tgId     = parseInt(req.params.tgId);
   const rol      = req.query.rol || null;
   const entityId = req.query.entityId ? parseInt(req.query.entityId) : null;
 
   if (!req.user.isSuper) {
+    // Maktab admini o'z maktabidagi o'qituvchining Telegram ID sini ajrata oladi
+    if (rol === 'oqituvchi')
+      return adminUnbindTeacherTelegram(req, res);
+
     if (rol !== 'oquvchi' || !entityId)
       return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
     const ownCheck = await pool.query(
@@ -618,12 +622,57 @@ router.delete('/birikdir/:tgId', requireAuth(['admin']), async (req, res) => {
   }
 });
 
+// ─── Maktab admini: o'qituvchining Telegram ID sini ajratish ──────────────────
+//  DELETE /api/telegram/birikdir/:tgId?rol=oqituvchi&entityId=<id>
+//  O'qituvchi shu adminning maktabiga biriktirilgan bo'lishi shart.
+//  :tgId e'tiborga olinmaydi — ajratish o'qituvchi (entityId) bo'yicha bajariladi,
+//  shunda telegram_users va oqituvchilar.telegram_id mos kelmay qolgan bo'lsa ham tozalanadi.
+async function adminUnbindTeacherTelegram(req, res) {
+  const entityId = parseInt(req.query.entityId, 10);
+  const maktabId = req.user.maktabId;
+
+  if (!maktabId)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+  if (!entityId)
+    return res.status(400).json({ ok: false, error: "O'qituvchi tanlanmagan" });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    const own = await client.query(
+      `SELECT o.id
+         FROM oqituvchilar o
+         JOIN oqituvchi_maktablar om ON om.oqituvchi_id = o.id AND om.maktab_id = $2
+        WHERE o.id = $1
+        FOR UPDATE OF o`,
+      [entityId, maktabId]
+    );
+    if (own.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ ok: false, error: "Bu o'qituvchi sizning maktabingizga biriktirilmagan" });
+    }
+
+    await client.query(`DELETE FROM telegram_users WHERE rol='oqituvchi' AND entity_id=$1`, [entityId]);
+    await client.query(`UPDATE oqituvchilar SET telegram_id=NULL WHERE id=$1`, [entityId]);
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    console.error('adminUnbindTeacherTelegram xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
+  }
+}
+
 // ─── Maktab admini: o'qituvchiga Telegram ID biriktirish ──────────────────────
-//  Cheklovlar (o'qituvchi bir nechta maktabda ishlashi mumkin, shuning uchun):
+//  Cheklovlar:
 //   • o'qituvchi shu adminning maktabiga biriktirilgan bo'lishi shart;
-//   • faqat HALI Telegram ID biriktirilmagan o'qituvchiga — mavjud birikmani
-//     o'zgartirish yoki ajratish faqat superadmin uchun (boshqa maktablardagi
-//     ishiga ta'sir qilmasligi uchun).
+//   • mavjud birikmani o'zgartirish ham mumkin (eski ID almashtiriladi).
+//     ⚠️ O'qituvchi bir nechta maktabda ishlashi mumkin, Telegram ID esa
+//     o'qituvchining o'zida saqlanadi — o'zgarish barcha maktablarga ta'sir qiladi;
+//   • yangi ID boshqa o'qituvchiga biriktirilgan bo'lmasligi kerak.
 async function adminBindTeacherTelegram(req, res) {
   const tgId     = Number(req.body.telegramId);
   const entityId = parseInt(req.body.entityId, 10);
@@ -655,23 +704,30 @@ async function adminBindTeacherTelegram(req, res) {
     }
     const t = own.rows[0];
 
-    const stale = await client.query(
-      `SELECT 1 FROM telegram_users WHERE rol='oqituvchi' AND entity_id=$1 LIMIT 1`,
-      [entityId]
-    );
-    if (t.telegram_id || stale.rowCount > 0) {
+    // Xuddi shu ID allaqachon shu o'qituvchida bo'lsa — o'zgartirish shart emas
+    if (t.telegram_id && Number(t.telegram_id) === tgId) {
       await client.query('ROLLBACK');
-      return res.status(409).json({
-        ok: false,
-        error: "Bu o'qituvchiga Telegram ID allaqachon biriktirilgan. O'zgartirish uchun superadminga murojaat qiling."
-      });
+      return res.status(409).json({ ok: false, error: "Bu Telegram ID allaqachon shu o'qituvchiga biriktirilgan" });
     }
 
-    const dup = await client.query('SELECT 1 FROM oqituvchilar WHERE telegram_id=$1 LIMIT 1', [tgId]);
+    // Yangi ID BOSHQA o'qituvchiga biriktirilmaganmi?
+    const dup = await client.query(
+      `SELECT 1 FROM oqituvchilar    WHERE telegram_id=$1 AND id <> $2
+       UNION ALL
+       SELECT 1 FROM telegram_users  WHERE telegram_id=$1 AND rol='oqituvchi' AND entity_id <> $2
+       LIMIT 1`,
+      [tgId, entityId]
+    );
     if (dup.rowCount > 0) {
       await client.query('ROLLBACK');
       return res.status(409).json({ ok: false, error: "Bu Telegram ID boshqa o'qituvchiga biriktirilgan" });
     }
+
+    // Eski birikma (bo'lsa) olib tashlanadi — shu bilan ID almashtiriladi
+    await client.query(
+      `DELETE FROM telegram_users WHERE rol='oqituvchi' AND entity_id=$1`,
+      [entityId]
+    );
 
     await client.query(
       `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)

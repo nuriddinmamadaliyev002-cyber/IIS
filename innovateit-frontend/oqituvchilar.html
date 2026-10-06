@@ -497,8 +497,9 @@
     <div class="modal-title">📱 Telegram ID biriktirish</div>
     <div style="font-size:14px;font-weight:600;margin-bottom:6px;" id="tg-teacher-name"></div>
     <div id="tg-status" style="font-size:12.5px;line-height:1.6;margin-bottom:12px;"></div>
+    <div id="tg-warn" style="display:none;font-size:12px;line-height:1.5;margin-bottom:12px;padding:8px 12px;background:#fffbeb;border:1px solid #fde68a;border-radius:8px;color:#92400e;"></div>
     <div class="field-group" id="tg-input-wrap">
-      <label class="field-label">Telegram ID</label>
+      <label class="field-label" id="tg-input-label">Telegram ID</label>
       <input class="field-input" id="tg-id-input" placeholder="masalan: 123456789" inputmode="numeric" autocomplete="off">
       <div style="font-size:11px;color:var(--muted);margin-top:6px;line-height:1.5;">
         O'qituvchi botga /start yozsa, bot unga Telegram ID raqamini ko'rsatadi — shu raqamni kiriting.
@@ -508,6 +509,7 @@
     <div id="tg-err" style="display:none;color:#dc2626;font-size:13px;margin-top:8px;padding:8px 12px;background:#fef2f2;border-radius:8px;border:1px solid #fecaca;"></div>
     <div class="modal-footer" style="margin-top:16px;">
       <button class="btn-cancel" onclick="closeTgModal()">Yopish</button>
+      <button class="btn-cancel btn-unbind" id="tg-unbind-btn" onclick="unbindTg()" style="display:none;">Ajratish</button>
       <button class="btn-submit" id="tg-save-btn" onclick="saveTgBind()">
         <span class="spinner" id="tg-spinner"></span>
         <span id="tg-btn-txt">Biriktirish</span>

@@ -433,3 +433,7 @@ tr:hover td { background: #fafaf8; }
 /* Yopish tugmasi: hover'da qizil border */
 #attach-modal .btn-cancel { transition: border-color .15s; }
 #attach-modal .btn-cancel:hover { border-color: #dc2626; }
+/* Telegram ID modali: "Ajratish" tugmasi */
+.btn-cancel.btn-unbind { color: #dc2626; background: #fef2f2; border-color: #fecaca; }
+.btn-cancel.btn-unbind:hover { background: #fee2e2; border-color: #dc2626; }
+.btn-cancel.btn-unbind:disabled { opacity: .6; cursor: not-allowed; }
