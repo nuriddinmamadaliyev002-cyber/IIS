@@ -28,11 +28,9 @@ router.get('/', async (req, res) => {
 
   try {
     const querySuper = `
-      SELECT o.*, m.nomi AS maktab_nomi,
-             a.telegram_id AS admin_tg_id
+      SELECT o.*, m.nomi AS maktab_nomi
       FROM oquvchilar o
       LEFT JOIN maktablar m ON m.id = o.maktab_id
-      LEFT JOIN adminlar a ON a.maktab_id = o.maktab_id
       ORDER BY o.id
     `;
     const queryAdmin = `
