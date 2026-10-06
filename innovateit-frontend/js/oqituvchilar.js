@@ -18,7 +18,7 @@ const BASE_URL = (location.hostname === 'localhost' || location.hostname === '12
 
 // ─── Ortga qaytganda (bfcache) modallarni yopish ───
 window.addEventListener('pageshow', () => {
-  ['edit-modal', 'assign-modal'].forEach(id => {
+  ['edit-modal', 'assign-modal', 'attach-modal', 'tg-modal'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.classList.remove('show');
   });
@@ -58,8 +58,9 @@ window.addEventListener('DOMContentLoaded', async () => {
     setDisplay('add-form', 'none');
     setDisplay('btn-jadval-teacher', 'none');
   } else {
-    // Oddiy admin: faqat ro'yxat ko'rinadi
+    // Oddiy admin: ro'yxat + bazadan o'qituvchi biriktirish + Telegram ID
     setDisplay('add-form', 'none');
+    setDisplay('admin-attach-bar', 'block');
   }
 
   setupTel('f-tel',  'f-tel-hint');
@@ -167,6 +168,17 @@ function tgBadgeTeacher(t) {
   return `<span class="${cls}" title="${title}" onclick="event.stopPropagation();openSuperEdit(${t.id})">${icon}</span>`;
 }
 
+// Maktab admini uchun Telegram indikatori — bosilganda ID biriktirish oynasi ochiladi
+function tgBadgeAdmin(t) {
+  const bound = !!t.telegram_id;
+  const title = bound ? `Telegram bog'langan (ID: ${t.telegram_id})` : "Telegram bog'lanmagan — bosib biriktiring";
+  const icon = `<svg viewBox="0 0 240 240" width="16" height="16" aria-hidden="true">
+    <circle cx="120" cy="120" r="120" fill="#229ED9"/>
+    <path fill="#fff" d="M181.585 71.9563L155.478 189.6C153.516 198.114 148.495 200.225 141.436 196.245L102.98 167.898L84.4183 185.783C82.3057 187.895 80.5382 189.663 76.5568 189.663L79.3121 150.474L150.171 86.4441C153.267 83.6889 149.494 82.1552 145.36 84.9105L57.8047 141.056L19.8676 129.169C11.5019 126.535 11.3494 120.809 21.6033 116.828L170.845 59.5711C177.789 57.0027 183.865 61.1462 181.585 71.9563Z"/>
+  </svg>`;
+  return `<span class="tg-badge ${bound ? 'tg-on' : 'tg-off'} tg-clickable" title="${title}" onclick="event.stopPropagation();openTgModal(${Number(t.id)})">${icon}</span>`;
+}
+
 function renderTable(d) {
   const tb      = g('tbl-body');
   const isSuper = U && U.isSuper;
@@ -234,7 +246,7 @@ function renderTable(d) {
     // Oddiy admin ko'rinishi: faqat asosiy ma'lumotlar
     return '<tr>'
       + '<td class="mono">' + (i+1) + '</td>'
-      + '<td><strong>' + esc2(t.familiya) + '</strong> ' + esc2(t.ism) + '</td>'
+      + '<td><strong>' + esc2(t.familiya) + '</strong> ' + esc2(t.ism) + (isAdmin ? tgBadgeAdmin(t) : '') + '</td>'
       + '<td><span class="fan-badge">' + (t.fan||'—') + '</span></td>'
       + '<td class="mono">' + (t.telefon||'—') + '</td>'
       + '<td class="mono">' + (t.telefon2||'—') + '</td>'
@@ -258,7 +270,7 @@ function renderMobile(d) {
     return '<div class="tc">'
       + '<div class="tc-head">'
         + '<div>'
-          + '<div class="tc-name">' + esc2(t.familiya) + ' ' + esc2(t.ism) + (isSuper ? tgBadgeTeacher(t) : '') + '</div>'
+          + '<div class="tc-name">' + esc2(t.familiya) + ' ' + esc2(t.ism) + (isSuper ? tgBadgeTeacher(t) : (isAdmin ? tgBadgeAdmin(t) : '')) + '</div>'
           + '<div class="tc-sub">#' + (i+1) + ' · <span class="fan-badge">' + (t.fan||'—') + '</span></div>'
         + '</div>'
         + (isSuper
@@ -1065,6 +1077,172 @@ async function delTeacherSuper(t) {
     if (r.ok) { await loadTeachers(); toast("✅ O'qituvchi o'chirildi",'success'); }
     else toast('❌ ' + r.error,'error');
   } catch { toast('❌ Xatolik','error'); }
+}
+
+// ─────────────────────────────────────────────
+//  MAKTAB ADMINI: BAZADAN O'QITUVCHI QIDIRIB BIRIKTIRISH
+// ─────────────────────────────────────────────
+let ATT_RESULTS = [];   // oxirgi qidiruv natijalari
+let ATT_TIMER   = null;
+let ATT_REQ_SEQ = 0;    // eski (kech kelgan) javoblarni e'tiborsiz qoldirish uchun
+
+function openAttachModal() {
+  if (!U || U.isSuper || U.isSuperProxy) return;
+  ATT_RESULTS = [];
+  const inp = g('attach-search'); if (inp) inp.value = '';
+  renderAttachResults();
+  const m = g('attach-modal'); if (m) m.classList.add('show');
+  setTimeout(() => { if (inp) inp.focus(); }, 50);
+}
+
+function closeAttachModal() {
+  const m = g('attach-modal'); if (m) m.classList.remove('show');
+  clearTimeout(ATT_TIMER);
+  ATT_REQ_SEQ++;   // kutilayotgan qidiruv javobi endi e'tiborga olinmaydi
+}
+
+function attachSearchDebounced() {
+  clearTimeout(ATT_TIMER);
+  ATT_TIMER = setTimeout(runAttachSearch, 300);
+}
+
+async function runAttachSearch() {
+  const q = (g('attach-search')?.value || '').trim();
+  const box = g('attach-results'); if (!box) return;
+  if (q.length < 2) { ATT_RESULTS = []; renderAttachResults(); return; }
+
+  const seq = ++ATT_REQ_SEQ;
+  box.innerHTML = '<div class="att-hint">⏳ Qidirilmoqda…</div>';
+  try {
+    const r = await api.searchTeachers(q);
+    if (seq !== ATT_REQ_SEQ) return;           // yangi qidiruv boshlangan — bu javob eskirgan
+    if (!r.ok) { box.innerHTML = '<div class="att-hint">❌ ' + esc2(r.error || 'Xatolik') + '</div>'; return; }
+    ATT_RESULTS = r.teachers || [];
+    renderAttachResults(q);
+  } catch {
+    if (seq !== ATT_REQ_SEQ) return;
+    box.innerHTML = '<div class="att-hint">❌ Server bilan aloqa yo\'q</div>';
+  }
+}
+
+function renderAttachResults(q) {
+  const box = g('attach-results'); if (!box) return;
+  if (q === undefined && !ATT_RESULTS.length) {
+    box.innerHTML = '<div class="att-hint">Qidirish uchun familiya yoki ismni kiriting</div>';
+    return;
+  }
+  if (!ATT_RESULTS.length) {
+    box.innerHTML = '<div class="att-hint">Hech narsa topilmadi. Familiya yoki ismni boshqacha yozib ko\'ring.</div>';
+    return;
+  }
+  box.innerHTML = ATT_RESULTS.map(t => {
+    const boshqa = (t.boshqaMaktablar || []).map(esc2).join(', ');
+    const maktabLine = boshqa
+      ? '🏫 Boshqa maktab(lar)da: ' + boshqa
+      : (t.meningMaktabimda ? '' : '🏫 Hali hech qaysi maktabga biriktirilmagan');
+    const act = t.meningMaktabimda
+      ? '<span class="att-done">✓ Sizning maktabingizda</span>'
+        + '<button class="att-btn alt" onclick="openTgModal(' + Number(t.id) + ')">📱 Telegram ID</button>'
+      : '<button class="att-btn" id="att-btn-' + Number(t.id) + '" onclick="attachTeacher(' + Number(t.id) + ')">➕ Biriktirish</button>';
+    return '<div class="att-item">'
+      + '<div>'
+        + '<div class="att-name">' + esc2(t.familiya) + ' ' + esc2(t.ism) + '</div>'
+        + '<div class="att-sub"><span class="fan-badge">' + esc2(t.fan || '—') + '</span>'
+          + (t.telefon ? ' · <span class="mono">' + esc2(t.telefon) + '</span>' : '') + '</div>'
+        + (maktabLine ? '<div class="att-sub">' + maktabLine + '</div>' : '')
+      + '</div>'
+      + '<div class="att-act">' + act + '</div>'
+      + '</div>';
+  }).join('');
+}
+
+async function attachTeacher(id) {
+  const t = ATT_RESULTS.find(x => x.id === id); if (!t) return;
+  const btn = g('att-btn-' + id);
+  if (btn) { btn.disabled = true; btn.textContent = '⏳…'; }
+  try {
+    const r = await api.attachTeacherToMyMaktab(id);
+    if (!r.ok) {
+      toast('❌ ' + (r.error || 'Xatolik'), 'error');
+      if (btn) { btn.disabled = false; btn.textContent = '➕ Biriktirish'; }
+      return;
+    }
+    t.meningMaktabimda = true;
+    toast(r.already
+      ? 'ℹ️ ' + t.familiya + ' ' + t.ism + ' allaqachon sizning maktabingizda'
+      : '✅ ' + t.familiya + ' ' + t.ism + ' maktabingizga biriktirildi', 'success');
+    renderAttachResults(g('attach-search')?.value || '');
+    await refreshTeachersList();
+  } catch {
+    toast('❌ Xatolik', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '➕ Biriktirish'; }
+  }
+}
+
+// Ro'yxatni (yuklash overlay'siz) yangilash — modal ochiq turganda ishlatiladi
+async function refreshTeachersList() {
+  await loadTeachersQuiet();
+  applyFilter();
+  const c = g('total-count'); if (c) c.textContent = T.length + " o'qituvchi";
+}
+
+// ─────────────────────────────────────────────
+//  MAKTAB ADMINI: O'QITUVCHIGA TELEGRAM ID BIRIKTIRISH
+// ─────────────────────────────────────────────
+let TG_TEACHER_ID = null;
+
+function openTgModal(teacherId) {
+  if (!U || U.isSuper || U.isSuperProxy) return;
+  const t = T.find(x => x.id === teacherId); if (!t) return;
+  TG_TEACHER_ID = teacherId;
+
+  g('tg-teacher-name').textContent = (t.familiya + ' ' + t.ism).trim();
+  const err = g('tg-err'); if (err) { err.style.display = 'none'; err.textContent = ''; }
+  setValue('tg-id-input', '');
+
+  const bound = !!t.telegram_id;
+  g('tg-status').innerHTML = bound
+    ? '<span style="color:#059669;">✅ Bog\'langan (ID: ' + esc2(t.telegram_id) + ') — o\'qituvchi bot orqali paneliga kira oladi.</span>'
+      + '<br><span style="color:var(--muted);">Biriktirilgan ID ni o\'zgartirish yoki ajratish uchun superadminga murojaat qiling.</span>'
+    : '<span style="color:#dc2626;">❌ Hali bog\'lanmagan — o\'qituvchi bot orqali kira olmaydi.</span>';
+  setDisplay('tg-input-wrap', bound ? 'none' : '');
+  setDisplay('tg-save-btn',   bound ? 'none' : '');
+
+  const m = g('tg-modal'); if (m) m.classList.add('show');
+  if (!bound) setTimeout(() => g('tg-id-input')?.focus(), 50);
+}
+
+function closeTgModal() {
+  const m = g('tg-modal'); if (m) m.classList.remove('show');
+  TG_TEACHER_ID = null;
+}
+
+async function saveTgBind() {
+  const t = T.find(x => x.id === TG_TEACHER_ID); if (!t) return;
+  const val = (g('tg-id-input')?.value || '').trim();
+  const err = g('tg-err');
+  const showErr = msg => { if (err) { err.textContent = msg; err.style.display = 'block'; } };
+
+  if (!/^\d{5,15}$/.test(val)) { showErr("Telegram ID faqat raqamlardan iborat bo'lishi kerak (masalan: 123456789)"); return; }
+  if (err) err.style.display = 'none';
+
+  setBtnLoading('tg-save-btn', 'tg-spinner', 'tg-btn-txt', true, 'Saqlanmoqda…');
+  try {
+    const r = await api.tgBirikdir({
+      telegramId: parseInt(val, 10),
+      telegramIsm: (t.familiya + ' ' + t.ism).trim(),
+      rol: 'oqituvchi',
+      entityId: t.id
+    });
+    if (r.ok) {
+      toast("✅ Telegram ID biriktirildi", 'success');
+      closeTgModal();
+      await refreshTeachersList();
+    } else {
+      showErr(r.error || 'Biriktirishda xatolik');
+    }
+  } catch { showErr('Server bilan aloqa yo\'q'); }
+  setBtnLoading('tg-save-btn', 'tg-spinner', 'tg-btn-txt', false, 'Biriktirish');
 }
 
 // ─────────────────────────────────────────────

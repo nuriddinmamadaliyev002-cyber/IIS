@@ -289,6 +289,9 @@ const api = {
   biriktirTeacher:     (d) => api.post('/api/teachers/biriktiruv', d),
   ajratTeacher:        (d) => api.del('/api/teachers/biriktiruv', d),
   mergeTeachers:       (d) => api.post('/api/teachers/merge', d),
+  // Maktab admini: umumiy bazadan qidirish va o'z maktabiga biriktirish
+  searchTeachers:      (q)         => api.get('/api/teachers/qidiruv', { q }),
+  attachTeacherToMyMaktab: (teacherId) => api.post('/api/teachers/maktabga-biriktir', { teacherId }),
 
   // ─── Direktorlar (superadmin boshqaradi) ───
   getDirektorlar:   (d) => api.get('/api/direktorlar', d),

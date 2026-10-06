@@ -125,6 +125,112 @@ router.post('/oquvchi-birik', requireAuth(['admin', 'oqituvchi']), async (req, r
 router.use(requireAuth(['admin']));
 function todayUZ() { return new Date().toLocaleDateString('ru-RU'); }
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  MAKTAB ADMINI: umumiy bazadan o'qituvchi qidirish va o'z maktabiga biriktirish
+//  GET  /api/teachers/qidiruv?q=...        — familiya/ism bo'yicha qidirish
+//  POST /api/teachers/maktabga-biriktir    — body: { teacherId } → o'z maktabiga
+//  (O'qituvchini o'z maktabidan ajratish — DELETE /api/teachers, pastda)
+//  Telegram ID biriktirish — POST /api/telegram/birikdir (rol='oqituvchi')
+// ═══════════════════════════════════════════════════════════════════════════
+function requireSchoolAdmin(req, res, next) {
+  if (req.user.isSuper || !req.user.maktabId)
+    return res.status(403).json({ ok: false, error: 'Faqat maktab admini uchun' });
+  next();
+}
+
+// Telefonni qisman yashiramiz: "+998 97 *** ** 29" (bir xil ismli o'qituvchilarni
+// ajratish uchun yetarli, lekin to'liq raqam boshqa maktab adminiga ochilmaydi)
+function maskTel(t) {
+  const d = String(t || '').replace(/\D/g, '');
+  if (d.length !== 12) return '';
+  return '+' + d.slice(0, 3) + ' ' + d.slice(3, 5) + ' *** ** ' + d.slice(-2);
+}
+
+// O'zbekcha apostrof variantlari (' ʻ ʼ ‘ ’ ` ´) — qidiruvda e'tiborga olinmaydi:
+// "orazova" ham "O'razova" ni topadi
+const APOSTROFLAR = "'\u02BB\u02BC\u2018\u2019`\u00B4";
+function stripApos(s) {
+  return String(s || '').replace(new RegExp('[' + APOSTROFLAR.replace(/[\\\]^-]/g, '\\$&') + ']', 'g'), '');
+}
+function escapeLike(s) { return s.replace(/[\\%_]/g, '\\$&'); }
+
+router.get('/qidiruv', requireSchoolAdmin, async (req, res) => {
+  const q = String(req.query.q || '').trim().replace(/\s+/g, ' ');
+  if (q.length < 2) return res.json({ ok: true, teachers: [] });
+
+  // Har bir so'z familiya yoki ismda uchrashi kerak (tartibi muhim emas)
+  const words = stripApos(q).toLowerCase().split(' ').filter(Boolean).slice(0, 4);
+  if (!words.length) return res.json({ ok: true, teachers: [] });
+
+  const params = [req.user.maktabId, APOSTROFLAR];
+  const conds = words.map(w => {
+    params.push('%' + escapeLike(w) + '%');
+    return `translate(lower(o.familiya || ' ' || o.ism), $2, '') LIKE $${params.length}`;
+  });
+
+  try {
+    const result = await pool.query(`
+      SELECT o.id, o.ism, o.familiya, o.fan, o.telefon,
+             EXISTS (
+               SELECT 1 FROM oqituvchi_maktablar om
+               WHERE om.oqituvchi_id = o.id AND om.maktab_id = $1
+             ) AS mening_maktabimda,
+             COALESCE((
+               SELECT JSON_AGG(m.nomi ORDER BY m.nomi)
+               FROM oqituvchi_maktablar om
+               JOIN maktablar m ON m.id = om.maktab_id
+               WHERE om.oqituvchi_id = o.id AND om.maktab_id <> $1
+             ), '[]') AS boshqa_maktablar
+      FROM oqituvchilar o
+      WHERE ${conds.join(' AND ')}
+      ORDER BY o.familiya, o.ism
+      LIMIT 20
+    `, params);
+
+    res.json({
+      ok: true,
+      teachers: result.rows.map(r => ({
+        id:               r.id,
+        ism:              r.ism,
+        familiya:         r.familiya,
+        fan:              r.fan || '',
+        telefon:          maskTel(r.telefon),
+        meningMaktabimda: r.mening_maktabimda,
+        boshqaMaktablar:  Array.isArray(r.boshqa_maktablar) ? r.boshqa_maktablar : []
+      }))
+    });
+  } catch (err) {
+    console.error('GET /teachers/qidiruv xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+router.post('/maktabga-biriktir', requireSchoolAdmin, async (req, res) => {
+  const tid = parseInt(req.body.teacherId, 10);
+  if (!tid) return res.status(400).json({ ok: false, error: 'teacherId kerak' });
+  const mid = req.user.maktabId;
+
+  try {
+    const found = await pool.query('SELECT id FROM oqituvchilar WHERE id=$1', [tid]);
+    if (found.rowCount === 0)
+      return res.status(404).json({ ok: false, error: "O'qituvchi topilmadi" });
+
+    // ON CONFLICT ishlatilmaydi — eski bazalarda UNIQUE constraint bo'lmasligi mumkin
+    const ins = await pool.query(
+      `INSERT INTO oqituvchi_maktablar (oqituvchi_id, maktab_id)
+       SELECT $1, $2
+       WHERE NOT EXISTS (
+         SELECT 1 FROM oqituvchi_maktablar WHERE oqituvchi_id=$1 AND maktab_id=$2
+       )`,
+      [tid, mid]
+    );
+    res.json({ ok: true, already: ins.rowCount === 0 });
+  } catch (err) {
+    console.error('POST /teachers/maktabga-biriktir xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 // ─── GET /api/teachers ───
 router.get('/', async (req, res) => {
   try {
@@ -268,7 +374,25 @@ router.put('/', async (req, res) => {
 router.delete('/', async (req, res) => {
   const { delIsm, delFamiliya, delId } = req.body;
   const { isSuper } = req.user;
-  if (!isSuper) return res.status(403).json({ ok: false, error: "Faqat superadmin o'qituvchini o'chira oladi" });
+
+  // Maktab admini o'qituvchini bazadan O'CHIRMAYDI — faqat O'Z maktabi ro'yxatidan
+  // ajratadi (o'qituvchi boshqa maktablarda ishlashda davom etadi).
+  if (!isSuper) {
+    const tid = parseInt(delId, 10);
+    if (!req.user.maktabId) return res.status(403).json({ ok: false, error: "Faqat superadmin o'qituvchini o'chira oladi" });
+    if (!tid) return res.status(400).json({ ok: false, error: 'delId kerak' });
+    try {
+      const r = await pool.query(
+        'DELETE FROM oqituvchi_maktablar WHERE oqituvchi_id=$1 AND maktab_id=$2',
+        [tid, req.user.maktabId]
+      );
+      if (r.rowCount === 0) return res.status(404).json({ ok: false, error: "Bu o'qituvchi sizning maktabingizda topilmadi" });
+      return res.json({ ok: true });
+    } catch (err) {
+      console.error('DELETE /teachers (admin ajratish) xatolik:', err.message);
+      return res.status(500).json({ ok: false, error: 'Server xatoligi' });
+    }
+  }
 
   const client = await pool.connect();
   try {

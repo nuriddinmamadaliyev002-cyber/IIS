@@ -475,6 +475,10 @@ router.post('/birikdir', requireAuth(['admin']), async (req, res) => {
     return res.status(400).json({ ok: false, error: "telegramId, rol, entityId majburiy" });
 
   if (!req.user.isSuper) {
+    // Maktab admini o'qituvchiga Telegram ID biriktira oladi (alohida, xavfsizroq yo'l)
+    if (rol === 'oqituvchi')
+      return adminBindTeacherTelegram(req, res);
+
     if (rol !== 'oquvchi')
       return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
     // Maktab admini faqat o'z maktabidagi o'quvchini biriktira oladi
@@ -613,6 +617,89 @@ router.delete('/birikdir/:tgId', requireAuth(['admin']), async (req, res) => {
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });
+
+// ─── Maktab admini: o'qituvchiga Telegram ID biriktirish ──────────────────────
+//  Cheklovlar (o'qituvchi bir nechta maktabda ishlashi mumkin, shuning uchun):
+//   • o'qituvchi shu adminning maktabiga biriktirilgan bo'lishi shart;
+//   • faqat HALI Telegram ID biriktirilmagan o'qituvchiga — mavjud birikmani
+//     o'zgartirish yoki ajratish faqat superadmin uchun (boshqa maktablardagi
+//     ishiga ta'sir qilmasligi uchun).
+async function adminBindTeacherTelegram(req, res) {
+  const tgId     = Number(req.body.telegramId);
+  const entityId = parseInt(req.body.entityId, 10);
+  const maktabId = req.user.maktabId;
+
+  if (!maktabId)
+    return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
+  if (!Number.isSafeInteger(tgId) || tgId <= 0)
+    return res.status(400).json({ ok: false, error: "Telegram ID noto'g'ri (faqat raqamlar)" });
+  if (!entityId)
+    return res.status(400).json({ ok: false, error: "O'qituvchi tanlanmagan" });
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+
+    // FOR UPDATE — ikki admin bir vaqtda biriktirib yuborishining oldini oladi
+    const own = await client.query(
+      `SELECT o.id, o.ism, o.familiya, o.telegram_id
+         FROM oqituvchilar o
+         JOIN oqituvchi_maktablar om ON om.oqituvchi_id = o.id AND om.maktab_id = $2
+        WHERE o.id = $1
+        FOR UPDATE OF o`,
+      [entityId, maktabId]
+    );
+    if (own.rowCount === 0) {
+      await client.query('ROLLBACK');
+      return res.status(403).json({ ok: false, error: "Bu o'qituvchi sizning maktabingizga biriktirilmagan" });
+    }
+    const t = own.rows[0];
+
+    const stale = await client.query(
+      `SELECT 1 FROM telegram_users WHERE rol='oqituvchi' AND entity_id=$1 LIMIT 1`,
+      [entityId]
+    );
+    if (t.telegram_id || stale.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({
+        ok: false,
+        error: "Bu o'qituvchiga Telegram ID allaqachon biriktirilgan. O'zgartirish uchun superadminga murojaat qiling."
+      });
+    }
+
+    const dup = await client.query('SELECT 1 FROM oqituvchilar WHERE telegram_id=$1 LIMIT 1', [tgId]);
+    if (dup.rowCount > 0) {
+      await client.query('ROLLBACK');
+      return res.status(409).json({ ok: false, error: "Bu Telegram ID boshqa o'qituvchiga biriktirilgan" });
+    }
+
+    await client.query(
+      `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)
+       VALUES ($1, $2, 'oqituvchi', $3, 'oqituvchilar')
+       ON CONFLICT (telegram_id, rol, entity_id) DO NOTHING`,
+      [tgId, `${t.familiya} ${t.ism}`.trim(), entityId]
+    );
+    await client.query('UPDATE oqituvchilar SET telegram_id=$1 WHERE id=$2', [tgId, entityId]);
+    await client.query('COMMIT');
+  } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
+    if (err.code === '23505')
+      return res.status(409).json({ ok: false, error: 'Bu Telegram ID allaqachon biriktirilgan' });
+    console.error('adminBindTeacherTelegram xatolik:', err.message);
+    return res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
+  }
+
+  // Muvaffaqiyatli biriktirilgandan keyin (xato bo'lsa ham biriktirma saqlanib qoladi)
+  try {
+    await pool.query(`UPDATE anketa_sorovlar SET holat='tasdiqlandi' WHERE telegram_id=$1`, [tgId]);
+    await notifyUser(tgId, 'tasdiqlandi');
+  } catch (e) {
+    console.error('adminBindTeacherTelegram (xabar) xatolik:', e.message);
+  }
+  res.json({ ok: true });
+}
 
 // ─── Yordamchi: superadminga bot xabari (inline tugmalar bilan) ──────────────
 async function notifySuperAdmin({ sorovId, telegramId, telegramIsm, pozitsiya, fish, maktablar, sinf, telefon }) {
