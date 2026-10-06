@@ -430,3 +430,6 @@ tr:hover td { background: #fafaf8; }
 .att-btn:disabled { opacity: .5; cursor: default; }
 .att-btn.alt { border-color: var(--border); background: var(--bg); color: var(--text); }
 .att-done { font-size: 12px; font-weight: 600; color: #059669; white-space: nowrap; }
+/* Yopish tugmasi: hover'da qizil border */
+#attach-modal .btn-cancel { transition: border-color .15s; }
+#attach-modal .btn-cancel:hover { border-color: #dc2626; }

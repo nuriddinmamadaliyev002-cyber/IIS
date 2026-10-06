@@ -156,13 +156,15 @@ function escapeLike(s) { return s.replace(/[\\%_]/g, '\\$&'); }
 
 router.get('/qidiruv', requireSchoolAdmin, async (req, res) => {
   const q = String(req.query.q || '').trim().replace(/\s+/g, ' ');
-  if (q.length < 2) return res.json({ ok: true, teachers: [] });
 
-  // Har bir so'z familiya yoki ismda uchrashi kerak (tartibi muhim emas)
-  const words = stripApos(q).toLowerCase().split(' ').filter(Boolean).slice(0, 4);
-  if (!words.length) return res.json({ ok: true, teachers: [] });
+  // Har bir so'z familiya yoki ismda uchrashi kerak (tartibi muhim emas).
+  // q bo'sh bo'lsa — filtrsiz, barcha o'qituvchilar ro'yxati qaytariladi.
+  const words = q ? stripApos(q).toLowerCase().split(' ').filter(Boolean).slice(0, 4) : [];
 
-  const params = [req.user.maktabId, APOSTROFLAR];
+  // $2 (apostroflar) faqat qidiruv so'zi bo'lganda qo'shiladi — ishlatilmagan
+  // parametr PostgreSQL'da "could not determine data type" xatosini beradi.
+  const params = [req.user.maktabId];
+  if (words.length) params.push(APOSTROFLAR);
   const conds = words.map(w => {
     params.push('%' + escapeLike(w) + '%');
     return `translate(lower(o.familiya || ' ' || o.ism), $2, '') LIKE $${params.length}`;
@@ -182,9 +184,9 @@ router.get('/qidiruv', requireSchoolAdmin, async (req, res) => {
                WHERE om.oqituvchi_id = o.id AND om.maktab_id <> $1
              ), '[]') AS boshqa_maktablar
       FROM oqituvchilar o
-      WHERE ${conds.join(' AND ')}
+      ${conds.length ? 'WHERE ' + conds.join(' AND ') : ''}
       ORDER BY o.familiya, o.ism
-      LIMIT 20
+      LIMIT 500
     `, params);
 
     res.json({

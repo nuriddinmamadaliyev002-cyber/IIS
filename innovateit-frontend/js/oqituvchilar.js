@@ -1092,6 +1092,7 @@ function openAttachModal() {
   const inp = g('attach-search'); if (inp) inp.value = '';
   renderAttachResults();
   const m = g('attach-modal'); if (m) m.classList.add('show');
+  runAttachSearch();   // qidiruvsiz ham barcha o'qituvchilar ro'yxatini ko'rsatish
   setTimeout(() => { if (inp) inp.focus(); }, 50);
 }
 
@@ -1109,8 +1110,6 @@ function attachSearchDebounced() {
 async function runAttachSearch() {
   const q = (g('attach-search')?.value || '').trim();
   const box = g('attach-results'); if (!box) return;
-  if (q.length < 2) { ATT_RESULTS = []; renderAttachResults(); return; }
-
   const seq = ++ATT_REQ_SEQ;
   box.innerHTML = '<div class="att-hint">⏳ Qidirilmoqda…</div>';
   try {
@@ -1127,12 +1126,10 @@ async function runAttachSearch() {
 
 function renderAttachResults(q) {
   const box = g('attach-results'); if (!box) return;
-  if (q === undefined && !ATT_RESULTS.length) {
-    box.innerHTML = '<div class="att-hint">Qidirish uchun familiya yoki ismni kiriting</div>';
-    return;
-  }
   if (!ATT_RESULTS.length) {
-    box.innerHTML = '<div class="att-hint">Hech narsa topilmadi. Familiya yoki ismni boshqacha yozib ko\'ring.</div>';
+    box.innerHTML = q
+      ? '<div class="att-hint">Hech narsa topilmadi. Familiya yoki ismni boshqacha yozib ko\'ring.</div>'
+      : '';
     return;
   }
   box.innerHTML = ATT_RESULTS.map(t => {
