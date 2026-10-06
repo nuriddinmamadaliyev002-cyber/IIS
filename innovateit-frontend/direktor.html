@@ -9,14 +9,49 @@
   <link rel="stylesheet" href="css/hover.css">
   <link rel="stylesheet" href="css/mobile-nav.css">
   <style>
-    .dir-wrap { max-width: 1100px; margin: 0 auto; padding: 24px 20px; }
-    .dir-hero {
-      background: #fff; border: 1.5px solid var(--border); border-radius: 16px;
-      padding: 32px 24px; text-align: center;
-    }
-    .dir-hero .ico { font-size: 44px; margin-bottom: 10px; }
-    .dir-hero h1 { font-size: 20px; margin: 0 0 6px; color: #111827; }
-    .dir-hero p  { font-size: 13.5px; color: #6b7280; margin: 0; line-height: 1.6; }
+    .dir-wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
+    .dir-stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
+    .dir-stat { flex:1; min-width:150px; background:#fff; border:1.5px solid var(--border); border-radius:14px; padding:14px 16px; }
+    .dir-stat .num { font-size:24px; font-weight:700; color:#111827; }
+    .dir-stat .lbl { font-size:11.5px; color:#9ca3af; margin-top:2px; }
+    .dir-stat.warn .num { color:#b45309; }
+    .dir-tabs { display:flex; gap:8px; margin-bottom:14px; flex-wrap:wrap; }
+    .dir-tab { padding:9px 16px; border-radius:10px; border:1.5px solid var(--border); background:#fff; font-size:13.5px; font-weight:600; cursor:pointer; font-family:inherit; color:#374151; }
+    .dir-tab.active { background:#2563eb; border-color:#2563eb; color:#fff; }
+    .dir-card { background:#fff; border:1.5px solid var(--border); border-radius:16px; padding:16px; }
+    .dir-bar { display:flex; gap:10px; flex-wrap:wrap; align-items:center; margin-bottom:12px; }
+    .dir-bar input, .dir-bar select { padding:8px 12px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#fff; }
+    .dir-bar input { min-width:220px; flex:1; max-width:340px; }
+    .dir-scroll { overflow:auto; max-height:calc(100vh - 330px); }
+    .dtbl { width:100%; border-collapse:collapse; font-size:12.5px; }
+    .dtbl th { position:sticky; top:0; z-index:2; text-align:left; padding:9px 10px; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#9ca3af; border-bottom:1.5px solid var(--border); background:#f8fafc; white-space:nowrap; }
+    .dtbl td { padding:10px; border-bottom:1px solid #eef0f2; vertical-align:top; }
+    .dtbl tbody tr:hover { background:#eef2ff; cursor:pointer; }
+    .chip { display:inline-block; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:600; margin:1px 3px 1px 0; background:#eff4ff; color:#2563eb; border:1px solid #bfdbfe; white-space:nowrap; }
+    .chip.g { background:#ecfdf5; color:#047857; border-color:#a7f3d0; }
+    .chip.y { background:#fffbeb; color:#92400e; border-color:#fde68a; }
+    .chip.r { background:#fef2f2; color:#b91c1c; border-color:#fecaca; }
+    .chip.n { background:#f3f4f6; color:#6b7280; border-color:#e5e7eb; }
+    .sm-line { margin-bottom:4px; font-size:12px; color:#374151; }
+    .sm-line b { color:#111827; }
+    .empty { text-align:center; padding:32px; color:#9ca3af; font-size:13px; }
+    .wk { width:100%; border-collapse:separate; border-spacing:6px; table-layout:fixed; min-width:720px; }
+    .wk th { font-size:12px; padding:6px; background:#f8fafc; border-radius:8px; color:#374151; }
+    .wk th.today { background:#2563eb; color:#fff; }
+    .wk td { vertical-align:top; background:#fafbfc; border:1px solid #eef0f2; border-radius:10px; padding:6px; min-height:60px; height:70px; }
+    .lesson { background:#fff; border:1px solid #dbeafe; border-left:3px solid #2563eb; border-radius:8px; padding:5px 7px; margin-bottom:5px; font-size:11.5px; line-height:1.35; }
+    .lesson .t { font-weight:700; color:#1e40af; font-family:'DM Mono',monospace; font-size:11px; }
+    .lesson .who { color:#111827; font-weight:600; }
+    .lesson .meta { color:#6b7280; }
+    .dmodal { display:none; position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.45); align-items:flex-start; justify-content:center; padding:20px 12px; overflow:auto; }
+    .dmodal-box { background:#fff; border-radius:16px; padding:22px; width:100%; max-width:980px; box-shadow:0 8px 40px rgba(0,0,0,.2); }
+    .dmodal-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+    .dmodal-close { border:none; background:#f3f4f6; border-radius:8px; width:32px; height:32px; font-size:16px; cursor:pointer; }
+    .kv { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px; font-size:13px; color:#374151; }
+    .kv span b { color:#111827; }
+    .dsec { font-size:13px; font-weight:700; color:#111827; margin:16px 0 8px; }
+    .xscroll { overflow-x:auto; }
+    @media (max-width:640px){ .dir-wrap{padding:12px;} .dir-bar input{max-width:none;} }
   </style>
 </head>
 <body>
@@ -61,13 +96,56 @@
   </div>
 
   <div class="dir-wrap">
-    <!-- Direktor paneli mazmuni keyingi bosqichda qo'shiladi -->
-    <div class="dir-hero">
-      <div class="ico">🏛</div>
-      <h1 id="dir-welcome">Xush kelibsiz</h1>
-      <p>Direktor paneli tayyorlanmoqda.<br>Tez orada barcha maktablar bo'yicha umumiy ko'rsatkichlar shu yerda paydo bo'ladi.</p>
+    <div class="dir-stats" id="dir-stats"></div>
+
+    <div class="dir-tabs">
+      <button class="dir-tab active" id="tab-btn-oq" onclick="showView('oq')">👩‍🏫 O'qituvchilar</button>
+      <button class="dir-tab" id="tab-btn-jd" onclick="showView('jd')">📅 Dars jadvali</button>
+    </div>
+
+    <!-- ═══ O'QITUVCHILAR ═══ -->
+    <div id="view-oq" class="dir-card">
+      <div class="dir-bar">
+        <input type="text" id="f-q" placeholder="🔍 Ism, fan yoki telefon…" oninput="renderTeachers()">
+        <select id="f-maktab" onchange="renderTeachers()"><option value="">🏫 Barcha maktablar</option></select>
+        <select id="f-fan" onchange="renderTeachers()"><option value="">Barcha fanlar</option></select>
+        <select id="f-holat" onchange="renderTeachers()">
+          <option value="">Barchasi</option>
+          <option value="jadvalsiz">⚠️ Jadvali yo'q</option>
+          <option value="maktabsiz">⚠️ Maktabi yo'q</option>
+          <option value="tgsiz">📱 Telegram bog'lanmagan</option>
+        </select>
+        <span id="f-count" style="font-size:12px;color:#6b7280;"></span>
+      </div>
+      <div class="dir-scroll">
+        <table class="dtbl">
+          <thead><tr>
+            <th>#</th><th>F.I.</th><th>Fan</th><th>Maktab va sinflar</th>
+            <th>Haftada dars</th><th>O'quvchi</th><th>Davomat (30 kun)</th><th>Telegram</th>
+          </tr></thead>
+          <tbody id="t-body"></tbody>
+        </table>
+        <div class="empty" id="t-empty" style="display:none;">O'qituvchi topilmadi</div>
+        <div class="empty" id="t-loading">⏳ Yuklanmoqda…</div>
+      </div>
+    </div>
+
+    <!-- ═══ DARS JADVALI ═══ -->
+    <div id="view-jd" class="dir-card" style="display:none;">
+      <div class="dir-bar">
+        <select id="j-maktab" onchange="renderTimetable()"></select>
+        <select id="j-sinf" onchange="renderTimetable()"><option value="">Barcha sinflar</option></select>
+        <select id="j-teacher" onchange="renderTimetable()"><option value="">Barcha o'qituvchilar</option></select>
+        <span id="j-count" style="font-size:12px;color:#6b7280;"></span>
+      </div>
+      <div class="xscroll"><table class="wk" id="j-grid"></table></div>
     </div>
   </div>
+</div>
+
+<!-- ═══ O'QITUVCHI BATAFSIL ═══ -->
+<div class="dmodal" id="t-modal" onclick="if(event.target===this)closeTeacher()">
+  <div class="dmodal-box" id="t-modal-box"></div>
 </div>
 
 <div class="toast" id="toast"></div>

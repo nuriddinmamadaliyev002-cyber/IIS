@@ -296,6 +296,7 @@ const api = {
   editDirektor:     (d) => api.put(`/api/direktorlar/${d.id}`, d),
   deleteDirektor:   (d) => api.del(`/api/direktorlar/${d.id}`, d),
   getDirektorMe:    (d) => api.get('/api/direktorlar/me', d),
+  getDirektorOqituvchilar: (d) => api.get('/api/direktorlar/oqituvchilar', d),
 
   // ─── Buxgalter ───
   getBiriktirmalar: (d) => api.get('/api/buxgalter', d),
