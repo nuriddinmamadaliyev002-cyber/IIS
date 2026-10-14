@@ -278,7 +278,7 @@ function openTeacher(id) {
     <div class="kv">
       <span>📞 <b>${h(t.telefon) || '—'}</b>${t.telefon2 ? ' · ' + h(t.telefon2) : ''}</span>
       <span>📱 Telegram: <b>${t.telegram ? 'bog\'langan' : 'bog\'lanmagan'}</b></span>
-      <span>🎓 O'quvchilar: <b>${t.oquvchilar_soni}</b></span>
+      <span>O'quvchilar: <b>${t.oquvchilar_soni}</b></span>
       <span>📅 Haftada: <b>${t.haftalik_dars} dars</b></span>
       ${t.qoshilgan ? `<span>➕ Qo'shilgan: <b>${h(t.qoshilgan)}</b></span>` : ''}
     </div>

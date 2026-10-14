@@ -134,10 +134,13 @@
     }
     /* ── Direktor menyusi (desktop: topbar tugmalari; mobil: hamburger drawer) ── */
     .btn-dnav { font-size:12px; font-weight:500; color:var(--iit-indigo-deep); background:rgba(255,255,255,.94);
-      border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif;
-      white-space:nowrap; flex-shrink:0; -webkit-tap-highlight-color:transparent; transition:opacity .15s, background .15s; }
-    .btn-dnav:hover { opacity:.9; }
-    .btn-dnav.active { background:var(--iit-cyan,#05BFF6); color:#fff; }
+      border:2px solid transparent; padding:5px 11px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif;
+      white-space:nowrap; flex-shrink:0; -webkit-tap-highlight-color:transparent; transition:border-color .15s, background .15s, color .15s; }
+    .btn-dnav:hover { border-color:#15803d; }
+    .btn-dnav.active { background:#16a34a; border-color:#16a34a; color:#fff; }
+    .btn-dnav.active:hover { background:#15803d; border-color:#15803d; }
+    /* Desktopda "Maktablar kesimida" jadvali ko'rsatilmaydi (mobilda qoladi) */
+    @media (min-width:769px){ #b-maktab-card { display:none; } }
     .dir-stat.good .num { color:#047857; }
     .dtbl td.num, .dtbl th.num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
     .dtbl tr.tot td { font-weight:700; background:#f8fafc; cursor:default; }
@@ -186,8 +189,8 @@
       <button class="btn-dnav" data-nav="bux"   onclick="goView('bux')">💼 Buxgalterlar</button>
       <button class="btn-dnav" data-nav="tol"   onclick="goView('tol')">💰 To'lovlar</button>
       <button class="btn-dnav" data-nav="adm"   onclick="goView('adm')">🛡 Adminlar</button>
-      <button class="btn-dnav" data-nav="teach" onclick="goView('teach')">👩‍🏫 O'qituvchilar</button>
-      <button class="btn-dnav" data-nav="oquv"  onclick="goView('oquv')">🎓 O'quvchilar</button>
+      <button class="btn-dnav" data-nav="teach" onclick="goView('teach')">O'qituvchilar</button>
+      <button class="btn-dnav" data-nav="oquv"  onclick="goView('oquv')">O'quvchilar</button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
   </div>
@@ -300,7 +303,7 @@
       <div class="dir-stats" id="dir-stats"></div>
 
       <div class="dir-tabs">
-        <button class="dir-tab active" id="tab-btn-oq" onclick="showView('oq')">👩‍🏫 O'qituvchilar</button>
+        <button class="dir-tab active" id="tab-btn-oq" onclick="showView('oq')">O'qituvchilar</button>
         <button class="dir-tab" id="tab-btn-jd" onclick="showView('jd')">📅 Dars jadvali</button>
       </div>
 

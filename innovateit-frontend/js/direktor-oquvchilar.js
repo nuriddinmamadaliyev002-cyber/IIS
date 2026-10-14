@@ -107,7 +107,7 @@ function openStudent(i) {
     <div class="kv">
       ${row('➕ Qo\'shilgan', s.qoshilgan)}
       ${row('▶️ O\'qishni boshlagan', s.boshlagan)}
-      ${s.nofaol ? row('⏹ To\'xtatgan', s.chiqgan) : `<span>📱 Telegram: <b>${s.telegram ? 'bog\'langan' : 'bog\'lanmagan'}</b></span><span>👩‍🏫 O'qituvchilar: <b>${s.oqituvchilar_soni || 0}</b></span>`}
+      ${s.nofaol ? row('⏹ To\'xtatgan', s.chiqgan) : `<span>📱 Telegram: <b>${s.telegram ? 'bog\'langan' : 'bog\'lanmagan'}</b></span><span>O'qituvchilar: <b>${s.oqituvchilar_soni || 0}</b></span>`}
     </div>
     ${s.nofaol ? `<div class="dsec">💤 Nofaol</div><div style="font-size:13px;color:#374151;">${h(s.izoh) || 'Izoh yo\'q'}</div>` : ''}`;
   g('s-modal').style.display = 'flex';
