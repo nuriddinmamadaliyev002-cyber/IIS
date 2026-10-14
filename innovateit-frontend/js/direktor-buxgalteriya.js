@@ -8,6 +8,8 @@ let BUXLAR = [], B_VIEW = [];
 
 const OY_NOMI = ['', 'Yanvar', 'Fevral', 'Mart', 'Aprel', 'May', 'Iyun', 'Iyul', 'Avgust', 'Sentabr', 'Oktabr', 'Noyabr', 'Dekabr'];
 function oyLabel(oy) {
+  const q = /^QABUL-(\d{4})-(\d{2})$/.exec(oy || '');
+  if (q) return `Qabul ${q[1]}-${q[2]}`;
   const m = /^(\d{4})-(\d{2})$/.exec(oy || '');
   return m ? `${OY_NOMI[parseInt(m[2], 10)] || m[2]} ${m[1]}` : (oy || '—');
 }

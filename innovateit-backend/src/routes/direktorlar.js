@@ -320,8 +320,9 @@ router.get('/tolovlar', requireAuth(['direktor']), async (req, res) => {
     const oylar = [...new Set([joriyOy, ...oyRes.rows.map(r => r.oy)])].sort().reverse();
 
     let oy = String(req.query.oy || '').trim();
-    if (oy && !/^\d{4}-\d{2}$/.test(oy))
-      return res.status(400).json({ ok: false, error: "oy formati YYYY-MM bo'lishi kerak" });
+    // Oddiy oy (YYYY-MM) yoki "Qabul" pseudo-oyi (masalan QABUL-2026-27)
+    if (oy && !/^(\d{4}-\d{2}|QABUL-\d{4}-\d{2})$/.test(oy))
+      return res.status(400).json({ ok: false, error: "oy formati YYYY-MM yoki QABUL-YYYY-YY bo'lishi kerak" });
     if (!oy) oy = joriyOy;
 
     const r = await pool.query(
