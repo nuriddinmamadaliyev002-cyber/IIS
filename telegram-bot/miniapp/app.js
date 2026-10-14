@@ -97,8 +97,7 @@ function handleAuthResult(data) {
 }
 
 // ─── Web panelni darrov ochish ────────────────────────────────────────────────
-// Telegram ichida: tashqi brauzerda ochadi va Mini App'ni yopadi (foydalanuvchi
-// chatga qaytadi). Telegram tashqarisida (oddiy brauzer): to'g'ridan-to'g'ri o'tadi.
+// Panel Telegram ichida (Mini App oynasida) to'g'ridan-to'g'ri ochiladi.
 function goToPanel(url) {
   // Rol tanlash ekrani qolib ketmasligi uchun avvalgi "Tekshirilmoqda" holatiga qaytaramiz
   showPage('loadingPage');
@@ -107,13 +106,10 @@ function goToPanel(url) {
     <div class="pulse-logo">🏫</div>
     <div class="loading-label dot-anim">Panel ochilmoqda</div>`;
 
-  if (tg && tg.openLink) {
-    tg.openLink(url);
-    // openLink so'rovi Telegram'ga yetib borishi uchun biroz kutib, Mini App'ni yopamiz
-    setTimeout(() => { try { tg.close(); } catch (_) {} }, 400);
-  } else {
-    window.location.href = url;
-  }
+  // tg.openLink() Telegram'ning "Open this link?" tasdiqlash oynasini chiqaradi
+  // va tg.close() uni darrov yopib yuborardi. Shuning uchun panelga Mini App
+  // oynasining o'zida to'g'ridan-to'g'ri o'tamiz — hech qanday so'rovsiz.
+  window.location.replace(url);
 }
 
 // ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────
