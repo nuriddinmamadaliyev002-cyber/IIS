@@ -13,6 +13,39 @@ const { requireAuth } = require('../middleware/jwt');
 
 const router = Router();
 
+// ─── Qisqa bir martalik kirish kodi ──────────────────────────────────────────
+// Mini App paneli tashqi brauzerda ochganda Telegram "Open this link?" oynasida
+// to'liq URL'ni ko'rsatadi. Uzun JWT o'rniga qisqa kod (?c=...) ishlatamiz:
+//   POST /api/telegram/go-code  (JWT bilan)  → { code }
+//   POST /api/telegram/exchange { code }     → { token, ism }   (bir marta, 2 daqiqa)
+// Kodlar xotirada saqlanadi (bitta PM2 instance — innovateit-crm).
+const crypto = require('crypto');
+const GO_CODES = new Map();
+const GO_TTL_MS = 2 * 60 * 1000;
+setInterval(() => {
+  const now = Date.now();
+  for (const [k, v] of GO_CODES) if (v.exp < now) GO_CODES.delete(k);
+}, 60 * 1000).unref();
+
+router.post('/go-code',
+  requireAuth(['admin', 'buxgalter', 'oqituvchi', 'oquvchi', 'sales', 'direktor']),
+  (req, res) => {
+    const token = (req.headers['authorization'] || '').slice(7);
+    const code  = crypto.randomBytes(6).toString('base64url'); // 8 belgi
+    GO_CODES.set(code, { token, ism: req.user.ism || '', exp: Date.now() + GO_TTL_MS });
+    res.json({ ok: true, code });
+  });
+
+router.post('/exchange', (req, res) => {
+  const code = String((req.body && req.body.code) || '');
+  const rec  = GO_CODES.get(code);
+  GO_CODES.delete(code); // bir martalik
+  if (!rec || rec.exp < Date.now()) {
+    return res.status(400).json({ ok: false, error: 'Kod yaroqsiz yoki muddati tugagan' });
+  }
+  res.json({ ok: true, token: rec.token, ism: rec.ism });
+});
+
 // ─── Yordamchi: bitta telegram_users qatori uchun entity + JWT tayyorlash ────
 async function buildAuthResponse(tgUser, tgId) {
   const { rol, entity_id, entity_table } = tgUser;

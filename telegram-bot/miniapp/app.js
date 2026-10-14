@@ -98,17 +98,29 @@ function handleAuthResult(data) {
 
 // ─── Web panelni darrov ochish ────────────────────────────────────────────────
 // Panel Telegram ichida (Mini App oynasida) to'g'ridan-to'g'ri ochiladi.
-function goToPanel(url) {
+async function goToPanel(url) {
   showPage('loadingPage');
   const loadPage = document.getElementById('loadingPage');
 
   // Telegram tashqarisida (oddiy brauzer) — to'g'ridan-to'g'ri o'tadi
   if (!(tg && tg.openLink)) { window.location.replace(url); return; }
 
-  // Telegram ichida: panel TASHQI BRAUZERDA ochiladi. Telegram tashqi havola uchun
-  // "Open this link?" tasdiqlash oynasini chiqaradi — uni o'chirib bo'lmaydi.
-  // ⚠️ Mini App'ni YOPMAYMIZ (oldin tg.close() oynani "Open" bosishdan oldin yo'qotardi).
-  // Foydalanuvchi "Open" ni bosadi, panel brauzerda ochiladi; Mini App ochiq qoladi.
+  // Telegram "Open this link?" oynasida URL'ni ko'rsatadi (matnni o'zgartirib bo'lmaydi),
+  // shuning uchun uzun JWT o'rniga QISQA bir martalik kod bilan havola beramiz:
+  //   https://new.innovateitschool.uz/direktor.html?c=Xk9fQ2aB
+  // Kod olib bo'lmasa — eski (uzun token'li) havolaga qaytamiz.
+  let finalUrl = url;
+  try {
+    const r = await fetch(`${API_BASE}/telegram/go-code`, {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${TOKEN}`, 'Content-Type': 'application/json' },
+      body: '{}'
+    });
+    const d = await r.json();
+    if (d.ok && d.code) finalUrl = url.split('?')[0] + '?c=' + encodeURIComponent(d.code);
+  } catch (_) {}
+
+  // ⚠️ Mini App'ni YOPMAYMIZ — aks holda tasdiqlash oynasi "Open" bosishdan oldin yo'qoladi.
   loadPage.innerHTML = `
     <div class="pulse-logo">🏫</div>
     <div class="loading-label">Panel brauzerda ochilmoqda</div>
@@ -118,8 +130,9 @@ function goToPanel(url) {
     <button id="reopenPanel" style="padding:12px 22px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">
       🌐 Panelni brauzerda ochish
     </button>`;
-  document.getElementById('reopenPanel').onclick = () => tg.openLink(url);
-  tg.openLink(url);
+  // Kod bir martalik: qayta bosilganda yangisi olinadi
+  document.getElementById('reopenPanel').onclick = () => goToPanel(url);
+  tg.openLink(finalUrl);
 }
 
 // ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────

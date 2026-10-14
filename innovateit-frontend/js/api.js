@@ -14,6 +14,30 @@ const BASE = (_proto === 'file:' ||
   ? 'http://127.0.0.1:3001'
   : '';
 
+// ─── Qisqa kirish kodi (?c=...) → ?tg_token=... ──────────────────────────────
+// Mini App paneli brauzerda ochganda URL qisqa bo'lishi uchun uzun JWT o'rniga
+// bir martalik kod beradi. Kodni shu yerda (panel skriptlaridan OLDIN) token'ga
+// almashtirib, URL'ni eski ?tg_token=&tg_ism= ko'rinishiga keltiramiz — shunda
+// har bir panel o'zgarishsiz ishlayveradi.
+(function () {
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const c = q.get('c');
+    if (!c || q.get('tg_token')) return;
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', BASE + '/api/telegram/exchange', false); // sinxron: panel skriptlari kutadi
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    xhr.send(JSON.stringify({ code: c }));
+    const d = JSON.parse(xhr.responseText || '{}');
+    q.delete('c');
+    if (d.ok && d.token) {
+      q.set('tg_token', d.token);
+      if (d.ism) q.set('tg_ism', d.ism);
+    }
+    window.history.replaceState({}, '', window.location.pathname + '?' + q.toString());
+  } catch (_) {}
+})();
+
 // ─── Token boshqaruvi ────────────────────────────────────────────────────────
 // Har bir panel (index.html, buxgalter.html, sales.html) o'z token'ini alohida
 // localStorage kalitida saqlaydi — shunda ular bir vaqtda turli tab'larda ochiq
