@@ -1,5 +1,5 @@
 // ═══════════════════════════════════════════════════════════════════════════
-//  DIREKTOR — BUXGALTERIYA (faqat o'qish)
+//  DIREKTOR — BUXGALTERLAR va TO'LOVLAR (faqat o'qish)
 //  GET /api/direktorlar/tolovlar?oy=YYYY-MM  → oylik to'lovlar + maktab kesimi
 //  GET /api/direktorlar/buxgalterlar         → buxgalterlar va ularning maktablari
 // ═══════════════════════════════════════════════════════════════════════════
@@ -13,16 +13,29 @@ function oyLabel(oy) {
 }
 const pct = (a, b) => b > 0 ? Math.round(a / b * 100) : 0;
 
-async function loadBuxgalteriya() {
+// «To'lovlar» bo'limi
+async function loadTolovlarView() {
   g('b-loading').style.display = 'block';
-  try {
-    const [bx] = await Promise.all([api.getDirektorBuxgalterlar({}), loadTolovlar('')]);
-    if (bx.ok) BUXLAR = bx.buxgalterlar || [];
-  } catch (e) {
+  try { await loadTolovlar(''); }
+  catch (e) {
     g('b-loading').innerHTML = `<span style="color:#dc2626;">❌ Xatolik: ${h(e.message)}</span>`;
+    LOADED.tol = false;
+  }
+}
+
+// «Buxgalterlar» bo'limi — faqat buxgalterlar haqida umumiy ma'lumot
+async function loadBuxgalterlar() {
+  g('bx-loading').style.display = 'block';
+  try {
+    const bx = await api.getDirektorBuxgalterlar({});
+    if (!bx.ok) throw new Error(bx.error || 'Xatolik');
+    BUXLAR = bx.buxgalterlar || [];
+  } catch (e) {
+    g('bx-loading').innerHTML = `<span style="color:#dc2626;">❌ Xatolik: ${h(e.message)}</span>`;
     LOADED.bux = false;
     return;
   }
+  g('bx-loading').style.display = 'none';
   renderBuxgalterlar();
 }
 
@@ -122,12 +135,18 @@ function renderTolovlar() {
 }
 
 function renderBuxgalterlar() {
+  const tg = BUXLAR.filter(b => b.telegram).length;
+  const card = (val, lbl, cls) => `<div class="dir-stat ${cls || ''}"><div class="num">${val}</div><div class="lbl">${lbl}</div></div>`;
+  g('bx-stats').innerHTML =
+    card(BUXLAR.length, 'Jami buxgalter') +
+    card(tg, "Telegram bog'langan", 'good') +
+    card(BUXLAR.length - tg, "Telegram bog'lanmagan", BUXLAR.length - tg > 0 ? 'warn' : '');
   g('bx-tbl').innerHTML = BUXLAR.length
     ? '<thead><tr><th>#</th><th>F.I.</th><th>Biriktirilgan maktablar</th><th>Telegram</th><th>Qo\'shilgan</th></tr></thead><tbody>' +
       BUXLAR.map((b, i) => `<tr class="noclick">
         <td>${i + 1}</td>
         <td><b>${h(fish(b))}</b></td>
-        <td>${(b.maktablar || []).slice().sort((x, y) => maktabCmp(x.nomi, y.nomi)).map(m => `<span class="chip">${h(m.nomi)}</span>`).join('') || '<span class="chip n">barcha maktablar</span>'}</td>
+        <td>${(b.maktablar || []).slice().sort((x, y) => maktabCmp(x.nomi, y.nomi)).map(m => `<span class="chip">${h(m.nomi)}</span>`).join(' ') || '<span class="chip n">barcha maktablar</span>'}</td>
         <td>${b.telegram ? '<span class="chip g">📱 bog\'langan</span>' : '<span class="chip r">❌ yo\'q</span>'}</td>
         <td>${h(b.yaratilgan) || '—'}</td>
       </tr>`).join('') + '</tbody>'

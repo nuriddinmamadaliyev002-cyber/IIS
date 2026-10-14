@@ -71,13 +71,14 @@ async function showApp() {
 //  ASOSIY NAVIGATSIYA (topbar menyusi / mobil hamburger)
 //  Bo'limlar birinchi ochilganda yuklanadi (lazy), keyin keshda turadi.
 // ═══════════════════════════════════════════════════════════════════════════
-const VIEWS  = ['bux', 'adm', 'teach', 'oquv'];
+const VIEWS  = ['bux', 'tol', 'adm', 'teach', 'oquv'];
 const LOADED = {};
 const LOADERS = {
   teach: () => loadTeachers(),
   oquv:  () => loadStudents(),
   adm:   () => loadAdminlar(),
-  bux:   () => loadBuxgalteriya(),
+  bux:   () => loadBuxgalterlar(),
+  tol:   () => loadTolovlarView(),
 };
 
 function goView(v) {
@@ -209,9 +210,9 @@ function renderTeachers() {
   g('t-body').innerHTML = list.map((t, i) => {
     const sm = t.sinflar_by_maktab.length
       ? t.sinflar_by_maktab.map(x =>
-          `<div class="sm-line"><b>${h(x.maktab_nomi)}:</b> ${x.sinflar.length ? x.sinflar.map(s => `<span class="chip">${h(s)}</span>`).join('') : '<span class="chip n">sinf yo\'q</span>'}</div>`).join('')
+          `<div class="sm-line"><b>${h(x.maktab_nomi)}:</b> ${x.sinflar.length ? x.sinflar.map(s => `<span class="chip">${h(s)}</span>`).join(' ') : '<span class="chip n">sinf yo\'q</span>'}</div>`).join('')
       : (t.maktablar.length
-          ? t.maktablar.map(m => `<span class="chip n">${h(m.nomi)}</span>`).join('') + '<div style="font-size:11px;color:#b45309;">⚠️ jadval kiritilmagan</div>'
+          ? t.maktablar.map(m => `<span class="chip n">${h(m.nomi)}</span>`).join(' ') + '<div style="font-size:11px;color:#b45309;">⚠️ jadval kiritilmagan</div>'
           : '<span class="chip y">⚠️ maktab biriktirilmagan</span>');
     return `<tr onclick="openTeacher(${Number(t.id)})">
       <td>${i + 1}</td>
@@ -262,8 +263,8 @@ function openTeacher(id) {
       `</div>`;
 
   const maktablar = t.sinflar_by_maktab.length
-    ? t.sinflar_by_maktab.map(x => `<div class="sm-line"><b>${h(x.maktab_nomi)}:</b> ${x.sinflar.map(s => `<span class="chip">${h(s)}</span>`).join('') || '—'}</div>`).join('')
-    : (t.maktablar.map(m => `<span class="chip n">${h(m.nomi)}</span>`).join('') || '<span class="chip y">⚠️ maktab biriktirilmagan</span>');
+    ? t.sinflar_by_maktab.map(x => `<div class="sm-line"><b>${h(x.maktab_nomi)}:</b> ${x.sinflar.map(s => `<span class="chip">${h(s)}</span>`).join(' ') || '—'}</div>`).join('')
+    : (t.maktablar.map(m => `<span class="chip n">${h(m.nomi)}</span>`).join(' ') || '<span class="chip y">⚠️ maktab biriktirilmagan</span>');
 
   g('t-modal-box').innerHTML = `
     <div class="dmodal-head">

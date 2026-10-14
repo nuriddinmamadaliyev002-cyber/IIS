@@ -64,9 +64,13 @@
       .dtbl:not(.keep) tbody { display:block; }
       .dtbl:not(.keep) tr { display:block; background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:8px 12px; margin-bottom:10px; }
       .dtbl:not(.keep) tr.tot { background:#f8fafc; }
-      .dtbl:not(.keep) td { display:block; position:relative; padding:7px 0 7px 40%; min-height:30px; border-bottom:1px dashed #eef0f2; text-align:right; word-break:break-word; }
+      .dtbl:not(.keep) td { display:block; position:relative; padding:7px 0 7px 40%; min-height:30px; border-bottom:1px dashed #eef0f2; text-align:right; overflow-wrap:anywhere; }
       .dtbl:not(.keep) td:last-child { border-bottom:none; }
       .dtbl:not(.keep) td::before { content:attr(data-label); position:absolute; left:0; top:9px; width:36%; text-align:left; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#9ca3af; }
+      .dtbl:not(.keep) td, .dtbl:not(.keep) td .chip { white-space:normal !important; }
+      /* Ko'p chip (maktablar/sinflar) bo'lgan katak: nom tepada, qiymatlar pastda, chiqib ketmaydi */
+      .dtbl:not(.keep) td:has(.chip + .chip), .dtbl:not(.keep) td[data-label^="Biriktirilgan"], .dtbl:not(.keep) td[data-label^="Maktab va"] { padding-left:0; text-align:left; }
+      .dtbl:not(.keep) td:has(.chip + .chip)::before, .dtbl:not(.keep) td[data-label^="Biriktirilgan"]::before, .dtbl:not(.keep) td[data-label^="Maktab va"]::before { position:static; display:block; width:auto; margin-bottom:5px; }
       .dtbl:not(.keep) td[data-label="#"] { display:none; }
       .dtbl:not(.keep) td.num { text-align:right; }
       .dtbl:not(.keep) .bar { min-width:60px; flex:1; }
@@ -124,7 +128,8 @@
     <div class="topbar-brand">🏛 InnovateIT School — Direktor</div>
     <div class="topbar-right">
       <span class="admin-badge" id="dir-badge"></span>
-      <button class="btn-dnav" data-nav="bux"   onclick="goView('bux')">💰 Buxgalteriya</button>
+      <button class="btn-dnav" data-nav="bux"   onclick="goView('bux')">💼 Buxgalterlar</button>
+      <button class="btn-dnav" data-nav="tol"   onclick="goView('tol')">💰 To'lovlar</button>
       <button class="btn-dnav" data-nav="adm"   onclick="goView('adm')">🛡 Adminlar</button>
       <button class="btn-dnav" data-nav="teach" onclick="goView('teach')">👩‍🏫 O'qituvchilar</button>
       <button class="btn-dnav" data-nav="oquv"  onclick="goView('oquv')">🎓 O'quvchilar</button>
@@ -134,8 +139,18 @@
 
   <div class="dir-wrap">
 
-    <!-- ═══════════ BUXGALTERIYA ═══════════ -->
+    <!-- ═══════════ BUXGALTERLAR ═══════════ -->
     <div id="sec-bux" class="dsec-view" style="display:none;">
+      <div class="dir-stats" id="bx-stats"></div>
+      <div class="dir-card">
+        <div class="dsec" style="margin-top:0;">💼 Buxgalterlar</div>
+        <div class="xscroll"><table class="dtbl" id="bx-tbl"></table></div>
+        <div class="empty" id="bx-loading">⏳ Yuklanmoqda…</div>
+      </div>
+    </div>
+
+    <!-- ═══════════ TO'LOVLAR ═══════════ -->
+    <div id="sec-tol" class="dsec-view" style="display:none;">
       <div class="dir-stats" id="b-stats"></div>
       <div class="dir-card" style="margin-bottom:14px;">
         <div class="dir-bar">
@@ -165,10 +180,6 @@
           <div class="empty" id="b-empty" style="display:none;">To'lov ma'lumoti topilmadi</div>
           <div class="empty" id="b-loading">⏳ Yuklanmoqda…</div>
         </div>
-      </div>
-      <div class="dir-card">
-        <div class="dsec" style="margin-top:0;">💼 Buxgalterlar</div>
-        <div class="xscroll"><table class="dtbl" id="bx-tbl"></table></div>
       </div>
     </div>
 
