@@ -89,7 +89,8 @@ function goView(v) {
   });
   document.querySelectorAll('.btn-dnav').forEach(b => b.classList.toggle('active', b.dataset.nav === v));
   try { localStorage.setItem('iit_dir_view', v); } catch (_) {}
-  if (!LOADED[v]) { LOADED[v] = true; LOADERS[v](); }
+  // «To'lovlar» har safar kirilganda qayta yuklanadi — server joriy oyni qaytaradi
+  if (v === 'tol' || !LOADED[v]) { LOADED[v] = true; LOADERS[v](); }
   window.scrollTo({ top: 0 });
 }
 

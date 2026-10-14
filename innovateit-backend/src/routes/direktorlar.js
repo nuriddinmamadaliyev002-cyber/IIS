@@ -310,17 +310,19 @@ router.get('/buxgalterlar', requireAuth(['direktor']), async (req, res) => {
 // ─── GET /api/direktorlar/tolovlar?oy=YYYY-MM — oylik to'lovlar ─────────────
 // Javob: oylar (mavjud oylar ro'yxati), tolovlar (qatorlar), maktablar (har
 // maktab bo'yicha jami kerak / to'langan / qarz) va umumiy jami.
-// oy berilmasa — bazadagi eng so'nggi oy olinadi.
+// oy berilmasa — joriy oy (Asia/Tashkent) olinadi; ma'lumot bo'lmasa ham ro'yxatda turadi.
 router.get('/tolovlar', requireAuth(['direktor']), async (req, res) => {
   try {
     const oyRes = await pool.query('SELECT DISTINCT oy FROM tolovlar ORDER BY oy DESC');
-    const oylar = oyRes.rows.map(r => r.oy);
+    // Joriy oy (YYYY-MM, Toshkent vaqti bilan)
+    const joriyOy = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Tashkent', year: 'numeric', month: '2-digit' })
+      .format(new Date()).slice(0, 7);
+    const oylar = [...new Set([joriyOy, ...oyRes.rows.map(r => r.oy)])].sort().reverse();
 
     let oy = String(req.query.oy || '').trim();
     if (oy && !/^\d{4}-\d{2}$/.test(oy))
       return res.status(400).json({ ok: false, error: "oy formati YYYY-MM bo'lishi kerak" });
-    if (!oy) oy = oylar[0] || '';
-    if (!oy) return res.json({ ok: true, oy: '', oylar: [], tolovlar: [], maktablar: [], jami: { kerak: 0, tolandi: 0, qarz: 0, qarzdor: 0, soni: 0 } });
+    if (!oy) oy = joriyOy;
 
     const r = await pool.query(
       `SELECT t.id, t.oquvchi_id, t.oquvchi_ism, t.oquvchi_familiya, t.maktab_id,
