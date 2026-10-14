@@ -56,8 +56,11 @@
     /* ── To'lovlar: doimiy tepada turuvchi ko'rsatkichlar + filter + qidiruv ── */
     .tol-sticky { position:sticky; top:var(--topbar-h,52px); z-index:60; background:var(--bg,#f4f3ef); margin:-20px -20px 14px; padding:12px 20px 10px; box-shadow:0 6px 10px -8px rgba(0,0,0,.25); }
     .tol-sticky .dir-stats { margin-bottom:10px; }
-    .tol-head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; margin-top:10px; padding:11px 16px; background:#fff; border:1.5px solid var(--border); border-radius:14px; font-size:13px; font-weight:700; color:#111827; }
+    .tol-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; padding:11px 16px; background:#fff; border:1.5px solid var(--border); border-radius:14px; font-size:13px; font-weight:700; color:#111827; }
     .tol-head #b-count { font-size:12px; font-weight:500; color:#6b7280; white-space:nowrap; }
+    .tol-meta { display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:0; text-align:right; }
+    .tol-head #b-flt { font-size:11.5px; font-weight:600; color:#6b7280; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tol-head #b-flt.on { color:#2563eb; }
     .tol-bar { position:relative; display:flex; gap:8px; align-items:stretch; }
     .tol-filter-btn { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:40px; border:1.5px solid var(--border); border-radius:10px; background:#fff; font-size:13.5px; font-weight:600; color:#374151; font-family:inherit; cursor:pointer; }
     .tol-filter-btn[aria-expanded="true"] { border-color:#2563eb; color:#2563eb; background:#eff4ff; }
@@ -213,7 +216,7 @@
           </div>
         </div>
         <!-- Doimiy sarlavha: tanlangan oy · ko'rsatilayotgan / jami yozuvlar -->
-        <div class="tol-head"><span>🧾 To'lovlar</span><span id="b-count"></span></div>
+        <div class="tol-head"><span>🧾 To'lovlar</span><span class="tol-meta"><span id="b-count"></span><span id="b-flt"></span></span></div>
       </div>
 
       <div class="dir-card" id="b-maktab-card" style="margin-bottom:14px;">

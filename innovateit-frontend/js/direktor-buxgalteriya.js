@@ -125,6 +125,13 @@ function renderTolovlar() {
   });
   B_VIEW = list;
   g('b-count').textContent = `${oyLabel(TOL.oy)} · ${list.length} / ${TOL.tolovlar.length}`;
+  // Filter yopiq bo'lsa ham ko'rinib turadi: tanlangan maktab va to'lov holati
+  const HOLAT_NOMI = { '': 'Barchasi', qarz: 'Qarzdorlar', tolagan: "To'liq to'laganlar" };
+  const mkSel = g('b-maktab');
+  const mkNomi = mk ? (mkSel.options[mkSel.selectedIndex]?.textContent || '') : 'Barcha maktablar';
+  const fltEl = g('b-flt');
+  fltEl.textContent = `${mkNomi} · ${HOLAT_NOMI[holat] || 'Barchasi'}`;
+  fltEl.classList.toggle('on', !!(mk || holat));
   const filtered = !!(q || mk || holat);
   renderBuxStats(list, filtered);
   const nf = (mk ? 1 : 0) + (holat ? 1 : 0);
