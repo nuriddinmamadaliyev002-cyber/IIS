@@ -56,6 +56,9 @@
     /* ── To'lovlar: doimiy tepada turuvchi ko'rsatkichlar + filter + qidiruv ── */
     .tol-sticky { position:sticky; top:var(--topbar-h,52px); z-index:60; background:var(--bg,#f4f3ef); margin:-20px -20px 14px; padding:12px 20px 10px; box-shadow:0 6px 10px -8px rgba(0,0,0,.25); }
     .tol-sticky .dir-stats { margin-bottom:10px; }
+    /* Faqat desktopda: jadval o'z ichida aylanadi. Mobilda (karta ko'rinishi) cheklov YO'Q —
+       aks holda kartalar #sec-tol dan toshib, sticky blok sahifa bilan birga ketib qoladi. */
+    @media (min-width:769px){ .dir-scroll.tol-scroll { max-height:calc(100vh - 400px); } }
     .tol-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; padding:11px 16px; background:#fff; border:1.5px solid var(--border); border-radius:14px; font-size:13px; font-weight:700; color:#111827; }
     .tol-head #b-count { font-size:12px; font-weight:500; color:#6b7280; white-space:nowrap; }
     .tol-meta { display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:0; text-align:right; }
@@ -224,7 +227,7 @@
         <div class="xscroll"><table class="dtbl" id="b-maktab-tbl"></table></div>
       </div>
       <div class="dir-card" style="margin-bottom:14px;">
-        <div class="dir-scroll" style="max-height:calc(100vh - 400px);">
+        <div class="dir-scroll tol-scroll">
           <table class="dtbl">
             <thead><tr>
               <th>#</th><th>O'quvchi</th><th>Maktab</th><th>Sinf</th><th>Kerak</th><th>To'landi</th>
