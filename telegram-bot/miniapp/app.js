@@ -99,17 +99,27 @@ function handleAuthResult(data) {
 // ─── Web panelni darrov ochish ────────────────────────────────────────────────
 // Panel Telegram ichida (Mini App oynasida) to'g'ridan-to'g'ri ochiladi.
 function goToPanel(url) {
-  // Rol tanlash ekrani qolib ketmasligi uchun avvalgi "Tekshirilmoqda" holatiga qaytaramiz
   showPage('loadingPage');
   const loadPage = document.getElementById('loadingPage');
+
+  // Telegram tashqarisida (oddiy brauzer) — to'g'ridan-to'g'ri o'tadi
+  if (!(tg && tg.openLink)) { window.location.replace(url); return; }
+
+  // Telegram ichida: panel TASHQI BRAUZERDA ochiladi. Telegram tashqi havola uchun
+  // "Open this link?" tasdiqlash oynasini chiqaradi — uni o'chirib bo'lmaydi.
+  // ⚠️ Mini App'ni YOPMAYMIZ (oldin tg.close() oynani "Open" bosishdan oldin yo'qotardi).
+  // Foydalanuvchi "Open" ni bosadi, panel brauzerda ochiladi; Mini App ochiq qoladi.
   loadPage.innerHTML = `
     <div class="pulse-logo">🏫</div>
-    <div class="loading-label dot-anim">Panel ochilmoqda</div>`;
-
-  // tg.openLink() Telegram'ning "Open this link?" tasdiqlash oynasini chiqaradi
-  // va tg.close() uni darrov yopib yuborardi. Shuning uchun panelga Mini App
-  // oynasining o'zida to'g'ridan-to'g'ri o'tamiz — hech qanday so'rovsiz.
-  window.location.replace(url);
+    <div class="loading-label">Panel brauzerda ochilmoqda</div>
+    <div style="font-size:13px;color:#6b7280;margin:8px 20px 16px;text-align:center;">
+      Chiqqan oynada <b>Open</b> tugmasini bosing
+    </div>
+    <button id="reopenPanel" style="padding:12px 22px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">
+      🌐 Panelni brauzerda ochish
+    </button>`;
+  document.getElementById('reopenPanel').onclick = () => tg.openLink(url);
+  tg.openLink(url);
 }
 
 // ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────
