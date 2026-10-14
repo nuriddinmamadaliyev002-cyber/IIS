@@ -300,6 +300,10 @@ const api = {
   deleteDirektor:   (d) => api.del(`/api/direktorlar/${d.id}`, d),
   getDirektorMe:    (d) => api.get('/api/direktorlar/me', d),
   getDirektorOqituvchilar: (d) => api.get('/api/direktorlar/oqituvchilar', d),
+  getDirektorOquvchilar:   (d) => api.get('/api/direktorlar/oquvchilar', d),
+  getDirektorAdminlar:     (d) => api.get('/api/direktorlar/adminlar', d),
+  getDirektorBuxgalterlar: (d) => api.get('/api/direktorlar/buxgalterlar', d),
+  getDirektorTolovlar:     (d) => api.get('/api/direktorlar/tolovlar', d),
 
   // ─── Buxgalter ───
   getBiriktirmalar: (d) => api.get('/api/buxgalter', d),

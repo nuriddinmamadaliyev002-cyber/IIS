@@ -177,6 +177,187 @@ router.get('/oqituvchilar', requireAuth(['direktor']), async (req, res) => {
   }
 });
 
+// ═══════════════════════════════════════════════════════════════════════════
+//  DIREKTOR UCHUN FAQAT-O'QISH ENDPOINTLARI
+//  Direktor barcha maktablarni ko'radi (maktab bo'yicha cheklov YO'Q).
+//  Maxfiy maydonlar (username, parol, xom telegram_id) hech qachon
+//  qaytarilmaydi — faqat "Telegram bog'langanmi" (boolean).
+// ═══════════════════════════════════════════════════════════════════════════
+
+// ─── GET /api/direktorlar/oquvchilar — faol + nofaol o'quvchilar ────────────
+router.get('/oquvchilar', requireAuth(['direktor']), async (req, res) => {
+  try {
+    const [aRes, nRes, ouRes, mRes] = await Promise.all([
+      pool.query(
+        `SELECT o.id, o.ism, o.familiya, o.maktab_id, m.nomi AS maktab_nomi, o.sinf,
+                o.telefon, o.telefon2, o.tug, o.manzil, o.qoshilgan, o.boshlagan,
+                (o.telegram_id IS NOT NULL) AS telegram, o.avatar
+         FROM oquvchilar o
+         LEFT JOIN maktablar m ON m.id = o.maktab_id
+         ORDER BY m.nomi, o.sinf, o.familiya, o.ism`
+      ),
+      pool.query(
+        `SELECT n.id, n.ism, n.familiya, n.maktab_id, m.nomi AS maktab_nomi, n.sinf,
+                n.telefon, n.telefon2, n.tug, n.manzil, n.qoshilgan, n.boshlagan,
+                n.chiqgan, n.izoh
+         FROM nofaol_oquvchilar n
+         LEFT JOIN maktablar m ON m.id = n.maktab_id
+         ORDER BY m.nomi, n.sinf, n.familiya, n.ism`
+      ),
+      pool.query(
+        `SELECT oquvchi_id, COUNT(*)::int AS soni
+         FROM oqituvchi_oquvchilar GROUP BY oquvchi_id`
+      ),
+      pool.query('SELECT id, nomi FROM maktablar ORDER BY nomi'),
+    ]);
+
+    const tByO = new Map(ouRes.rows.map(r => [r.oquvchi_id, r.soni]));
+    const map = (r, nofaol) => ({
+      id: r.id, ism: r.ism, familiya: r.familiya || '',
+      maktab_id: r.maktab_id, maktab_nomi: r.maktab_nomi || '',
+      sinf: r.sinf || '', telefon: r.telefon || '', telefon2: r.telefon2 || '',
+      tug: r.tug || '', manzil: r.manzil || '',
+      qoshilgan: r.qoshilgan || '', boshlagan: r.boshlagan || '',
+      nofaol,
+      ...(nofaol
+        ? { chiqgan: r.chiqgan || '', izoh: r.izoh || '' }
+        : { telegram: !!r.telegram, avatar: r.avatar || null, oqituvchilar_soni: tByO.get(r.id) || 0 }),
+    });
+
+    res.json({
+      ok: true,
+      oquvchilar: [...aRes.rows.map(r => map(r, false)), ...nRes.rows.map(r => map(r, true))],
+      maktablar: mRes.rows,
+    });
+  } catch (err) {
+    console.error('GET /direktorlar/oquvchilar xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/direktorlar/adminlar — maktab adminlari ───────────────────────
+router.get('/adminlar', requireAuth(['direktor']), async (req, res) => {
+  try {
+    const [aRes, mRes, oRes, tRes] = await Promise.all([
+      pool.query(
+        `SELECT a.id, a.ism, a.familiya, a.maktab_id, m.nomi AS maktab_nomi,
+                (a.telegram_id IS NOT NULL) AS telegram, a.yaratilgan
+         FROM adminlar a
+         LEFT JOIN maktablar m ON m.id = a.maktab_id
+         ORDER BY m.nomi, a.familiya, a.ism`
+      ),
+      pool.query('SELECT id, nomi FROM maktablar ORDER BY nomi'),
+      pool.query(`SELECT maktab_id, COUNT(*)::int AS soni FROM oquvchilar
+                  WHERE maktab_id IS NOT NULL GROUP BY maktab_id`),
+      pool.query(`SELECT maktab_id, COUNT(*)::int AS soni FROM oqituvchi_maktablar
+                  GROUP BY maktab_id`),
+    ]);
+
+    const oByM = new Map(oRes.rows.map(r => [r.maktab_id, r.soni]));
+    const tByM = new Map(tRes.rows.map(r => [r.maktab_id, r.soni]));
+
+    const adminlar = aRes.rows.map(a => ({
+      id: a.id, ism: a.ism, familiya: a.familiya || '',
+      maktab_id: a.maktab_id, maktab_nomi: a.maktab_nomi || null,
+      telegram: !!a.telegram, yaratilgan: a.yaratilgan || '',
+      oquvchilar_soni: a.maktab_id ? (oByM.get(a.maktab_id) || 0) : 0,
+      oqituvchilar_soni: a.maktab_id ? (tByM.get(a.maktab_id) || 0) : 0,
+    }));
+
+    // Maktab kesimi: har bir maktab va unga biriktirilgan adminlar soni
+    const adminSoniByM = new Map();
+    for (const a of aRes.rows) if (a.maktab_id) adminSoniByM.set(a.maktab_id, (adminSoniByM.get(a.maktab_id) || 0) + 1);
+    const maktablar = mRes.rows.map(m => ({
+      id: m.id, nomi: m.nomi,
+      adminlar_soni: adminSoniByM.get(m.id) || 0,
+      oquvchilar_soni: oByM.get(m.id) || 0,
+      oqituvchilar_soni: tByM.get(m.id) || 0,
+    }));
+
+    res.json({ ok: true, adminlar, maktablar });
+  } catch (err) {
+    console.error('GET /direktorlar/adminlar xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/direktorlar/buxgalterlar — buxgalterlar + maktablari ──────────
+router.get('/buxgalterlar', requireAuth(['direktor']), async (req, res) => {
+  try {
+    const r = await pool.query(
+      `SELECT b.id, b.ism, b.familiya, (b.telegram_id IS NOT NULL) AS telegram, b.yaratilgan,
+              COALESCE(JSON_AGG(JSON_BUILD_OBJECT('id', m.id, 'nomi', m.nomi) ORDER BY m.nomi)
+                       FILTER (WHERE m.id IS NOT NULL), '[]') AS maktablar
+       FROM buxgalterlar b
+       LEFT JOIN buxgalter_maktablar bm ON bm.buxgalter_id = b.id
+       LEFT JOIN maktablar m            ON m.id = bm.maktab_id
+       GROUP BY b.id
+       ORDER BY b.familiya, b.ism`
+    );
+    res.json({
+      ok: true,
+      buxgalterlar: r.rows.map(b => ({
+        id: b.id, ism: b.ism, familiya: b.familiya || '',
+        telegram: !!b.telegram, yaratilgan: b.yaratilgan || '', maktablar: b.maktablar,
+      })),
+    });
+  } catch (err) {
+    console.error('GET /direktorlar/buxgalterlar xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/direktorlar/tolovlar?oy=YYYY-MM — oylik to'lovlar ─────────────
+// Javob: oylar (mavjud oylar ro'yxati), tolovlar (qatorlar), maktablar (har
+// maktab bo'yicha jami kerak / to'langan / qarz) va umumiy jami.
+// oy berilmasa — bazadagi eng so'nggi oy olinadi.
+router.get('/tolovlar', requireAuth(['direktor']), async (req, res) => {
+  try {
+    const oyRes = await pool.query('SELECT DISTINCT oy FROM tolovlar ORDER BY oy DESC');
+    const oylar = oyRes.rows.map(r => r.oy);
+
+    let oy = String(req.query.oy || '').trim();
+    if (oy && !/^\d{4}-\d{2}$/.test(oy))
+      return res.status(400).json({ ok: false, error: "oy formati YYYY-MM bo'lishi kerak" });
+    if (!oy) oy = oylar[0] || '';
+    if (!oy) return res.json({ ok: true, oy: '', oylar: [], tolovlar: [], maktablar: [], jami: { kerak: 0, tolandi: 0, qarz: 0, qarzdor: 0, soni: 0 } });
+
+    const r = await pool.query(
+      `SELECT t.id, t.oquvchi_id, t.oquvchi_ism, t.oquvchi_familiya, t.maktab_id,
+              m.nomi AS maktab_nomi, t.sinf, t.telefon, t.tarif, t.qaydnoma,
+              t.gaplashilgan_vaqt, t.tolov_kerak, t.tolov_qildi, t.tolov_sanasi,
+              t.ehtimoliy_tolov_sanasi, t.yangilangan
+       FROM tolovlar t
+       LEFT JOIN maktablar m ON m.id = t.maktab_id
+       WHERE t.oy = $1
+       ORDER BY m.nomi, t.sinf, t.oquvchi_familiya, t.oquvchi_ism`,
+      [oy]
+    );
+
+    const num = (v) => Number(v) || 0;
+    const tolovlar = r.rows.map(t => {
+      const kerak = num(t.tolov_kerak), tolandi = num(t.tolov_qildi);
+      return { ...t, tolov_kerak: kerak, tolov_qildi: tolandi, tarif: num(t.tarif), qarz: Math.max(kerak - tolandi, 0) };
+    });
+
+    const byM = new Map();
+    const jami = { kerak: 0, tolandi: 0, qarz: 0, qarzdor: 0, soni: tolovlar.length };
+    for (const t of tolovlar) {
+      const k = t.maktab_id ?? 0;
+      if (!byM.has(k)) byM.set(k, { maktab_id: t.maktab_id, maktab_nomi: t.maktab_nomi || '—', soni: 0, kerak: 0, tolandi: 0, qarz: 0, qarzdor: 0 });
+      const m = byM.get(k);
+      m.soni++; m.kerak += t.tolov_kerak; m.tolandi += t.tolov_qildi; m.qarz += t.qarz;
+      jami.kerak += t.tolov_kerak; jami.tolandi += t.tolov_qildi; jami.qarz += t.qarz;
+      if (t.qarz > 0) { m.qarzdor++; jami.qarzdor++; }
+    }
+
+    res.json({ ok: true, oy, oylar, tolovlar, maktablar: [...byM.values()], jami });
+  } catch (err) {
+    console.error('GET /direktorlar/tolovlar xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
 // ─── GET /api/direktorlar ───────────────────────────────────────────────────
 router.get('/', requireAuth(['admin']), superOnly, async (req, res) => {
   try {

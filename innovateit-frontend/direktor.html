@@ -52,6 +52,18 @@
     .dsec { font-size:13px; font-weight:700; color:#111827; margin:16px 0 8px; }
     .xscroll { overflow-x:auto; }
     @media (max-width:640px){ .dir-wrap{padding:12px;} .dir-bar input{max-width:none;} }
+    /* ── Direktor menyusi (desktop: topbar tugmalari; mobil: hamburger drawer) ── */
+    .btn-dnav { font-size:12px; font-weight:500; color:var(--iit-indigo-deep); background:rgba(255,255,255,.94);
+      border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif;
+      white-space:nowrap; flex-shrink:0; -webkit-tap-highlight-color:transparent; transition:opacity .15s, background .15s; }
+    .btn-dnav:hover { opacity:.9; }
+    .btn-dnav.active { background:var(--iit-cyan,#05BFF6); color:#fff; }
+    .dir-stat.good .num { color:#047857; }
+    .dtbl td.num, .dtbl th.num { text-align:right; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .dtbl tr.tot td { font-weight:700; background:#f8fafc; cursor:default; }
+    .dtbl tbody tr.noclick:hover { background:inherit; cursor:default; }
+    .bar { height:6px; background:#eef0f2; border-radius:4px; overflow:hidden; min-width:70px; }
+    .bar > i { display:block; height:100%; background:#10b981; }
   </style>
 </head>
 <body>
@@ -91,55 +103,158 @@
     <div class="topbar-brand">🏛 InnovateIT School — Direktor</div>
     <div class="topbar-right">
       <span class="admin-badge" id="dir-badge"></span>
+      <button class="btn-dnav" data-nav="bux"   onclick="goView('bux')">💰 Buxgalteriya</button>
+      <button class="btn-dnav" data-nav="adm"   onclick="goView('adm')">🛡 Adminlar</button>
+      <button class="btn-dnav" data-nav="teach" onclick="goView('teach')">👩‍🏫 O'qituvchilar</button>
+      <button class="btn-dnav" data-nav="oquv"  onclick="goView('oquv')">🎓 O'quvchilar</button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
   </div>
 
   <div class="dir-wrap">
-    <div class="dir-stats" id="dir-stats"></div>
 
-    <div class="dir-tabs">
-      <button class="dir-tab active" id="tab-btn-oq" onclick="showView('oq')">👩‍🏫 O'qituvchilar</button>
-      <button class="dir-tab" id="tab-btn-jd" onclick="showView('jd')">📅 Dars jadvali</button>
+    <!-- ═══════════ BUXGALTERIYA ═══════════ -->
+    <div id="sec-bux" class="dsec-view" style="display:none;">
+      <div class="dir-stats" id="b-stats"></div>
+      <div class="dir-card" style="margin-bottom:14px;">
+        <div class="dir-bar">
+          <select id="b-oy" onchange="loadTolovlar(this.value)"></select>
+          <input type="text" id="b-q" placeholder="🔍 O'quvchi, sinf yoki telefon…" oninput="renderTolovlar()">
+          <select id="b-maktab" onchange="renderTolovlar()"><option value="">🏫 Barcha maktablar</option></select>
+          <select id="b-holat" onchange="renderTolovlar()">
+            <option value="">Barchasi</option>
+            <option value="qarz">⚠️ Qarzdorlar</option>
+            <option value="tolagan">✅ To'liq to'laganlar</option>
+          </select>
+          <span id="b-count" style="font-size:12px;color:#6b7280;"></span>
+        </div>
+        <div class="dsec" style="margin-top:0;">🏫 Maktablar kesimida</div>
+        <div class="xscroll"><table class="dtbl" id="b-maktab-tbl"></table></div>
+      </div>
+      <div class="dir-card" style="margin-bottom:14px;">
+        <div class="dsec" style="margin-top:0;">🧾 To'lovlar</div>
+        <div class="dir-scroll">
+          <table class="dtbl">
+            <thead><tr>
+              <th>#</th><th>O'quvchi</th><th>Maktab</th><th>Sinf</th><th>Kerak</th><th>To'landi</th>
+              <th>Qarz</th><th>To'lov sanasi</th><th>Kutilayotgan sana</th><th>Izoh</th>
+            </tr></thead>
+            <tbody id="b-body"></tbody>
+          </table>
+          <div class="empty" id="b-empty" style="display:none;">To'lov ma'lumoti topilmadi</div>
+          <div class="empty" id="b-loading">⏳ Yuklanmoqda…</div>
+        </div>
+      </div>
+      <div class="dir-card">
+        <div class="dsec" style="margin-top:0;">💼 Buxgalterlar</div>
+        <div class="xscroll"><table class="dtbl" id="bx-tbl"></table></div>
+      </div>
     </div>
 
-    <!-- ═══ O'QITUVCHILAR ═══ -->
-    <div id="view-oq" class="dir-card">
-      <div class="dir-bar">
-        <input type="text" id="f-q" placeholder="🔍 Ism, fan yoki telefon…" oninput="renderTeachers()">
-        <select id="f-maktab" onchange="renderTeachers()"><option value="">🏫 Barcha maktablar</option></select>
-        <select id="f-fan" onchange="renderTeachers()"><option value="">Barcha fanlar</option></select>
-        <select id="f-holat" onchange="renderTeachers()">
-          <option value="">Barchasi</option>
-          <option value="jadvalsiz">⚠️ Jadvali yo'q</option>
-          <option value="maktabsiz">⚠️ Maktabi yo'q</option>
-          <option value="tgsiz">📱 Telegram bog'lanmagan</option>
-        </select>
-        <span id="f-count" style="font-size:12px;color:#6b7280;"></span>
+    <!-- ═══════════ ADMINLAR ═══════════ -->
+    <div id="sec-adm" class="dsec-view" style="display:none;">
+      <div class="dir-stats" id="a-stats"></div>
+      <div class="dir-card" style="margin-bottom:14px;">
+        <div class="dir-bar">
+          <input type="text" id="a-q" placeholder="🔍 Admin yoki maktab nomi…" oninput="renderAdminlar()">
+          <select id="a-maktab" onchange="renderAdminlar()"><option value="">🏫 Barcha maktablar</option></select>
+          <select id="a-holat" onchange="renderAdminlar()">
+            <option value="">Barchasi</option>
+            <option value="tgsiz">📱 Telegram bog'lanmagan</option>
+          </select>
+          <span id="a-count" style="font-size:12px;color:#6b7280;"></span>
+        </div>
+        <div class="dir-scroll" style="max-height:none;">
+          <table class="dtbl">
+            <thead><tr><th>#</th><th>F.I.</th><th>Maktab</th><th>O'quvchilar</th><th>O'qituvchilar</th><th>Telegram</th><th>Qo'shilgan</th></tr></thead>
+            <tbody id="a-body"></tbody>
+          </table>
+          <div class="empty" id="a-empty" style="display:none;">Admin topilmadi</div>
+          <div class="empty" id="a-loading">⏳ Yuklanmoqda…</div>
+        </div>
       </div>
-      <div class="dir-scroll">
-        <table class="dtbl">
-          <thead><tr>
-            <th>#</th><th>F.I.</th><th>Fan</th><th>Maktab va sinflar</th>
-            <th>Haftada dars</th><th>O'quvchi</th><th>Davomat (30 kun)</th><th>Telegram</th>
-          </tr></thead>
-          <tbody id="t-body"></tbody>
-        </table>
-        <div class="empty" id="t-empty" style="display:none;">O'qituvchi topilmadi</div>
-        <div class="empty" id="t-loading">⏳ Yuklanmoqda…</div>
+      <div class="dir-card">
+        <div class="dsec" style="margin-top:0;">🏫 Maktablar kesimida</div>
+        <div class="xscroll"><table class="dtbl" id="am-tbl"></table></div>
       </div>
     </div>
 
-    <!-- ═══ DARS JADVALI ═══ -->
-    <div id="view-jd" class="dir-card" style="display:none;">
-      <div class="dir-bar">
-        <select id="j-maktab" onchange="renderTimetable()"></select>
-        <select id="j-sinf" onchange="renderTimetable()"><option value="">Barcha sinflar</option></select>
-        <select id="j-teacher" onchange="renderTimetable()"><option value="">Barcha o'qituvchilar</option></select>
-        <span id="j-count" style="font-size:12px;color:#6b7280;"></span>
+    <!-- ═══════════ O'QITUVCHILAR ═══════════ -->
+    <div id="sec-teach" class="dsec-view" style="display:none;">
+      <div class="dir-stats" id="dir-stats"></div>
+
+      <div class="dir-tabs">
+        <button class="dir-tab active" id="tab-btn-oq" onclick="showView('oq')">👩‍🏫 O'qituvchilar</button>
+        <button class="dir-tab" id="tab-btn-jd" onclick="showView('jd')">📅 Dars jadvali</button>
       </div>
-      <div class="xscroll"><table class="wk" id="j-grid"></table></div>
+
+      <div id="view-oq" class="dir-card">
+        <div class="dir-bar">
+          <input type="text" id="f-q" placeholder="🔍 Ism, fan yoki telefon…" oninput="renderTeachers()">
+          <select id="f-maktab" onchange="renderTeachers()"><option value="">🏫 Barcha maktablar</option></select>
+          <select id="f-fan" onchange="renderTeachers()"><option value="">Barcha fanlar</option></select>
+          <select id="f-holat" onchange="renderTeachers()">
+            <option value="">Barchasi</option>
+            <option value="jadvalsiz">⚠️ Jadvali yo'q</option>
+            <option value="maktabsiz">⚠️ Maktabi yo'q</option>
+            <option value="tgsiz">📱 Telegram bog'lanmagan</option>
+          </select>
+          <span id="f-count" style="font-size:12px;color:#6b7280;"></span>
+        </div>
+        <div class="dir-scroll">
+          <table class="dtbl">
+            <thead><tr>
+              <th>#</th><th>F.I.</th><th>Fan</th><th>Maktab va sinflar</th>
+              <th>Haftada dars</th><th>O'quvchi</th><th>Davomat (30 kun)</th><th>Telegram</th>
+            </tr></thead>
+            <tbody id="t-body"></tbody>
+          </table>
+          <div class="empty" id="t-empty" style="display:none;">O'qituvchi topilmadi</div>
+          <div class="empty" id="t-loading">⏳ Yuklanmoqda…</div>
+        </div>
+      </div>
+
+      <div id="view-jd" class="dir-card" style="display:none;">
+        <div class="dir-bar">
+          <select id="j-maktab" onchange="renderTimetable()"></select>
+          <select id="j-sinf" onchange="renderTimetable()"><option value="">Barcha sinflar</option></select>
+          <select id="j-teacher" onchange="renderTimetable()"><option value="">Barcha o'qituvchilar</option></select>
+          <span id="j-count" style="font-size:12px;color:#6b7280;"></span>
+        </div>
+        <div class="xscroll"><table class="wk" id="j-grid"></table></div>
+      </div>
     </div>
+
+    <!-- ═══════════ O'QUVCHILAR ═══════════ -->
+    <div id="sec-oquv" class="dsec-view" style="display:none;">
+      <div class="dir-stats" id="s-stats"></div>
+      <div class="dir-card">
+        <div class="dir-bar">
+          <input type="text" id="s-q" placeholder="🔍 Ism, telefon yoki sinf…" oninput="renderStudents()">
+          <select id="s-maktab" onchange="renderStudents()"><option value="">🏫 Barcha maktablar</option></select>
+          <select id="s-sinf" onchange="renderStudents()"><option value="">Barcha sinflar</option></select>
+          <select id="s-holat" onchange="renderStudents()">
+            <option value="">Faol + nofaol</option>
+            <option value="faol" selected>✅ Faqat faol</option>
+            <option value="nofaol">💤 Faqat nofaol</option>
+            <option value="tgsiz">📱 Telegram bog'lanmagan</option>
+          </select>
+          <span id="s-count" style="font-size:12px;color:#6b7280;"></span>
+        </div>
+        <div class="dir-scroll">
+          <table class="dtbl">
+            <thead><tr>
+              <th>#</th><th>F.I.</th><th>Maktab</th><th>Sinf</th><th>Telefon</th>
+              <th>Boshlagan</th><th>O'qituvchi</th><th>Holat</th>
+            </tr></thead>
+            <tbody id="s-body"></tbody>
+          </table>
+          <div class="empty" id="s-empty" style="display:none;">O'quvchi topilmadi</div>
+          <div class="empty" id="s-loading">⏳ Yuklanmoqda…</div>
+        </div>
+      </div>
+    </div>
+
   </div>
 </div>
 
@@ -148,15 +263,23 @@
   <div class="dmodal-box" id="t-modal-box"></div>
 </div>
 
+<div class="dmodal" id="s-modal" onclick="if(event.target===this)closeStudent()">
+  <div class="dmodal-box" id="s-modal-box" style="max-width:680px;"></div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_direktor_token';</script>
 <script src="js/api.js"></script>
 <script src="js/direktor.js"></script>
+<script src="js/direktor-oquvchilar.js"></script>
+<script src="js/direktor-adminlar.js"></script>
+<script src="js/direktor-buxgalteriya.js"></script>
 <script>
 // ⚠️ Haqiqiy bot username'i (sales.html dagi bilan bir xil)
 const BOT_USERNAME = 'InnovateIT_School_bot';
 document.getElementById('bot-open-link').href = `https://t.me/${BOT_USERNAME}`;
 </script>
+<script src="js/mobile-nav.js"></script>
 </body>
 </html>

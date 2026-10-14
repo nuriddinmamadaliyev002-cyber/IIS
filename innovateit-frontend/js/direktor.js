@@ -4,8 +4,9 @@
 //  direktor.html?tg_token=... Token alohida kalitda saqlanadi
 //  ('innovateit_direktor_token'), shuning uchun boshqa panellar bilan
 //  bir vaqtda ochiq tursa ham bir-birini bosib yozmaydi.
-//  Direktor FAQAT O'QIYDI: o'qituvchilar, ularning maktab/sinflari, dars jadvali
-//  va davomati (GET /api/direktorlar/oqituvchilar).
+//  Direktor FAQAT O'QIYDI: buxgalteriya, adminlar, o'qituvchilar (maktab/sinf,
+//  dars jadvali, davomat) va o'quvchilar (GET /api/direktorlar/*).
+//  Bo'limlar: direktor-buxgalteriya.js, direktor-adminlar.js, direktor-oquvchilar.js
 // ═══════════════════════════════════════════════════════════════════════════
 let U = null;
 function g(id) { return document.getElementById(id); }
@@ -61,8 +62,44 @@ async function showApp() {
     }
   } catch (_) { /* tarmoq xatosi — sahifa ochiq qoladi */ }
 
-  loadTeachers();
+  let v = 'teach';
+  try { v = localStorage.getItem('iit_dir_view') || 'teach'; } catch (_) {}
+  goView(VIEWS.includes(v) ? v : 'teach');
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  ASOSIY NAVIGATSIYA (topbar menyusi / mobil hamburger)
+//  Bo'limlar birinchi ochilganda yuklanadi (lazy), keyin keshda turadi.
+// ═══════════════════════════════════════════════════════════════════════════
+const VIEWS  = ['bux', 'adm', 'teach', 'oquv'];
+const LOADED = {};
+const LOADERS = {
+  teach: () => loadTeachers(),
+  oquv:  () => loadStudents(),
+  adm:   () => loadAdminlar(),
+  bux:   () => loadBuxgalteriya(),
+};
+
+function goView(v) {
+  if (!VIEWS.includes(v)) v = 'teach';
+  VIEWS.forEach(k => {
+    const sec = g('sec-' + k);
+    if (sec) sec.style.display = k === v ? 'block' : 'none';
+  });
+  document.querySelectorAll('.btn-dnav').forEach(b => b.classList.toggle('active', b.dataset.nav === v));
+  try { localStorage.setItem('iit_dir_view', v); } catch (_) {}
+  if (!LOADED[v]) { LOADED[v] = true; LOADERS[v](); }
+  window.scrollTo({ top: 0 });
+}
+
+// Maktab nomlarini raqam bo'yicha tartiblash ("2-maktab" < "10-maktab")
+function maktabCmp(a, b) {
+  const na = parseInt(String(a).match(/\d+/)?.[0], 10), nb = parseInt(String(b).match(/\d+/)?.[0], 10);
+  if (!isNaN(na) && !isNaN(nb) && na !== nb) return na - nb;
+  return String(a).localeCompare(String(b), 'uz');
+}
+const sortMaktablarList = (list) => [...list].sort((x, y) => maktabCmp(x.nomi, y.nomi));
+const sum = (n) => (Number(n) || 0).toLocaleString('ru-RU');
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  O'QITUVCHILAR
@@ -92,7 +129,7 @@ async function loadTeachers() {
     const r = await api.getDirektorOqituvchilar({});
     if (!r.ok) { g('t-loading').innerHTML = `<span style="color:#dc2626;">❌ ${h(r.error)}</span>`; return; }
     TEACHERS  = r.oqituvchilar || [];
-    MAKTABLAR = r.maktablar || [];
+    MAKTABLAR = sortMaktablarList(r.maktablar || []);
     YETIM     = r.yetim_jadval || 0;
   } catch (e) {
     g('t-loading').innerHTML = `<span style="color:#dc2626;">❌ Xatolik: ${h(e.message)}</span>`;
@@ -250,7 +287,7 @@ function openTeacher(id) {
   g('t-modal').style.display = 'flex';
 }
 function closeTeacher() { g('t-modal').style.display = 'none'; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeTeacher(); });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeTeacher(); if (typeof closeStudent === 'function') closeStudent(); } });
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  DARS JADVALI (maktab kesimida)
