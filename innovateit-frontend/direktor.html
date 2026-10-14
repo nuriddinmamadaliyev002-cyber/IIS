@@ -98,6 +98,8 @@
       .dtbl:not(.keep) tbody { display:block; }
       .dtbl:not(.keep) tr { display:block; background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:8px 12px; margin-bottom:10px; }
       .dtbl:not(.keep) tr.tot { background:#f8fafc; }
+      /* Hover paytida ham karta oq qolsin (desktopdagi "background:inherit" kartaning fonini bekor qilmasin) */
+      .dtbl:not(.keep) tbody tr.noclick:hover { background:#fff; }
       .dtbl:not(.keep) td { display:block; position:relative; padding:7px 0 7px 40%; min-height:30px; border-bottom:1px dashed #eef0f2; text-align:right; overflow-wrap:anywhere; }
       .dtbl:not(.keep) td:last-child { border-bottom:none; }
       .dtbl:not(.keep) td::before { content:attr(data-label); position:absolute; left:0; top:9px; width:36%; text-align:left; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#9ca3af; }
