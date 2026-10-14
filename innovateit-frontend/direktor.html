@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/hover.css">
   <link rel="stylesheet" href="css/mobile-nav.css">
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     .dir-wrap { max-width: 1400px; margin: 0 auto; padding: 20px; }
     .dir-stats { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; }
@@ -52,6 +53,26 @@
     .dsec { font-size:13px; font-weight:700; color:#111827; margin:16px 0 8px; }
     .xscroll { overflow-x:auto; }
     @media (max-width:640px){ .dir-wrap{padding:12px;} .dir-bar input{max-width:none;} }
+    /* ── Mobil: jadval qatorlari karta ko'rinishida (gorizontal scroll o'rniga) ── */
+    @media (max-width:768px){
+      .dir-scroll { max-height:none; overflow:visible; }
+      .dir-bar select, .dir-bar input { flex:1 1 calc(50% - 10px); min-width:0; max-width:none; }
+      .dir-bar input { flex-basis:100%; }
+      .dir-stat { min-width:calc(50% - 10px); }
+      .dtbl:not(.keep) { display:block; min-width:0; width:100%; }
+      .dtbl:not(.keep) thead { display:none; }
+      .dtbl:not(.keep) tbody { display:block; }
+      .dtbl:not(.keep) tr { display:block; background:#fff; border:1.5px solid var(--border); border-radius:12px; padding:8px 12px; margin-bottom:10px; }
+      .dtbl:not(.keep) tr.tot { background:#f8fafc; }
+      .dtbl:not(.keep) td { display:block; position:relative; padding:7px 0 7px 40%; min-height:30px; border-bottom:1px dashed #eef0f2; text-align:right; word-break:break-word; }
+      .dtbl:not(.keep) td:last-child { border-bottom:none; }
+      .dtbl:not(.keep) td::before { content:attr(data-label); position:absolute; left:0; top:9px; width:36%; text-align:left; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:#9ca3af; }
+      .dtbl:not(.keep) td[data-label="#"] { display:none; }
+      .dtbl:not(.keep) td.num { text-align:right; }
+      .dtbl:not(.keep) .bar { min-width:60px; flex:1; }
+      .dmodal { padding:0; }
+      .dmodal-box { border-radius:0; min-height:100%; padding:16px 12px; }
+    }
     /* ── Direktor menyusi (desktop: topbar tugmalari; mobil: hamburger drawer) ── */
     .btn-dnav { font-size:12px; font-weight:500; color:var(--iit-indigo-deep); background:rgba(255,255,255,.94);
       border:none; padding:6px 12px; border-radius:8px; cursor:pointer; font-family:'DM Sans',sans-serif;
@@ -281,5 +302,6 @@ const BOT_USERNAME = 'InnovateIT_School_bot';
 document.getElementById('bot-open-link').href = `https://t.me/${BOT_USERNAME}`;
 </script>
 <script src="js/mobile-nav.js"></script>
+<script src="js/tg-fit.js"></script>
 </body>
 </html>
