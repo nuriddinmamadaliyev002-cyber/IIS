@@ -49,6 +49,10 @@
     .dmodal-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
     /* Adminlar modali: style.css dagi global "table{min-width:1100px}" bu oynada kerak emas */
     #a-modal .dtbl { min-width:0; }
+    /* Modal sarlavhasi (nom + ✕) ro'yxat scroll qilinganda ham doim tepada turadi */
+    #a-modal .dmodal-box { padding-top:0; }
+    @media (min-width:769px){ #a-modal .dmodal-box { max-height:calc(100vh - 40px); overflow:auto; } }
+    #a-modal .dmodal-head { position:sticky; top:0; z-index:5; background:#fff; margin:0 -22px 14px; padding:18px 22px 12px; border-bottom:1px solid #eef0f2; border-radius:16px 16px 0 0; }
     .dmodal-close { border:none; background:#f3f4f6; border-radius:8px; width:32px; height:32px; font-size:16px; cursor:pointer; }
     .kv { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px; font-size:13px; color:#374151; }
     .kv span b { color:#111827; }
@@ -125,6 +129,8 @@
       .dtbl:not(.keep) .bar { min-width:60px; flex:1; }
       .dmodal { padding:0; }
       .dmodal-box { border-radius:0; min-height:100%; padding:16px 12px; }
+      #a-modal .dmodal-box { padding-top:0; }
+      #a-modal .dmodal-head { margin:0 -12px 12px; padding:14px 12px 10px; border-radius:0; }
     }
     /* ── Direktor menyusi (desktop: topbar tugmalari; mobil: hamburger drawer) ── */
     .btn-dnav { font-size:12px; font-weight:500; color:var(--iit-indigo-deep); background:rgba(255,255,255,.94);
