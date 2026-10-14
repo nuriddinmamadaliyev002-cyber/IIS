@@ -47,6 +47,8 @@
     .dmodal { display:none; position:fixed; inset:0; z-index:500; background:rgba(0,0,0,.45); align-items:flex-start; justify-content:center; padding:20px 12px; overflow:auto; }
     .dmodal-box { background:#fff; border-radius:16px; padding:22px; width:100%; max-width:980px; box-shadow:0 8px 40px rgba(0,0,0,.2); }
     .dmodal-head { display:flex; justify-content:space-between; align-items:flex-start; gap:12px; margin-bottom:14px; }
+    /* Adminlar modali: style.css dagi global "table{min-width:1100px}" bu oynada kerak emas */
+    #a-modal .dtbl { min-width:0; }
     .dmodal-close { border:none; background:#f3f4f6; border-radius:8px; width:32px; height:32px; font-size:16px; cursor:pointer; }
     .kv { display:flex; gap:18px; flex-wrap:wrap; margin-bottom:14px; font-size:13px; color:#374151; }
     .kv span b { color:#111827; }
@@ -60,10 +62,15 @@
        aks holda kartalar #sec-tol dan toshib, sticky blok sahifa bilan birga ketib qoladi. */
     @media (min-width:769px){ .dir-scroll.tol-scroll { max-height:calc(100vh - 400px); } }
     .tol-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; padding:11px 16px; background:#fff; border:1.5px solid var(--border); border-radius:14px; font-size:13px; font-weight:700; color:#111827; }
-    .tol-head #b-count { font-size:12px; font-weight:500; color:#6b7280; white-space:nowrap; }
+    .tol-head .tol-cnt { font-size:12px; font-weight:500; color:#6b7280; white-space:nowrap; }
     .tol-meta { display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:0; text-align:right; }
-    .tol-head #b-flt { font-size:11.5px; font-weight:600; color:#6b7280; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-    .tol-head #b-flt.on { color:#2563eb; }
+    .tol-head .tol-flt { font-size:11.5px; font-weight:600; color:#6b7280; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+    .tol-head .tol-flt.on { color:#2563eb; }
+    /* Bosiladigan ko'rsatkich chiplari (Adminlar) */
+    .dir-stat.click { cursor:pointer; -webkit-tap-highlight-color:transparent; transition:border-color .15s, box-shadow .15s, background .15s; }
+    .dir-stat.click:hover { border-color:#bfdbfe; box-shadow:0 2px 8px rgba(37,99,235,.12); }
+    .dir-stat.click:active { background:#f8fafc; }
+    .dir-stat.click:focus-visible { outline:2px solid #2563eb; outline-offset:2px; }
     .tol-bar { position:relative; display:flex; gap:8px; align-items:stretch; }
     .tol-filter-btn { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:40px; border:1.5px solid var(--border); border-radius:10px; background:#fff; font-size:13.5px; font-weight:600; color:#374151; font-family:inherit; cursor:pointer; }
     .tol-filter-btn[aria-expanded="true"] { border-color:#2563eb; color:#2563eb; background:#eff4ff; }
@@ -84,7 +91,7 @@
       .tol-sticky .dir-stat .num { font-size:clamp(11px,3.5vw,14px); white-space:nowrap; letter-spacing:-.02em; }
       .tol-sticky .dir-stat .lbl { font-size:9.5px; line-height:1.2; margin-top:2px; }
       .tol-head { margin-top:8px; padding:8px 12px; border-radius:12px; font-size:12.5px; }
-      .tol-head #b-count { font-size:11.5px; }
+      .tol-head .tol-cnt { font-size:11.5px; }
       .tol-panel { width:auto; right:0; }
       .tol-search { max-width:none; }
       #b-maktab-card { display:none; }
@@ -219,7 +226,7 @@
           </div>
         </div>
         <!-- Doimiy sarlavha: tanlangan oy · ko'rsatilayotgan / jami yozuvlar -->
-        <div class="tol-head"><span>🧾 To'lovlar</span><span class="tol-meta"><span id="b-count"></span><span id="b-flt"></span></span></div>
+        <div class="tol-head"><span>🧾 To'lovlar</span><span class="tol-meta"><span class="tol-cnt" id="b-count"></span><span class="tol-flt" id="b-flt"></span></span></div>
       </div>
 
       <div class="dir-card" id="b-maktab-card" style="margin-bottom:14px;">
@@ -243,17 +250,34 @@
 
     <!-- ═══════════ ADMINLAR ═══════════ -->
     <div id="sec-adm" class="dsec-view" style="display:none;">
-      <div class="dir-stats" id="a-stats"></div>
-      <div class="dir-card" style="margin-bottom:14px;">
-        <div class="dir-bar">
-          <input type="text" id="a-q" placeholder="🔍 Admin yoki maktab nomi…" oninput="renderAdminlar()">
-          <select id="a-maktab" onchange="renderAdminlar()"><option value="">🏫 Barcha maktablar</option></select>
-          <select id="a-holat" onchange="renderAdminlar()">
-            <option value="">Barchasi</option>
-            <option value="tgsiz">📱 Telegram bog'lanmagan</option>
-          </select>
-          <span id="a-count" style="font-size:12px;color:#6b7280;"></span>
+      <!-- Doimiy tepada turadigan qism: ko'rsatkich chiplari + filter + qidiruv + holat qatori -->
+      <div class="tol-sticky" id="a-sticky">
+        <div class="dir-stats" id="a-stats"></div>
+        <div class="tol-bar">
+          <button type="button" class="tol-filter-btn" id="a-filter-btn" onclick="toggleAdminFilter(event)" aria-expanded="false">
+            <span>⚙️ Filter</span><span class="tol-badge" id="a-filter-badge" style="display:none;"></span>
+          </button>
+          <div class="tol-search">
+            <input type="text" id="a-q" placeholder="🔍 Admin yoki maktab nomi…" oninput="onAdminSearch()" autocomplete="off">
+            <button type="button" class="tol-clear" id="a-q-clear" onclick="clearAdminSearch()" aria-label="Tozalash" style="display:none;">✕</button>
+          </div>
+          <div class="tol-panel" id="a-panel" style="display:none;" onclick="event.stopPropagation()">
+            <label>🏫 Maktab<select id="a-maktab" onchange="renderAdminlar()"><option value="">🏫 Barcha maktablar</option></select></label>
+            <label>📱 Holat<select id="a-holat" onchange="renderAdminlar()">
+              <option value="">Barchasi</option>
+              <option value="tgsiz">📱 Telegram bog'lanmagan</option>
+            </select></label>
+            <div class="tol-panel-actions">
+              <button type="button" onclick="resetAdminFilter()">Tozalash</button>
+              <button type="button" class="primary" onclick="closeAdminFilter()">Tayyor</button>
+            </div>
+          </div>
         </div>
+        <!-- Doimiy sarlavha: ko'rsatilayotgan / jami adminlar + faol filter -->
+        <div class="tol-head"><span>🛡 Adminlar</span><span class="tol-meta"><span class="tol-cnt" id="a-count"></span><span class="tol-flt" id="a-flt"></span></span></div>
+      </div>
+
+      <div class="dir-card" style="margin-bottom:14px;">
         <div class="dir-scroll" style="max-height:none;">
           <table class="dtbl">
             <thead><tr><th>#</th><th>F.I.</th><th>Maktab</th><th>O'quvchilar</th><th>O'qituvchilar</th><th>Telegram</th><th>Qo'shilgan</th></tr></thead>
@@ -262,10 +286,6 @@
           <div class="empty" id="a-empty" style="display:none;">Admin topilmadi</div>
           <div class="empty" id="a-loading">⏳ Yuklanmoqda…</div>
         </div>
-      </div>
-      <div class="dir-card">
-        <div class="dsec" style="margin-top:0;">🏫 Maktablar kesimida</div>
-        <div class="xscroll"><table class="dtbl" id="am-tbl"></table></div>
       </div>
     </div>
 
@@ -351,6 +371,11 @@
 <!-- ═══ O'QITUVCHI BATAFSIL ═══ -->
 <div class="dmodal" id="t-modal" onclick="if(event.target===this)closeTeacher()">
   <div class="dmodal-box" id="t-modal-box"></div>
+</div>
+
+<!-- ═══ ADMINLAR: ko'rsatkich chipi bosilganda to'liq ma'lumot ═══ -->
+<div class="dmodal" id="a-modal" onclick="if(event.target===this)closeAdminModal()">
+  <div class="dmodal-box" id="a-modal-box" style="max-width:1080px;"></div>
 </div>
 
 <div class="dmodal" id="s-modal" onclick="if(event.target===this)closeStudent()">
