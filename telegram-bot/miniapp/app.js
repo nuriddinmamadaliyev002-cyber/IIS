@@ -120,19 +120,36 @@ async function goToPanel(url) {
     if (d.ok && d.code) finalUrl = url.split('?')[0] + '?c=' + encodeURIComponent(d.code);
   } catch (_) {}
 
-  // ⚠️ Mini App'ni YOPMAYMIZ — aks holda tasdiqlash oynasi "Open" bosishdan oldin yo'qoladi.
+  // Oraliq sahifa kerak emas: faqat "Open" ni kutamiz, so'ng Mini App o'zi yopiladi.
+  // ⚠️ tg.close() ni DARROV chaqirib bo'lmaydi — "Open this link?" oynasi yo'qoladi.
+  // Shuning uchun foydalanuvchi oynaga javob berib (brauzer ochilib), Telegram'ga
+  // QAYTGANIDA yopamiz (oyna/ilova fokusi qaytganda).
   loadPage.innerHTML = `
     <div class="pulse-logo">🏫</div>
-    <div class="loading-label">Panel brauzerda ochilmoqda</div>
-    <div style="font-size:13px;color:#6b7280;margin:8px 20px 16px;text-align:center;">
-      Chiqqan oynada <b>Open</b> tugmasini bosing
-    </div>
-    <button id="reopenPanel" style="padding:12px 22px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">
+    <div class="loading-label">Panel ochilmoqda</div>
+    <button id="reopenPanel" style="display:none;margin-top:16px;padding:12px 22px;border:none;border-radius:10px;background:#2563eb;color:#fff;font-size:15px;font-weight:600;cursor:pointer;">
       🌐 Panelni brauzerda ochish
     </button>`;
-  // Kod bir martalik: qayta bosilganda yangisi olinadi
-  document.getElementById('reopenPanel').onclick = () => goToPanel(url);
+  const btn = document.getElementById('reopenPanel');
+  btn.onclick = () => goToPanel(url);   // kod bir martalik: qayta bosilganda yangisi olinadi
+  armAutoClose();
   tg.openLink(finalUrl);
+  // Oyna "Cancel" qilinsa yoki yopilmasa — qayta ochish tugmasi ko'rinadi
+  setTimeout(() => { btn.style.display = 'inline-block'; }, 4000);
+}
+
+// Foydalanuvchi Telegram'dan chiqib (brauzer ochilib) qaytganda Mini App'ni yopadi
+let _autoCloseArmed = false;
+function armAutoClose() {
+  if (_autoCloseArmed) return;
+  _autoCloseArmed = true;
+  let left = false;
+  const closeIfBack = () => { if (left) { try { tg.close(); } catch (_) {} } };
+  const leave = () => { left = true; };
+  document.addEventListener('visibilitychange', () => (document.hidden ? leave() : closeIfBack()));
+  window.addEventListener('blur', leave);
+  window.addEventListener('focus', closeIfBack);
+  try { tg.onEvent('deactivated', leave); tg.onEvent('activated', closeIfBack); } catch (_) {}
 }
 
 // ─── Bir necha rolga/maktabga bog'langanda — tanlov ekrani ───────────────────
