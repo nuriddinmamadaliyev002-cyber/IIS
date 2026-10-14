@@ -63,19 +63,29 @@ async function loadTolovlar(oy) {
     mks.map(m => `<option value="${Number(m.maktab_id)}">${h(m.maktab_nomi)}</option>`).join('');
   if (prevMk && mks.some(m => String(m.maktab_id) === prevMk)) g('b-maktab').value = prevMk;
 
-  renderBuxStats();
   renderBuxMaktablar();
   renderTolovlar();
 }
 
-function renderBuxStats() {
-  const j = TOL.jami, f = pct(j.tolandi, j.kerak);
+// Ko'rsatkichlar: filtr yo'q bo'lsa — butun oy bo'yicha, bor bo'lsa — filtrga mos o'quvchilar bo'yicha
+function renderBuxStats(list, filtered) {
+  let j = TOL.jami;
+  if (filtered) {
+    j = {
+      kerak:   list.reduce((n, t) => n + t.tolov_kerak, 0),
+      tolandi: list.reduce((n, t) => n + t.tolov_qildi, 0),
+      qarz:    list.reduce((n, t) => n + t.qarz, 0),
+      qarzdor: list.filter(t => t.qarz > 0).length,
+      soni:    list.length,
+    };
+  }
+  const f = pct(j.tolandi, j.kerak);
   const card = (val, lbl, cls) => `<div class="dir-stat ${cls || ''}"><div class="num">${val}</div><div class="lbl">${lbl}</div></div>`;
   g('b-stats').innerHTML =
-    card(sum(j.kerak), `To'lanishi kerak (so'm) — ${h(oyLabel(TOL.oy))}`) +
-    card(sum(j.tolandi), `To'landi (so'm) · ${f}%`, 'good') +
+    card(sum(j.kerak), "Kerak (so'm)") +
+    card(sum(j.tolandi), `To'landi · ${f}%`, 'good') +
     card(sum(j.qarz), "Qarz (so'm)", j.qarz > 0 ? 'warn' : '') +
-    card(j.qarzdor, `Qarzdor o'quvchi (${j.soni} tadan)`, j.qarzdor > 0 ? 'warn' : '');
+    card(j.qarzdor, `Qarzdor (${j.soni} tadan)`, j.qarzdor > 0 ? 'warn' : '');
 }
 
 function renderBuxMaktablar() {
@@ -114,7 +124,12 @@ function renderTolovlar() {
     return true;
   });
   B_VIEW = list;
-  g('b-count').textContent = `${list.length} / ${TOL.tolovlar.length}`;
+  g('b-count').textContent = `${oyLabel(TOL.oy)} · ${list.length} / ${TOL.tolovlar.length}`;
+  const filtered = !!(q || mk || holat);
+  renderBuxStats(list, filtered);
+  const nf = (mk ? 1 : 0) + (holat ? 1 : 0);
+  const badge = g('b-filter-badge');
+  badge.textContent = nf; badge.style.display = nf ? 'inline-block' : 'none';
   g('b-empty').style.display = list.length ? 'none' : 'block';
   const kerak = list.reduce((n, t) => n + t.tolov_kerak, 0);
   const tolandi = list.reduce((n, t) => n + t.tolov_qildi, 0);
@@ -152,3 +167,39 @@ function renderBuxgalterlar() {
       </tr>`).join('') + '</tbody>'
     : '<tbody><tr class="noclick"><td class="empty">Buxgalter yo\'q</td></tr></tbody>';
 }
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  To'lovlar: filter paneli va qidiruv
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleTolFilter(ev) {
+  if (ev) ev.stopPropagation();
+  const p = g('b-panel'), open = p.style.display === 'none';
+  p.style.display = open ? 'flex' : 'none';
+  g('b-filter-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeTolFilter() {
+  g('b-panel').style.display = 'none';
+  g('b-filter-btn').setAttribute('aria-expanded', 'false');
+}
+function resetTolFilter() {
+  g('b-maktab').value = '';
+  g('b-holat').value = '';
+  renderTolovlar();
+}
+function onTolSearch() {
+  g('b-q-clear').style.display = g('b-q').value ? 'block' : 'none';
+  renderTolovlar();
+}
+function clearTolSearch() {
+  g('b-q').value = '';
+  g('b-q-clear').style.display = 'none';
+  g('b-q').focus();
+  renderTolovlar();
+}
+// Panel tashqarisiga bosilsa yoki Esc bosilsa — yopiladi
+document.addEventListener('click', (e) => {
+  const p = g('b-panel');
+  if (p && p.style.display !== 'none' && !e.target.closest('.tol-bar')) closeTolFilter();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTolFilter(); });
