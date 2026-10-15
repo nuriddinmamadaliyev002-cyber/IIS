@@ -1049,52 +1049,90 @@ function clearStats() {
   });
 }
 
-// ─── Export Excel ────────────────────────────────
-function exportExcel() {
-  const rows = [
-    ['№','Familiya Ismi','Maktab','Sinf','Telefon',
-     'Qaydnoma',"Ehtimoliy to'lov sanasi",'Gaplashilgan vaqt',"To'lov kerak","To'lov qildi",
-     "To'lov sanasi","To'lov holati"]
-  ];
+// ─── Export Excel (.xlsx) — hozirgi filtrga mos o'quvchilar ───────────────────
+// SheetJS faqat tugma bosilganda yuklanadi. Internet bo'lmasa — CSV zaxira variant.
+const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = XLSX_CDN;
+    sc.onload  = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX yuklanmadi'));
+    sc.onerror = () => reject(new Error("Excel kutubxonasini yuklab bo'lmadi"));
+    document.head.appendChild(sc);
+  });
+}
+
+function fileSlug(t) {
+  return String(t || '').toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
+}
+
+async function exportExcel() {
+  if (!FILTERED.length) { showToast("Yuklab olish uchun o'quvchi yo'q", 'error'); return; }
+
+  const header = ['№', 'Familiya Ismi', 'Maktab', 'Sinf', 'Telefon', 'Telefon 2', 'Holati',
+                  'Qaydnoma', "Ehtimoliy to'lov sanasi", 'Gaplashilgan vaqt',
+                  "To'lov kerak", "To'lov qildi", 'Qarz', "To'lov sanasi", "To'lov holati"];
+  const rows = [];
+  let sumKerak = 0, sumQildi = 0, sumQarz = 0;
+
   FILTERED.forEach(({student: s, tolov: t}, i) => {
-    const kerak = t?.tolov_kerak || 0;
-    const qildi = t?.tolov_qildi || 0;
+    const kerak = Number(t?.tolov_kerak) || 0;
+    const qildi = Number(t?.tolov_qildi) || 0;
+    const qarz  = kerak > qildi ? kerak - qildi : 0;
+    const isNofaol = s.nofaol === true || !!s.chiqgan;
     let holat = '—';
     if (kerak > 0) {
-      if (qildi > kerak)       holat = `To'liq (+${qildi-kerak} so'm ortiqcha)`;
+      if (qildi > kerak)        holat = `To'liq (+${qildi - kerak} so'm ortiqcha)`;
       else if (qildi === kerak) holat = "To'liq";
-      else if (qildi > 0)      holat = `${kerak-qildi} so'm qoldi`;
-      else                     holat = `${kerak} so'm qarzdor`;
+      else if (qildi > 0)       holat = `${kerak - qildi} so'm qoldi`;
+      else                      holat = `${kerak} so'm qarzdor`;
     }
+    sumKerak += kerak; sumQildi += qildi; sumQarz += qarz;
     rows.push([
-      i+1,
-      `${s.familiya} ${s.ism}`,
+      i + 1,
+      `${s.familiya || ''} ${s.ism || ''}`.trim(),
       s.maktab  || '',
       s.sinf    || '',
       s.telefon || '',
-      t?.qaydnoma          || '',
+      s.telefon2 || '',
+      isNofaol ? `Chiqib ketgan${s.chiqgan ? ' (' + s.chiqgan + ')' : ''}` : 'Faol',
+      t?.qaydnoma || '',
       t?.ehtimoliy_tolov_sanasi || '',
       t?.gaplashilgan_vaqt || '',
       kerak,
       qildi,
-      t?.tolov_sanasi    || '',
+      qarz,
+      t?.tolov_sanasi || '',
       holat
     ]);
   });
+  rows.push(['', 'JAMI', '', '', '', '', '', '', '', '', sumKerak, sumQildi, sumQarz, '', '']);
 
-  // CSV format (Excel tomonidan to'g'ri ochiladi)
-  const csvContent = rows.map(r =>
-    r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
-  ).join('\n');
+  const maktab = g('filter-maktab').value;
+  const sinf   = g('filter-sinf').value;
+  const stat   = STAT_FILTER && STAT_FILTER !== 'all' ? STAT_FILTER : '';
+  const name = ['tolovlar', CURRENT_OY, fileSlug(maktab), fileSlug(sinf), stat].filter(Boolean).join('_');
 
-  const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8' });
-  const url  = URL.createObjectURL(blob);
-  const a    = document.createElement('a');
-  a.href     = url;
-  a.download = `tolovlar-${CURRENT_OY}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-  showToast('📊 CSV yuklab olindi', 'success');
+  try {
+    const X  = await loadXlsxLib();
+    const ws = X.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = [{ wch: 5 }, { wch: 26 }, { wch: 14 }, { wch: 8 }, { wch: 18 }, { wch: 18 }, { wch: 18 },
+                   { wch: 36 }, { wch: 18 }, { wch: 18 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 26 }];
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, String(CURRENT_OY || 'Tolovlar').slice(0, 31));
+    X.writeFile(wb, name + '.xlsx');
+    showToast('📊 Excel yuklab olindi', 'success');
+  } catch (e) {
+    const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+    showToast('📊 CSV yuklab olindi (Excel kutubxonasi yuklanmadi)', 'success');
+  }
 }
 
 // ─── Yordamchi: sana konversiya ──────────────────
