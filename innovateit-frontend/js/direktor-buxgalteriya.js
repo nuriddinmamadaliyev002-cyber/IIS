@@ -217,25 +217,8 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTolFi
 // ═══════════════════════════════════════════════════════════════════════════
 //  To'lovlar: hozirgi filtrga mos ro'yxatni Excel (.xlsx) ga yuklab olish
 //  (B_VIEW — ekranda ko'rinib turgan, filtrlangan yozuvlar)
-//  SheetJS faqat tugma bosilganda yuklanadi; yuklanmasa — CSV zaxira variant.
+//  (loadXlsxLib / xlSlug yordamchilari direktor.js da — barcha bo'limlar uchun umumiy)
 // ═══════════════════════════════════════════════════════════════════════════
-const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
-
-function loadXlsxLib() {
-  if (window.XLSX) return Promise.resolve(window.XLSX);
-  return new Promise((resolve, reject) => {
-    const sc = document.createElement('script');
-    sc.src = XLSX_CDN;
-    sc.onload  = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX yuklanmadi'));
-    sc.onerror = () => reject(new Error("Excel kutubxonasini yuklab bo'lmadi"));
-    document.head.appendChild(sc);
-  });
-}
-
-function xlSlug(t) {
-  return String(t || '').toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
-}
-
 async function exportTolovlarExcel() {
   if (!B_VIEW.length) { alert("Yuklab olish uchun to'lov yozuvi yo'q (filtrga mos o'quvchi topilmadi)"); return; }
 

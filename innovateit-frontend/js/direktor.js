@@ -395,3 +395,23 @@ function clearTeacherSearch() {
 document.addEventListener('click', (e) => {
   if (!e.target.closest('.tol-bar')) closeTFilter();
 });
+
+
+// ─── Excel (.xlsx) yuklab olish uchun umumiy yordamchilar ────────────────────
+// SheetJS faqat tugma bosilganda yuklanadi; yuklanmasa — har bir bo'lim CSV zaxira variantga o'tadi.
+const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = XLSX_CDN;
+    sc.onload  = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX yuklanmadi'));
+    sc.onerror = () => reject(new Error("Excel kutubxonasini yuklab bo'lmadi"));
+    document.head.appendChild(sc);
+  });
+}
+
+function xlSlug(t) {
+  return String(t || '').toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
+}

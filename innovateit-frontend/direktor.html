@@ -404,6 +404,7 @@
             <input type="text" id="s-q" placeholder="🔍 Ism, telefon yoki sinf…" oninput="onStudentSearch()" autocomplete="off">
             <button type="button" class="tol-clear" id="s-q-clear" onclick="clearStudentSearch()" aria-label="Tozalash" style="display:none;">✕</button>
           </div>
+          <button type="button" class="tol-xl" id="s-xl-btn" onclick="exportStudentsExcel()" title="Hozirgi filtrga mos o'quvchilarni Excel (.xlsx) qilib yuklab olish" aria-label="Excel yuklab olish">📥<span class="t"> Excel</span></button>
           <div class="tol-panel" id="s-panel" style="display:none;" onclick="event.stopPropagation()">
             <label>🏫 Maktab<select id="s-maktab" onchange="renderStudents()"><option value="">🏫 Barcha maktablar</option></select></label>
             <label>🎓 Sinf<select id="s-sinf" onchange="renderStudents()"><option value="">Barcha sinflar</option></select></label>
@@ -459,10 +460,10 @@
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_direktor_token';</script>
 <script src="js/api.js"></script>
-<script src="js/direktor.js"></script>
-<script src="js/direktor-oquvchilar.js"></script>
+<script src="js/direktor.js?v=2"></script>
+<script src="js/direktor-oquvchilar.js?v=2"></script>
 <script src="js/direktor-adminlar.js"></script>
-<script src="js/direktor-buxgalteriya.js?v=2"></script>
+<script src="js/direktor-buxgalteriya.js?v=3"></script>
 <script>
 // ⚠️ Haqiqiy bot username'i (sales.html dagi bilan bir xil)
 const BOT_USERNAME = 'InnovateIT_School_bot';

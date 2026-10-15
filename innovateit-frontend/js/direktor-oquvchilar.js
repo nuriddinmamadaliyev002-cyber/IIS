@@ -161,3 +161,73 @@ document.addEventListener('click', (e) => {
   if (p && p.style.display !== 'none' && !e.target.closest('.tol-bar')) closeSFilter();
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSFilter(); });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  O'quvchilar: hozirgi filtrga mos ro'yxatni Excel (.xlsx) ga yuklab olish
+//  (S_VIEW — ekranda ko'rinib turgan, filtrlangan va tartiblangan yozuvlar)
+// ═══════════════════════════════════════════════════════════════════════════
+async function exportStudentsExcel() {
+  if (!S_VIEW.length) { alert("Yuklab olish uchun o'quvchi yo'q (filtrga mos o'quvchi topilmadi)"); return; }
+
+  const btn = g('s-xl-btn');
+  const oldHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+  const header = ['№', 'Familiya', 'Ism', 'Maktab', 'Sinf', 'Telefon', 'Telefon 2', "Tug'ilgan sana", 'Manzil',
+                  "Qo'shilgan", "O'qishni boshlagan", 'Holati', "To'xtatgan sana", "O'qituvchilar soni", 'Telegram', 'Izoh'];
+  const rows = S_VIEW.map((s, i) => [
+    i + 1, s.familiya || '', s.ism || '', s.maktab_nomi || '', s.sinf || '', s.telefon || '', s.telefon2 || '',
+    s.tug || '', s.manzil || '', s.qoshilgan || '', s.boshlagan || '',
+    s.nofaol ? 'Nofaol' : 'Faol',
+    s.nofaol ? (s.chiqgan || '') : '',
+    s.nofaol ? '' : (s.oqituvchilar_soni || 0),
+    s.nofaol ? '' : (s.telegram ? "Bog'langan" : "Bog'lanmagan"),
+    s.nofaol ? (s.izoh || '') : ''
+  ]);
+
+  // Maktablar kesimi (hozirgi filtrga mos o'quvchilar bo'yicha)
+  const byMk = new Map();
+  S_VIEW.forEach(s => {
+    const k = s.maktab_nomi || '—';
+    const m = byMk.get(k) || { faol: 0, nofaol: 0, tgsiz: 0, oqsiz: 0 };
+    if (s.nofaol) m.nofaol++;
+    else { m.faol++; if (!s.telegram) m.tgsiz++; if (!s.oqituvchilar_soni) m.oqsiz++; }
+    byMk.set(k, m);
+  });
+  const mkHeader = ['Maktab', 'Faol', 'Nofaol', 'Jami', "Telegram bog'lanmagan", "O'qituvchisiz"];
+  const mkRows = [...byMk.entries()].sort((a, b) => maktabCmp(a[0], b[0]))
+    .map(([k, m]) => [k, m.faol, m.nofaol, m.faol + m.nofaol, m.tgsiz, m.oqsiz]);
+  const tot = mkRows.reduce((t, r) => t.map((v, i) => i === 0 ? 'JAMI' : v + r[i]), ['', 0, 0, 0, 0, 0]);
+  mkRows.push(tot);
+
+  const mk = parseInt(g('s-maktab').value) || 0;
+  const mkSel = g('s-maktab');
+  const mkNomi = mk ? (mkSel.options[mkSel.selectedIndex]?.textContent || '') : '';
+  const d = new Date(), pad = n => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const name = ['oquvchilar', xlSlug(mkNomi), xlSlug(g('s-sinf').value), g('s-holat').value || 'faol-nofaol', stamp]
+    .filter(Boolean).join('_');
+
+  try {
+    const X  = await loadXlsxLib();
+    const ws = X.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 16 }, { wch: 14 }, { wch: 8 }, { wch: 18 }, { wch: 18 }, { wch: 14 },
+                   { wch: 26 }, { wch: 14 }, { wch: 16 }, { wch: 10 }, { wch: 14 }, { wch: 12 }, { wch: 16 }, { wch: 30 }];
+    const ws2 = X.utils.aoa_to_sheet([mkHeader, ...mkRows]);
+    ws2['!cols'] = [{ wch: 18 }, { wch: 8 }, { wch: 8 }, { wch: 8 }, { wch: 22 }, { wch: 14 }];
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, "O'quvchilar");
+    X.utils.book_append_sheet(wb, ws2, 'Maktablar kesimi');
+    X.writeFile(wb, name + '.xlsx');
+  } catch (e) {
+    const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+  }
+}
