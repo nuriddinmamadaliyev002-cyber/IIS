@@ -181,28 +181,28 @@ function renderLeads() {
     ).join('');
 
     return `<tr>
-      <td style="font-weight:600;">${esc(l.ism)}</td>
-      <td>
+      <td class="c-ota" style="font-weight:600;">${esc(l.ism)}</td>
+      <td class="c-tel">
         <a href="tel:${esc(l.telefon)}" style="color:#2563eb;text-decoration:none;font-weight:600;">${esc(l.telefon)}</a>
         ${l.telefon2 ? `<br><a href="tel:${esc(l.telefon2)}" style="color:#6b7280;text-decoration:none;font-size:12px;">${esc(l.telefon2)}</a>` : ''}
       </td>
-      <td>${esc([l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ') || '—')}</td>
-      <td>${esc(l.maktab_nomi || l.hudud || '—')}</td>
-      <td>${esc(l.sinf || '—')}</td>
-      <td style="font-size:12px;color:#9ca3af;white-space:nowrap;">${formatDate(l.yaratilgan)}</td>
-      <td>
+      <td class="c-oq" data-label="O'quvchi">${esc([l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' ') || '—')}</td>
+      <td class="c-mak" data-label="Maktab">${esc(l.maktab_nomi || l.hudud || '—')}</td>
+      <td class="c-sinf" data-label="Sinf">${esc(l.sinf || '—')}</td>
+      <td class="c-sana" data-label="Ariza sanasi" style="font-size:12px;color:#9ca3af;white-space:nowrap;">${formatDate(l.yaratilgan)}</td>
+      <td class="c-holat" data-label="Holat">
         <select onchange="updateHolat(${l.id}, this)"
           style="padding:5px 6px;border-radius:8px;border:1.5px solid ${holatInfo.color}33;background:${holatInfo.bg};color:${holatInfo.color};font-size:12px;font-weight:600;">
           ${holatOptions}
         </select>
       </td>
-      <td>
+      <td class="c-qayd" data-label="Qaydnoma">
         <textarea class="sl-qaydnoma-input" rows="1" spellcheck="false"
           placeholder="Eslatma…" onblur="updateQaydnoma(${l.id}, this.value, this)"
           oninput="autosizeQaydnoma(this)"
           style="width:300px;padding:5px 6px;border:none;border-radius:8px;font-size:12px;font-family:inherit;background:#fff;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;outline:none;box-shadow:none;">${esc(l.qaydnoma || '')}</textarea>
       </td>
-      <td>
+      <td class="c-gap" data-label="Gaplashilgan sana">
         <span class="sl-vaqt-display" id="sl-vaqt-disp-${l.id}"
           onclick="editVaqt(${l.id}, '${toDateOnly(l.gaplashilgan_vaqt)}')"
           style="cursor:pointer;font-size:12px;color:${l.gaplashilgan_vaqt ? '#1a1917' : '#9ca3af'};white-space:nowrap;border-bottom:1px dashed var(--border);padding-bottom:1px;">${l.gaplashilgan_vaqt ? formatDateOnly(l.gaplashilgan_vaqt) : 'Belgilash…'}</span>

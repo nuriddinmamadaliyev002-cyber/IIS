@@ -79,6 +79,73 @@
       top: 0;
       z-index: 5;
     }
+
+    /* ══════════════════════════════════════════════════════════════════
+       TELEFON / PLANSHET (≤768px)
+       • Sahifa oddiy scroll bo'ladi (freeze o'chiriladi — ekran kichik)
+       • Stat-kartalar: ixcham gorizontal qator
+       • Filtrlar: ustma-ust, to'liq kenglikda
+       • Jadval → ariza KARTALARI (gorizontal scroll yo'q)
+       ══════════════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      html, body { height: auto; overflow: visible; overflow-x: hidden; }
+      #app { height: auto !important; min-height: 100vh; overflow: visible; }
+      .sl-frozen-header { padding: 12px 12px 0; }
+      .sl-content { padding: 0 12px 24px; }
+
+      /* Stat-kartalar: 3 ustunli ixcham setka */
+      .sl-stat-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
+      .sl-stat-card { grid-column: span 2; }
+      .sl-stat-card:nth-child(n+4) { grid-column: span 3; }
+      .sl-stat-card { min-width: 0; padding: 9px 10px; border-radius: 12px; }
+      .sl-stat-card .num { font-size: 19px; line-height: 1.15; }
+      .sl-stat-card .lbl { font-size: 10.5px; line-height: 1.25; }
+
+      /* Filtrlar */
+      .sl-controls { flex-direction: column; align-items: stretch !important; gap: 8px !important; margin-bottom: 12px !important; }
+      .sl-controls-right { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; }
+      .sl-controls-right .sl-search-wrap { grid-column: 1 / -1; min-width: 0 !important; }
+      .sl-sel, #sl-search { width: 100%; box-sizing: border-box; min-width: 0; font-size: 16px !important; padding: 10px 12px !important; border-radius: 12px !important; background: #fff; }
+
+      /* Jadval → kartalar */
+      .sl-table-card { background: none; border: none; border-radius: 0; padding: 0; overflow: visible; display: block; }
+      .sl-table-scroll { overflow: visible; }
+      .data-table, .data-table tbody { display: block; width: 100%; min-width: 0 !important; }
+      .data-table thead { display: none; }
+      .data-table tbody tr, .data-table tbody tr:nth-child(odd), .data-table tbody tr:nth-child(even) {
+        display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 10px; row-gap: 10px;
+        background: #fff; border: 1px solid var(--border); border-left: 4px solid #2563eb;
+        border-radius: 14px; padding: 14px; margin-bottom: 12px;
+        box-shadow: 0 1px 3px rgba(0,0,0,.05);
+      }
+      .data-table tbody td { display: block; min-width: 0; padding: 0; border: none; overflow-wrap: anywhere; }
+      .data-table td[data-label]::before {
+        content: attr(data-label); display: block; margin-bottom: 3px;
+        font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: #9ca3af;
+      }
+      .data-table td.c-ota  { grid-column: 1 / -1; font-size: 16px; font-weight: 700; }
+      .data-table td.c-tel  { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+      .data-table td.c-tel br { display: none; }
+      .data-table td.c-tel a {
+        display: inline-flex; align-items: center; min-height: 40px; padding: 0 14px; border-radius: 10px;
+        background: #eff6ff; color: #2563eb !important; font-size: 14px !important; font-weight: 600;
+      }
+      .data-table td.c-tel a + a { background: #f3f4f6; color: #4b5563 !important; }
+      .data-table td.c-oq   { grid-column: 1 / -1; font-size: 14px; }
+      .data-table td.c-holat { grid-column: 1 / -1; }
+      .data-table td.c-holat select { width: 100%; min-height: 42px; font-size: 14px !important; padding: 8px 10px !important; border-radius: 10px !important; }
+      .data-table td.c-qayd { grid-column: 1 / -1; }
+      .data-table td.c-qayd textarea {
+        width: 100% !important; box-sizing: border-box; font-size: 16px !important; padding: 9px 10px !important;
+        border: 1.5px solid var(--border) !important; border-radius: 10px !important; background: #fffdf5 !important; min-height: 40px;
+      }
+      .data-table td.c-sana, .data-table td.c-gap { font-size: 13px; }
+      .data-table td.c-sana { white-space: normal !important; }
+      .data-table td.c-ota{order:1} .data-table td.c-tel{order:2} .data-table td.c-oq{order:3}
+      .data-table td.c-mak{order:4} .data-table td.c-sinf{order:5} .data-table td.c-holat{order:6}
+      .data-table td.c-qayd{order:7} .data-table td.c-sana{order:8} .data-table td.c-gap{order:9}
+      #sl-leads-empty { padding: 28px 12px; }
+    }
   </style>
 </head>
 <body>
@@ -138,14 +205,14 @@
     <div class="sl-stat-cards" id="sl-stats"></div>
 
     <!-- CONTROLS -->
-    <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
-      <div style="font-size:16px;font-weight:700;color:#111827;">📨 Arizalar</div>
-      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
-        <select id="sl-maktab-filter" onchange="applyFilters()"
+    <div class="sl-controls" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+      <div class="sl-controls-title" style="font-size:16px;font-weight:700;color:#111827;">📨 Arizalar</div>
+      <div class="sl-controls-right" style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+        <select id="sl-maktab-filter" class="sl-sel" onchange="applyFilters()"
           style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;">
           <option value="">🏫 Barcha maktablar</option>
         </select>
-        <select id="sl-holat-filter" onchange="loadLeads()"
+        <select id="sl-holat-filter" class="sl-sel" onchange="loadLeads()"
           style="padding:8px 12px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;">
           <option value="">Barcha holatlar</option>
           <option value="yangi">🆕 Yangi</option>
@@ -153,7 +220,7 @@
           <option value="royxatga_olindi">✅ Ro'yxatga olindi</option>
           <option value="bekor_qilindi">❌ Bekor qilindi</option>
         </select>
-        <div style="position:relative;display:flex;align-items:center;min-width:200px;">
+        <div class="sl-search-wrap" style="position:relative;display:flex;align-items:center;min-width:200px;">
           <input type="text" id="sl-search" placeholder="🔍 F.I. / telefon…"
             oninput="applyFilters(); updateSearchClear()"
             style="padding:8px 30px 8px 12px;border:1.5px solid var(--border);border-radius:10px;
