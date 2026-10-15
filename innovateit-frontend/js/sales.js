@@ -330,3 +330,73 @@ async function updateHolat(id, selectEl) {
     alert('❌ Xatolik: ' + e.message);
   }
 }
+
+// ─── Excel (.xlsx) ga yuklab olish — hozirgi filtrga mos arizalar ─────────────
+// SheetJS faqat tugma bosilganda yuklanadi (sahifa tez ochilishi uchun).
+const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = XLSX_CDN;
+    sc.onload  = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX yuklanmadi'));
+    sc.onerror = () => reject(new Error('Excel kutubxonasini yuklab bo\'lmadi'));
+    document.head.appendChild(sc);
+  });
+}
+
+function slFileSlug(t) {
+  return String(t || '').toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
+}
+
+async function exportLeadsExcel() {
+  if (!FILTERED_LEADS.length) { alert("Yuklab olish uchun ariza yo'q (filtrga mos arizalar topilmadi)"); return; }
+
+  const btn = g('sl-export-btn');
+  const oldText = btn ? btn.textContent : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ …'; }
+
+  const header = ['№', 'Ota-ona ismi', 'Telefon', 'Telefon 2', "O'quvchi F.I.", 'Maktab', 'Sinf',
+                  'Ariza sanasi', 'Holat', 'Qaydnoma', 'Gaplashilgan sana'];
+  const rows = FILTERED_LEADS.map((l, i) => [
+    i + 1,
+    l.ism || '',
+    l.telefon || '',
+    l.telefon2 || '',
+    [l.oquvchi_familiya, l.oquvchi_ismi].filter(Boolean).join(' '),
+    l.maktab_nomi || l.hudud || '',
+    l.sinf || '',
+    l.yaratilgan ? formatDate(l.yaratilgan) : '',
+    (HOLAT_LABELS[l.holat] || HOLAT_LABELS.yangi).text.replace(/^\S+\s/, ''),   // emoji'siz holat nomi
+    l.qaydnoma || '',
+    l.gaplashilgan_vaqt ? formatDateOnly(l.gaplashilgan_vaqt) : '',
+  ]);
+
+  const maktab = g('sl-maktab-filter').value;
+  const holat  = g('sl-holat-filter').value;
+  const d = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const stamp = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  const name = ['sotuv-arizalar', slFileSlug(maktab), slFileSlug(holat), stamp].filter(Boolean).join('_');
+
+  try {
+    const X  = await loadXlsxLib();
+    const ws = X.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = [{ wch: 5 }, { wch: 24 }, { wch: 18 }, { wch: 18 }, { wch: 26 }, { wch: 14 }, { wch: 8 },
+                   { wch: 20 }, { wch: 16 }, { wch: 40 }, { wch: 18 }];
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, 'Arizalar');
+    X.writeFile(wb, name + '.xlsx');
+  } catch (e) {
+    // Kutubxona yuklanmasa (internet yo'q) — CSV zaxira variant (Excel ochadi)
+    const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.textContent = oldText; }
+  }
+}

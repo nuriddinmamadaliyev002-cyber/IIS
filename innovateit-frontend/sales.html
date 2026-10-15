@@ -20,6 +20,13 @@
     .data-table tbody tr:nth-child(even) { background:#f8fafc; }
     .data-table tbody tr:nth-child(odd)  { background:#ffffff; }
     .data-table tbody tr:hover { background:#eef2ff; }
+    .sl-export-btn {
+      flex: 0 0 auto; padding: 8px 14px; border: none; border-radius: 10px; cursor: pointer;
+      background: #16a34a; color: #fff; font-size: 13px; font-weight: 600; font-family: inherit;
+      white-space: nowrap; transition: opacity .15s;
+    }
+    .sl-export-btn:hover { opacity: .88; }
+    .sl-export-btn:disabled { opacity: .6; cursor: wait; }
     .sl-stat-cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
     .sl-stat-card {
       flex:1; min-width:120px; background:#fff; border:1.5px solid var(--border);
@@ -109,7 +116,9 @@
       .sl-controls { flex-direction: column; align-items: stretch !important; gap: 6px !important; margin-bottom: 0 !important; }
       .sl-controls-title { display: none; }
       .sl-controls-right { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
-      .sl-controls-right .sl-search-wrap { grid-column: 1 / -1; min-width: 0 !important; }
+      .sl-controls-right .sl-search-row { grid-column: 1 / -1; gap: 6px !important; }
+      .sl-controls-right .sl-search-wrap { min-width: 0 !important; }
+      .sl-export-btn { padding: 0 12px; height: 40px; border-radius: 10px; font-size: 14px; }
       .sl-sel, #sl-search { width: 100%; box-sizing: border-box; min-width: 0; font-size: 16px !important; padding: 8px 10px !important; border-radius: 10px !important; background: #fff; }
 
       /* Jadval → kartalar */
@@ -225,7 +234,8 @@
           <option value="royxatga_olindi">✅ Ro'yxatga olindi</option>
           <option value="bekor_qilindi">❌ Bekor qilindi</option>
         </select>
-        <div class="sl-search-wrap" style="position:relative;display:flex;align-items:center;min-width:200px;">
+        <div class="sl-search-row" style="display:flex;align-items:center;gap:10px;">
+        <div class="sl-search-wrap" style="position:relative;display:flex;align-items:center;min-width:200px;flex:1;">
           <input type="text" id="sl-search" placeholder="🔍 F.I. / telefon…"
             oninput="applyFilters(); updateSearchClear()"
             style="padding:8px 30px 8px 12px;border:1.5px solid var(--border);border-radius:10px;
@@ -233,6 +243,9 @@
           <button id="sl-search-clear" onclick="clearSearch()" title="Tozalash"
             style="position:absolute;right:6px;background:none;border:none;cursor:pointer;
                    color:#9ca3af;font-size:13px;line-height:1;padding:2px 4px;border-radius:4px;display:none;">✕</button>
+        </div>
+        <button type="button" id="sl-export-btn" class="sl-export-btn" onclick="exportLeadsExcel()"
+          title="Hozirgi filtrga mos arizalarni Excel fayl qilib yuklab olish">📥 Excel</button>
         </div>
       </div>
     </div>
