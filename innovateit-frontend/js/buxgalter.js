@@ -502,7 +502,32 @@ function updateBuxFilterBadge() {
   if (b) { b.textContent = n; b.style.display = n ? 'inline-block' : 'none'; }
   const btn = g('bux-filter-btn');
   if (btn) btn.classList.toggle('on', n > 0);
+  renderActiveFilters();
 }
+
+// Tanlangan maktab / sinf chiplari (mobilda panel yopiq bo'lsa ham ko'rinib turadi)
+function renderActiveFilters() {
+  const box = g('bux-active-filters');
+  if (!box) return;
+  const maktab = g('filter-maktab').value;
+  const sinf   = g('filter-sinf').value;
+  if (!maktab && !sinf) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  const esc = (v) => String(v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const chip = (icon, text, which) =>
+    `<button type="button" class="bux-achip" onclick="clearBuxFilter('${which}')" title="Filterni olib tashlash">` +
+    `<span>${icon} ${esc(text)}</span><span class="bux-achip-x">✕</span></button>`;
+  box.innerHTML =
+    (maktab ? chip('🏫', maktab, 'maktab') : '') +
+    (sinf   ? chip('📚', /sinf/i.test(sinf) ? sinf : sinf + '-sinf', 'sinf') : '') +
+    `<span class="bux-acount">${FILTERED.length} ta o'quvchi</span>`;
+  box.style.display = '';
+}
+function clearBuxFilter(which) {
+  const el = g(which === 'maktab' ? 'filter-maktab' : 'filter-sinf');
+  if (el) el.value = '';
+  applyFilters();
+}
+window.clearBuxFilter = clearBuxFilter;
 function toggleBuxFilter(ev) {
   if (ev) ev.stopPropagation();
   const p = g('bux-fpanel');

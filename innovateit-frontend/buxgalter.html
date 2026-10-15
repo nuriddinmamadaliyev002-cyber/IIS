@@ -6,7 +6,7 @@
   <title>InnovateIT School — Buxgalter</title>
   <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <link rel="stylesheet" href="css/buxgalter.css?v=8">
+  <link rel="stylesheet" href="css/buxgalter.css?v=9">
   <link rel="stylesheet" href="css/hover.css"> 
   <link rel="stylesheet" href="css/mobile-nav.css">
 </head>
@@ -53,7 +53,7 @@
 
   <!-- TOPBAR -->
   <div class="topbar">
-    <div class="topbar-brand">💼 InnovateIT — Buxgalter To'lovlar</div>
+    <div class="topbar-brand"><span class="tb-school">InnovateIT School</span><span class="tb-sep"> · </span><span class="tb-section">Buxgalter — To'lovlar</span></div>
     <div class="topbar-right">
       <span class="admin-badge" id="bux-badge"></span>
       <button class="btn-export-bux" onclick="exportExcel()">📊 Excel</button>
@@ -112,6 +112,9 @@
       ▶ Oyni boshlash
     </button>
   </div>
+
+  <!-- Faol filtrlar (mobilda: tanlangan maktab / sinf ko'rinib turadi) -->
+  <div class="bux-active-filters" id="bux-active-filters" style="display:none;"></div>
 
   <!-- STATS BAR -->
   <div class="stats-bar" id="stats-bar">
@@ -228,7 +231,7 @@
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_bux_token';</script>
 <script src="js/api.js?v=2"></script>
 <script src="js/col-context-menu.js?v=2"></script>
-<script src="js/buxgalter.js?v=11"></script>
+<script src="js/buxgalter.js?v=12"></script>
 <script src="js/mobile-nav.js"></script>
 <script>
 // ⚠️ MUHIM: bu yerga haqiqiy bot username'ini kiriting (masalan 'InnovateITSchoolBot')
