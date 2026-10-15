@@ -88,24 +88,29 @@
        • Jadval → ariza KARTALARI (gorizontal scroll yo'q)
        ══════════════════════════════════════════════════════════════════ */
     @media (max-width: 768px) {
-      html, body { height: auto; overflow: visible; overflow-x: hidden; }
+      html, body { height: auto; overflow: visible; }
       #app { height: auto !important; min-height: 100vh; overflow: visible; }
-      .sl-frozen-header { padding: 12px 12px 0; }
-      .sl-content { padding: 0 12px 24px; }
+      /* Tepa qism (statistika + filtrlar) topbar ostida qotib turadi, kartalar uning ostidan aylanadi */
+      .sl-frozen-header {
+        position: sticky; top: var(--topbar-h); z-index: 90;
+        padding: 8px 12px 8px; background: var(--bg);
+        border-bottom: 1px solid var(--border);
+        box-shadow: 0 6px 10px -8px rgba(0,0,0,.25);
+      }
+      .sl-content { padding: 12px 12px 24px; }
 
-      /* Stat-kartalar: 3 ustunli ixcham setka */
-      .sl-stat-cards { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 8px; margin-bottom: 14px; }
-      .sl-stat-card { grid-column: span 2; }
-      .sl-stat-card:nth-child(n+4) { grid-column: span 3; }
-      .sl-stat-card { min-width: 0; padding: 9px 10px; border-radius: 12px; }
-      .sl-stat-card .num { font-size: 19px; line-height: 1.15; }
-      .sl-stat-card .lbl { font-size: 10.5px; line-height: 1.25; }
+      /* Stat-kartalar: bitta qatorda 5 ta ixcham katak */
+      .sl-stat-cards { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 5px; margin-bottom: 8px; }
+      .sl-stat-card { min-width: 0; padding: 5px 4px; border-radius: 9px; text-align: center; grid-column: auto; }
+      .sl-stat-card .num { font-size: 16px; line-height: 1.1; }
+      .sl-stat-card .lbl { font-size: 9px; line-height: 1.15; margin-top: 1px; }
 
       /* Filtrlar */
-      .sl-controls { flex-direction: column; align-items: stretch !important; gap: 8px !important; margin-bottom: 12px !important; }
-      .sl-controls-right { display: grid !important; grid-template-columns: 1fr 1fr; gap: 8px !important; }
+      .sl-controls { flex-direction: column; align-items: stretch !important; gap: 6px !important; margin-bottom: 0 !important; }
+      .sl-controls-title { display: none; }
+      .sl-controls-right { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
       .sl-controls-right .sl-search-wrap { grid-column: 1 / -1; min-width: 0 !important; }
-      .sl-sel, #sl-search { width: 100%; box-sizing: border-box; min-width: 0; font-size: 16px !important; padding: 10px 12px !important; border-radius: 12px !important; background: #fff; }
+      .sl-sel, #sl-search { width: 100%; box-sizing: border-box; min-width: 0; font-size: 16px !important; padding: 8px 10px !important; border-radius: 10px !important; background: #fff; }
 
       /* Jadval → kartalar */
       .sl-table-card { background: none; border: none; border-radius: 0; padding: 0; overflow: visible; display: block; }
