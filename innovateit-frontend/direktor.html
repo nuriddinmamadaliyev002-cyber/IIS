@@ -94,10 +94,10 @@
       .tol-sticky .dir-tabs { margin-bottom:8px; gap:6px; flex-wrap:nowrap; }
       .tol-sticky .dir-tab { padding:7px 12px; font-size:12.5px; }
       /* O'qituvchilar: 5-6 ta ko'rsatkich — tepada joy kam egallashi uchun bitta gorizontal qator */
-      #t-sticky .dir-stats { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:6px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
-      #t-sticky .dir-stats::-webkit-scrollbar { display:none; }
-      #t-sticky .dir-stat { flex:0 0 auto; min-width:112px; }
-      #t-sticky .dir-stat .lbl { white-space:nowrap; }
+      #t-sticky .dir-stats, #s-sticky .dir-stats { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:6px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+      #t-sticky .dir-stats::-webkit-scrollbar, #s-sticky .dir-stats::-webkit-scrollbar { display:none; }
+      #t-sticky .dir-stat, #s-sticky .dir-stat { flex:0 0 auto; min-width:112px; }
+      #t-sticky .dir-stat .lbl, #s-sticky .dir-stat .lbl { white-space:nowrap; }
     }
     @media (max-width:768px){
       .tol-sticky { margin:-12px -12px 12px; padding:8px 12px 8px; }
@@ -388,21 +388,38 @@
 
     <!-- ═══════════ O'QUVCHILAR ═══════════ -->
     <div id="sec-oquv" class="dsec-view" style="display:none;">
-      <div class="dir-stats" id="s-stats"></div>
-      <div class="dir-card">
-        <div class="dir-bar">
-          <input type="text" id="s-q" placeholder="🔍 Ism, telefon yoki sinf…" oninput="renderStudents()">
-          <select id="s-maktab" onchange="renderStudents()"><option value="">🏫 Barcha maktablar</option></select>
-          <select id="s-sinf" onchange="renderStudents()"><option value="">Barcha sinflar</option></select>
-          <select id="s-holat" onchange="renderStudents()">
-            <option value="">Faol + nofaol</option>
-            <option value="faol" selected>✅ Faqat faol</option>
-            <option value="nofaol">💤 Faqat nofaol</option>
-            <option value="tgsiz">📱 Telegram bog'lanmagan</option>
-          </select>
-          <span id="s-count" style="font-size:12px;color:#6b7280;"></span>
+      <!-- Doimiy tepada turadigan qism: ko'rsatkichlar + filter + qidiruv + holat qatori -->
+      <div class="tol-sticky" id="s-sticky">
+        <div class="dir-stats" id="s-stats"></div>
+        <div class="tol-bar">
+          <button type="button" class="tol-filter-btn" id="s-filter-btn" onclick="toggleSFilter(event)" aria-expanded="false">
+            <span>⚙️ Filter</span><span class="tol-badge" id="s-filter-badge" style="display:none;"></span>
+          </button>
+          <div class="tol-search">
+            <input type="text" id="s-q" placeholder="🔍 Ism, telefon yoki sinf…" oninput="onStudentSearch()" autocomplete="off">
+            <button type="button" class="tol-clear" id="s-q-clear" onclick="clearStudentSearch()" aria-label="Tozalash" style="display:none;">✕</button>
+          </div>
+          <div class="tol-panel" id="s-panel" style="display:none;" onclick="event.stopPropagation()">
+            <label>🏫 Maktab<select id="s-maktab" onchange="renderStudents()"><option value="">🏫 Barcha maktablar</option></select></label>
+            <label>🎓 Sinf<select id="s-sinf" onchange="renderStudents()"><option value="">Barcha sinflar</option></select></label>
+            <label>📋 Holat<select id="s-holat" onchange="renderStudents()">
+              <option value="">Faol + nofaol</option>
+              <option value="faol" selected>✅ Faqat faol</option>
+              <option value="nofaol">💤 Faqat nofaol</option>
+              <option value="tgsiz">📱 Telegram bog'lanmagan</option>
+            </select></label>
+            <div class="tol-panel-actions">
+              <button type="button" onclick="resetStudentFilter()">Tozalash</button>
+              <button type="button" class="primary" onclick="closeSFilter()">Tayyor</button>
+            </div>
+          </div>
         </div>
-        <div class="dir-scroll">
+        <!-- Doimiy sarlavha: ko'rsatilayotgan / jami o'quvchilar + faol filter -->
+        <div class="tol-head"><span>🎓 O'quvchilar</span><span class="tol-meta"><span class="tol-cnt" id="s-count"></span><span class="tol-flt" id="s-flt"></span></span></div>
+      </div>
+
+      <div class="dir-card">
+        <div class="dir-scroll" style="max-height:none;">
           <table class="dtbl">
             <thead><tr>
               <th>#</th><th>F.I.</th><th>Maktab</th><th>Sinf</th><th>Telefon</th>

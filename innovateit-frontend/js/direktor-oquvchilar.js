@@ -64,6 +64,8 @@ function filteredStudents() {
   });
 }
 
+const S_HOLAT_NOMI = { '': 'Faol + nofaol', faol: 'Faqat faol', nofaol: 'Faqat nofaol', tgsiz: "Telegram bog'lanmagan" };
+
 function renderStudents() {
   buildSinfOptions();
   const list = filteredStudents();
@@ -72,6 +74,16 @@ function renderStudents() {
     String(a.familiya).localeCompare(String(b.familiya), 'uz') || String(a.ism).localeCompare(String(b.ism), 'uz'));
   S_VIEW = list;
   g('s-count').textContent = `${list.length} / ${STUDENTS.length}`;
+  // Doimiy sarlavha: faol filter (filter yopiq bo'lsa ham ko'rinadi) va badge.
+  // Standart holat — "Faqat faol", shuning uchun badge/ko'k rang undan farq qilganda chiqadi.
+  const mkSel = g('s-maktab'), mk = parseInt(mkSel.value) || 0;
+  const sinfV = g('s-sinf').value, holV = g('s-holat').value;
+  const mkNomi = mk ? (mkSel.options[mkSel.selectedIndex]?.textContent || '') : 'Barcha maktablar';
+  g('s-flt').textContent = [mkNomi, sinfV || 'Barcha sinflar', S_HOLAT_NOMI[holV] || 'Faol + nofaol'].join(' · ');
+  const nf = (mk ? 1 : 0) + (sinfV ? 1 : 0) + (holV !== 'faol' ? 1 : 0);
+  g('s-flt').classList.toggle('on', nf > 0);
+  const badge = g('s-filter-badge');
+  badge.textContent = nf; badge.style.display = nf ? 'inline-block' : 'none';
   g('s-empty').style.display = list.length ? 'none' : 'block';
   g('s-body').innerHTML = list.map((s, i) => `<tr onclick="openStudent(${i})">
       <td>${i + 1}</td>
@@ -113,3 +125,39 @@ function openStudent(i) {
   g('s-modal').style.display = 'flex';
 }
 function closeStudent() { g('s-modal').style.display = 'none'; }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  O'quvchilar: filter paneli va qidiruv (Adminlar / O'qituvchilardagi bilan bir xil)
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleSFilter(ev) {
+  if (ev) ev.stopPropagation();
+  const p = g('s-panel'), open = p.style.display === 'none';
+  p.style.display = open ? 'flex' : 'none';
+  g('s-filter-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeSFilter() {
+  g('s-panel').style.display = 'none';
+  g('s-filter-btn').setAttribute('aria-expanded', 'false');
+}
+function resetStudentFilter() {
+  g('s-maktab').value = '';
+  g('s-sinf').value = '';
+  g('s-holat').value = 'faol';   // sahifaning standart ko'rinishi
+  renderStudents();
+}
+function onStudentSearch() {
+  g('s-q-clear').style.display = g('s-q').value ? 'block' : 'none';
+  renderStudents();
+}
+function clearStudentSearch() {
+  g('s-q').value = '';
+  g('s-q-clear').style.display = 'none';
+  g('s-q').focus();
+  renderStudents();
+}
+// Panel tashqarisiga bosilsa yoki Esc bosilsa — yopiladi
+document.addEventListener('click', (e) => {
+  const p = g('s-panel');
+  if (p && p.style.display !== 'none' && !e.target.closest('.tol-bar')) closeSFilter();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSFilter(); });
