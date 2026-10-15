@@ -111,6 +111,9 @@
       .tol-sticky .dir-stat .lbl { font-size:9.5px; line-height:1.2; margin-top:2px; }
       .tol-head { margin-top:8px; padding:8px 12px; border-radius:12px; font-size:12.5px; }
       .tol-head .tol-cnt { font-size:11.5px; }
+      /* Filtr matni (maktab · sinf · holat) kesilmasdan to'liq, kerak bo'lsa keyingi qatorga o'tib chiqadi */
+      .tol-head { align-items:flex-start; gap:10px; }
+      .tol-head .tol-flt { white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; line-height:1.3; }
       .tol-panel { width:auto; right:0; }
       .tol-search { max-width:none; }
       #b-maktab-card { display:none; }
@@ -461,7 +464,7 @@
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_direktor_token';</script>
 <script src="js/api.js"></script>
 <script src="js/direktor.js?v=2"></script>
-<script src="js/direktor-oquvchilar.js?v=2"></script>
+<script src="js/direktor-oquvchilar.js?v=3"></script>
 <script src="js/direktor-adminlar.js"></script>
 <script src="js/direktor-buxgalteriya.js?v=3"></script>
 <script>

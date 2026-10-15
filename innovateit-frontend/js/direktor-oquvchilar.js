@@ -170,6 +170,10 @@ document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSFilt
 async function exportStudentsExcel() {
   if (!S_VIEW.length) { alert("Yuklab olish uchun o'quvchi yo'q (filtrga mos o'quvchi topilmadi)"); return; }
 
+  // Yuklashdan oldin bitta tasdiq so'rovi: qaysi filtr va nechta o'quvchi yuklanishi ko'rsatiladi
+  const flt = (g('s-flt').textContent || '').trim();
+  if (!confirm(`Excel faylga yuklab olinsinmi?\n\nFiltr: ${flt}\nO'quvchilar soni: ${S_VIEW.length} ta`)) return;
+
   const btn = g('s-xl-btn');
   const oldHtml = btn ? btn.innerHTML : '';
   if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
