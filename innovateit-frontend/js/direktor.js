@@ -172,8 +172,8 @@ function renderStats() {
     `<div class="dir-stat${warn && num > 0 ? ' warn' : ''}"><div class="num">${num}</div><div class="lbl">${lbl}</div></div>`;
   g('dir-stats').innerHTML =
     card(TEACHERS.length, "Jami o'qituvchi") +
-    card(maktabSoni, "O'qituvchi dars beradigan maktab") +
-    card(haftalik, 'Haftalik darslar (jadval bo\'yicha)') +
+    card(maktabSoni, "Dars beradigan maktab") +
+    card(haftalik, 'Haftalik darslar') +
     card(jadvalsiz, "Jadvali yo'q o'qituvchi", true) +
     card(tgsiz, "Telegram bog'lanmagan", true) +
     (YETIM ? card(YETIM, "Egasi topilmagan jadval qatori", true) : '');
@@ -204,9 +204,23 @@ function davomatCell(d) {
          `<div style="font-size:11px;color:#6b7280;margin-top:2px;">${d.soat} soat ${d.daqiqa} daq</div>`;
 }
 
+const T_HOLAT_NOMI = { '': 'Barchasi', jadvalsiz: "Jadvali yo'q", maktabsiz: "Maktabi yo'q", tgsiz: "Telegram bog'lanmagan" };
+function setTBadge(which, n) {
+  const b = g('t-filter-badge-' + which);
+  b.textContent = n; b.style.display = n ? 'inline-block' : 'none';
+}
+
 function renderTeachers() {
   const list = filteredTeachers();
   g('f-count').textContent = `${list.length} / ${TEACHERS.length}`;
+  // Doimiy sarlavha: faol filter (filter yopiq bo'lsa ham ko'rinadi) va badge
+  const mkId = parseInt(g('f-maktab').value) || 0, fanV = g('f-fan').value, holV = g('f-holat').value;
+  const mkSel = g('f-maktab');
+  const mkNomi = mkId ? (mkSel.options[mkSel.selectedIndex]?.textContent || '') : 'Barcha maktablar';
+  const parts = [mkNomi, fanV || 'Barcha fanlar', T_HOLAT_NOMI[holV] || 'Barchasi'];
+  g('f-flt').textContent = parts.join(' · ');
+  g('f-flt').classList.toggle('on', !!(mkId || fanV || holV));
+  setTBadge('oq', (mkId ? 1 : 0) + (fanV ? 1 : 0) + (holV ? 1 : 0));
   g('t-empty').style.display = list.length ? 'none' : 'block';
   g('t-body').innerHTML = list.map((t, i) => {
     const sm = t.sinflar_by_maktab.length
@@ -289,7 +303,7 @@ function openTeacher(id) {
   g('t-modal').style.display = 'flex';
 }
 function closeTeacher() { g('t-modal').style.display = 'none'; }
-document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeTeacher(); if (typeof closeStudent === 'function') closeStudent(); } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { closeTFilter(); closeTeacher(); if (typeof closeStudent === 'function') closeStudent(); } });
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  DARS JADVALI (maktab kesimida)
@@ -318,6 +332,11 @@ function renderTimetable() {
   if (sinfNow) rows = rows.filter(j => j.sinflar.includes(sinfNow));
 
   g('j-count').textContent = `${rows.length} ta guruh`;
+  const jmSel = g('j-maktab'), jtSel = g('j-teacher');
+  const jmNomi = mk ? (jmSel.options[jmSel.selectedIndex]?.textContent || '') : 'Barcha maktablar';
+  g('j-flt').textContent = [jmNomi, sinfNow || 'Barcha sinflar', tF ? (jtSel.options[jtSel.selectedIndex]?.textContent || '') : "Barcha o'qituvchilar"].join(' · ');
+  g('j-flt').classList.toggle('on', !!(sinfNow || tF));
+  setTBadge('jd', (sinfNow ? 1 : 0) + (tF ? 1 : 0));
   g('j-grid').innerHTML = rows.length
     ? weekGrid(groupByDay(rows), { card: j =>
         `<div class="lesson"><div class="t">${h(vaqt(j))}</div>
@@ -327,8 +346,52 @@ function renderTimetable() {
 }
 
 function showView(v) {
+  closeTFilter();
   g('view-oq').style.display = v === 'oq' ? 'block' : 'none';
   g('view-jd').style.display = v === 'jd' ? 'block' : 'none';
+  g('t-top-oq').style.display = v === 'oq' ? 'block' : 'none';
+  g('t-top-jd').style.display = v === 'jd' ? 'block' : 'none';
   g('tab-btn-oq').classList.toggle('active', v === 'oq');
   g('tab-btn-jd').classList.toggle('active', v === 'jd');
 }
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  O'qituvchilar: filter paneli va qidiruv (Adminlar / To'lovlardagi bilan bir xil)
+// ═══════════════════════════════════════════════════════════════════════════
+function toggleTFilter(ev, which) {
+  if (ev) ev.stopPropagation();
+  const p = g('t-panel-' + which), open = p.style.display === 'none';
+  closeTFilter();
+  if (open) {
+    p.style.display = 'flex';
+    g('t-filter-btn-' + which).setAttribute('aria-expanded', 'true');
+  }
+}
+function closeTFilter() {
+  ['oq', 'jd'].forEach(w => {
+    g('t-panel-' + w).style.display = 'none';
+    g('t-filter-btn-' + w).setAttribute('aria-expanded', 'false');
+  });
+}
+function resetTeacherFilter() {
+  g('f-maktab').value = ''; g('f-fan').value = ''; g('f-holat').value = '';
+  renderTeachers();
+}
+function resetTimetableFilter() {
+  g('j-sinf').value = ''; g('j-teacher').value = '';
+  renderTimetable();
+}
+function onTeacherSearch() {
+  g('f-q-clear').style.display = g('f-q').value ? 'block' : 'none';
+  renderTeachers();
+}
+function clearTeacherSearch() {
+  g('f-q').value = '';
+  g('f-q-clear').style.display = 'none';
+  g('f-q').focus();
+  renderTeachers();
+}
+// Panel tashqarisiga bosilsa — yopiladi
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.tol-bar')) closeTFilter();
+});

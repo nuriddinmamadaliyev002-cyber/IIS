@@ -66,6 +66,7 @@
        aks holda kartalar #sec-tol dan toshib, sticky blok sahifa bilan birga ketib qoladi. */
     @media (min-width:769px){ .dir-scroll.tol-scroll { max-height:calc(100vh - 400px); } }
     .tol-head { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:10px; padding:11px 16px; background:#fff; border:1.5px solid var(--border); border-radius:14px; font-size:13px; font-weight:700; color:#111827; }
+    .tol-head > span:first-child { white-space:nowrap; }
     .tol-head .tol-cnt { font-size:12px; font-weight:500; color:#6b7280; white-space:nowrap; }
     .tol-meta { display:flex; flex-direction:column; align-items:flex-end; gap:2px; min-width:0; text-align:right; }
     .tol-head .tol-flt { font-size:11.5px; font-weight:600; color:#6b7280; max-width:100%; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -88,6 +89,16 @@
     .tol-panel-actions { display:flex; gap:8px; justify-content:flex-end; }
     .tol-panel-actions button { padding:9px 16px; border-radius:10px; border:1.5px solid var(--border); background:#fff; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; color:#374151; }
     .tol-panel-actions button.primary { background:#2563eb; border-color:#2563eb; color:#fff; }
+    .tol-sticky .dir-tabs { margin-bottom:10px; }
+    @media (max-width:768px){
+      .tol-sticky .dir-tabs { margin-bottom:8px; gap:6px; flex-wrap:nowrap; }
+      .tol-sticky .dir-tab { padding:7px 12px; font-size:12.5px; }
+      /* O'qituvchilar: 5-6 ta ko'rsatkich — tepada joy kam egallashi uchun bitta gorizontal qator */
+      #t-sticky .dir-stats { display:flex; flex-wrap:nowrap; overflow-x:auto; gap:6px; scrollbar-width:none; -webkit-overflow-scrolling:touch; }
+      #t-sticky .dir-stats::-webkit-scrollbar { display:none; }
+      #t-sticky .dir-stat { flex:0 0 auto; min-width:112px; }
+      #t-sticky .dir-stat .lbl { white-space:nowrap; }
+    }
     @media (max-width:768px){
       .tol-sticky { margin:-12px -12px 12px; padding:8px 12px 8px; }
       .tol-sticky .dir-stats { display:grid; grid-template-columns:repeat(4,1fr); gap:6px; margin-bottom:8px; }
@@ -300,27 +311,64 @@
 
     <!-- ═══════════ O'QITUVCHILAR ═══════════ -->
     <div id="sec-teach" class="dsec-view" style="display:none;">
-      <div class="dir-stats" id="dir-stats"></div>
+      <!-- Doimiy tepada turadigan qism: ko'rsatkichlar + bo'lim tablari + filter + qidiruv + holat qatori -->
+      <div class="tol-sticky" id="t-sticky">
+        <div class="dir-stats" id="dir-stats"></div>
+        <div class="dir-tabs">
+          <button class="dir-tab active" id="tab-btn-oq" onclick="showView('oq')">O'qituvchilar</button>
+          <button class="dir-tab" id="tab-btn-jd" onclick="showView('jd')">📅 Dars jadvali</button>
+        </div>
 
-      <div class="dir-tabs">
-        <button class="dir-tab active" id="tab-btn-oq" onclick="showView('oq')">O'qituvchilar</button>
-        <button class="dir-tab" id="tab-btn-jd" onclick="showView('jd')">📅 Dars jadvali</button>
+        <!-- O'qituvchilar ro'yxati: filter + qidiruv -->
+        <div id="t-top-oq">
+          <div class="tol-bar">
+            <button type="button" class="tol-filter-btn" id="t-filter-btn-oq" onclick="toggleTFilter(event,'oq')" aria-expanded="false">
+              <span>⚙️ Filter</span><span class="tol-badge" id="t-filter-badge-oq" style="display:none;"></span>
+            </button>
+            <div class="tol-search">
+              <input type="text" id="f-q" placeholder="🔍 Ism, fan yoki telefon…" oninput="onTeacherSearch()" autocomplete="off">
+              <button type="button" class="tol-clear" id="f-q-clear" onclick="clearTeacherSearch()" aria-label="Tozalash" style="display:none;">✕</button>
+            </div>
+            <div class="tol-panel" id="t-panel-oq" style="display:none;" onclick="event.stopPropagation()">
+              <label>🏫 Maktab<select id="f-maktab" onchange="renderTeachers()"><option value="">🏫 Barcha maktablar</option></select></label>
+              <label>📚 Fan<select id="f-fan" onchange="renderTeachers()"><option value="">Barcha fanlar</option></select></label>
+              <label>📋 Holat<select id="f-holat" onchange="renderTeachers()">
+                <option value="">Barchasi</option>
+                <option value="jadvalsiz">⚠️ Jadvali yo'q</option>
+                <option value="maktabsiz">⚠️ Maktabi yo'q</option>
+                <option value="tgsiz">📱 Telegram bog'lanmagan</option>
+              </select></label>
+              <div class="tol-panel-actions">
+                <button type="button" onclick="resetTeacherFilter()">Tozalash</button>
+                <button type="button" class="primary" onclick="closeTFilter()">Tayyor</button>
+              </div>
+            </div>
+          </div>
+          <div class="tol-head"><span>🧑 O'qituvchilar</span><span class="tol-meta"><span class="tol-cnt" id="f-count"></span><span class="tol-flt" id="f-flt"></span></span></div>
+        </div>
+
+        <!-- Dars jadvali: filter -->
+        <div id="t-top-jd" style="display:none;">
+          <div class="tol-bar">
+            <button type="button" class="tol-filter-btn" id="t-filter-btn-jd" onclick="toggleTFilter(event,'jd')" aria-expanded="false">
+              <span>⚙️ Filter</span><span class="tol-badge" id="t-filter-badge-jd" style="display:none;"></span>
+            </button>
+            <div class="tol-panel" id="t-panel-jd" style="display:none;" onclick="event.stopPropagation()">
+              <label>🏫 Maktab<select id="j-maktab" onchange="renderTimetable()"></select></label>
+              <label>🎓 Sinf<select id="j-sinf" onchange="renderTimetable()"><option value="">Barcha sinflar</option></select></label>
+              <label>👩‍🏫 O'qituvchi<select id="j-teacher" onchange="renderTimetable()"><option value="">Barcha o'qituvchilar</option></select></label>
+              <div class="tol-panel-actions">
+                <button type="button" onclick="resetTimetableFilter()">Tozalash</button>
+                <button type="button" class="primary" onclick="closeTFilter()">Tayyor</button>
+              </div>
+            </div>
+          </div>
+          <div class="tol-head"><span>📅 Dars jadvali</span><span class="tol-meta"><span class="tol-cnt" id="j-count"></span><span class="tol-flt" id="j-flt"></span></span></div>
+        </div>
       </div>
 
       <div id="view-oq" class="dir-card">
-        <div class="dir-bar">
-          <input type="text" id="f-q" placeholder="🔍 Ism, fan yoki telefon…" oninput="renderTeachers()">
-          <select id="f-maktab" onchange="renderTeachers()"><option value="">🏫 Barcha maktablar</option></select>
-          <select id="f-fan" onchange="renderTeachers()"><option value="">Barcha fanlar</option></select>
-          <select id="f-holat" onchange="renderTeachers()">
-            <option value="">Barchasi</option>
-            <option value="jadvalsiz">⚠️ Jadvali yo'q</option>
-            <option value="maktabsiz">⚠️ Maktabi yo'q</option>
-            <option value="tgsiz">📱 Telegram bog'lanmagan</option>
-          </select>
-          <span id="f-count" style="font-size:12px;color:#6b7280;"></span>
-        </div>
-        <div class="dir-scroll">
+        <div class="dir-scroll" style="max-height:none;">
           <table class="dtbl">
             <thead><tr>
               <th>#</th><th>F.I.</th><th>Fan</th><th>Maktab va sinflar</th>
@@ -334,12 +382,6 @@
       </div>
 
       <div id="view-jd" class="dir-card" style="display:none;">
-        <div class="dir-bar">
-          <select id="j-maktab" onchange="renderTimetable()"></select>
-          <select id="j-sinf" onchange="renderTimetable()"><option value="">Barcha sinflar</option></select>
-          <select id="j-teacher" onchange="renderTimetable()"><option value="">Barcha o'qituvchilar</option></select>
-          <span id="j-count" style="font-size:12px;color:#6b7280;"></span>
-        </div>
         <div class="xscroll"><table class="wk" id="j-grid"></table></div>
       </div>
     </div>
