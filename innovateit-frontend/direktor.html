@@ -80,6 +80,10 @@
     .tol-filter-btn { flex:0 0 auto; display:inline-flex; align-items:center; gap:6px; padding:0 14px; height:40px; border:1.5px solid var(--border); border-radius:10px; background:#fff; font-size:13.5px; font-weight:600; color:#374151; font-family:inherit; cursor:pointer; }
     .tol-filter-btn[aria-expanded="true"] { border-color:#2563eb; color:#2563eb; background:#eff4ff; }
     .tol-badge { min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:#2563eb; color:#fff; font-size:11px; font-weight:700; line-height:18px; text-align:center; }
+    .tol-xl { flex:0 0 auto; height:40px; padding:0 14px; border:none; border-radius:10px; background:#16a34a; color:#fff; font-size:13.5px; font-weight:600; font-family:inherit; cursor:pointer; white-space:nowrap; }
+    .tol-xl:hover { opacity:.9; }
+    .tol-xl:disabled { opacity:.6; cursor:wait; }
+    @media (max-width:768px){ .tol-xl { padding:0 12px; } .tol-xl .t { display:none; } }
     .tol-search { position:relative; flex:1; min-width:0; max-width:420px; }
     .tol-search input { width:100%; height:40px; box-sizing:border-box; padding:0 34px 0 12px; border:1.5px solid var(--border); border-radius:10px; font-size:13px; font-family:inherit; background:#fff; min-width:0; max-width:none; }
     .tol-clear { position:absolute; right:6px; top:50%; transform:translateY(-50%); width:26px; height:26px; border:none; border-radius:50%; background:#e5e7eb; color:#374151; font-size:12px; cursor:pointer; line-height:26px; padding:0; }
@@ -231,6 +235,7 @@
             <input type="text" id="b-q" placeholder="🔍 O'quvchi, sinf yoki telefon…" oninput="onTolSearch()" autocomplete="off">
             <button type="button" class="tol-clear" id="b-q-clear" onclick="clearTolSearch()" aria-label="Tozalash" style="display:none;">✕</button>
           </div>
+          <button type="button" class="tol-xl" id="b-xl-btn" onclick="exportTolovlarExcel()" title="Hozirgi filtrga mos to'lovlarni Excel (.xlsx) qilib yuklab olish" aria-label="Excel yuklab olish">📥<span class="t"> Excel</span></button>
           <div class="tol-panel" id="b-panel" style="display:none;" onclick="event.stopPropagation()">
             <label>📅 Oy<select id="b-oy" onchange="loadTolovlar(this.value)"></select></label>
             <label>🏫 Maktab<select id="b-maktab" onchange="renderTolovlar()"><option value="">🏫 Barcha maktablar</option></select></label>
@@ -457,7 +462,7 @@
 <script src="js/direktor.js"></script>
 <script src="js/direktor-oquvchilar.js"></script>
 <script src="js/direktor-adminlar.js"></script>
-<script src="js/direktor-buxgalteriya.js"></script>
+<script src="js/direktor-buxgalteriya.js?v=2"></script>
 <script>
 // ⚠️ Haqiqiy bot username'i (sales.html dagi bilan bir xil)
 const BOT_USERNAME = 'InnovateIT_School_bot';

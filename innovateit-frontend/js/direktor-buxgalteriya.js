@@ -212,3 +212,95 @@ document.addEventListener('click', (e) => {
   if (p && p.style.display !== 'none' && !e.target.closest('.tol-bar')) closeTolFilter();
 });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeTolFilter(); });
+
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  To'lovlar: hozirgi filtrga mos ro'yxatni Excel (.xlsx) ga yuklab olish
+//  (B_VIEW — ekranda ko'rinib turgan, filtrlangan yozuvlar)
+//  SheetJS faqat tugma bosilganda yuklanadi; yuklanmasa — CSV zaxira variant.
+// ═══════════════════════════════════════════════════════════════════════════
+const XLSX_CDN = 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js';
+
+function loadXlsxLib() {
+  if (window.XLSX) return Promise.resolve(window.XLSX);
+  return new Promise((resolve, reject) => {
+    const sc = document.createElement('script');
+    sc.src = XLSX_CDN;
+    sc.onload  = () => window.XLSX ? resolve(window.XLSX) : reject(new Error('XLSX yuklanmadi'));
+    sc.onerror = () => reject(new Error("Excel kutubxonasini yuklab bo'lmadi"));
+    document.head.appendChild(sc);
+  });
+}
+
+function xlSlug(t) {
+  return String(t || '').toLowerCase().replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '');
+}
+
+async function exportTolovlarExcel() {
+  if (!B_VIEW.length) { alert("Yuklab olish uchun to'lov yozuvi yo'q (filtrga mos o'quvchi topilmadi)"); return; }
+
+  const btn = g('b-xl-btn');
+  const oldHtml = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.textContent = '⏳'; }
+
+  const num = (v) => Number(v) || 0;
+  const header = ['№', 'Familiya', 'Ism', 'Telefon', 'Maktab', 'Sinf',
+                  "To'lov kerak", "To'landi", 'Qarz', "To'lov sanasi", 'Kutilayotgan sana', 'Izoh', 'Holati'];
+  const rows = B_VIEW.map((t, i) => {
+    const kerak = num(t.tolov_kerak), qildi = num(t.tolov_qildi), qarz = num(t.qarz);
+    const holat = kerak <= 0 ? '—' : (qarz > 0 ? (qildi > 0 ? 'Qisman to\'langan' : 'Qarzdor') : "To'liq to'langan");
+    return [i + 1, t.oquvchi_familiya || '', t.oquvchi_ism || '', t.telefon || '', t.maktab_nomi || '', t.sinf || '',
+            kerak, qildi, qarz, t.tolov_sanasi || '', t.ehtimoliy_tolov_sanasi || '', t.qaydnoma || '', holat];
+  });
+  const sK = B_VIEW.reduce((n, t) => n + num(t.tolov_kerak), 0);
+  const sT = B_VIEW.reduce((n, t) => n + num(t.tolov_qildi), 0);
+  const sQ = B_VIEW.reduce((n, t) => n + num(t.qarz), 0);
+  rows.push(['', `JAMI (${B_VIEW.length})`, '', '', '', '', sK, sT, sQ, '', '', '', '']);
+
+  // Maktablar kesimi (faqat hozirgi filtrga mos yozuvlar bo'yicha)
+  const byMk = new Map();
+  B_VIEW.forEach(t => {
+    const k = t.maktab_nomi || '—';
+    const m = byMk.get(k) || { soni: 0, kerak: 0, tolandi: 0, qarz: 0, qarzdor: 0 };
+    m.soni++; m.kerak += num(t.tolov_kerak); m.tolandi += num(t.tolov_qildi); m.qarz += num(t.qarz);
+    if (num(t.qarz) > 0) m.qarzdor++;
+    byMk.set(k, m);
+  });
+  const mkHeader = ['Maktab', "O'quvchi", "To'lov kerak", "To'landi", 'Qarz', 'Qarzdor soni', "To'lov %"];
+  const mkRows = [...byMk.entries()].sort((a, b) => maktabCmp(a[0], b[0]))
+    .map(([k, m]) => [k, m.soni, m.kerak, m.tolandi, m.qarz, m.qarzdor, pct(m.tolandi, m.kerak) / 100]);
+  mkRows.push(['JAMI', B_VIEW.length, sK, sT, sQ, B_VIEW.filter(t => num(t.qarz) > 0).length, pct(sT, sK) / 100]);
+
+  const mk = parseInt(g('b-maktab').value) || 0;
+  const mkSel = g('b-maktab');
+  const mkNomi = mk ? (mkSel.options[mkSel.selectedIndex]?.textContent || '') : '';
+  const holatSel = g('b-holat').value;
+  const name = ['tolovlar', TOL.oy, xlSlug(mkNomi), holatSel].filter(Boolean).join('_');
+
+  try {
+    const X  = await loadXlsxLib();
+    const ws = X.utils.aoa_to_sheet([header, ...rows]);
+    ws['!cols'] = [{ wch: 5 }, { wch: 18 }, { wch: 16 }, { wch: 18 }, { wch: 14 }, { wch: 8 },
+                   { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 18 }, { wch: 36 }, { wch: 18 }];
+    const ws2 = X.utils.aoa_to_sheet([mkHeader, ...mkRows]);
+    ws2['!cols'] = [{ wch: 18 }, { wch: 10 }, { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 12 }, { wch: 10 }];
+    // "To'lov %" ustuni foiz ko'rinishida
+    for (let r = 1; r <= mkRows.length; r++) {
+      const c = ws2[X.utils.encode_cell({ r, c: 6 })];
+      if (c) c.z = '0%';
+    }
+    const wb = X.utils.book_new();
+    X.utils.book_append_sheet(wb, ws, "To'lovlar");
+    X.utils.book_append_sheet(wb, ws2, 'Maktablar kesimi');
+    X.writeFile(wb, name + '.xlsx');
+  } catch (e) {
+    const csv = [header, ...rows].map(r => r.map(c => `"${String(c).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const url = URL.createObjectURL(new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' }));
+    const a = document.createElement('a');
+    a.href = url; a.download = name + '.csv';
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = oldHtml; }
+  }
+}
