@@ -14,6 +14,10 @@ let STAT_FILTER = '';  // 'all' | 'toliq' | 'qarzdor' | 'nofaol' | 'empty'
 // ─── Yordamchi ───────────────────────────────────
 const g = id => document.getElementById(id);
 
+// Telefon (≤768px — mobile-nav.js bilan bir xil chegara): o'quvchilar jadval emas, KARTA ko'rinishida chiqadi
+const MOBILE_MQ = window.matchMedia('(max-width: 768px)');
+const isMobileCards = () => MOBILE_MQ.matches;
+
 // ─── "Qabul YYYY-YY" pseudo-oy — Avgust bilan Sentabr orasiga qistiriladi ──
 //  Bu yerda haqiqiy oy emas, balki sales moduldan "ro'yxatga olindi" bo'lgan
 //  (hali to'lov kuzatuvi boshlanmagan) o'quvchilar ro'yxati ko'rsatiladi.
@@ -152,20 +156,27 @@ function fixMainMargin() {
   const wrap     = g('bux-table-wrap');
   if (!statsBar || !main || !ctrlBar) return;
 
+  // Mobil: tepa qism .bux-sticky ichida oddiy oqimda (sticky) turadi, kartalar
+  // uning ostidan tabiiy oqadi — JS orqali joylashtirish kerak emas.
+  if (isMobileCards()) {
+    statsBar.style.top = '';
+    main.style.marginTop = '';
+    if (wrap) wrap.style.overflowX = '';
+    return;
+  }
+
+  // Desktop: ctrl-bar va stats-bar position:fixed. #app ning o'zida topbar balandligicha
+  // padding-top bor, shuning uchun margin'ni .bux-main ning tabiiy joyiga nisbatan hisoblaymiz
+  // (aks holda jadval ustida topbar balandligicha ortiqcha bo'sh joy qoladi).
   const ctrlBottom  = ctrlBar.getBoundingClientRect().bottom;
   const statsHeight = statsBar.offsetHeight;
 
-  statsBar.style.top   = ctrlBottom + 'px';
-  main.style.marginTop = (ctrlBottom + statsHeight + 8) + 'px';
+  statsBar.style.top = ctrlBottom + 'px';
+  main.style.marginTop = '0px';
+  const naturalTop = main.getBoundingClientRect().top + window.scrollY;
+  main.style.marginTop = Math.max(0, ctrlBottom + statsHeight + 8 - naturalTop) + 'px';
 
-  // Mobilda jadval gorizontal scroll, desktop — hidden
-  if (wrap) {
-    if (window.innerWidth <= 600) {
-      wrap.style.overflowX = 'auto';
-    } else {
-      wrap.style.overflowX = '';
-    }
-  }
+  if (wrap) wrap.style.overflowX = '';
 }
 
 // ─── Fixed header (scroll da muzlab turishi uchun) ────
@@ -287,8 +298,10 @@ function toggleCol(col) {
 }
 
 function applyColVisibility() {
+  // Kartada hamma maydon ko'rinadi (ustun berkitish faqat desktop jadvaliga tegishli)
+  const showAll = isMobileCards();
   Object.keys(COL_LABELS).forEach(col => {
-    const display = hiddenCols.has(col) ? 'none' : '';
+    const display = (!showAll && hiddenCols.has(col)) ? 'none' : '';
     document.querySelectorAll(`th.col-${col}, td.col-${col}`).forEach(el => {
       el.style.display = display;
     });
@@ -479,7 +492,46 @@ function applyFilters() {
   buildFilterOptions();
   renderTable();
   updateStats();
+  updateBuxFilterBadge();
 }
+
+// ─── Mobil: Filter paneli (Maktab / Sinf) ─────────
+function updateBuxFilterBadge() {
+  const n = (g('filter-maktab').value ? 1 : 0) + (g('filter-sinf').value ? 1 : 0);
+  const b = g('bux-fbadge');
+  if (b) { b.textContent = n; b.style.display = n ? 'inline-block' : 'none'; }
+  const btn = g('bux-filter-btn');
+  if (btn) btn.classList.toggle('on', n > 0);
+}
+function toggleBuxFilter(ev) {
+  if (ev) ev.stopPropagation();
+  const p = g('bux-fpanel');
+  const open = !p.classList.contains('open');
+  p.classList.toggle('open', open);
+  g('bux-filter-btn').setAttribute('aria-expanded', open ? 'true' : 'false');
+}
+function closeBuxFilter() {
+  const p = g('bux-fpanel');
+  if (p) p.classList.remove('open');
+  const btn = g('bux-filter-btn');
+  if (btn) btn.setAttribute('aria-expanded', 'false');
+}
+function resetBuxFilter() {
+  g('filter-maktab').value = '';
+  g('filter-sinf').value = '';
+  applyFilters();
+}
+// Panel tashqarisiga bosilsa yoki Esc bosilsa — yopiladi
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.ctrl-bar')) closeBuxFilter();
+});
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeBuxFilter(); });
+// Ekran jadval ↔ karta rejimi o'rtasida o'tganda ko'rinishni yangilash
+MOBILE_MQ.addEventListener('change', () => {
+  closeBuxFilter();
+  applyColVisibility();
+  fixMainMargin();
+});
 
 // ─── Stat card filter ────────────────────────────
 function setStatFilter(type) {
@@ -541,33 +593,33 @@ function renderTable() {
       ? `<span class="badge-nofaol-row" title="Chiqgan sana: ${s.chiqgan || '—'}">🚫 ${s.chiqgan || 'Nofaol'}</span> `
       : '';
     return `<tr id="row-${i}" data-idx="${i}" ${rowClass ? `class="${rowClass}"` : ""}>
-      <td class="col-num">${i+1}</td>
+      <td class="col-num" data-label="№">${i+1}</td>
       <td class="col-name">${nofaolBadge}<span class="name-familiya">${s.familiya}</span><span class="name-ism">${s.ism}</span></td>
-      <td class="col-maktab">${s.maktab || '—'}</td>
-      <td class="col-sinf">${s.sinf || '—'}</td>
-      <td class="col-tel">${s.telefon || '—'}${s.telefon2 ? `<br><span class="tel2">${s.telefon2}</span>` : ''}</td>
-      <td class="col-qayd">
+      <td class="col-maktab" data-label="Maktab">${s.maktab || '—'}</td>
+      <td class="col-sinf" data-label="Sinf">${s.sinf || '—'}</td>
+      <td class="col-tel" data-label="Telefon">${s.telefon || '—'}${s.telefon2 ? `<br><span class="tel2">${s.telefon2}</span>` : ''}</td>
+      <td class="col-qayd" data-label="Qaydnoma">
         <textarea class="bx-qayd-input" rows="1" spellcheck="false"
           placeholder="Eslatma…" onblur="saveQaydnomaBux(${i}, this.value)"
           oninput="autosizeQaydBux(this)"
           style="width:100%;min-width:150px;padding:5px 6px;border:none;border-radius:8px;font-size:12.5px;font-family:inherit;background:transparent;color:#1a1917;color-scheme:light;resize:none;overflow:hidden;white-space:pre-wrap;word-break:break-word;line-height:1.35;display:block;outline:none;box-shadow:none;">${escBxQayd(t?.qaydnoma || '')}</textarea>
       </td>
-      <td class="col-ehtimoliy editable" data-field="ehtimoliy_tolov_sanasi" onclick="cellClick(${i},'ehtimoliy_tolov_sanasi',event)" style="cursor:pointer;">
+      <td class="col-ehtimoliy editable" data-label="Ehtimoliy to'lov" data-field="ehtimoliy_tolov_sanasi" onclick="cellClick(${i},'ehtimoliy_tolov_sanasi',event)" style="cursor:pointer;">
         <span id="disp-ehtimoliy_tolov_sanasi-${i}">${t?.ehtimoliy_tolov_sanasi ? tolovSanasi(t.ehtimoliy_tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
       </td>
-      <td class="col-gap editable" data-field="gaplashilgan_vaqt" onclick="cellClick(${i},'gaplashilgan_vaqt',event)">
+      <td class="col-gap editable" data-label="Gaplashilgan" data-field="gaplashilgan_vaqt" onclick="cellClick(${i},'gaplashilgan_vaqt',event)">
         <span id="disp-gaplashilgan_vaqt-${i}">${t?.gaplashilgan_vaqt ? tolovSanasi(t.gaplashilgan_vaqt) : '<span class="amount-0">—</span>'}</span>
       </td>
-      <td class="col-kerak editable" data-field="tolov_kerak" onclick="cellClick(${i},'tolov_kerak',event)">
+      <td class="col-kerak editable" data-label="To'lov kerak" data-field="tolov_kerak" onclick="cellClick(${i},'tolov_kerak',event)">
         <span id="disp-tolov_kerak-${i}">${formatSum(kerak,'kerak')}</span>
       </td>
-      <td class="col-qildi editable" data-field="tolov_qildi" onclick="cellClick(${i},'tolov_qildi',event)">
+      <td class="col-qildi editable" data-label="To'lov qildi" data-field="tolov_qildi" onclick="cellClick(${i},'tolov_qildi',event)">
         <span id="disp-tolov_qildi-${i}">${formatSum(qildi,'qildi')}</span>
       </td>
-      <td class="col-sana editable" data-field="tolov_sanasi" onclick="cellClick(${i},'tolov_sanasi',event)" style="cursor:pointer;">
+      <td class="col-sana editable" data-label="To'lov sanasi" data-field="tolov_sanasi" onclick="cellClick(${i},'tolov_sanasi',event)" style="cursor:pointer;">
         <span id="disp-tolov_sanasi-${i}">${t?.tolov_sanasi ? tolovSanasi(t.tolov_sanasi) : '<span class="amount-0">—</span>'}</span>
       </td>
-      <td class="col-holat" id="holat-${i}">${tolovHolati(kerak, qildi)}</td>
+      <td class="col-holat" data-label="Holat" id="holat-${i}">${tolovHolati(kerak, qildi)}</td>
     </tr>`;
   }).join('');
 
@@ -632,8 +684,8 @@ function cellClick(idx, field, ev) {
 
   const isSameCell = selectedCell && selectedCell.idx === idx && selectedCell.field === field;
 
-  if (isSameCell) {
-    // 2-chi bosish — tahrirlashga kirish
+  if (isSameCell || isMobileCards()) {
+    // 2-chi bosish (telefonda — birinchi bosishdayoq) — tahrirlashga kirish
     selectedCell = null;
     editCell(idx, field, ev);
   } else {

@@ -61,6 +61,9 @@
     </div>
   </div>
 
+  <!-- Doimiy tepada turadigan qism (mobilda sticky; desktopda ichidagilar o'zi fixed) -->
+  <div class="bux-sticky" id="bux-sticky">
+
   <!-- CONTROLS BAR -->
   <div class="ctrl-bar">
     <!-- Oy navigatsiyasi -->
@@ -70,13 +73,30 @@
       <button class="oy-nav-btn" onclick="changeOy(1)"  title="Keyingi oy">›</button>
     </div>
 
-    <!-- Filtrlar -->
-    <select class="filter-select" id="filter-maktab" onchange="applyFilters()">
-      <option value="">🏫 Barcha maktablar</option>
-    </select>
-    <select class="filter-select" id="filter-sinf" onchange="applyFilters()">
-      <option value="">📚 Barcha sinflar</option>
-    </select>
+    <!-- Mobil: Filter tugmasi (desktopda yashirin) -->
+    <button type="button" class="bux-filter-btn" id="bux-filter-btn" onclick="toggleBuxFilter(event)" aria-expanded="false" aria-label="Filter">
+      <span>⚙️</span><span class="bux-fbadge" id="bux-fbadge" style="display:none;"></span>
+    </button>
+
+    <!-- Filtrlar (desktopda oddiy qatorda; mobilda Filter tugmasi ochadigan panel) -->
+    <div class="bux-fpanel" id="bux-fpanel" onclick="event.stopPropagation()">
+      <label class="bux-fld"><span class="bux-fcap">🏫 Maktab</span>
+        <select class="filter-select" id="filter-maktab" onchange="applyFilters()">
+          <option value="">🏫 Barcha maktablar</option>
+        </select>
+      </label>
+      <label class="bux-fld"><span class="bux-fcap">📚 Sinf</span>
+        <select class="filter-select" id="filter-sinf" onchange="applyFilters()">
+          <option value="">📚 Barcha sinflar</option>
+        </select>
+      </label>
+      <button type="button" class="bux-fpanel-init" onclick="closeBuxFilter(); initOy()">▶ Oyni boshlash</button>
+      <div class="bux-fpanel-actions">
+        <button type="button" onclick="resetBuxFilter()">Tozalash</button>
+        <button type="button" class="primary" onclick="closeBuxFilter()">Tayyor</button>
+      </div>
+    </div>
+
     <div class="search-wrap">
       <input class="search-input" type="text" id="filter-search"
         placeholder="🔍 Ism / telefon…" oninput="applyFilters(); updateSearchClear()">
@@ -171,6 +191,7 @@
 
   </div>
 
+  </div><!-- /bux-sticky -->
 
   <!-- TABLE -->
   <div class="bux-main">
