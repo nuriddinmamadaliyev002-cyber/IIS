@@ -1,0 +1,134 @@
+/* ═══════════════════════════════════════════════════
+   InnovateIT — Chat (o'quvchi ↔ o'qituvchi)
+   js/chat.js bilan birga; style.css dagi o'zgaruvchilardan foydalanadi.
+   Sinflar `iitc-` prefiksi bilan — boshqa stillar bilan to'qnashmaydi.
+   ═══════════════════════════════════════════════════ */
+
+/* ── O'qilmaganlar belgisi (tab tugmasi va hamburger menyuda) ── */
+.iitc-badge {
+  display: none; align-items: center; justify-content: center;
+  min-width: 18px; height: 18px; padding: 0 5px; margin-left: 6px;
+  border-radius: 9px; background: #dc2626; color: #fff;
+  font-size: 11px; font-weight: 700; line-height: 1; vertical-align: middle;
+  font-family: 'DM Mono', monospace;
+}
+
+/* ── Asosiy konteyner ── */
+.iitc {
+  display: grid; grid-template-columns: 320px minmax(0, 1fr);
+  height: clamp(440px, calc(100vh - 210px), 720px);
+  height: clamp(440px, calc(100dvh - 210px), 720px);
+  background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
+  overflow: hidden; box-shadow: var(--shadow);
+}
+
+/* ── Chap: suhbatlar ro'yxati ── */
+.iitc-side { display: flex; flex-direction: column; min-width: 0; min-height: 0; border-right: 1.5px solid var(--border); background: #fbfaf8; }
+.iitc-side-head { padding: 12px; border-bottom: 1px solid var(--border); background: #fff; }
+.iitc-search {
+  width: 100%; box-sizing: border-box; padding: 9px 12px; border: 1.5px solid var(--border);
+  border-radius: 10px; font: inherit; font-size: 13px; background: var(--bg); color: var(--text); outline: none;
+}
+.iitc-search:focus { border-color: var(--iit-sky-darker); background: #fff; }
+.iitc-list { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+
+.iitc-item {
+  display: flex; align-items: center; gap: 11px; width: 100%; padding: 11px 12px;
+  border: 0; border-bottom: 1px solid #efede7; background: transparent; cursor: pointer;
+  text-align: left; font: inherit; color: var(--text); transition: background .12s;
+}
+.iitc-item:hover { background: #f3f1ec; }
+.iitc-item.active { background: var(--accent-soft); box-shadow: inset 3px 0 0 var(--iit-indigo-deep); }
+.iitc-ava { width: 42px; height: 42px; border-radius: 50%; object-fit: cover; flex-shrink: 0; background: #e8eef7; }
+.iitc-item-mid { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.iitc-item-name { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iitc-item-prev { font-size: 12.5px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iitc-muted { color: #9a978d; }
+.iitc-item-end { display: flex; flex-direction: column; align-items: flex-end; gap: 5px; flex-shrink: 0; min-width: 34px; }
+.iitc-item-time { font-size: 11px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.iitc-unread {
+  min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; box-sizing: border-box;
+  background: var(--iit-indigo-deep); color: #fff; font-size: 11px; font-weight: 700;
+  display: inline-flex; align-items: center; justify-content: center; font-family: 'DM Mono', monospace;
+}
+
+.iitc-note { padding: 28px 18px; text-align: center; color: var(--muted); font-size: 13px; line-height: 1.6; }
+.iitc-link { background: none; border: 0; padding: 0; color: var(--iit-indigo-deep); font: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; }
+
+/* ── O'ng: suhbat ── */
+.iitc-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: #f7f6f2; }
+.iitc-empty { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; color: var(--muted); padding: 24px; text-align: center; }
+.iitc-empty-ico { font-size: 42px; line-height: 1; }
+.iitc-empty-t { font-size: 15px; font-weight: 600; color: var(--text); }
+.iitc-empty-s { font-size: 12.5px; }
+
+.iitc-conv { flex: 1; flex-direction: column; min-height: 0; }
+.iitc-conv-head {
+  display: flex; align-items: center; gap: 11px; padding: 10px 14px; background: #fff;
+  border-bottom: 1.5px solid var(--border); flex-shrink: 0;
+}
+.iitc-conv-ava { width: 38px; height: 38px; border-radius: 50%; object-fit: cover; background: #e8eef7; flex-shrink: 0; }
+.iitc-conv-who { min-width: 0; }
+.iitc-conv-name { font-size: 14.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iitc-conv-sub { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iitc-back {
+  display: none; width: 34px; height: 34px; border-radius: 50%; border: 1.5px solid var(--border);
+  background: #fff; font-size: 20px; line-height: 1; color: var(--text); cursor: pointer; flex-shrink: 0; padding: 0 0 2px;
+}
+
+.iitc-msgs { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; min-height: 0; }
+.iitc-day { text-align: center; margin: 10px 0 6px; }
+.iitc-day span { display: inline-block; padding: 3px 11px; border-radius: 10px; background: #e7e4dc; color: #6b685f; font-size: 11.5px; font-weight: 600; }
+.iitc-older {
+  align-self: center; margin: 2px 0 8px; padding: 6px 14px; border-radius: 10px; border: 1.5px solid var(--border);
+  background: #fff; color: var(--iit-indigo-deep); font: inherit; font-size: 12.5px; font-weight: 600; cursor: pointer;
+}
+.iitc-older:hover { background: var(--accent-soft); }
+
+.iitc-row { display: flex; }
+.iitc-row.mine { justify-content: flex-end; }
+.iitc-bubble {
+  max-width: min(78%, 520px); padding: 8px 12px 6px; border-radius: 16px; font-size: 14px; line-height: 1.42;
+  box-shadow: 0 1px 1px rgba(0,0,0,.06);
+}
+.iitc-row.theirs .iitc-bubble { background: #fff; border: 1px solid var(--border); border-bottom-left-radius: 5px; color: var(--text); }
+.iitc-row.mine   .iitc-bubble { background: var(--iit-indigo-deep); color: #fff; border-bottom-right-radius: 5px; }
+.iitc-bubble.failed { background: #fef2f2 !important; color: #991b1b !important; border: 1px solid #fca5a5; }
+.iitc-text { white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.iitc-meta { margin-top: 3px; font-size: 10.5px; text-align: right; opacity: .72; font-family: 'DM Mono', monospace; white-space: nowrap; }
+.iitc-row.mine .iitc-link { color: #fff; }
+.iitc-bubble.failed .iitc-link { color: #991b1b; }
+.iitc-tick.read { color: #7dd3fc; font-weight: 700; opacity: 1; }
+
+.iitc-err { padding: 7px 14px; background: #fef2f2; color: #b91c1c; font-size: 12.5px; border-top: 1px solid #fecaca; flex-shrink: 0; }
+
+.iitc-form { display: flex; align-items: flex-end; gap: 9px; padding: 10px 12px; background: #fff; border-top: 1.5px solid var(--border); flex-shrink: 0; }
+.iitc-input {
+  flex: 1; min-width: 0; resize: none; max-height: 120px; padding: 10px 13px; border: 1.5px solid var(--border);
+  border-radius: 14px; font: inherit; font-size: 14px; line-height: 1.4; background: var(--bg); color: var(--text); outline: none;
+}
+.iitc-input:focus { border-color: var(--iit-sky-darker); background: #fff; }
+.iitc-send {
+  width: 42px; height: 42px; border-radius: 50%; border: 0; flex-shrink: 0; cursor: pointer;
+  background: var(--iit-indigo-deep); color: #fff; font-size: 17px; line-height: 1;
+  display: inline-flex; align-items: center; justify-content: center; transition: opacity .15s, transform .1s;
+}
+.iitc-send:hover:not(:disabled) { transform: scale(1.05); }
+.iitc-send:disabled { opacity: .4; cursor: default; }
+
+/* ── Telefon / tor ekran: bir vaqtda bitta panel ── */
+@media (max-width: 767px) {
+  .iitc { grid-template-columns: 1fr; height: clamp(420px, calc(100vh - 190px), 760px); height: clamp(420px, calc(100dvh - 190px), 760px); border-radius: 12px; }
+  .iitc[data-view="list"] .iitc-main { display: none; }
+  .iitc[data-view="conv"] .iitc-side { display: none; }
+  .iitc-side { border-right: 0; }
+  .iitc-back { display: inline-flex; align-items: center; justify-content: center; }
+  .iitc-bubble { max-width: 86%; }
+  .iitc-msgs { padding: 12px; }
+  /* iOS inputga fokus berganda sahifani kattalashtirmasin */
+  .iitc-input, .iitc-search { font-size: 16px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .iitc-send, .iitc-item { transition: none; }
+}

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/hover.css">
   <link rel="stylesheet" href="css/oqituvchi.css?v=7">
+  <link rel="stylesheet" href="css/chat.css">
   <link rel="stylesheet" href="css/mobile-nav.css">
 </head>
 <body>
@@ -73,6 +74,7 @@
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="tahrir" onclick="switchTab('tahrir')">✏️ Guruhlarni tahrirlash</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="chat" onclick="switchTab('chat')">💬 Chat <span class="iitc-badge" aria-label="O'qilmagan xabarlar"></span></button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
     </div>
   </div>
@@ -84,6 +86,7 @@
     <button class="oq-tab-btn" id="tab-btn-tahrir" onclick="switchTab('tahrir')">✏️ Guruhlarni tahrirlash</button>
     <button class="oq-tab-btn" id="tab-btn-jadval" onclick="switchTab('jadval')">📅 Dars jadvali</button>
     <button class="oq-tab-btn" id="tab-btn-soat" onclick="switchTab('soat')">📊 Dars soatlari</button>
+    <button class="oq-tab-btn" id="tab-btn-chat" onclick="switchTab('chat')">💬 Chat <span class="iitc-badge" aria-label="O'qilmagan xabarlar"></span></button>
   </div>
 
   <div class="oq-content">
@@ -354,6 +357,12 @@
 
     </div>
 
+    <!-- ══ CHAT TAB (biriktirilgan o'quvchilar bilan yozishma) ══ -->
+    <div class="oq-tab-page" id="tab-chat">
+      <div class="oq-section-title">💬 O'quvchilar bilan chat</div>
+      <div id="chat-mount"></div>
+    </div>
+
   </div>
 </div>
 
@@ -424,6 +433,7 @@
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_teacher_token';</script>
 <script src="js/api.js"></script>
+<script src="js/chat.js"></script>
 <script src="js/oqituvchi.js?v=20261009"></script>
 <script src="js/mobile-nav.js"></script>
 <script>

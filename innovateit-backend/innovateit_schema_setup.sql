@@ -630,6 +630,26 @@ CREATE TABLE IF NOT EXISTS direktorlar (
 );
 
 
+-- ─── 31. CHAT (migrations/026) ────────────────────────────────────────────────
+--  O'quvchi ↔ unga biriktirilgan o'qituvchi yozishmalari. Ruxsat tekshiruvi
+--  backendda (routes/chat.js): faqat oqituvchi_oquvchilar'dagi juftlar.
+CREATE TABLE IF NOT EXISTS chat_xabarlar (
+    id            BIGSERIAL PRIMARY KEY,
+    oqituvchi_id  INTEGER NOT NULL REFERENCES oqituvchilar(id) ON DELETE CASCADE,
+    oquvchi_id    INTEGER NOT NULL REFERENCES oquvchilar(id)   ON DELETE CASCADE,
+    yuboruvchi    TEXT    NOT NULL CHECK (yuboruvchi IN ('oqituvchi', 'oquvchi')),
+    matn          TEXT    NOT NULL CHECK (char_length(matn) BETWEEN 1 AND 2000),
+    yaratilgan    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    oqilgan       TIMESTAMPTZ
+);
+CREATE INDEX IF NOT EXISTS idx_chat_juft
+    ON chat_xabarlar (oqituvchi_id, oquvchi_id, id);
+CREATE INDEX IF NOT EXISTS idx_chat_oqilmagan_oqituvchi
+    ON chat_xabarlar (oqituvchi_id, oquvchi_id) WHERE oqilgan IS NULL AND yuboruvchi = 'oquvchi';
+CREATE INDEX IF NOT EXISTS idx_chat_oqilmagan_oquvchi
+    ON chat_xabarlar (oquvchi_id, oqituvchi_id) WHERE oqilgan IS NULL AND yuboruvchi = 'oqituvchi';
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
 --  iis_user barcha jadvallarga to'liq kirish huquqiga ega bo'ladi
@@ -781,27 +801,9 @@ ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS vazifa_fayl_nomi TEXT DEFAUL
 --  yo'qolmasligi uchun.
 ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT '';
 
--- ─── 31. BILDIRISHNOMALAR (o'quvchi paneli: dars jadvali o'zgarganda xabar) ───────────────────────────────────
-CREATE TABLE IF NOT EXISTS bildirishnomalar (
-    id            SERIAL PRIMARY KEY,
-    oquvchi_id    INTEGER     NOT NULL REFERENCES oquvchilar(id) ON DELETE CASCADE,
-    tur           TEXT        NOT NULL DEFAULT 'jadval',
-    sarlavha      TEXT        NOT NULL,
-    matn          TEXT        NOT NULL DEFAULT '',
-    jadval_idlar  INTEGER[]   NOT NULL DEFAULT '{}',
-    oqilgan       BOOLEAN     NOT NULL DEFAULT FALSE,
-    yaratilgan    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    yangilangan   TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
-CREATE INDEX IF NOT EXISTS idx_bildirishnomalar_oquvchi
-    ON bildirishnomalar (oquvchi_id, oqilgan, yangilangan DESC);
-GRANT ALL PRIVILEGES ON bildirishnomalar TO iis_user;
-GRANT ALL PRIVILEGES ON SEQUENCE bildirishnomalar_id_seq TO iis_user;
-
-
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
---  Barcha 30 ta jadval yaratildi
+--  Barcha 31 ta jadval yaratildi
 -- ════════════════════════════════════════════════════════════════════════════
 \echo '✅ IIS schema muvaffaqiyatli yaratildi!'
 \echo '   Jadvallar: maktablar, adminlar, buxgalterlar, oquvchilar,'
@@ -814,4 +816,4 @@ GRANT ALL PRIVILEGES ON SEQUENCE bildirishnomalar_id_seq TO iis_user;
 \echo '              sales_xodimlar, leadlar, sales_maktablar,'
 \echo '              blog_categories, blog_posts, blog_tags, blog_post_tags,'
 \echo '              dars_mavzulari, vazifa_javoblari, vazifa_javob_fayllari'
-\echo '              direktorlar, bildirishnomalar'
+\echo '              direktorlar, chat_xabarlar'

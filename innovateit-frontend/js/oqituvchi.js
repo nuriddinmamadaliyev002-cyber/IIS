@@ -25,7 +25,7 @@ function esc(s) {
 // Faol tab URL hash (#jadval) va sessionStorage'da saqlanadi. Refresh
 // qilinganda showApp() shu yerdan o'qib, foydalanuvchini o'sha tabga qaytaradi.
 // Tanlangan maktab ham shu tarzda saqlanadi.
-const OQ_TABS       = ['guruhlar', 'guruh', 'tahrir', 'jadval', 'soat'];
+const OQ_TABS       = ['guruhlar', 'guruh', 'tahrir', 'jadval', 'soat', 'chat'];
 const OQ_TAB_KEY    = 'iit_oq_tab';
 const OQ_MAKTAB_KEY = 'iit_oq_maktab';
 
@@ -213,6 +213,9 @@ function showApp() {
     TANLANGAN_MID = MAKTABLAR_RO[0].id;
   }
 
+  // Chat: o'qituvchiga biriktirilgan o'quvchilar bilan yozishma (js/chat.js)
+  if (window.IITChat) IITChat.init({ role: 'oqituvchi', mount: g('chat-mount'), navPush, navRelease, tab: 'chat' });
+
   switchTab(getSavedTab()); // refresh qilinganda o'sha bo'limda qolish
 }
 
@@ -330,6 +333,7 @@ function switchTab(tab) {
   if (tab === 'jadval')   loadJadval();
   if (tab === 'soat')   { loadSoatStatistika(); initSoatMark(); }
   if (tab === 'guruh')    initGuruhTab();
+  if (window.IITChat)     IITChat.setActive(tab === 'chat');
 }
 
 // ═══════════════════════════════════════════

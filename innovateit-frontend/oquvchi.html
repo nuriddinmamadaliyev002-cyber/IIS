@@ -8,7 +8,8 @@
   <link rel="stylesheet" href="css/style.css">
   <link rel="stylesheet" href="css/hover.css">
   <link rel="stylesheet" href="css/oqituvchi.css?v=1">
-  <link rel="stylesheet" href="css/oquvchi.css?v=2">
+  <link rel="stylesheet" href="css/oquvchi.css?v=1">
+  <link rel="stylesheet" href="css/chat.css">
   <link rel="stylesheet" href="css/mobile-nav.css">
 </head>
 <body>
@@ -67,19 +68,8 @@
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="davomat" onclick="switchTab('davomat')">📋 Davomat</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="vazifalar" onclick="switchTab('vazifalar')">📝 Mavzu va uyga vazifalar</button>
       <button type="button" class="mn-mobile-item mn-tab-item" data-tab="baholar" onclick="switchTab('baholar')">⭐ Baholarim</button>
+      <button type="button" class="mn-mobile-item mn-tab-item" data-tab="chat" onclick="switchTab('chat')">💬 Chat <span class="iitc-badge" aria-label="O'qilmagan xabarlar"></span></button>
       <button class="btn-logout" onclick="doLogout()">Chiqish</button>
-    </div>
-    <!-- Bildirishnomalar (qo'ng'iroqcha) — .topbar-right'dan TASHQARIDA, shunda mobilda
-         hamburger drawer ichiga yashirinib qolmaydi -->
-    <div class="ouq-bell-wrap" id="ouq-bell-wrap">
-      <button type="button" class="ouq-bell" id="ouq-bell" onclick="toggleBell(event)" aria-label="Bildirishnomalar" aria-haspopup="true" aria-expanded="false">
-        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.7 21a2 2 0 0 1-3.4 0"/></svg>
-        <span class="ouq-bell-badge" id="ouq-bell-badge" hidden>0</span>
-      </button>
-      <div class="ouq-bell-panel" id="ouq-bell-panel" hidden>
-        <div class="ouq-bell-head">Bildirishnomalar</div>
-        <div class="ouq-bell-list" id="ouq-bell-list"></div>
-      </div>
     </div>
   </div>
 
@@ -89,6 +79,7 @@
     <button class="oq-tab-btn" id="tab-btn-davomat" onclick="switchTab('davomat')">📋 Davomat</button>
     <button class="oq-tab-btn" id="tab-btn-vazifalar" onclick="switchTab('vazifalar')">📝 Mavzu va uyga vazifalar</button>
     <button class="oq-tab-btn" id="tab-btn-baholar" onclick="switchTab('baholar')">⭐ Baholarim</button>
+    <button class="oq-tab-btn" id="tab-btn-chat" onclick="switchTab('chat')">💬 Chat <span class="iitc-badge" aria-label="O'qilmagan xabarlar"></span></button>
   </div>
 
   <div class="oq-content">
@@ -96,7 +87,6 @@
     <!-- ══ DARS JADVALI TAB ══ -->
     <div class="oq-tab-page active" id="tab-jadval">
       <div class="oq-section-title">📅 Dars jadvali</div>
-      <div id="ouq-jadval-banner"></div>
       <div id="ouq-jadval-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>
 
@@ -148,11 +138,18 @@
       <div id="ouq-baholar-content"><div class="oq-loading"><div class="loading-spinner"></div></div></div>
     </div>
 
+    <!-- ══ CHAT TAB (biriktirilgan o'qituvchilar bilan yozishma) ══ -->
+    <div class="oq-tab-page" id="tab-chat">
+      <div class="oq-section-title">💬 O'qituvchilar bilan chat</div>
+      <div id="chat-mount"></div>
+    </div>
+
   </div>
 </div>
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_student_token';</script>
 <script src="js/api.js"></script>
+<script src="js/chat.js"></script>
 <script src="js/oquvchi.js"></script>
 <script src="js/mobile-nav.js"></script>
 <script>
