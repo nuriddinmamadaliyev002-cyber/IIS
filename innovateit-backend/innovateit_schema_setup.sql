@@ -781,6 +781,24 @@ ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS vazifa_fayl_nomi TEXT DEFAUL
 --  yo'qolmasligi uchun.
 ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT '';
 
+-- ─── 31. BILDIRISHNOMALAR (o'quvchi paneli: dars jadvali o'zgarganda xabar) ───────────────────────────────────
+CREATE TABLE IF NOT EXISTS bildirishnomalar (
+    id            SERIAL PRIMARY KEY,
+    oquvchi_id    INTEGER     NOT NULL REFERENCES oquvchilar(id) ON DELETE CASCADE,
+    tur           TEXT        NOT NULL DEFAULT 'jadval',
+    sarlavha      TEXT        NOT NULL,
+    matn          TEXT        NOT NULL DEFAULT '',
+    jadval_idlar  INTEGER[]   NOT NULL DEFAULT '{}',
+    oqilgan       BOOLEAN     NOT NULL DEFAULT FALSE,
+    yaratilgan    TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    yangilangan   TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_bildirishnomalar_oquvchi
+    ON bildirishnomalar (oquvchi_id, oqilgan, yangilangan DESC);
+GRANT ALL PRIVILEGES ON bildirishnomalar TO iis_user;
+GRANT ALL PRIVILEGES ON SEQUENCE bildirishnomalar_id_seq TO iis_user;
+
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
 --  Barcha 30 ta jadval yaratildi
@@ -796,4 +814,4 @@ ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT 
 \echo '              sales_xodimlar, leadlar, sales_maktablar,'
 \echo '              blog_categories, blog_posts, blog_tags, blog_post_tags,'
 \echo '              dars_mavzulari, vazifa_javoblari, vazifa_javob_fayllari'
-\echo '              direktorlar'
+\echo '              direktorlar, bildirishnomalar'

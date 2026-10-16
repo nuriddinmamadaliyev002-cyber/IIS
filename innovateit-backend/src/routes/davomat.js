@@ -327,7 +327,7 @@ async function findTeacherGroup(ism, maktabId, guruhId) {
   const familiya = parts[0] || '';
   const ismOnly  = parts.slice(1).join(' ') || '';
   const r = await pool.query(
-    `SELECT id, fan, kunlar FROM dars_jadvali
+    `SELECT id, fan, kunlar, sinflar FROM dars_jadvali
      WHERE id = $1
        AND maktab_id = $2
        AND LOWER(TRIM(teacher_familiya)) = LOWER($3)
@@ -335,6 +335,43 @@ async function findTeacherGroup(ism, maktabId, guruhId) {
     [guruhId, maktabId, familiya, ismOnly]
   );
   return r.rows[0] || null;
+}
+
+// ─── Guruh o'quvchilarining shu kundagi davomati belgilanganmi? ──────────────
+// Dars soatini belgilashdan OLDIN o'qituvchi shu kunda dars o'tadigan
+// o'quvchilarning davomatini belgilagan bo'lishi shart. Guruh o'quvchilari =
+// shu o'qituvchiga biriktirilgan va guruh sinflariga kiruvchi, shu maktabdagi
+// o'quvchilar. O'quvchi davomati `davomat` jadvalida (maktab, sinf, sana,
+// "Familiya Ism") bo'yicha saqlanadi; sana YYYY-MM-DD (o'qituvchi paneli) yoki
+// DD.MM.YYYY (admin paneli) formatida bo'lishi mumkin — ikkalasi ham hisoblanadi.
+// Qaytadi: { jami, belgilangan }. Guruhda o'quvchi bo'lmasa jami = 0.
+async function guruhDavomatHolati(maktabId, teacherId, guruh, sanaDate) {
+  const sinflar = String(guruh.sinflar || '').split(',').map(s => s.trim()).filter(Boolean);
+  if (!sinflar.length) return { jami: 0, belgilangan: 0 };
+
+  const pad = n => String(n).padStart(2, '0');
+  const y = sanaDate.getFullYear(), m = pad(sanaDate.getMonth() + 1), d = pad(sanaDate.getDate());
+  const sanaISO = `${y}-${m}-${d}`, sanaDMY = `${d}.${m}.${y}`;
+
+  const r = await pool.query(
+    `SELECT COUNT(*)::int AS jami,
+            COUNT(dv.id)::int AS belgilangan
+       FROM oqituvchi_oquvchilar oo
+       JOIN oquvchilar o ON o.id = oo.oquvchi_id
+       LEFT JOIN LATERAL (
+         SELECT d.id FROM davomat d
+          WHERE d.maktab_id = o.maktab_id
+            AND d.sinf = o.sinf
+            AND d.sana IN ($4, $5)
+            AND LOWER(TRIM(d.oquvchi_ism)) = LOWER(TRIM(COALESCE(o.familiya,'') || ' ' || o.ism))
+          LIMIT 1
+       ) dv ON TRUE
+      WHERE oo.oqituvchi_id = $1
+        AND o.maktab_id = $2
+        AND o.sinf = ANY($3::text[])`,
+    [teacherId, maktabId, sinflar, sanaISO, sanaDMY]
+  );
+  return r.rows[0] || { jami: 0, belgilangan: 0 };
 }
 
 // ─── GET /api/davomat/mening-darsim?sana=DD.MM.YYYY — kunlik yozuvlar ────────
@@ -358,7 +395,22 @@ router.get('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
        ORDER BY guruh_id NULLS FIRST, id`,
       [sana, sel.mid, ism]
     );
-    res.json({ ok: true, yozuvlar: r.rows });
+    // Shu kunda dars bor guruhlar uchun o'quvchilar davomati holati (UI qulfi uchun)
+    const sanaDate = parseSanaDMY(sana);
+    const gr = await pool.query(
+      `SELECT id, kunlar, sinflar FROM dars_jadvali
+        WHERE maktab_id = $1
+          AND LOWER(TRIM(teacher_familiya)) = LOWER($2)
+          AND LOWER(TRIM(teacher_ism))      = LOWER($3)`,
+      [sel.mid, String(ism || '').trim().split(' ')[0] || '', String(ism || '').trim().split(' ').slice(1).join(' ') || '']
+    );
+    const davomat_holati = {};
+    for (const gj of gr.rows) {
+      const kunlar = new Set(String(gj.kunlar || '').split(',').map(k => parseInt(k.trim(), 10)).filter(n => !isNaN(n)));
+      if (kunlar.size && !kunlar.has(sanaDate.getDay())) continue;
+      davomat_holati[gj.id] = await guruhDavomatHolati(sel.mid, req.user.entityId, gj, sanaDate);
+    }
+    res.json({ ok: true, yozuvlar: r.rows, davomat_holati });
   } catch (err) {
     console.error('mening-darsim GET xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
@@ -416,6 +468,20 @@ router.post('/mening-darsim', requireAuth(['oqituvchi']), async (req, res) => {
       .map(k => parseInt(k.trim(), 10)).filter(n => !isNaN(n)));
     if (kunlar.size && !kunlar.has(sanaDate.getDay())) {
       return res.status(400).json({ ok: false, error: "Bu kun shu guruhning dars kuni emas" });
+    }
+
+    // Dars soatini belgilashdan oldin shu kundagi o'quvchilar davomati belgilangan
+    // bo'lishi shart. O'qituvchi o'zi "Kelmadi" desa dars bo'lmagan — talab qilinmaydi.
+    if (status !== 'kelmadi') {
+      const h = await guruhDavomatHolati(maktabId, entityId, guruh, sanaDate);
+      if (h.jami > 0 && h.belgilangan < h.jami) {
+        return res.status(409).json({
+          ok: false,
+          code: 'DAVOMAT_KERAK',
+          error: `Avval shu kundagi o'quvchilar davomatini belgilang (${h.belgilangan}/${h.jami} belgilangan)`,
+          jami: h.jami, belgilangan: h.belgilangan,
+        });
+      }
     }
 
     let fan = guruh.fan || '';

@@ -981,7 +981,7 @@ function findLessonDate(fromDate, dir) {
   return null;
 }
 
-async function openGuruhDavomat(guruhId, event) {
+async function openGuruhDavomat(guruhId, event, forceDate) {
   if (event) event.stopPropagation();
   const j = LAST_GURUHLAR.find(x => x.id === guruhId);
   if (!j) return;
@@ -999,6 +999,7 @@ async function openGuruhDavomat(guruhId, event) {
   const today = new Date(); today.setHours(0, 0, 0, 0);
   let startDate = isLessonDay(today) ? today : findLessonDate(today, -1);
   if (!startDate) startDate = today;
+  if (forceDate instanceof Date && !isNaN(forceDate)) { forceDate.setHours(0, 0, 0, 0); if (forceDate <= today) startDate = forceDate; }
   window._davomat_curdate = startDate;
 
   g('dav-date-picker').max = dateStrLocal(today);
@@ -2244,6 +2245,7 @@ const _sm = {
   legacy: null,        // eski guruhsiz kunlik yozuv (bo'lsa)
   edit: {},            // guruh_id -> tahrirlash rejimida
   status: {},          // guruh_id -> formada tanlangan holat
+  holat: {},           // guruh_id -> { jami, belgilangan } — o'quvchilar davomati belgilanganmi
   initSeq: 0,
   recSeq: 0,
   noteTimer: null,
@@ -2423,7 +2425,7 @@ async function smLoadRecord() {
   const my = ++_sm.recSeq;
   const sana = smFmtSana(_sm.cur);
   g('sm-note').style.display = 'none';
-  _sm.recs = {}; _sm.legacy = null; _sm.edit = {}; _sm.status = {};
+  _sm.recs = {}; _sm.legacy = null; _sm.edit = {}; _sm.status = {}; _sm.holat = {};
   _sm.groups = smGroupsForDate(_sm.cur);
   smSetMode('loading');
 
@@ -2438,6 +2440,7 @@ async function smLoadRecord() {
     return;
   }
 
+  _sm.holat = res.davomat_holati || {};
   (res.yozuvlar || []).forEach(y => {
     if (y.guruh_id) _sm.recs[y.guruh_id] = y;
     else            _sm.legacy = y;     // eski, guruhsiz kunlik yozuv
@@ -2454,6 +2457,7 @@ function smRenderGroups() {
   });
   if (!html) html = '<div class="oq-empty">📭 Bu kunda dars o\'tadigan guruh yo\'q</div>';
   g('sm-groups').innerHTML = html;
+  _sm.groups.forEach(j => smApplyLock(j.id));
 }
 
 // Faqat bitta guruh blokini qayta chizadi (boshqa guruhlardagi kiritilgan
@@ -2461,7 +2465,7 @@ function smRenderGroups() {
 function smRerenderGroup(gid) {
   const j = _sm.groups.find(x => x.id === gid);
   const el = g('sm-grp-' + gid);
-  if (j && el) el.innerHTML = smGroupInner(j);
+  if (j && el) { el.innerHTML = smGroupInner(j); smApplyLock(gid); }
 }
 
 function smGroupHead(j, saved) {
@@ -2504,6 +2508,24 @@ function smCardHtml(j, r) {
     </div>`;
 }
 
+// O'quvchilar davomati hali to'liq belgilanmagan bo'lsa true (guruhda o'quvchi bo'lmasa — false)
+function smDavomatKerak(gid) {
+  const h = _sm.holat[gid];
+  return !!(h && h.jami > 0 && h.belgilangan < h.jami);
+}
+
+function smDavomatWarnHtml(gid) {
+  const h = _sm.holat[gid] || { jami: 0, belgilangan: 0 };
+  return `
+    <div class="sm-dav-warn" id="sm-dav-warn-${gid}" style="display:none;background:#fff7ed;border:1px solid #fdba74;color:#9a3412;border-radius:12px;padding:12px 14px;margin:10px 0;font-size:13px;line-height:1.45;">
+      ⚠️ Avval shu kundagi o'quvchilar davomatini belgilang
+      <b>(${h.belgilangan}/${h.jami} belgilangan)</b>. Davomat to'liq belgilanmaguncha dars soatini saqlab bo'lmaydi.
+      <div style="margin-top:8px;">
+        <button type="button" class="mv-btn" onclick="smGoDavomat(${gid})">📋 Davomatni belgilash</button>
+      </div>
+    </div>`;
+}
+
 function smFormHtml(j, rec) {
   const gid  = j.id;
   const plan = smGroupPlanMin(j);
@@ -2542,6 +2564,7 @@ function smFormHtml(j, rec) {
     <div class="mv-card-label">Izoh (ixtiyoriy)</div>
     <textarea class="field-input sm-field" id="sm-izoh-${gid}" rows="2" maxlength="500" style="resize:vertical;font-family:inherit;">${esc(izoh)}</textarea>
 
+    ${smDavomatWarnHtml(gid)}
     <button class="oq-mark-btn" id="sm-save-${gid}" onclick="smSave(${gid})">💾 Saqlash</button>
     ${rec ? `<button type="button" class="btn-cancel mv-btn-cancel" onclick="smCancelEdit(${gid})">Bekor qilish</button>` : ''}`;
 }
@@ -2573,6 +2596,28 @@ function smSelectStatus(gid, status) {
   });
   g('sm-time-wrap-' + gid).style.display = status === 'kelmadi' ? 'none'  : 'block';
   g('sm-kech-wrap-' + gid).style.display = status === 'kech'    ? 'block' : 'none';
+  smApplyLock(gid);
+}
+
+// Davomat belgilanmagan bo'lsa (va o'qituvchi "Kelmadi" demagan bo'lsa) saqlash tugmasi qulflanadi
+function smApplyLock(gid) {
+  const btn  = g('sm-save-' + gid);
+  const warn = g('sm-dav-warn-' + gid);
+  if (!btn) return;                                  // saqlangan kartochka ko'rinishida — forma yo'q
+  const lock = smDavomatKerak(gid) && (_sm.status[gid] || 'keldi') !== 'kelmadi';
+  btn.disabled = lock;
+  btn.style.opacity = lock ? '.5' : '';
+  if (warn) warn.style.display = lock ? 'block' : 'none';
+}
+
+// "Davomatni belgilash" — guruhlar bo'limida shu guruhning shu kundagi davomatini ochadi
+function smGoDavomat(gid) {
+  const j = _sm.jadvallar.find(x => x.id === gid);
+  if (!j) return;
+  if (!LAST_GURUHLAR.some(x => x.id === gid)) LAST_GURUHLAR = [..._sm.jadvallar];
+  const sana = new Date(_sm.cur);
+  switchTab('guruhlar');
+  openGuruhDavomat(gid, null, sana);
 }
 
 function smEdit(gid) {
@@ -2594,6 +2639,7 @@ async function smRefreshOne(gid) {
   catch (e) { res = null; }
   if (sana !== smFmtSana(_sm.cur)) return;   // shu orada sana almashtirilgan
   if (res && res.ok) {
+    _sm.holat = res.davomat_holati || _sm.holat;
     const y = (res.yozuvlar || []).find(x => x.guruh_id === gid);
     if (y) _sm.recs[gid] = y; else delete _sm.recs[gid];
   }
@@ -2603,6 +2649,9 @@ async function smRefreshOne(gid) {
 
 async function smSave(gid) {
   const status = _sm.status[gid] || 'keldi';
+  if (status !== 'kelmadi' && smDavomatKerak(gid)) {
+    smShowNote("❌ Avval o'quvchilar davomatini belgilang", true); smApplyLock(gid); return;
+  }
   const soat   = parseInt(g('sm-soat-' + gid).value, 10)   || 0;
   const daqiqa = parseInt(g('sm-daqiqa-' + gid).value, 10) || 0;
 
@@ -2639,6 +2688,10 @@ async function smSave(gid) {
       smShowNote('❌ ' + ((data && data.error) || 'Xatolik'), true);
       btn.disabled = false;
       btn.textContent = '💾 Saqlash';
+      if (data && data.code === 'DAVOMAT_KERAK') {
+        _sm.holat[gid] = { jami: data.jami, belgilangan: data.belgilangan };
+        smRerenderGroup(gid);
+      }
     }
   } catch (e) {
     smShowNote("❌ Server bilan ulanib bo'lmadi", true);

@@ -7,6 +7,9 @@
 const { Router }      = require('express');
 const pool            = require('../db');
 const { requireAuth } = require('../middleware/jwt');
+const { jadvalOzgardi } = require('../bildirishnoma');
+
+const JADVAL_COLS = 'id, maktab_id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash';
 
 const router = Router();
 
@@ -170,6 +173,7 @@ router.post('/mening-jadvalim', requireAuth(['oqituvchi']), async (req, res) => 
 
     if (p.id) {
       // Faqat o'zi yaratgan (ism/familiya mos keladigan) yozuvni tahrirlashi mumkin
+      const eskiRes = await pool.query(`SELECT ${JADVAL_COLS} FROM dars_jadvali WHERE id=$1`, [p.id]);
       const result = await pool.query(
         `UPDATE dars_jadvali
            SET sinflar=$1, kunlar=$2, boshlanish=$3, tugash=$4
@@ -179,13 +183,17 @@ router.post('/mening-jadvalim', requireAuth(['oqituvchi']), async (req, res) => 
       );
       if (result.rowCount === 0)
         return res.status(404).json({ ok: false, error: 'Jadval topilmadi' });
+      const yangiRes = await pool.query(`SELECT ${JADVAL_COLS} FROM dars_jadvali WHERE id=$1`, [p.id]);
+      await jadvalOzgardi('ozgardi', eskiRes.rows[0], yangiRes.rows[0]);
     } else {
-      await pool.query(
+      const ins = await pool.query(
         `INSERT INTO dars_jadvali
            (maktab_id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         RETURNING ${JADVAL_COLS}`,
         [maktabId, ismOnly, familiya, fan, p.sinflar, p.kunlar, p.boshlanish || '', p.tugash || '']
       );
+      await jadvalOzgardi('qoshildi', null, ins.rows[0]);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -206,11 +214,13 @@ router.delete('/mening-jadvalim/:id', requireAuth(['oqituvchi']), async (req, re
   try {
     const result = await pool.query(
       `DELETE FROM dars_jadvali
-       WHERE id=$1 AND LOWER(TRIM(teacher_familiya))=LOWER($2) AND LOWER(TRIM(teacher_ism))=LOWER($3)`,
+       WHERE id=$1 AND LOWER(TRIM(teacher_familiya))=LOWER($2) AND LOWER(TRIM(teacher_ism))=LOWER($3)
+       RETURNING ${JADVAL_COLS}`,
       [req.params.id, familiya, ismOnly]
     );
     if (result.rowCount === 0)
       return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
+    await jadvalOzgardi('ochirildi', result.rows[0], null);
     res.json({ ok: true });
   } catch (err) {
     console.error('DELETE /jadval/mening-jadvalim xatolik:', err.message);
@@ -258,6 +268,7 @@ router.post('/', async (req, res) => {
 
   try {
     if (p.id) {
+      const eskiRes = await pool.query(`SELECT ${JADVAL_COLS} FROM dars_jadvali WHERE id=$1`, [p.id]);
       const result = await pool.query(
         `UPDATE dars_jadvali
            SET teacher_ism=$1, teacher_familiya=$2, fan=$3,
@@ -269,13 +280,17 @@ router.post('/', async (req, res) => {
       );
       if (result.rowCount === 0)
         return res.status(404).json({ ok: false, error: 'Jadval topilmadi' });
+      const yangiRes = await pool.query(`SELECT ${JADVAL_COLS} FROM dars_jadvali WHERE id=$1`, [p.id]);
+      await jadvalOzgardi('ozgardi', eskiRes.rows[0], yangiRes.rows[0]);
     } else {
-      await pool.query(
+      const ins = await pool.query(
         `INSERT INTO dars_jadvali
            (maktab_id, teacher_ism, teacher_familiya, fan, sinflar, kunlar, boshlanish, tugash)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+         RETURNING ${JADVAL_COLS}`,
         [maktabId, p.teacher_ism, p.teacher_familiya, p.fan || '', p.sinflar, p.kunlar, p.boshlanish || '', p.tugash || '']
       );
+      await jadvalOzgardi('qoshildi', null, ins.rows[0]);
     }
     res.json({ ok: true });
   } catch (err) {
@@ -290,11 +305,12 @@ router.delete('/:id', async (req, res) => {
 
   try {
     const result = await pool.query(
-      `DELETE FROM dars_jadvali WHERE id=$1 ${!isSuper ? 'AND maktab_id=$2' : ''}`,
+      `DELETE FROM dars_jadvali WHERE id=$1 ${!isSuper ? 'AND maktab_id=$2' : ''} RETURNING ${JADVAL_COLS}`,
       isSuper ? [req.params.id] : [req.params.id, maktabId]
     );
     if (result.rowCount === 0)
       return res.status(404).json({ ok: false, error: 'Jadval topilmadi' });
+    await jadvalOzgardi('ochirildi', result.rows[0], null);
     res.json({ ok: true });
   } catch (err) {
     console.error('jadval DELETE xatolik:', err.message);

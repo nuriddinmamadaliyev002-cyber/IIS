@@ -97,6 +97,7 @@ function showApp() {
 
   loadDavomatim();
   ouqJadvalPromise = loadJadvalim();
+  startBildirishnomalar();
   restoreSavedTab(); // sahifa yangilanganda (refresh) oxirgi ochiq bo'lgan bo'limga qaytamiz
 }
 
@@ -288,7 +289,8 @@ async function loadJadvalim() {
         const kunNom = KUN_NOMLARI_MAP[k] || k;
         if (byKun[kunNom] !== undefined) {
           const exists = byKun[kunNom].find(x => x.fan === j.fan && x.teacher_ism === j.teacher_ism && x.teacher_familiya === j.teacher_familiya);
-          if (!exists) byKun[kunNom].push(j);
+          if (!exists) byKun[kunNom].push({ ...j, _ids: [j.id] });
+          else exists._ids.push(j.id); // bir kundagi bir xil dars bir nechta qator bo'lsa — hammasi "yangi" belgisiga hisoblanadi
         }
       });
     });
@@ -307,7 +309,7 @@ async function loadJadvalim() {
             ${isToday ? '🟢 ' : ''}${kun}${isToday ? '<span class="jadval-bugun-badge">bugun</span>' : ''}
           </div>
           ${darslar.map(d => `
-            <div class="jadval-dars-karta">
+            <div class="jadval-dars-karta" data-jids="${esc((d._ids || []).join(','))}">
               <div style="min-width:76px;">
                 <div class="jadval-vaqt-text">${esc(d.boshlanish || '—')}</div>
                 ${d.tugash ? `<div class="jadval-vaqt-end">${esc(d.tugash)}</div>` : ''}
@@ -321,9 +323,173 @@ async function loadJadvalim() {
     });
 
     wrap.innerHTML = html || '<div class="oq-empty">📅 Jadval ma\'lumotlari mavjud emas</div>';
+    markYangiDarslar();
   } catch (e) {
     wrap.innerHTML = '<div class="oq-empty">⚠️ Xatolik yuz berdi</div>';
   }
+}
+
+// ═══════════════════════════════════════════
+//  BILDIRISHNOMALAR (dars jadvali o'zgarganda)
+//  • Topbar'dagi qo'ng'iroqcha: o'qilmaganlar soni + ro'yxat paneli
+//  • Dars jadvali tabi tepasida sariq lenta ("Tushundim" bosilguncha turadi)
+//  • O'zgargan dars kartasida "yangi" belgisi
+//  • Har 60 soniyada (tab ochiq bo'lsa) tekshiriladi; yangi o'zgarish kelsa
+//    jadval avtomatik qayta yuklanadi
+//  Holat serverda saqlanadi — telefonda o'qilgan xabar kompyuterda ham o'qilgan.
+// ═══════════════════════════════════════════
+const BILD_POLL_MS = 60 * 1000;
+let bildItems   = [];          // serverdan kelgan ro'yxat
+let bildYangi   = new Set();   // o'qilmagan bildirishnomalardagi o'zgargan jadval id'lari
+let bildSoni    = 0;
+let bildTimer   = null;
+let bildKeys    = null;        // o'qilmagan yozuvlar "izi" (id@yangilangan) — yangi o'zgarish kelganini aniqlash uchun
+let bildBusy    = false;
+
+function startBildirishnomalar() {
+  loadBildirishnomalar();
+  if (!bildTimer) {
+    bildTimer = setInterval(() => { if (!document.hidden) loadBildirishnomalar(); }, BILD_POLL_MS);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) loadBildirishnomalar(); });
+    document.addEventListener('click', e => {
+      const w = g('ouq-bell-wrap');
+      if (w && !w.contains(e.target)) closeBell();
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeBell(); });
+  }
+}
+
+async function loadBildirishnomalar() {
+  if (bildBusy || !U) return;
+  bildBusy = true;
+  try {
+    const data = await api.get('/api/bildirishnomalar');
+    if (!data || !data.ok) return;
+    const oldKeys = bildKeys;
+    bildItems = data.items || [];
+    bildSoni  = data.oqilmagan || 0;
+    bildYangi = new Set(data.ozgargan_idlar || []);
+    // Izga o'qilmagan yozuvlarning id + yangilangan vaqti kiradi: birlashtirilgan
+    // yozuvga yangi qator qo'shilsa ham iz o'zgaradi.
+    bildKeys = new Set(bildItems.filter(x => !x.oqilgan).map(x => x.id + '@' + x.yangilangan));
+    renderBell();
+    renderJadvalBanner();
+    const yangiKeldi = oldKeys !== null && [...bildKeys].some(k => !oldKeys.has(k));
+    if (yangiKeldi) {
+      ringBell();
+      ouqJadvalPromise = loadJadvalim(); // jadval o'zgargan — eski ma'lumot ko'rinib qolmasin
+    } else {
+      markYangiDarslar();
+    }
+  } catch (_) { /* tarmoq xatosi — keyingi tekshiruvda qayta uriniladi */ }
+  finally { bildBusy = false; }
+}
+
+function renderBell() {
+  const b = g('ouq-bell-badge');
+  if (!b) return;
+  b.hidden = bildSoni <= 0;
+  b.textContent = bildSoni > 9 ? '9+' : String(bildSoni);
+  const btn = g('ouq-bell');
+  if (btn) btn.setAttribute('aria-label', bildSoni > 0 ? `Bildirishnomalar: ${bildSoni} ta yangi` : 'Bildirishnomalar');
+}
+
+function ringBell() {
+  const btn = g('ouq-bell');
+  if (!btn) return;
+  btn.classList.remove('ouq-bell-ring');
+  void btn.offsetWidth; // animatsiyani qayta boshlash
+  btn.classList.add('ouq-bell-ring');
+}
+
+function bildLines(matn) {
+  return String(matn || '').split('\n').map(x => x.trim()).filter(Boolean);
+}
+
+function bildVaqt(iso) {
+  const t = new Date(iso);
+  if (isNaN(t)) return '';
+  const min = Math.floor((Date.now() - t.getTime()) / 60000);
+  if (min < 1)  return 'hozirgina';
+  if (min < 60) return `${min} daqiqa oldin`;
+  const soat = Math.floor(min / 60);
+  if (soat < 24) return `${soat} soat oldin`;
+  return `${String(t.getDate()).padStart(2, '0')}.${String(t.getMonth() + 1).padStart(2, '0')}.${t.getFullYear()}`;
+}
+
+function renderJadvalBanner() {
+  const box = g('ouq-jadval-banner');
+  if (!box) return;
+  const yangilar = bildItems.filter(x => !x.oqilgan && x.tur === 'jadval');
+  if (!yangilar.length) { box.innerHTML = ''; return; }
+  const lines = yangilar.flatMap(x => bildLines(x.matn));
+  box.innerHTML = `
+    <div class="ouq-jadval-banner" role="status">
+      <div class="ouq-jadval-banner-title">🔔 Dars jadvali o'zgardi</div>
+      ${lines.map(l => `<div class="ouq-jadval-banner-line">${esc(l)}</div>`).join('')}
+      <button type="button" class="ouq-jadval-banner-btn" onclick="bildHammasiOqildi()">Tushundim</button>
+    </div>`;
+}
+
+// O'zgargan darslarga "yangi" belgisi (jadval qayta chizilganda ham, bildirishnoma yangilanganda ham)
+function markYangiDarslar() {
+  document.querySelectorAll('#ouq-jadval-content .jadval-dars-karta').forEach(card => {
+    const ids = (card.dataset.jids || '').split(',').map(x => parseInt(x, 10)).filter(Number.isFinite);
+    const yangi = ids.some(i => bildYangi.has(i));
+    card.classList.toggle('ouq-yangi', yangi);
+    const fan = card.querySelector('.jadval-fan');
+    if (!fan) return;
+    const belgi = fan.querySelector('.ouq-yangi-belgi');
+    if (yangi && !belgi) fan.insertAdjacentHTML('beforeend', '<span class="ouq-yangi-belgi">yangi</span>');
+    else if (!yangi && belgi) belgi.remove();
+  });
+}
+
+async function bildHammasiOqildi() {
+  const oldItems = bildItems, oldSoni = bildSoni, oldYangi = bildYangi;
+  // Darrov (optimistik) yangilaymiz, server xato bersa qaytaramiz
+  bildItems = bildItems.map(x => ({ ...x, oqilgan: true }));
+  bildSoni = 0; bildYangi = new Set();
+  bildKeys = new Set();
+  renderBell(); renderJadvalBanner(); markYangiDarslar();
+  try {
+    const r = await api.post('/api/bildirishnomalar/oqildi', { hammasi: true });
+    if (!r || !r.ok) throw new Error('fail');
+  } catch (_) {
+    bildItems = oldItems; bildSoni = oldSoni; bildYangi = oldYangi;
+    bildKeys = new Set(bildItems.filter(x => !x.oqilgan).map(x => x.id + '@' + x.yangilangan));
+    renderBell(); renderJadvalBanner(); markYangiDarslar();
+  }
+}
+
+function closeBell() {
+  const p = g('ouq-bell-panel'), b = g('ouq-bell');
+  if (p) p.hidden = true;
+  if (b) b.setAttribute('aria-expanded', 'false');
+}
+
+function toggleBell(ev) {
+  if (ev) ev.stopPropagation();
+  const p = g('ouq-bell-panel'), b = g('ouq-bell');
+  if (!p) return;
+  if (!p.hidden) { closeBell(); return; }
+
+  // Ro'yxat ochilish paytidagi holat bilan chiziladi (o'qilmaganlar ajralib turadi),
+  // keyin hammasi o'qilgan deb belgilanadi.
+  const list = g('ouq-bell-list');
+  list.innerHTML = bildItems.length
+    ? bildItems.map(x => `
+        <div class="ouq-bell-item ${x.oqilgan ? '' : 'yangi'}">
+          <div class="ouq-bell-item-top">
+            <div class="ouq-bell-item-title">${x.oqilgan ? '' : '<span class="ouq-bell-dot"></span>'}${esc(x.sarlavha)}</div>
+            <div class="ouq-bell-item-time">${esc(bildVaqt(x.yangilangan))}</div>
+          </div>
+          ${bildLines(x.matn).map(l => `<div class="ouq-bell-line">${esc(l)}</div>`).join('')}
+        </div>`).join('')
+    : '<div class="ouq-bell-empty">🔕 Hozircha bildirishnoma yo\'q</div>';
+  p.hidden = false;
+  b.setAttribute('aria-expanded', 'true');
+  if (bildSoni > 0) bildHammasiOqildi();
 }
 
 // ═══════════════════════════════════════════
