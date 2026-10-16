@@ -19,7 +19,7 @@
   height: clamp(440px, calc(100vh - 210px), 720px);
   height: clamp(440px, calc(100dvh - 210px), 720px);
   background: #fff; border: 1.5px solid var(--border); border-radius: 14px;
-  overflow: hidden; box-shadow: var(--shadow);
+  overflow: hidden; box-shadow: var(--shadow); position: relative;
 }
 
 /* ── Chap: suhbatlar ro'yxati ── */
@@ -85,8 +85,9 @@
 }
 .iitc-older:hover { background: var(--accent-soft); }
 
-.iitc-row { display: flex; }
+.iitc-row { display: flex; align-items: center; gap: 4px; }
 .iitc-row.mine { justify-content: flex-end; }
+.iitc-row.editing .iitc-bubble { box-shadow: 0 0 0 2px #f59e0b; }
 .iitc-bubble {
   max-width: min(78%, 520px); padding: 8px 12px 6px; border-radius: 16px; font-size: 14px; line-height: 1.42;
   box-shadow: 0 1px 1px rgba(0,0,0,.06);
@@ -99,6 +100,88 @@
 .iitc-row.mine .iitc-link { color: #fff; }
 .iitc-bubble.failed .iitc-link { color: #991b1b; }
 .iitc-tick.read { color: #7dd3fc; font-weight: 700; opacity: 1; }
+
+/* ── Fayl / rasm (xabar ichida) ── */
+.iitc-bubble .iitc-img, .iitc-bubble .iitc-file { margin-bottom: 5px; }
+.iitc-bubble.media { padding: 4px 4px 5px; }
+.iitc-bubble.media .iitc-meta { padding: 0 8px; }
+.iitc-img {
+  display: block; padding: 0; border: 0; background: rgba(0,0,0,.06); border-radius: 12px; overflow: hidden;
+  cursor: zoom-in; max-width: 100%; line-height: 0;
+}
+.iitc-img img { display: block; width: 260px; max-width: 100%; height: auto; max-height: 320px; object-fit: cover; }
+.iitc-img.is-loading { width: 220px; max-width: 100%; height: 150px; animation: iitc-pulse 1.2s ease-in-out infinite; }
+.iitc-img.is-loading img { width: 100%; height: 100%; opacity: 0; }
+.iitc-img.broken { line-height: 1.4; padding: 18px 14px; font-size: 12.5px; color: var(--muted); cursor: default; width: auto; height: auto; animation: none; }
+@keyframes iitc-pulse { 50% { opacity: .55; } }
+.iitc-file {
+  display: flex; align-items: center; gap: 10px; width: 100%; box-sizing: border-box; padding: 8px 10px;
+  border: 0; border-radius: 12px; font: inherit; text-align: left; color: inherit; cursor: pointer;
+  background: rgba(0,0,0,.06);
+}
+div.iitc-file { cursor: default; }
+.iitc-row.mine .iitc-file { background: rgba(255,255,255,.16); }
+.iitc-file:hover { filter: brightness(.96); }
+.iitc-file-ico { font-size: 26px; line-height: 1; flex-shrink: 0; }
+.iitc-file-txt { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+.iitc-file-name { font-size: 13.5px; font-weight: 600; overflow-wrap: anywhere; word-break: break-word; }
+.iitc-file-size { font-size: 11px; opacity: .75; font-family: 'DM Mono', monospace; }
+
+/* ── O'z xabari amallari: ⋮ → ✏️ 🗑️ ── */
+.iitc-act {
+  flex-shrink: 0; width: 26px; height: 26px; padding: 0; border: 0; border-radius: 50%; cursor: pointer;
+  background: transparent; color: var(--muted); font-size: 18px; line-height: 1; font-weight: 700;
+  opacity: .55; transition: opacity .12s, background .12s;
+}
+.iitc-act:hover, .iitc-act.open, .iitc-act:focus-visible { opacity: 1; background: #e7e4dc; }
+@media (hover: hover) and (pointer: fine) {
+  .iitc-act { opacity: 0; }
+  .iitc-row:hover .iitc-act, .iitc-act:focus-visible, .iitc-act.open { opacity: 1; }
+}
+.iitc-actions { display: inline-flex; gap: 2px; flex-shrink: 0; padding: 2px; border-radius: 16px; background: #fff; border: 1px solid var(--border); box-shadow: 0 2px 8px rgba(0,0,0,.12); }
+.iitc-actions button { width: 30px; height: 30px; border: 0; border-radius: 50%; background: transparent; font-size: 15px; line-height: 1; cursor: pointer; padding: 0; }
+.iitc-actions button:hover, .iitc-actions button:focus-visible { background: #f0eee8; }
+.iitc-actions button[data-del]:hover { background: #fee2e2; }
+
+/* ── Yozish maydoni ustidagi qator (fayl / tahrirlash) ── */
+.iitc-ctx {
+  align-items: center; gap: 10px; padding: 8px 12px; background: #fff; border-top: 1.5px solid var(--border);
+  border-left: 3px solid var(--iit-indigo-deep); flex-shrink: 0;
+}
+.iitc-ctx-thumb { width: 44px; height: 44px; border-radius: 8px; object-fit: cover; flex-shrink: 0; background: #e8eef7; }
+.iitc-ctx-ico { font-size: 24px; line-height: 1; flex-shrink: 0; }
+.iitc-ctx-txt { flex: 1; min-width: 0; display: flex; flex-direction: column; font-size: 12.5px; color: var(--muted); }
+.iitc-ctx-txt b { color: var(--text); font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iitc-ctx-txt span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.iitc-ctx-x { width: 28px; height: 28px; border: 0; border-radius: 50%; background: #f0eee8; color: var(--text); cursor: pointer; font-size: 13px; line-height: 1; flex-shrink: 0; padding: 0; }
+.iitc-ctx-x:hover { background: #e4e1d8; }
+
+.iitc-attach {
+  width: 42px; height: 42px; border-radius: 50%; border: 0; flex-shrink: 0; cursor: pointer; padding: 0;
+  background: transparent; font-size: 20px; line-height: 1; display: inline-flex; align-items: center; justify-content: center;
+}
+.iitc-attach:hover:not(:disabled) { background: #f0eee8; }
+.iitc-attach:disabled { opacity: .35; cursor: default; }
+
+/* ── O'chirishni tasdiqlash oynasi ── */
+.iitc-modal { position: absolute; inset: 0; z-index: 20; display: flex; align-items: center; justify-content: center; padding: 18px; background: rgba(20, 24, 40, .45); }
+.iitc-modal-card { width: min(340px, 100%); background: #fff; border-radius: 14px; padding: 18px 18px 14px; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+.iitc-modal-t { font-size: 16px; font-weight: 700; margin-bottom: 6px; }
+.iitc-modal-s { font-size: 13.5px; color: var(--muted); line-height: 1.5; }
+.iitc-modal-btns { display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px; }
+.iitc-btn { padding: 8px 14px; border-radius: 10px; border: 1.5px solid var(--border); background: #fff; font: inherit; font-size: 13.5px; font-weight: 600; color: var(--text); cursor: pointer; }
+.iitc-btn:hover { background: #f3f1ec; }
+.iitc-btn.danger { background: #dc2626; border-color: #dc2626; color: #fff; }
+.iitc-btn.danger:hover { background: #b91c1c; }
+.iitc-btn:disabled { opacity: .6; cursor: default; }
+
+/* ── Rasmni to'liq ko'rish ── */
+.iitc-lb { position: fixed; inset: 0; z-index: 10000; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px; padding: 56px 12px 12px; background: rgba(10, 12, 20, .9); cursor: zoom-out; }
+.iitc-lb img { max-width: 100%; max-height: 100%; object-fit: contain; border-radius: 6px; }
+.iitc-lb-bar { position: absolute; top: 0; left: 0; right: 0; display: flex; align-items: center; gap: 8px; padding: 10px 12px; color: #fff; cursor: default; }
+.iitc-lb-name { flex: 1; min-width: 0; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; opacity: .85; }
+.iitc-lb-btn { padding: 7px 12px; border: 0; border-radius: 9px; background: rgba(255,255,255,.16); color: #fff; font: inherit; font-size: 13px; font-weight: 600; text-decoration: none; cursor: pointer; }
+.iitc-lb-btn:hover { background: rgba(255,255,255,.28); }
 
 .iitc-err { padding: 7px 14px; background: #fef2f2; color: #b91c1c; font-size: 12.5px; border-top: 1px solid #fecaca; flex-shrink: 0; }
 
@@ -124,11 +207,13 @@
   .iitc-side { border-right: 0; }
   .iitc-back { display: inline-flex; align-items: center; justify-content: center; }
   .iitc-bubble { max-width: 86%; }
+  .iitc-img img { width: 220px; }
   .iitc-msgs { padding: 12px; }
   /* iOS inputga fokus berganda sahifani kattalashtirmasin */
   .iitc-input, .iitc-search { font-size: 16px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .iitc-send, .iitc-item { transition: none; }
+  .iitc-send, .iitc-item, .iitc-act { transition: none; }
+  .iitc-img.is-loading { animation: none; }
 }

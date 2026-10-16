@@ -2,3 +2,6 @@ node_modules/
 .env
 *.log
 .DS_Store
+
+# Chat fayllari (ochiq berilmaydi, faqat API orqali)
+chat_uploads/

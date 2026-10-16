@@ -649,6 +649,30 @@ CREATE INDEX IF NOT EXISTS idx_chat_oqilmagan_oqituvchi
 CREATE INDEX IF NOT EXISTS idx_chat_oqilmagan_oquvchi
     ON chat_xabarlar (oquvchi_id, oqituvchi_id) WHERE oqilgan IS NULL AND yuboruvchi = 'oqituvchi';
 
+-- ─── 31a. CHAT: tahrirlash / o'chirish / fayl (migrations/027) ───────────────
+-- Yuqoridagi CREATE TABLE mavjud jadvalga tegmaydi, shuning uchun ustunlar
+-- va yangi CHECK alohida (idempotent) qo'shiladi.
+ALTER TABLE chat_xabarlar DROP CONSTRAINT IF EXISTS chat_xabarlar_matn_check;
+ALTER TABLE chat_xabarlar
+    ADD COLUMN IF NOT EXISTS tahrirlangan TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS ochirilgan   TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS yangilangan  TIMESTAMPTZ,
+    ADD COLUMN IF NOT EXISTS fayl_yol     TEXT,
+    ADD COLUMN IF NOT EXISTS fayl_nomi    TEXT,
+    ADD COLUMN IF NOT EXISTS fayl_turi    TEXT,
+    ADD COLUMN IF NOT EXISTS fayl_hajm    INTEGER;
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'chat_xabarlar_mazmun_check') THEN
+        ALTER TABLE chat_xabarlar ADD CONSTRAINT chat_xabarlar_mazmun_check CHECK (
+            char_length(matn) <= 2000
+            AND (char_length(matn) >= 1 OR fayl_yol IS NOT NULL OR ochirilgan IS NOT NULL)
+        );
+    END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS idx_chat_yangilangan
+    ON chat_xabarlar (oqituvchi_id, oquvchi_id, yangilangan) WHERE yangilangan IS NOT NULL;
+
 
 -- ════════════════════════════════════════════════════════════════════════════
 --  RUXSATLAR (GRANTS)
