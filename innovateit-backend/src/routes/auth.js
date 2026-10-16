@@ -63,10 +63,43 @@ router.post('/login-viewer', async (req, res) => {
 });
 
 // ─── POST /api/auth/refresh — tokenni yangilash ──────────────────────────────
-router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi', 'sales', 'direktor']), (req, res) => {
-  // Barcha JWT maydonlarini saqlab yangi token berish
-  const token = generateToken(req.user);
-  res.json({ ok: true, token });
+// O'qituvchi uchun maktablar ro'yxati (maktablar / maktabIdlar) bazadan QAYTA
+// o'qiladi: o'qituvchi login qilgandan keyin yangi maktabga biriktirilgan (yoki
+// ajratilgan) bo'lsa, eski token/sessiya bilan maktab tanlagichi yangilanmay
+// qolardi. Javobda ham yangi ro'yxat qaytariladi — panel shu bilan tanlagichni
+// qayta quradi.
+router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi', 'sales', 'direktor']), async (req, res) => {
+  let payload = req.user;
+  let extra   = {};
+
+  if (!payload.isSuper && payload.role === 'oqituvchi' && payload.entityId) {
+    try {
+      const r = await pool.query(
+        `SELECT m.id, m.nomi
+           FROM oqituvchi_maktablar om
+           JOIN maktablar m ON m.id = om.maktab_id
+          WHERE om.oqituvchi_id = $1
+          ORDER BY om.id`,
+        [payload.entityId]
+      );
+      const maktabIdlar = r.rows.map(x => x.id);
+      const maktablar   = r.rows.map(x => x.nomi);
+      const joriy       = Number(payload.maktabId);
+      payload = {
+        ...payload,
+        maktablar,
+        maktabIdlar,
+        maktabId: maktabIdlar.includes(joriy) ? joriy : (maktabIdlar[0] || null),
+      };
+      extra = { maktablar, maktabIdlar };
+    } catch (err) {
+      // Baza xatosida eski ma'lumot bilan davom etamiz — refresh sinmasin
+      console.error('auth/refresh maktablar xatolik:', err.message);
+    }
+  }
+
+  const token = generateToken(payload);
+  res.json({ ok: true, token, ...extra });
 });
 
 module.exports = router;

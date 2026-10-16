@@ -176,6 +176,62 @@ function doLogout() {
   }, 150);
 }
 
+// ─── Maktablar ro'yxatini (U.maktablar) qo'llash ────────────────────────────
+// 2+ maktab bo'lsa tanlagich ko'rsatiladi, 0–1 bo'lsa yashiriladi. Qayta
+// chaqirilsa xavfsiz (sinxronlashdan keyin ham ishlatiladi).
+function applyMaktablar() {
+  const nomlar = U.maktablar || [];
+  const idlar  = U.maktabIdlar || [];
+  MAKTABLAR_RO = nomlar.map((nom, i) => ({ id: idlar[i] || null, nomi: nom })).filter(m => m.nomi);
+
+  const sel  = g('oq-maktab-selector');
+  const prev = TANLANGAN_MID;
+  if (MAKTABLAR_RO.length > 1) {
+    sel.innerHTML = MAKTABLAR_RO.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('');
+    // Avval tanlangan maktab ro'yxatda bo'lsa — o'sha; aks holda refresh'dan oldin
+    // saqlangani; aks holda birinchisi
+    let savedMaktab = null;
+    try { savedMaktab = sessionStorage.getItem(OQ_MAKTAB_KEY); } catch (e) {}
+    const pick = (prev != null && MAKTABLAR_RO.find(m => String(m.id) === String(prev)))
+              || MAKTABLAR_RO.find(m => String(m.id) === savedMaktab)
+              || MAKTABLAR_RO[0];
+    TANLANGAN_MID = pick.id;
+    sel.value = TANLANGAN_MID;
+    initMaktabPicker(); // native <select> o'rniga o'zbekcha tanlash oynasi (select yashirin qoladi)
+  } else {
+    const pk = g('oq-maktab-picker'); if (pk) pk.remove();   // tanlagich kerak emas
+    sel.innerHTML = MAKTABLAR_RO.length === 1 ? `<option value="${MAKTABLAR_RO[0].id}">${esc(MAKTABLAR_RO[0].nomi)}</option>` : '';
+    TANLANGAN_MID = MAKTABLAR_RO.length === 1 ? MAKTABLAR_RO[0].id : null;
+  }
+  return String(prev ?? '') !== String(TANLANGAN_MID ?? '');   // tanlangan maktab o'zgardimi?
+}
+
+// ─── Maktablar ro'yxatini serverdan yangilash ────────────────────────────────
+// Token va saqlangan sessiya login paytidagi maktablar ro'yxatini eslab qoladi.
+// O'qituvchi keyin yangi maktabga biriktirilsa (yoki ajratilsa), tanlagich eski
+// holatda qolib ketardi. /api/auth/refresh ro'yxatni bazadan qayta o'qib, yangi
+// token va ro'yxat qaytaradi.
+let _maktabSyncAt = 0;
+async function syncMaktablar() {
+  if (!U) return;
+  _maktabSyncAt = Date.now();
+  try {
+    const r = await api.post('/api/auth/refresh', {});
+    if (!r || !r.ok || !r.token) return;
+    api.setToken(r.token);
+    if (!Array.isArray(r.maktabIdlar) || !Array.isArray(r.maktablar)) return;
+    const o = JSON.stringify([U.maktabIdlar || [], U.maktablar || []]);
+    if (o === JSON.stringify([r.maktabIdlar, r.maktablar])) return;     // o'zgarmagan
+    U.maktablar = r.maktablar; U.maktabIdlar = r.maktabIdlar;
+    try { localStorage.setItem('iit_oq_u', JSON.stringify(U)); } catch (e) {}
+    const changed = applyMaktablar();
+    if (changed && TANLANGAN_MID != null) onMaktabChange();            // tanlangan maktab ajratilgan bo'lsa — ma'lumotlarni qayta yuklaymiz
+  } catch (e) { /* tarmoq xatosi — eski ro'yxat bilan davom etamiz */ }
+}
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden && U && Date.now() - _maktabSyncAt > 5 * 60 * 1000) syncMaktablar();
+});
+
 function showApp() {
   initNavDrawerWatch();
   g('login-screen').style.display = 'none';
@@ -194,29 +250,13 @@ function showApp() {
   }
 
   // Bir nechta maktabga biriktirilgan bo'lsa — tanlash
-  const nomlar = U.maktablar || [];
-  const idlar  = U.maktabIdlar || [];
-  MAKTABLAR_RO = nomlar.map((nom, i) => ({ id: idlar[i] || null, nomi: nom })).filter(m => m.nomi);
-
-  const sel = g('oq-maktab-selector');
-  if (MAKTABLAR_RO.length > 1) {
-    sel.innerHTML = MAKTABLAR_RO.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('');
-    TANLANGAN_MID = MAKTABLAR_RO[0].id;
-    // Refresh'dan oldin tanlangan maktab hali ham ro'yxatda bo'lsa — shuni tiklaymiz
-    let savedMaktab = null;
-    try { savedMaktab = sessionStorage.getItem(OQ_MAKTAB_KEY); } catch (e) {}
-    const savedM = MAKTABLAR_RO.find(m => String(m.id) === savedMaktab);
-    if (savedM) TANLANGAN_MID = savedM.id;
-    sel.value = TANLANGAN_MID;
-    initMaktabPicker(); // native <select> o'rniga o'zbekcha tanlash oynasi (select yashirin qoladi)
-  } else if (MAKTABLAR_RO.length === 1) {
-    TANLANGAN_MID = MAKTABLAR_RO[0].id;
-  }
+  applyMaktablar();
 
   // Chat: o'qituvchiga biriktirilgan o'quvchilar bilan yozishma (js/chat.js)
   if (window.IITChat) IITChat.init({ role: 'oqituvchi', mount: g('chat-mount'), navPush, navRelease, tab: 'chat' });
 
   switchTab(getSavedTab()); // refresh qilinganda o'sha bo'limda qolish
+  syncMaktablar();          // maktablar ro'yxati eskirgan bo'lsa — yangilanadi
 }
 
 // ─── Maktab tanlagich ────────────────────────────
