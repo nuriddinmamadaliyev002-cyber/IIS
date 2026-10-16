@@ -1,5 +1,7 @@
 // ─── Sales routes ────────────────────────────────────────────────────────────
 // POST   /api/sales/leads        — YANGI LEAD (PUBLIC — ro'yxatdan o'tish sahifasi)
+// POST   /api/sales/leads/qoshish — sales xodimi o'zi yangi ariza qo'shadi (sales, admin)
+// GET    /api/sales/mening-maktablarim — arizaga qo'shish uchun maktablar (sales, admin)
 // GET    /api/sales/leads        — leadlar ro'yxati (sales, admin)
 // PUT    /api/sales/leads/:id    — lead holatini/biriktirilganini yangilash (sales, admin)
 // DELETE /api/sales/leads/:id    — lead o'chirish (admin)
@@ -168,6 +170,81 @@ router.put('/leads/:id', requireAuth(['admin', 'sales']), async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('lead yangilash xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/sales/mening-maktablarim — yangi ariza formasi uchun maktablar ─
+// Sales xodimi faqat o'ziga biriktirilgan maktablarni ko'radi, superadmin hammasini.
+router.get('/mening-maktablarim', requireAuth(['admin', 'sales']), async (req, res) => {
+  try {
+    let result;
+    if (req.user.role === 'sales' && !req.user.isSuper) {
+      result = await pool.query(
+        `SELECT m.id, m.nomi FROM sales_maktablar sm
+           JOIN maktablar m ON m.id = sm.maktab_id
+          WHERE sm.sales_id = $1 ORDER BY m.nomi`, [req.user.id]);
+    } else {
+      result = await pool.query('SELECT id, nomi FROM maktablar ORDER BY nomi');
+    }
+    res.json({ ok: true, maktablar: result.rows });
+  } catch (err) {
+    console.error('mening-maktablarim xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── POST /api/sales/leads/qoshish — sales xodimi qo'lda ariza qo'shadi ──────
+// Sana (yaratilgan) — serverdagi "saqlash bosilgan" vaqt (NOW()), holat — "yangi".
+router.post('/leads/qoshish', requireAuth(['admin', 'sales']), async (req, res) => {
+  const ism             = req.body.ism?.trim();
+  const telefon         = req.body.telefon?.trim();
+  const telefon2        = req.body.telefon2?.trim() || '';
+  const oquvchiFamiliya = req.body.oquvchiFamiliya?.trim();
+  const oquvchiIsmi     = req.body.oquvchiIsmi?.trim();
+  const sinf            = req.body.sinf?.trim();
+  const maktabId        = parseInt(req.body.maktabId, 10);
+  const qaydnoma        = req.body.qaydnoma?.trim() || '';
+
+  const telOk = t => String(t).replace(/\D/g, '').length === 12 && String(t).replace(/\D/g, '').startsWith('998');
+  if (!ism)             return res.status(400).json({ ok: false, error: 'Ota-ona ismi majburiy' });
+  if (!telefon || !telOk(telefon))
+                        return res.status(400).json({ ok: false, error: "Telefon +998 XX XXX XX XX formatida bo'lishi kerak" });
+  if (telefon2 && !telOk(telefon2))
+                        return res.status(400).json({ ok: false, error: "Qo'shimcha telefon +998 XX XXX XX XX formatida bo'lishi kerak" });
+  if (!oquvchiFamiliya) return res.status(400).json({ ok: false, error: "O'quvchining familiyasi majburiy" });
+  if (!oquvchiIsmi)     return res.status(400).json({ ok: false, error: "O'quvchining ismi majburiy" });
+  if (!sinf)            return res.status(400).json({ ok: false, error: 'Sinf majburiy' });
+  if (!maktabId)        return res.status(400).json({ ok: false, error: 'Maktab majburiy' });
+
+  try {
+    const isSalesOnly = req.user.role === 'sales' && !req.user.isSuper;
+    if (isSalesOnly) {
+      const ids = await getSalesMaktabIds(req.user.id);
+      if (!ids.includes(maktabId))
+        return res.status(403).json({ ok: false, error: "Bu maktab sizga biriktirilmagan" });
+    }
+
+    // Dublikat: bir xil telefon + o'quvchi + maktab allaqachon bo'lsa — qo'shmaymiz
+    const dup = await pool.query(
+      `SELECT id FROM leadlar
+        WHERE telefon = $1 AND oquvchi_familiya = $2 AND oquvchi_ismi = $3 AND maktab_id = $4
+        LIMIT 1`,
+      [telefon, oquvchiFamiliya, oquvchiIsmi, maktabId]);
+    if (dup.rowCount > 0)
+      return res.status(409).json({ ok: false, error: "Bu o'quvchi uchun ariza allaqachon mavjud" });
+
+    const result = await pool.query(
+      `INSERT INTO leadlar
+         (ism, telefon, telefon2, oquvchi_familiya, oquvchi_ismi, sinf, maktab_id,
+          qaydnoma, manba, holat, biriktirilgan, yaratilgan, yangilangan)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,'sales','yangi',$9,NOW(),NOW())
+       RETURNING id`,
+      [ism, telefon, telefon2, oquvchiFamiliya, oquvchiIsmi, sinf, maktabId, qaydnoma,
+       isSalesOnly ? req.user.id : null]);
+    res.json({ ok: true, id: result.rows[0].id });
+  } catch (err) {
+    console.error('lead qoshish xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });

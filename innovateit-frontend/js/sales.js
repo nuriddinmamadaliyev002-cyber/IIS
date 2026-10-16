@@ -400,3 +400,81 @@ async function exportLeadsExcel() {
     if (btn) { btn.disabled = false; btn.textContent = oldText; }
   }
 }
+
+
+// ─── Yangi ariza qo'shish (sales xodimi o'zi) ────────────────────────────────
+// Sana — saqlash bosilgan vaqt (serverda NOW()), holat — doim "Yangi".
+function fmtTel(val) {
+  const digits = val.replace(/\D/g, '');
+  if (!digits) return '';
+  let d = digits.startsWith('998') ? digits : digits.startsWith('0') ? '998' + digits.slice(1) : '998' + digits;
+  d = d.slice(0, 12);
+  if (d === '998') return '';
+  let out = '+' + d.slice(0, 3);
+  if (d.length > 3)  out += ' ' + d.slice(3, 5);
+  if (d.length > 5)  out += ' ' + d.slice(5, 8);
+  if (d.length > 8)  out += ' ' + d.slice(8, 10);
+  if (d.length > 10) out += ' ' + d.slice(10, 12);
+  return out;
+}
+function isTelOk(v) { const d = v.replace(/\D/g, ''); return d.length === 12 && d.startsWith('998'); }
+
+let AL_TEL_READY = false;
+async function openAddLead() {
+  if (!AL_TEL_READY) {
+    ['al-tel', 'al-tel2'].forEach(id => g(id).addEventListener('input', e => { e.target.value = fmtTel(e.target.value); }));
+    AL_TEL_READY = true;
+  }
+  g('sl-add-form').reset();
+  g('al-err').textContent = '';
+  g('al-save').disabled = false;
+  g('al-maktab').innerHTML = '<option value="">Yuklanmoqda…</option>';
+  g('sl-add-bg').style.display = 'flex';
+  try {
+    const r = await api.getSalesMaktablarim();
+    const list = (r.ok && r.maktablar) || [];
+    g('al-maktab').innerHTML = list.length
+      ? '<option value="">Tanlang…</option>' + list.map(m => `<option value="${m.id}">${esc(m.nomi)}</option>`).join('')
+      : '<option value="">Sizga maktab biriktirilmagan</option>';
+    if (list.length === 1) g('al-maktab').value = String(list[0].id);
+  } catch (e) {
+    g('al-maktab').innerHTML = '<option value="">Maktablarni yuklab bo\'lmadi</option>';
+  }
+}
+function closeAddLead() { g('sl-add-bg').style.display = 'none'; }
+
+async function submitAddLead(ev) {
+  ev.preventDefault();
+  const err = g('al-err');
+  const v = id => g(id).value.trim();
+  const data = {
+    ism: v('al-ism'), telefon: v('al-tel'), telefon2: v('al-tel2'),
+    oquvchiFamiliya: v('al-fam'), oquvchiIsmi: v('al-oism'),
+    sinf: g('al-sinf').value, maktabId: g('al-maktab').value, qaydnoma: v('al-qayd'),
+  };
+  if (!data.ism)             return err.textContent = 'Ota-ona ismini kiriting';
+  if (!isTelOk(data.telefon)) return err.textContent = 'Telefon +998 XX XXX XX XX formatida bo\'lsin';
+  if (data.telefon2 && !isTelOk(data.telefon2)) return err.textContent = 'Qo\'shimcha telefon +998 XX XXX XX XX formatida bo\'lsin';
+  if (!data.oquvchiFamiliya) return err.textContent = "O'quvchi familiyasini kiriting";
+  if (!data.oquvchiIsmi)     return err.textContent = "O'quvchi ismini kiriting";
+  if (!data.maktabId)        return err.textContent = 'Maktabni tanlang';
+  if (!data.sinf)            return err.textContent = 'Sinfni tanlang';
+  err.textContent = '';
+
+  const btn = g('al-save');
+  btn.disabled = true;
+  try {
+    const r = await api.addLead(data);
+    if (r.ok) {
+      closeAddLead();
+      g('sl-holat-filter').value = '';   // yangi ariza ro'yxatda ko'rinishi uchun filtrni tozalaymiz
+      await loadLeads();
+    } else {
+      err.textContent = r.error || 'Xatolik';
+      btn.disabled = false;
+    }
+  } catch (e) {
+    err.textContent = 'Server bilan bog\'lanib bo\'lmadi';
+    btn.disabled = false;
+  }
+}

@@ -353,6 +353,8 @@ const api = {
   // ─── Leadlar ───
   getLeads:   (d) => api.get('/api/sales/leads', d),
   updateLead: (d) => api.put(`/api/sales/leads/${d.id}`, d),
+  addLead:    (d) => api.post('/api/sales/leads/qoshish', d),
+  getSalesMaktablarim: () => api.get('/api/sales/mening-maktablarim', {}),
   deleteLead: (d) => api.del(`/api/sales/leads/${d.id}`, d),
 
   // ─── Portfolio Viewers ───

@@ -27,6 +27,21 @@
     }
     .sl-export-btn:hover { opacity: .88; }
     .sl-export-btn:disabled { opacity: .6; cursor: wait; }
+    .sl-add-btn {
+      flex: 0 0 auto; padding: 8px 14px; border: none; border-radius: 10px; cursor: pointer;
+      background: #2563eb; color: #fff; font-size: 13px; font-weight: 600; font-family: inherit; white-space: nowrap;
+    }
+    .sl-add-btn:hover { opacity: .88; }
+    .sl-modal-bg { position:fixed; inset:0; background:rgba(0,0,0,.45); z-index:1000; display:none; align-items:center; justify-content:center; padding:16px; }
+    .sl-modal { background:#fff; border-radius:16px; width:100%; max-width:520px; max-height:92vh; overflow:auto; padding:20px; box-sizing:border-box; }
+    .sl-modal h3 { margin:0 0 14px; font-size:17px; }
+    .sl-modal label { display:block; font-size:11.5px; font-weight:700; color:#6b7280; margin:10px 0 4px; text-transform:uppercase; letter-spacing:.03em; }
+    .sl-modal input, .sl-modal select, .sl-modal textarea { width:100%; box-sizing:border-box; padding:9px 10px; border:1.5px solid var(--border); border-radius:10px; font-size:14px; font-family:inherit; background:#fff; color:#1a1917; color-scheme:light; }
+    .sl-modal .row2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .sl-modal .auto-box { padding:9px 10px; border-radius:10px; background:#f3f4f6; color:#4b5563; font-size:13px; }
+    .sl-modal .err { color:#dc2626; font-size:13px; margin-top:10px; min-height:16px; }
+    .sl-modal .btns { display:flex; gap:10px; justify-content:flex-end; margin-top:14px; }
+    .sl-modal .btns button { padding:10px 18px; border-radius:10px; border:none; cursor:pointer; font-size:14px; font-weight:600; font-family:inherit; }
     .sl-stat-cards { display:flex; gap:10px; flex-wrap:wrap; margin-bottom:18px; }
     .sl-stat-card {
       flex:1; min-width:120px; background:#fff; border:1.5px solid var(--border);
@@ -118,7 +133,7 @@
       .sl-controls-right { display: grid !important; grid-template-columns: 1fr 1fr; gap: 6px !important; }
       .sl-controls-right .sl-search-row { grid-column: 1 / -1; gap: 6px !important; }
       .sl-controls-right .sl-search-wrap { min-width: 0 !important; }
-      .sl-export-btn { padding: 0 12px; height: 40px; border-radius: 10px; font-size: 14px; }
+      .sl-export-btn, .sl-add-btn { padding: 0 12px; height: 40px; border-radius: 10px; font-size: 14px; }
       .sl-sel, #sl-search { width: 100%; box-sizing: border-box; min-width: 0; font-size: 16px !important; padding: 8px 10px !important; border-radius: 10px !important; background: #fff; }
 
       /* Jadval → kartalar */
@@ -244,6 +259,7 @@
             style="position:absolute;right:6px;background:none;border:none;cursor:pointer;
                    color:#9ca3af;font-size:13px;line-height:1;padding:2px 4px;border-radius:4px;display:none;">✕</button>
         </div>
+        <button type="button" id="sl-add-btn" class="sl-add-btn" onclick="openAddLead()">➕ Yangi ariza</button>
         <button type="button" id="sl-export-btn" class="sl-export-btn" onclick="exportLeadsExcel()"
           title="Hozirgi filtrga mos arizalarni Excel fayl qilib yuklab olish">📥 Excel</button>
         </div>
@@ -275,6 +291,46 @@
       <div id="sl-leads-loading" style="text-align:center;padding:24px;"><div class="loading-spinner"></div></div>
     </div>
   </div>
+</div>
+
+
+<!-- ════════════ YANGI ARIZA MODALI ════════════ -->
+<div class="sl-modal-bg" id="sl-add-bg" onclick="if(event.target===this)closeAddLead()">
+  <form class="sl-modal" id="sl-add-form" onsubmit="submitAddLead(event)" novalidate>
+    <h3>➕ Yangi ariza qo'shish</h3>
+    <label for="al-ism">Ota-ona ismi</label>
+    <input id="al-ism" type="text" autocomplete="off" required>
+    <div class="row2">
+      <div><label for="al-tel">Telefon raqam</label>
+        <input id="al-tel" type="tel" inputmode="tel" placeholder="+998 __ ___ __ __" maxlength="17" required></div>
+      <div><label for="al-tel2">Qo'shimcha telefon</label>
+        <input id="al-tel2" type="tel" inputmode="tel" placeholder="+998 __ ___ __ __" maxlength="17"></div>
+    </div>
+    <div class="row2">
+      <div><label for="al-fam">O'quvchi familiyasi</label><input id="al-fam" type="text" autocomplete="off" required></div>
+      <div><label for="al-oism">O'quvchi ismi</label><input id="al-oism" type="text" autocomplete="off" required></div>
+    </div>
+    <div class="row2">
+      <div><label for="al-maktab">Maktab</label><select id="al-maktab" required></select></div>
+      <div><label for="al-sinf">Sinf</label>
+        <select id="al-sinf" required><option value="">Tanlang…</option>
+          <option value="1-sinf">1-sinf</option><option value="2-sinf">2-sinf</option><option value="3-sinf">3-sinf</option>
+          <option value="4-sinf">4-sinf</option><option value="5-sinf">5-sinf</option><option value="6-sinf">6-sinf</option>
+          <option value="7-sinf">7-sinf</option><option value="8-sinf">8-sinf</option><option value="9-sinf">9-sinf</option>
+          <option value="10-sinf">10-sinf</option><option value="11-sinf">11-sinf</option></select></div>
+    </div>
+    <label for="al-qayd">Qaydnoma (ixtiyoriy)</label>
+    <textarea id="al-qayd" rows="2" spellcheck="false"></textarea>
+    <div class="row2">
+      <div><label>Sana</label><div class="auto-box" id="al-sana">Saqlash bosilganda avtomatik</div></div>
+      <div><label>Holat</label><div class="auto-box">🆕 Yangi</div></div>
+    </div>
+    <div class="err" id="al-err"></div>
+    <div class="btns">
+      <button type="button" style="background:#f3f4f6;color:#374151;" onclick="closeAddLead()">Bekor qilish</button>
+      <button type="submit" id="al-save" style="background:#2563eb;color:#fff;">Saqlash</button>
+    </div>
+  </form>
 </div>
 
 <script>window.API_TOKEN_KEY_OVERRIDE = 'innovateit_sales_token';</script>
