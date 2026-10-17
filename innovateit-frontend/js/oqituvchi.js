@@ -392,7 +392,7 @@ const GURUH_KUN_NOMLARI = { 1: 'Dushanba', 2: 'Seshanba', 3: 'Chorshanba', 4: 'P
 
 // Boshlanish/tugash vaqti uchun ruxsat etilgan qiymatlar
 const GURUH_SOAT_VARIANTLARI = ['06','07','08','09','10','11','12','13','14','15','16','17','18'];
-const GURUH_DAQIQA_VARIANTLARI = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+const GURUH_DAQIQA_VARIANTLARI = ['00', '30'];   // faqat butun soat yoki yarim soat
 
 function populateGuruhTimeSelect(id, options, placeholder, reset = false) {
   const el = g(id);
@@ -896,6 +896,8 @@ async function editGuruh(id) {
   const [ts, tm] = (j.tugash || '14:00').split(':');
   g('guruh-bosh-s').value = bs || '08'; g('guruh-bosh-m').value = bm || '00';
   g('guruh-tug-s').value  = ts || '14'; g('guruh-tug-m').value  = tm || '00';
+  // Eski guruhda 00/30 dan boshqa daqiqa bo'lsa — "Daqiqa" bo'sh qoladi, o'qituvchi qaytadan tanlaydi
+  ['guruh-bosh-m', 'guruh-tug-m', 'guruh-bosh-s', 'guruh-tug-s'].forEach(id => { const el = g(id); if (el && !el.value) el.selectedIndex = 0; });
 
   (j.kunlar || '').split(',').map(k => k.trim()).filter(Boolean).forEach(k => {
     document.querySelector(`#guruh-kun-chips [data-k="${k}"]`)?.classList.add('sel');
