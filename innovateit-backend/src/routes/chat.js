@@ -7,7 +7,9 @@
 //                                          yoki multipart/form-data { hamroh, matn?, fayl }
 //  PUT    /api/chat/xabarlar/:id         — O'Z xabarini tahrirlash { matn }
 //  DELETE /api/chat/xabarlar/:id         — O'Z xabarini o'chirish (ikki tomondan ham yo'qoladi)
-//  GET    /api/chat/fayl/:id             — xabarga biriktirilgan faylni olish (JWT bilan)
+//  GET    /api/chat/fayl/:id             — xabarga biriktirilgan faylni olish (JWT bilan, Range qo'llab-quvvatlanadi)
+//  GET    /api/chat/xabarlar/:id/fayl-url — faylga 5 daqiqalik imzolangan havola (audio/katta fayllar uchun)
+//  Guruh chati: routes/chat_guruh.js (/api/chat/guruh/*); fayl/audio: routes/chatFayl.js
 //  GET    /api/chat/oqilmagan            — jami o'qilmagan xabarlar soni (belgi/badge uchun)
 //
 //  Ruxsat: FAQAT role='oqituvchi' yoki role='oquvchi' (superadmin ham kirmaydi —
@@ -20,16 +22,12 @@
 //  (?ozgarish=) orqali buni bilib, xabarni ekrandan oladi.
 //
 //  Fayllar: innovateit-backend/chat_uploads/ (uploads/ dan TASHQARIDA — /uploads statik
-//  yo'li va nginx alias orqali ochiq berilmaydi). Faqat shu router orqali, JWT va juftlik
-//  tekshiruvi bilan beriladi.
+//  yo'li va nginx alias orqali ochiq berilmaydi). Faqat JWT yoki imzolangan havola orqali,
+//  juftlik tekshiruvi bilan beriladi. Bitta fayl 95MB gacha, audio ham (mp3, m4a, ogg, webm, wav, aac).
 //
 //  Real-time o'rniga qisqa interval bilan so'rov (polling) ishlatiladi: bitta
 //  PM2 instance va oddiy nginx proxy bilan ishlaydi, qo'shimcha infratuzilma kerak emas.
 const { Router }      = require('express');
-const path            = require('path');
-const fs              = require('fs');
-const crypto          = require('crypto');
-const multer          = require('multer');
 const pool            = require('../db');
 const { requireAuth } = require('../middleware/jwt');
 
@@ -39,85 +37,12 @@ router.use(requireAuth(['oqituvchi', 'oquvchi']));
 const MAX_MATN  = 2000;
 const PAGE_SIZE = 50;
 
-// ─── Fayl yuklash sozlamalari ────────────────────────────────────────────────
-const CHAT_DIR = path.join(__dirname, '../../chat_uploads');
-if (!fs.existsSync(CHAT_DIR)) fs.mkdirSync(CHAT_DIR, { recursive: true });
-
-const MAX_FAYL = 5 * 1024 * 1024; // 5MB (mavjud /upload bilan bir xil — nginx client_max_body_size ga mos)
-
-// Ruxsat etilgan kengaytmalar → MIME (javobda server o'zi belgilaydi, mijozning
-// yuborgan Content-Type'iga ishonilmaydi). SVG/HTML/JS ataylab YO'Q (XSS).
-const FAYL_TURLARI = {
-  '.jpg':  'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
-  '.gif':  'image/gif',  '.webp': 'image/webp',
-  '.pdf':  'application/pdf',
-  '.doc':  'application/msword',
-  '.docx': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-  '.xls':  'application/vnd.ms-excel',
-  '.xlsx': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-  '.ppt':  'application/vnd.ms-powerpoint',
-  '.pptx': 'application/vnd.openxmlformats-officedocument.presentationml.presentation',
-  '.txt':  'text/plain; charset=utf-8',
-  '.csv':  'text/csv; charset=utf-8',
-  '.zip':  'application/zip',
-};
-const RASM_KENG = new Set(['.jpg', '.jpeg', '.png', '.gif', '.webp']);
-
-// Rasm / PDF uchun fayl boshidagi "sehrli baytlar" — kengaytma soxta bo'lmasin
-function imzoTogri(ext, buf) {
-  const h = (...b) => b.every((v, i) => buf[i] === v);
-  if (ext === '.jpg' || ext === '.jpeg') return h(0xFF, 0xD8, 0xFF);
-  if (ext === '.png')  return h(0x89, 0x50, 0x4E, 0x47);
-  if (ext === '.gif')  return buf.slice(0, 3).toString('latin1') === 'GIF';
-  if (ext === '.webp') return buf.slice(0, 4).toString('latin1') === 'RIFF' && buf.slice(8, 12).toString('latin1') === 'WEBP';
-  if (ext === '.pdf')  return buf.slice(0, 4).toString('latin1') === '%PDF';
-  return true;
-}
-
-const chatUpload = multer({
-  storage: multer.diskStorage({
-    destination: CHAT_DIR,
-    filename: (req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${Date.now()}_${crypto.randomBytes(8).toString('hex')}${ext}`);
-    },
-  }),
-  limits: { fileSize: MAX_FAYL, files: 1, fields: 10 },
-  fileFilter: (req, file, cb) => {
-    const ext = path.extname(file.originalname).toLowerCase();
-    cb(null, !!FAYL_TURLARI[ext]);
-  },
-});
-
-function unlinkQuiet(filename) {
-  if (!filename) return;
-  fs.unlink(path.join(CHAT_DIR, path.basename(filename)), () => {});
-}
-
-// multipart bo'lsa faylni qabul qiladi; JSON bo'lsa o'tkazib yuboradi
-function qabulFayl(req, res, next) {
-  if (!req.is('multipart/form-data')) return next();
-  chatUpload.single('fayl')(req, res, (err) => {
-    if (err) {
-      const msg = err.code === 'LIMIT_FILE_SIZE'
-        ? `Fayl hajmi ${MAX_FAYL / 1024 / 1024}MB dan katta bo'lmasligi kerak`
-        : (err.message || 'Fayl yuklashda xatolik');
-      return res.status(400).json({ ok: false, error: msg });
-    }
-    next();
-  });
-}
-
-// ─── Kim so'rov yuboryapti: { rol, id } yoki null ────────────────────────────
-// requireAuth superadminni ham o'tkazadi (isSuper) — chat uchun u yaroqsiz.
-function kim(req) {
-  const u = req.user || {};
-  if (u.isSuper) return null;
-  const id = parseInt(u.entityId, 10);
-  if (!Number.isInteger(id) || id <= 0) return null;
-  if (u.role === 'oqituvchi' || u.role === 'oquvchi') return { rol: u.role, id };
-  return null;
-}
+// Umumiy modullar: ruxsat qoidalari (chatAccess.js) va fayl/audio (chatFayl.js)
+const { kim, GURUHDA, biriktirilganmi, rateOk, tanlanganMaktab } = require('./chatAccess');
+const {
+  FAYL_ROYXAT_MATNI, qabulFayl, unlinkQuiet, faylMalumoti,
+  kvotaOshmaydimi, KVOTA_XABARI, imzola, faylYubor,
+} = require('./chatFayl');
 
 // Juftlik: { tId, sId } (o'qituvchi id, o'quvchi id)
 function juft(me, hamrohId) {
@@ -126,54 +51,9 @@ function juft(me, hamrohId) {
     : { tId: hamrohId, sId: me.id };
 }
 
-// ─── "Guruhda" sharti ────────────────────────────────────────────────────────
-// Chat faqat o'quvchi o'qituvchining GURUHIDA bo'lsa ochiladi. Guruh = o'qituvchining
-// dars_jadvali yozuvi ("Guruh yaratish"): o'sha maktabda, sinflari ro'yxatida o'quvchining
-// sinfi bor. O'quvchi o'qituvchiga biriktirilgan (oqituvchi_oquvchilar) bo'lishi ham shart.
-// (davomat.js `guruhDavomatHolati` dagi guruh tarkibi bilan bir xil qoida.)
-// Alias'lar: oo = oqituvchi_oquvchilar, o = oquvchilar, t = oqituvchilar.
-const GURUHDA = `EXISTS (
-  SELECT 1 FROM dars_jadvali dj
-   WHERE dj.maktab_id = o.maktab_id
-     AND LOWER(TRIM(dj.teacher_familiya)) = LOWER(TRIM(t.familiya))
-     AND LOWER(TRIM(dj.teacher_ism))      = LOWER(TRIM(t.ism))
-     AND EXISTS (
-       SELECT 1 FROM unnest(string_to_array(COALESCE(dj.sinflar, ''), ',')) AS sn
-        WHERE REGEXP_REPLACE(LOWER(TRIM(sn)),       '[\\s-]*sinf$', '')
-            = REGEXP_REPLACE(LOWER(TRIM(o.sinf)),   '[\\s-]*sinf$', '')
-          AND TRIM(sn) <> ''))`;
-
-// Juftlik: biriktirilgan VA o'quvchi o'qituvchining guruhida
-async function biriktirilganmi(tId, sId) {
-  const r = await pool.query(
-    `SELECT 1
-       FROM oqituvchi_oquvchilar oo
-       JOIN oquvchilar  o ON o.id = oo.oquvchi_id
-       JOIN oqituvchilar t ON t.id = oo.oqituvchi_id
-      WHERE oo.oqituvchi_id = $1 AND oo.oquvchi_id = $2 AND ${GURUHDA}`,
-    [tId, sId]
-  );
-  return r.rowCount > 0;
-}
-
-// Oddiy xotiradagi tezlik cheklovi: bir foydalanuvchi daqiqasiga ko'pi bilan 20 ta xabar
-const RATE = new Map();            // "rol:id" -> [vaqtlar]
-const RATE_LIMIT = 20, RATE_WINDOW = 60 * 1000;
-setInterval(() => {
-  const t = Date.now() - RATE_WINDOW;
-  for (const [k, arr] of RATE) { const a = arr.filter(x => x > t); a.length ? RATE.set(k, a) : RATE.delete(k); }
-}, RATE_WINDOW).unref();
-function rateOk(me) {
-  const k = me.rol + ':' + me.id, now = Date.now();
-  const arr = (RATE.get(k) || []).filter(x => x > now - RATE_WINDOW);
-  if (arr.length >= RATE_LIMIT) { RATE.set(k, arr); return false; }
-  arr.push(now); RATE.set(k, arr);
-  return true;
-}
-
 // Xabar ustunlari (har doim shu ro'yxat bilan o'qiladi)
 const COLS = `id, yuboruvchi, matn, yaratilgan, tahrirlangan, ochirilgan,
-              fayl_nomi, fayl_turi, fayl_hajm, (fayl_yol IS NOT NULL) AS fayl_bor`;
+              fayl_nomi, fayl_turi, fayl_hajm, fayl_davomiylik, (fayl_yol IS NOT NULL) AS fayl_bor`;
 
 const xabarJson = (r) => {
   if (r.ochirilgan) return { id: Number(r.id), ochirilgan: true };
@@ -185,25 +65,12 @@ const xabarJson = (r) => {
     j.fayl = {
       nomi: r.fayl_nomi, turi: (r.fayl_turi || '').split(';')[0], hajm: r.fayl_hajm,
       rasm: /^image\//.test(r.fayl_turi || ''),
+      audio: /^audio\//.test(r.fayl_turi || ''),
+      ...(r.fayl_davomiylik != null ? { davomiylik: r.fayl_davomiylik } : {}),
     };
   }
   return j;
 };
-
-// O'qituvchi tanlagan maktab (?maktabId=): faqat o'ziga biriktirilgan maktab bo'lishi shart.
-// Berilmasa — filtr yo'q (mid: null).
-function tanlanganMaktab(req, me) {
-  if (me.rol !== 'oqituvchi') return { mid: null };
-  const raw = req.query && req.query.maktabId;
-  if (raw === undefined || raw === null || raw === '') return { mid: null };
-  const mid = parseInt(raw, 10);
-  const u = req.user || {};
-  const allowed = (u.maktabIdlar || []).map(Number).filter(Number.isInteger);
-  const main = Number(u.maktabId);
-  if (Number.isInteger(main) && main > 0 && !allowed.includes(main)) allowed.push(main);
-  if (!Number.isInteger(mid) || !allowed.includes(mid)) return { error: "Bu maktab sizga biriktirilmagan" };
-  return { mid };
-}
 
 // ─── GET /api/chat/suhbatlar ─────────────────────────────────────────────────
 router.get('/suhbatlar', async (req, res) => {
@@ -220,6 +87,7 @@ router.get('/suhbatlar', async (req, res) => {
         `SELECT o.id AS hamroh_id, o.ism, o.familiya, o.sinf, o.avatar, m.nomi AS maktab,
                 lm.matn AS oxirgi_matn, lm.yuboruvchi AS oxirgi_yuboruvchi, lm.yaratilgan AS oxirgi_vaqt,
                 lm.fayl_nomi AS oxirgi_fayl_nomi, (lm.fayl_turi LIKE 'image/%') AS oxirgi_fayl_rasm,
+                (lm.fayl_turi LIKE 'audio/%') AS oxirgi_fayl_audio,
                 COALESCE(u.soni, 0)::int AS oqilmagan
            FROM oqituvchi_oquvchilar oo
            JOIN oquvchilar o ON o.id = oo.oquvchi_id
@@ -244,6 +112,7 @@ router.get('/suhbatlar', async (req, res) => {
         `SELECT t.id AS hamroh_id, t.ism, t.familiya, t.fan, t.avatar,
                 lm.matn AS oxirgi_matn, lm.yuboruvchi AS oxirgi_yuboruvchi, lm.yaratilgan AS oxirgi_vaqt,
                 lm.fayl_nomi AS oxirgi_fayl_nomi, (lm.fayl_turi LIKE 'image/%') AS oxirgi_fayl_rasm,
+                (lm.fayl_turi LIKE 'audio/%') AS oxirgi_fayl_audio,
                 COALESCE(u.soni, 0)::int AS oqilmagan
            FROM oqituvchi_oquvchilar oo
            JOIN oqituvchilar t ON t.id = oo.oqituvchi_id
@@ -405,26 +274,15 @@ router.post('/xabarlar', qabulFayl, async (req, res) => {
 
   // multipart yuborilgan-u, fayl filtrdan o'tmagan bo'lsa
   if (!file && req.is('multipart/form-data') && !matn)
-    return fail(400, "Fayl turi qo'llab-quvvatlanmaydi (rasm, pdf, doc, docx, xls, xlsx, ppt, pptx, txt, csv, zip)");
+    return fail(400, `Fayl turi qo'llab-quvvatlanmaydi (${FAYL_ROYXAT_MATNI})`);
 
   if (!matn && !file) return fail(400, "Xabar bo'sh bo'lmasligi kerak");
   if (matn.length > MAX_MATN) return fail(400, `Xabar ${MAX_MATN} belgidan oshmasligi kerak`);
 
   let fayl = null;
   if (file) {
-    const ext = path.extname(file.filename).toLowerCase();
-    try {
-      const fd = fs.openSync(path.join(CHAT_DIR, file.filename), 'r');
-      const buf = Buffer.alloc(16);
-      fs.readSync(fd, buf, 0, 16, 0);
-      fs.closeSync(fd);
-      if (!imzoTogri(ext, buf)) return fail(400, 'Fayl mazmuni kengaytmasiga mos kelmaydi');
-    } catch (_) { return fail(400, "Faylni o'qib bo'lmadi"); }
-
-    // multer originalname'ni latin1 deb o'qiydi — UTF-8 nomni tiklaymiz va tozalaymiz
-    let nomi = Buffer.from(file.originalname, 'latin1').toString('utf8');
-    nomi = path.basename(nomi.replace(/\\/g, '/')).replace(/[\u0000-\u001f<>:"|?*]/g, '_').trim().slice(0, 120) || ('fayl' + ext);
-    fayl = { yol: file.filename, nomi, turi: FAYL_TURLARI[ext], hajm: file.size };
+    fayl = faylMalumoti(file, req.body && req.body.davomiylik);
+    if (fayl.error) return fail(400, fayl.error);
   }
 
   if (!rateOk(me)) return fail(429, "Juda tez yozyapsiz. Biroz kutib qayta urinib ko'ring");
@@ -433,11 +291,13 @@ router.post('/xabarlar', qabulFayl, async (req, res) => {
   try {
     if (!(await biriktirilganmi(tId, sId))) return fail(403, "Bu foydalanuvchi bilan yozishish mumkin emas");
 
+    if (fayl && !(await kvotaOshmaydimi(me, fayl.hajm))) return fail(413, KVOTA_XABARI);
+
     const r = await pool.query(
-      `INSERT INTO chat_xabarlar (oqituvchi_id, oquvchi_id, yuboruvchi, matn, fayl_yol, fayl_nomi, fayl_turi, fayl_hajm)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+      `INSERT INTO chat_xabarlar (oqituvchi_id, oquvchi_id, yuboruvchi, matn, fayl_yol, fayl_nomi, fayl_turi, fayl_hajm, fayl_davomiylik)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
        RETURNING ${COLS}`,
-      [tId, sId, me.rol, matn, fayl && fayl.yol, fayl && fayl.nomi, fayl && fayl.turi, fayl && fayl.hajm]
+      [tId, sId, me.rol, matn, fayl && fayl.yol, fayl && fayl.nomi, fayl && fayl.turi, fayl && fayl.hajm, fayl && fayl.davomiylik]
     );
     res.json({ ok: true, xabar: xabarJson(r.rows[0]) });
   } catch (err) {
@@ -513,7 +373,7 @@ router.delete('/xabarlar/:id', async (req, res) => {
     const r = await pool.query(
       `UPDATE chat_xabarlar
           SET ochirilgan=NOW(), yangilangan=NOW(), matn='',
-              fayl_yol=NULL, fayl_nomi=NULL, fayl_turi=NULL, fayl_hajm=NULL
+              fayl_yol=NULL, fayl_nomi=NULL, fayl_turi=NULL, fayl_hajm=NULL, fayl_davomiylik=NULL
         WHERE id=$1 AND ochirilgan IS NULL`,
       [f.row.id]
     );
@@ -547,19 +407,38 @@ router.get('/fayl/:id', async (req, res) => {
     if (!(await biriktirilganmi(row.oqituvchi_id, row.oquvchi_id)))
       return res.status(403).json({ ok: false, error: "Bu foydalanuvchi bilan yozishish mumkin emas" });
 
-    const fp = path.join(CHAT_DIR, path.basename(row.fayl_yol));
-    if (!fs.existsSync(fp)) return res.status(404).json({ ok: false, error: 'Fayl topilmadi' });
-
-    const ext = path.extname(row.fayl_yol).toLowerCase();
-    const inline = RASM_KENG.has(ext);
-    res.setHeader('Content-Type', FAYL_TURLARI[ext] || 'application/octet-stream');
-    res.setHeader('X-Content-Type-Options', 'nosniff');
-    res.setHeader('Cache-Control', 'private, max-age=3600');
-    res.setHeader('Content-Disposition',
-      `${inline ? 'inline' : 'attachment'}; filename*=UTF-8''${encodeURIComponent(row.fayl_nomi || 'fayl' + ext)}`);
-    fs.createReadStream(fp).on('error', () => res.destroy()).pipe(res);
+    faylYubor(res, row);
   } catch (err) {
     console.error('chat/fayl xatolik:', err.message);
+    res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  }
+});
+
+// ─── GET /api/chat/xabarlar/:id/fayl-url — imzolangan qisqa muddatli havola ──
+// <audio src>, yuklab olish va katta fayllar uchun (blob'ga to'liq yuklamasdan).
+// Havola /api/chat/f/:token (routes/chat_fayl_public.js) da ochiladi, 5 daqiqa amal qiladi.
+router.get('/xabarlar/:id/fayl-url', async (req, res) => {
+  const me = kim(req);
+  if (!me) return res.status(403).json({ ok: false, error: "Faqat o'quvchi va o'qituvchi uchun" });
+
+  const id = parseInt(req.params.id, 10);
+  if (!Number.isInteger(id) || id <= 0) return res.status(400).json({ ok: false, error: 'Fayl topilmadi' });
+
+  try {
+    const col = me.rol === 'oqituvchi' ? 'oqituvchi_id' : 'oquvchi_id';
+    const r = await pool.query(
+      `SELECT oqituvchi_id, oquvchi_id FROM chat_xabarlar
+        WHERE id=$1 AND ${col}=$2 AND ochirilgan IS NULL AND fayl_yol IS NOT NULL`,
+      [id, me.id]
+    );
+    if (!r.rowCount) return res.status(404).json({ ok: false, error: 'Fayl topilmadi' });
+    if (!(await biriktirilganmi(r.rows[0].oqituvchi_id, r.rows[0].oquvchi_id)))
+      return res.status(403).json({ ok: false, error: "Bu foydalanuvchi bilan yozishish mumkin emas" });
+
+    const token = imzola({ t: 'd', i: id, r: me.rol, u: me.id });
+    res.json({ ok: true, url: `/api/chat/f/${token}` });
+  } catch (err) {
+    console.error('chat/fayl-url xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
 });

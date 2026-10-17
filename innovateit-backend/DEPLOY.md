@@ -252,3 +252,40 @@ sudo ss -tlnp | grep node
 `innovateit-backend/src/index.js` dagi CORS whitelist'ni tekshiring —
 `https://innovateitschool.uz`, `https://www.innovateitschool.uz` va
 `https://new.innovateitschool.uz` ro'yxatda bo'lishi shart.
+
+---
+
+## Chat: katta fayl va audio (100MB gacha)
+
+Chatda bitta fayl/audio **95MB** gacha (`CHAT_MAX_MB`, standart 95). Domen Cloudflare
+orqali ishlagani uchun 95 qilingan: bepul tarifda so'rov hajmi limiti 100MB, multipart
+qo'shimchasi bilan 100MB'lik fayl Cloudflare'da rad etiladi. Har bir foydalanuvchi uchun
+oxirgi 24 soatda yuborgan fayllar yig'indisi `CHAT_KVOTA_MB` (standart 500) dan oshmaydi.
+
+`/etc/nginx/sites-available/new.innovateitschool.uz` da **`# Backend API` blokidan OLDIN**
+(nginx eng aniq `location` ni tanlaydi, shuning uchun boshqa `/api/` yo'llari o'zgarmaydi):
+
+```nginx
+    # Chat (katta fayl/audio yuklash, 100MB gacha)
+    location /api/chat/ {
+        proxy_pass http://127.0.0.1:3002;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        client_max_body_size 100M;
+        client_body_timeout 300s;
+        proxy_request_buffering off;
+        proxy_read_timeout 300s;
+        proxy_send_timeout 300s;
+    }
+```
+
+```bash
+sudo cp /etc/nginx/sites-available/new.innovateitschool.uz ~/new.innovateitschool.uz.bak
+sudo nano /etc/nginx/sites-available/new.innovateitschool.uz
+sudo nginx -t && sudo systemctl reload nginx
+```
+
+Chat fayllari `innovateit-backend/chat_uploads/` da (nginx orqali ochiq EMAS, `.gitignore` da).
+Papka serverda avtomatik yaratiladi. Disk to'lib qolmasligi uchun vaqti-vaqti bilan
+`du -sh /var/www/IIS/innovateit-backend/chat_uploads` ni tekshirib turing.

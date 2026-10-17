@@ -27,6 +27,8 @@ const salesRouter      = require('./routes/sales');
 const vazifalarRouter  = require('./routes/vazifalar');
 const baholarRouter     = require('./routes/baholar');
 const chatRouter        = require('./routes/chat');
+const chatGuruhRouter   = require('./routes/chat_guruh');
+const chatFaylPublic    = require('./routes/chat_fayl_public');
 const { requireAuth }  = require('./middleware/jwt');
 
 
@@ -170,6 +172,9 @@ app.use('/ssr',                 ssrRouter);
 app.use('/api/sales',           salesRouter);
 app.use('/api/vazifalar',       vazifalarRouter);
 app.use('/api/baholar',         baholarRouter);
+// Tartib muhim: aniqroq yo'llar umumiy /api/chat'dan OLDIN ulanadi
+app.use('/api/chat/f',          chatFaylPublic);   // imzolangan fayl havolasi (JWT siz, token bilan)
+app.use('/api/chat/guruh',      chatGuruhRouter);  // guruh chati
 app.use('/api/chat',            chatRouter);
 app.use('/miniapp', express.static(path.join(__dirname, '../../telegram-bot/miniapp')));
 
