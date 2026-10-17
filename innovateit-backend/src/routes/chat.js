@@ -169,10 +169,28 @@ const xabarJson = (r) => {
   return j;
 };
 
+// O'qituvchi tanlagan maktab (?maktabId=): faqat o'ziga biriktirilgan maktab bo'lishi shart.
+// Berilmasa — filtr yo'q (mid: null).
+function tanlanganMaktab(req, me) {
+  if (me.rol !== 'oqituvchi') return { mid: null };
+  const raw = req.query && req.query.maktabId;
+  if (raw === undefined || raw === null || raw === '') return { mid: null };
+  const mid = parseInt(raw, 10);
+  const u = req.user || {};
+  const allowed = (u.maktabIdlar || []).map(Number).filter(Number.isInteger);
+  const main = Number(u.maktabId);
+  if (Number.isInteger(main) && main > 0 && !allowed.includes(main)) allowed.push(main);
+  if (!Number.isInteger(mid) || !allowed.includes(mid)) return { error: "Bu maktab sizga biriktirilmagan" };
+  return { mid };
+}
+
 // ─── GET /api/chat/suhbatlar ─────────────────────────────────────────────────
 router.get('/suhbatlar', async (req, res) => {
   const me = kim(req);
   if (!me) return res.status(403).json({ ok: false, error: "Faqat o'quvchi va o'qituvchi uchun" });
+
+  const sel = tanlanganMaktab(req, me);
+  if (sel.error) return res.status(403).json({ ok: false, error: sel.error });
 
   try {
     let r;
@@ -194,8 +212,9 @@ router.get('/suhbatlar', async (req, res) => {
               WHERE oqituvchi_id = oo.oqituvchi_id AND oquvchi_id = oo.oquvchi_id
                 AND yuboruvchi = 'oquvchi' AND oqilgan IS NULL AND ochirilgan IS NULL) u ON TRUE
           WHERE oo.oqituvchi_id = $1
+            AND ($2::int IS NULL OR o.maktab_id = $2::int)
           ORDER BY lm.yaratilgan DESC NULLS LAST, o.sinf, o.familiya, o.ism`,
-        [me.id]
+        [me.id, sel.mid]
       );
     } else {
       r = await pool.query(
@@ -230,6 +249,8 @@ router.get('/suhbatlar', async (req, res) => {
 router.get('/oqilmagan', async (req, res) => {
   const me = kim(req);
   if (!me) return res.status(403).json({ ok: false, error: "Faqat o'quvchi va o'qituvchi uchun" });
+  const sel = tanlanganMaktab(req, me);
+  if (sel.error) return res.status(403).json({ ok: false, error: sel.error });
   try {
     const sender = me.rol === 'oqituvchi' ? 'oquvchi' : 'oqituvchi';
     const r = await pool.query(
@@ -237,9 +258,11 @@ router.get('/oqilmagan', async (req, res) => {
          FROM chat_xabarlar c
          JOIN oqituvchi_oquvchilar oo
            ON oo.oqituvchi_id = c.oqituvchi_id AND oo.oquvchi_id = c.oquvchi_id
+         JOIN oquvchilar o ON o.id = c.oquvchi_id
         WHERE c.${me.rol === 'oqituvchi' ? 'oqituvchi_id' : 'oquvchi_id'} = $1
-          AND c.yuboruvchi = $2 AND c.oqilgan IS NULL AND c.ochirilgan IS NULL`,
-      [me.id, sender]
+          AND c.yuboruvchi = $2 AND c.oqilgan IS NULL AND c.ochirilgan IS NULL
+          AND ($3::int IS NULL OR o.maktab_id = $3::int)`,
+      [me.id, sender, sel.mid]
     );
     res.json({ ok: true, soni: r.rows[0].soni });
   } catch (err) {

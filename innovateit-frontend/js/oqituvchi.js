@@ -253,7 +253,7 @@ function showApp() {
   applyMaktablar();
 
   // Chat: o'qituvchiga biriktirilgan o'quvchilar bilan yozishma (js/chat.js)
-  if (window.IITChat) IITChat.init({ role: 'oqituvchi', mount: g('chat-mount'), navPush, navRelease, tab: 'chat' });
+  if (window.IITChat) IITChat.init({ role: 'oqituvchi', mount: g('chat-mount'), navPush, navRelease, tab: 'chat', getMaktabId: () => TANLANGAN_MID });
 
   switchTab(getSavedTab()); // refresh qilinganda o'sha bo'limda qolish
   syncMaktablar();          // maktablar ro'yxati eskirgan bo'lsa — yangilanadi
@@ -348,6 +348,7 @@ function onMaktabChange() {
   TANLANGAN_MID = g('oq-maktab-selector').value;
   try { sessionStorage.setItem(OQ_MAKTAB_KEY, String(TANLANGAN_MID)); } catch (e) {}
   closeGuruhDavomat();
+  if (window.IITChat) IITChat.reload();   // chat: faqat tanlangan maktab o'quvchilari
   loadGuruhlarim();
   if (g('tab-tahrir').classList.contains('active')) loadGuruhTahrir();
   loadJadval();

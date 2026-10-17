@@ -32,7 +32,7 @@
   const SYNC_OVERLAP  = 5000;                // tahrir/o'chirish so'rovida server vaqtidan 5s orqaga (idempotent)
 
   const S = {
-    role: null, root: null, navPush: null, navRelease: null, tab: 'chat',
+    role: null, root: null, navPush: null, navRelease: null, tab: 'chat', getMaktabId: null,
     active: false,            // chat tabi hozir ko'rinib turibdimi
     list: [], listLoaded: false,
     hamroh: null,             // ochiq suhbatdosh (list elementi)
@@ -145,10 +145,16 @@
     });
   }
 
+  // O'qituvchi panelida tanlangan maktab — ro'yxat va belgi faqat shu maktab o'quvchilari bilan
+  function maktabParams() {
+    const mid = S.getMaktabId ? S.getMaktabId() : null;
+    return mid ? { maktabId: mid } : {};
+  }
+
   async function pollBadge() {
     if (document.hidden || S.active) return;     // chat ochiq bo'lsa, ro'yxat polling'i yangilaydi
     try {
-      const r = await api.get('/api/chat/oqilmagan');
+      const r = await api.get('/api/chat/oqilmagan', maktabParams());
       if (r && r.ok) setBadge(r.soni);
     } catch (_) {}
   }
@@ -283,7 +289,7 @@
     const body = q('.iitc-list');
     if (!silent && !S.listLoaded) body.innerHTML = '<div class="iitc-note"><div class="loading-spinner"></div></div>';
     try {
-      const r = await api.get('/api/chat/suhbatlar');
+      const r = await api.get('/api/chat/suhbatlar', maktabParams());
       if (!r || !r.ok) throw new Error(r && r.error);
       S.list = r.suhbatlar || [];
       S.listLoaded = true;
@@ -930,6 +936,7 @@
     S.navPush = opts.navPush || null;
     S.navRelease = opts.navRelease || null;
     S.tab = opts.tab || 'chat';
+    S.getMaktabId = opts.getMaktabId || null;
     if (!S.root) return;
     build();
     S.initialized = true;
@@ -962,5 +969,16 @@
     }
   }
 
-  window.IITChat = { init, setActive };
+  // Maktab almashganda: ochiq suhbat yopiladi, ro'yxat va belgi yangidan olinadi
+  function reload() {
+    if (!S.initialized) return;
+    if (S.hamroh) { releaseLayer(); closeConv(); }
+    S.list = []; S.listLoaded = false;
+    const sr = q('.iitc-search'); if (sr) sr.value = '';
+    const ls = q('.iitc-list'); if (ls) ls.innerHTML = '';
+    setBadge(0);
+    if (S.active) loadList(); else pollBadge();
+  }
+
+  window.IITChat = { init, setActive, reload };
 })();
