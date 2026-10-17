@@ -95,10 +95,23 @@ function showApp() {
     avatarImg.src = U.avatar === 'ayol' ? 'img/oquvchi-icon-ayol.png' : 'img/oquvchi-icon-erkak.png';
   }
 
-  if (window.IITChat) IITChat.init({ role: 'oquvchi', mount: g('chat-mount') });
+  // Chat bo'limi faqat o'quvchi o'qituvchining guruhida bo'lsa ko'rinadi
+  chatTabKorsat(false);
+  if (window.IITChat) IITChat.init({ role: 'oquvchi', mount: g('chat-mount'), onAvailability: chatTabKorsat });
   loadDavomatim();
   ouqJadvalPromise = loadJadvalim();
   restoreSavedTab(); // sahifa yangilanganda (refresh) oxirgi ochiq bo'lgan bo'limga qaytamiz
+}
+
+function chatTabKorsat(bor) {
+  const d = bor ? '' : 'none';
+  const b = g('tab-btn-chat'); if (b) b.style.display = d;
+  document.querySelectorAll('.mn-tab-item[data-tab="chat"]').forEach(el => { el.style.display = d; });
+  // Chat yashirilgan, lekin ochiq turgan bo'lsa — Dars jadvaliga qaytamiz
+  if (!bor) {
+    const page = g('tab-chat');
+    if (page && page.classList.contains('active')) switchTab('jadval');
+  }
 }
 
 let ouqJadvalPromise = null; // dars kunlari "Mavzu va uyga vazifalar" ochilishidan oldin tayyor bo'lishi uchun

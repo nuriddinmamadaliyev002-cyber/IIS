@@ -126,10 +126,31 @@ function juft(me, hamrohId) {
     : { tId: hamrohId, sId: me.id };
 }
 
-// Juftlik biriktirilganmi?
+// ─── "Guruhda" sharti ────────────────────────────────────────────────────────
+// Chat faqat o'quvchi o'qituvchining GURUHIDA bo'lsa ochiladi. Guruh = o'qituvchining
+// dars_jadvali yozuvi ("Guruh yaratish"): o'sha maktabda, sinflari ro'yxatida o'quvchining
+// sinfi bor. O'quvchi o'qituvchiga biriktirilgan (oqituvchi_oquvchilar) bo'lishi ham shart.
+// (davomat.js `guruhDavomatHolati` dagi guruh tarkibi bilan bir xil qoida.)
+// Alias'lar: oo = oqituvchi_oquvchilar, o = oquvchilar, t = oqituvchilar.
+const GURUHDA = `EXISTS (
+  SELECT 1 FROM dars_jadvali dj
+   WHERE dj.maktab_id = o.maktab_id
+     AND LOWER(TRIM(dj.teacher_familiya)) = LOWER(TRIM(t.familiya))
+     AND LOWER(TRIM(dj.teacher_ism))      = LOWER(TRIM(t.ism))
+     AND EXISTS (
+       SELECT 1 FROM unnest(string_to_array(COALESCE(dj.sinflar, ''), ',')) AS sn
+        WHERE REGEXP_REPLACE(LOWER(TRIM(sn)),       '[\\s-]*sinf$', '')
+            = REGEXP_REPLACE(LOWER(TRIM(o.sinf)),   '[\\s-]*sinf$', '')
+          AND TRIM(sn) <> ''))`;
+
+// Juftlik: biriktirilgan VA o'quvchi o'qituvchining guruhida
 async function biriktirilganmi(tId, sId) {
   const r = await pool.query(
-    'SELECT 1 FROM oqituvchi_oquvchilar WHERE oqituvchi_id=$1 AND oquvchi_id=$2',
+    `SELECT 1
+       FROM oqituvchi_oquvchilar oo
+       JOIN oquvchilar  o ON o.id = oo.oquvchi_id
+       JOIN oqituvchilar t ON t.id = oo.oqituvchi_id
+      WHERE oo.oqituvchi_id = $1 AND oo.oquvchi_id = $2 AND ${GURUHDA}`,
     [tId, sId]
   );
   return r.rowCount > 0;
@@ -202,6 +223,7 @@ router.get('/suhbatlar', async (req, res) => {
                 COALESCE(u.soni, 0)::int AS oqilmagan
            FROM oqituvchi_oquvchilar oo
            JOIN oquvchilar o ON o.id = oo.oquvchi_id
+           JOIN oqituvchilar t ON t.id = oo.oqituvchi_id
            LEFT JOIN maktablar m ON m.id = o.maktab_id
            LEFT JOIN LATERAL (
              SELECT matn, yuboruvchi, yaratilgan, fayl_nomi, fayl_turi FROM chat_xabarlar
@@ -213,6 +235,7 @@ router.get('/suhbatlar', async (req, res) => {
                 AND yuboruvchi = 'oquvchi' AND oqilgan IS NULL AND ochirilgan IS NULL) u ON TRUE
           WHERE oo.oqituvchi_id = $1
             AND ($2::int IS NULL OR o.maktab_id = $2::int)
+            AND ${GURUHDA}
           ORDER BY lm.yaratilgan DESC NULLS LAST, o.sinf, o.familiya, o.ism`,
         [me.id, sel.mid]
       );
@@ -224,6 +247,7 @@ router.get('/suhbatlar', async (req, res) => {
                 COALESCE(u.soni, 0)::int AS oqilmagan
            FROM oqituvchi_oquvchilar oo
            JOIN oqituvchilar t ON t.id = oo.oqituvchi_id
+           JOIN oquvchilar o ON o.id = oo.oquvchi_id
            LEFT JOIN LATERAL (
              SELECT matn, yuboruvchi, yaratilgan, fayl_nomi, fayl_turi FROM chat_xabarlar
               WHERE oqituvchi_id = oo.oqituvchi_id AND oquvchi_id = oo.oquvchi_id AND ochirilgan IS NULL
@@ -233,6 +257,7 @@ router.get('/suhbatlar', async (req, res) => {
               WHERE oqituvchi_id = oo.oqituvchi_id AND oquvchi_id = oo.oquvchi_id
                 AND yuboruvchi = 'oqituvchi' AND oqilgan IS NULL AND ochirilgan IS NULL) u ON TRUE
           WHERE oo.oquvchi_id = $1
+            AND ${GURUHDA}
           ORDER BY lm.yaratilgan DESC NULLS LAST, t.familiya, t.ism`,
         [me.id]
       );
@@ -259,9 +284,11 @@ router.get('/oqilmagan', async (req, res) => {
          JOIN oqituvchi_oquvchilar oo
            ON oo.oqituvchi_id = c.oqituvchi_id AND oo.oquvchi_id = c.oquvchi_id
          JOIN oquvchilar o ON o.id = c.oquvchi_id
+         JOIN oqituvchilar t ON t.id = c.oqituvchi_id
         WHERE c.${me.rol === 'oqituvchi' ? 'oqituvchi_id' : 'oquvchi_id'} = $1
           AND c.yuboruvchi = $2 AND c.oqilgan IS NULL AND c.ochirilgan IS NULL
-          AND ($3::int IS NULL OR o.maktab_id = $3::int)`,
+          AND ($3::int IS NULL OR o.maktab_id = $3::int)
+          AND ${GURUHDA}`,
       [me.id, sender, sel.mid]
     );
     res.json({ ok: true, soni: r.rows[0].soni });

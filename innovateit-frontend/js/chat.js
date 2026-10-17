@@ -32,7 +32,7 @@
   const SYNC_OVERLAP  = 5000;                // tahrir/o'chirish so'rovida server vaqtidan 5s orqaga (idempotent)
 
   const S = {
-    role: null, root: null, navPush: null, navRelease: null, tab: 'chat', getMaktabId: null,
+    role: null, root: null, navPush: null, navRelease: null, tab: 'chat', getMaktabId: null, onAvailability: null,
     active: false,            // chat tabi hozir ko'rinib turibdimi
     list: [], listLoaded: false,
     hamroh: null,             // ochiq suhbatdosh (list elementi)
@@ -293,6 +293,7 @@
       if (!r || !r.ok) throw new Error(r && r.error);
       S.list = r.suhbatlar || [];
       S.listLoaded = true;
+      if (S.onAvailability) S.onAvailability(S.list.length > 0);
       setBadge(S.list.reduce((n, x) => n + (x.oqilmagan || 0), 0));
       // Ochiq suhbatdosh endi biriktirilmagan bo'lsa — suhbat yopiladi
       if (S.hamroh && !S.list.some(x => x.hamroh_id === S.hamroh.hamroh_id)) closeConv();
@@ -311,8 +312,8 @@
 
     if (!S.list.length) {
       body.innerHTML = S.role === 'oqituvchi'
-        ? '<div class="iitc-note">Sizga hali o\'quvchi biriktirilmagan.<br>«Guruh yaratish» bo\'limidan o\'quvchilarni biriktiring.</div>'
-        : '<div class="iitc-note">Sizga hali o\'qituvchi biriktirilmagan.<br>Maktab adminingizga murojaat qiling.</div>';
+        ? '<div class="iitc-note">Bu maktabda hali guruhingiz yo\'q.<br>«Guruh yaratish» bo\'limidan guruh yarating — guruhdagi o\'quvchilar shu yerda chiqadi.</div>'
+        : '<div class="iitc-note">O\'qituvchingiz sizni guruhga qo\'shgach, chat shu yerda paydo bo\'ladi.</div>';
       return;
     }
     if (!items.length) { body.innerHTML = '<div class="iitc-note">Hech narsa topilmadi</div>'; return; }
@@ -937,9 +938,17 @@
     S.navRelease = opts.navRelease || null;
     S.tab = opts.tab || 'chat';
     S.getMaktabId = opts.getMaktabId || null;
+    S.onAvailability = opts.onAvailability || null;
     if (!S.root) return;
     build();
     S.initialized = true;
+
+    // Chat bo'limi mavjudmi (suhbatdosh bormi)? — panel tabni ko'rsatadi/yashiradi
+    if (S.onAvailability) {
+      api.get('/api/chat/suhbatlar', maktabParams())
+        .then(r => { if (r && r.ok) S.onAvailability((r.suhbatlar || []).length > 0); else S.onAvailability(true); })
+        .catch(() => S.onAvailability(true));
+    }
 
     // O'qilmaganlar belgisi — chat tabi yopiq paytda ham yangilanib turadi
     pollBadge();
