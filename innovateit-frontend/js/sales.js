@@ -4,6 +4,7 @@
 
 let U = null;       // { ism, id, viaTelegram: true } — JWT orqali (Telegram Mini App)
 let LEADS = [];
+let MY_MAKTABLAR = [];     // sales xodimiga biriktirilgan maktab nomlari (filtr uchun)
 let FILTERED_LEADS = [];   // maktab filtridan o'tgan ro'yxat (jadval shu asosida chiziladi)
 
 const g = id => document.getElementById(id);
@@ -66,7 +67,7 @@ window.addEventListener('DOMContentLoaded', () => {
 });
 
 function doLogout() {
-  U = null; LEADS = [];
+  U = null; LEADS = []; MY_MAKTABLAR = [];
   iitClearAllSessions();
   // Sales xodimi faqat Telegram orqali kiradi — login formasi foydasiz
   if (iitIsTelegramSession()) { iitMarkLoggedOut(); iitShowLoggedOut(); return; }
@@ -90,7 +91,12 @@ async function loadLeads() {
 
   try {
     const holat = g('sl-holat-filter').value;
-    const r = await api.getLeads(holat ? { holat } : {});
+    const [r, mr] = await Promise.all([
+      api.getLeads(holat ? { holat } : {}),
+      // Biriktirilgan maktablar (arizasi bo'lmasa ham filtrda ko'rinishi uchun)
+      api.getSalesMaktablarim().catch(() => null),
+    ]);
+    if (mr && mr.ok) MY_MAKTABLAR = (mr.maktablar || []).map(m => m.nomi).filter(Boolean);
     if (r.ok) {
       LEADS = r.leadlar || [];
       buildMaktabFilterOptions();
@@ -111,7 +117,8 @@ function buildMaktabFilterOptions() {
   const sel = g('sl-maktab-filter');
   const cur = sel.value;
 
-  const maktablar = [...new Set(LEADS.map(l => l.maktab_nomi || l.hudud).filter(Boolean))]
+  // Biriktirilgan maktablar + arizalardagi maktablar (dublikatsiz)
+  const maktablar = [...new Set([...MY_MAKTABLAR, ...LEADS.map(l => l.maktab_nomi || l.hudud)].filter(Boolean))]
     .sort((a, b) => a.localeCompare(b, undefined, { numeric: true, sensitivity: 'base' }));
 
   sel.innerHTML = '<option value="">🏫 Barcha maktablar</option>'
