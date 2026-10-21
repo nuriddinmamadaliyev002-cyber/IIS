@@ -16,6 +16,7 @@
 const { Router }      = require('express');
 const pool            = require('../db');
 const { requireAuth } = require('../middleware/jwt');
+const { bugunUZ, sanaISO, bugunISO, oquvchiTarixiniTozala } = require('../oquvchiTarix');
 
 const router = Router();
 router.use(requireAuth(['admin']));
@@ -217,19 +218,29 @@ router.delete('/', async (req, res) => {
 
   if (!p.id) return res.status(400).json({ ok: false, error: 'id majburiy' });
 
+  const client = await pool.connect();
   try {
-    const result = await pool.query(
+    await client.query('BEGIN');
+    const result = await client.query(
       `DELETE FROM oquvchilar
        WHERE id=$1
          ${!isSuper ? 'AND maktab_id=$2' : ''}`,
       isSuper ? [p.id] : [p.id, maktabId]
     );
-    if (result.rowCount === 0)
+    if (result.rowCount === 0) {
+      await client.query('ROLLBACK');
       return res.status(404).json({ ok: false, error: "O'quvchi topilmadi" });
+    }
+    // migrations/029 dan keyin FK cascade yo'q — bog'liq tarixni qo'lda tozalaymiz
+    await oquvchiTarixiniTozala(client, parseInt(p.id));
+    await client.query('COMMIT');
     res.json({ ok: true });
   } catch (err) {
+    await client.query('ROLLBACK').catch(() => {});
     console.error('students DELETE xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
+  } finally {
+    client.release();
   }
 });
 
@@ -277,12 +288,14 @@ router.post('/inactive', async (req, res) => {
     await client.query(
       `INSERT INTO nofaol_oquvchilar
          (ism, familiya, sinf, telefon, telefon2, tug, manzil,
-          qoshilgan, boshlagan, chiqgan, izoh, maktab_id, maktab_info)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+          qoshilgan, boshlagan, chiqgan, izoh, maktab_id, maktab_info, asl_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14)`,
       [s.ism, s.familiya, s.sinf, s.telefon, s.telefon2,
        s.tug, s.manzil, s.qoshilgan, s.boshlagan,
-       p.chiqgan || todayUZ(), izoh, s.maktab_id, s.maktab_info || '']
+       p.chiqgan || bugunUZ(), izoh, s.maktab_id, s.maktab_info || '', s.id]
     );
+    // ⚠️ Faqat oquvchilar qatori o'chadi. Baho, vazifa, chat va o'qituvchiga
+    //    biriktirish yozuvlari (oquvchi_id = asl id) SAQLANADI — migrations/029.
     await client.query('DELETE FROM oquvchilar WHERE id=$1', [s.id]);
     await client.query('COMMIT');
     res.json({ ok: true });
@@ -363,24 +376,45 @@ router.post('/activate', async (req, res) => {
     }
 
     const s = findResult.rows[0];
-    await client.query(
-      `INSERT INTO oquvchilar
-         (ism, familiya, sinf, telefon, telefon2, tug, manzil,
+
+    // ─── Eski ID bilan qaytarish (migrations/029) ───────────────────────────
+    // Nofaolga o'tganda asl_id saqlangan. O'quvchi SHU id bilan qaytariladi, shunda
+    // o'qituvchiga biriktirish, davomat/baho/vazifa/chat/to'lov tarixi o'z-o'zidan
+    // qayta ulanadi. asl_id yo'q (migratsiyadan oldingi) yoki band bo'lsa — yangi id.
+    let restoreId = null;
+    if (s.asl_id) {
+      const band = await client.query('SELECT 1 FROM oquvchilar WHERE id=$1', [s.asl_id]);
+      if (band.rowCount === 0) restoreId = s.asl_id;
+    }
+
+    const insertCols = restoreId
+      ? `(id, ism, familiya, sinf, telefon, telefon2, tug, manzil,
           qoshilgan, boshlagan, maktab_id, maktab_info)
-       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`,
-      [s.ism, s.familiya, s.sinf, s.telefon, s.telefon2,
-       s.tug, s.manzil, s.qoshilgan, s.boshlagan, s.maktab_id, s.maktab_info || '']
-    );
+         VALUES ($12,$1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`
+      : `(ism, familiya, sinf, telefon, telefon2, tug, manzil,
+          qoshilgan, boshlagan, maktab_id, maktab_info)
+         VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11)`;
+    const insertVals = [s.ism, s.familiya, s.sinf, s.telefon, s.telefon2,
+       s.tug, s.manzil, s.qoshilgan, s.boshlagan, s.maktab_id, s.maktab_info || ''];
+    if (restoreId) insertVals.push(restoreId);
+
+    const ins = await client.query(
+      `INSERT INTO oquvchilar ${insertCols} RETURNING id`, insertVals);
+    const newId = ins.rows[0].id;
     await client.query('DELETE FROM nofaol_oquvchilar WHERE id=$1', [s.id]);
 
-    // Yangi ID ni olish
-    const newStudent = await client.query(
-      'SELECT id FROM oquvchilar WHERE ism=$1 AND familiya=$2 AND maktab_id=$3 ORDER BY id DESC LIMIT 1',
-      [s.ism, s.familiya, s.maktab_id]
-    );
-    if (newStudent.rows.length > 0) {
-      const newId = newStudent.rows[0].id;
-      // telegram_users da entity_id ni yangilash
+    if (restoreId) {
+      // Nofaol bo'lgan oraliq: (chiqgan, tiklangan) ichidagi kunlarda o'qituvchi
+      // ro'yxatida ko'rinmaydi. chiqgan kuni va tiklangan kuni — ko'rinadi.
+      const tugagan   = sanaISO(s.chiqgan);
+      const tiklangan = sanaISO(p.tiklangan) || bugunISO();
+      if (tugagan && tiklangan > tugagan) {
+        await client.query(
+          `INSERT INTO oquvchi_nofaol_davrlar (oquvchi_id, tugagan, tiklangan)
+           VALUES ($1, $2, $3)`, [newId, tugagan, tiklangan]);
+      }
+    } else {
+      // Eski (id saqlanmagan) holat: telegram_users dagi entity_id ni yangilaymiz
       await client.query(
         'UPDATE telegram_users SET entity_id=$1 WHERE entity_id=$2 AND entity_table=$3',
         [newId, s.id, 'oquvchilar']
@@ -442,9 +476,20 @@ router.delete('/inactive', async (req, res) => {
     const result = await pool.query(
       `DELETE FROM nofaol_oquvchilar
        WHERE id=$1
-         ${!isSuper ? 'AND maktab_id=$2' : ''}`,
+         ${!isSuper ? 'AND maktab_id=$2' : ''}
+       RETURNING asl_id`,
       isSuper ? [p.id] : [p.id, maktabId]
     );
+    // Butunlay o'chirildi — saqlab qo'yilgan tarix ham tozalanadi
+    // (faqat shu id bilan faol o'quvchi yo'q bo'lsa).
+    if (result.rowCount > 0 && result.rows[0].asl_id) {
+      const aslId = result.rows[0].asl_id;
+      const faol = await pool.query('SELECT 1 FROM oquvchilar WHERE id=$1', [aslId]);
+      if (faol.rowCount === 0) {
+        const c2 = await pool.connect();
+        try { await oquvchiTarixiniTozala(c2, aslId); } finally { c2.release(); }
+      }
+    }
     if (result.rowCount === 0)
       return res.status(404).json({ ok: false, error: "O'quvchi topilmadi" });
     res.json({ ok: true });

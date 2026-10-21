@@ -1575,7 +1575,8 @@ async function loadDavomatOquvchilarVaHolat(sinflarSet) {
   const sana = dateStrLocal(window._davomat_curdate);
 
   try {
-    const data = await api.get(`/api/teachers/${TEACHER_ID}/oquvchilar`);
+    // sana beriladi: nofaolga o'tgan o'quvchi chiqqan kunigacha ko'rinadi, qayta faollashganda eski tarixi ham qaytadi
+    const data = await api.get(`/api/teachers/${TEACHER_ID}/oquvchilar`, { sana });
     let oquvchilar = (data && data.ok) ? (data.oquvchilar || []) : [];
     if (TANLANGAN_MID) oquvchilar = oquvchilar.filter(o => String(o.maktab_id) === String(TANLANGAN_MID));
     oquvchilar = oquvchilar.filter(o => sinflarSet.has(o.sinf));
@@ -1649,7 +1650,7 @@ function renderGuruhDavomat() {
             return `
               <div class="dav-student-row">
                 <span class="dav-student-num">${i + 1}</span>
-                <span class="dav-student-name" title="${esc(fullIsm)}">${esc(fullIsm)}</span>
+                <span class="dav-student-name" title="${esc(fullIsm)}">${esc(fullIsm)}${o.nofaol ? " <small style=\"color:var(--muted);font-weight:400;\">(nofaol)</small>" : ""}</span>
                 <div class="dav-status-btns">
                   ${DAV_STATUS_LIST.map(s => {
                     const active   = cur === s.key;
@@ -2036,7 +2037,7 @@ function renderBaho() {
               <div class="bh-student">
                 <div class="dav-student-row bh-row">
                   <span class="dav-student-num">${i + 1}</span>
-                  <span class="dav-student-name" title="${esc(fullIsm)}">${esc(fullIsm)}</span>
+                  <span class="dav-student-name" title="${esc(fullIsm)}">${esc(fullIsm)}${o.nofaol ? " <small style=\"color:var(--muted);font-weight:400;\">(nofaol)</small>" : ""}</span>
                   <div class="bh-btns">
                     ${[1, 2, 3, 4, 5].map(n =>
                       `<button type="button" class="bh-n-btn${baho === n ? ' active-' + n : ''}" data-oid="${o.id}" data-baho="${n}" title="${n} ball">${n}</button>`

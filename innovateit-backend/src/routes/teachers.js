@@ -8,6 +8,7 @@
 const { Router } = require('express');
 const pool = require('../db');
 const { requireAuth } = require('../middleware/jwt');
+const { oqituvchiOquvchilariSanada, sanaISO } = require('../oquvchiTarix');
 
 const router = Router();
 
@@ -18,7 +19,22 @@ router.get('/:teacherId/oquvchilar', requireAuth(['admin', 'oqituvchi']), async 
   const teacherId = parseInt(req.params.teacherId);
   if (isNaN(teacherId)) return res.status(400).json({ ok: false, error: 'teacherId noto\'g\'ri' });
 
+  // O'qituvchi faqat o'z o'quvchilarini ko'ra oladi
+  if (req.user.role === 'oqituvchi' && !req.user.isSuper && teacherId !== req.user.entityId) {
+    return res.status(403).json({ ok: false, error: "Faqat o'zingizga tegishli ma'lumotni ko'ra olasiz" });
+  }
+
   try {
+    // ?sana=YYYY-MM-DD berilsa — o'sha kundagi ro'yxat: nofaolga o'tgan o'quvchi
+    // chiqgan kunigacha ko'rinadi, qayta faollashtirilsa eski tarixi ham qaytadi
+    // (nofaol bo'lgan oraliqdan tashqari). Sanasiz — hozirgi faol o'quvchilar.
+    if (req.query.sana !== undefined) {
+      const sana = sanaISO(req.query.sana);
+      if (!sana) return res.status(400).json({ ok: false, error: "Sana formati noto'g'ri" });
+      const oquvchilar = await oqituvchiOquvchilariSanada(teacherId, sana);
+      return res.json({ ok: true, oquvchilar });
+    }
+
     const result = await pool.query(`
       SELECT o.id, o.ism, o.familiya, o.sinf, o.maktab_id,
              m.nomi AS maktab_nomi

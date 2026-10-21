@@ -19,6 +19,7 @@
 const { Router }      = require('express');
 const pool            = require('../db');
 const { requireAuth } = require('../middleware/jwt');
+const { oqituvchiOquvchilariSanada } = require('../oquvchiTarix');
 
 const router = Router();
 
@@ -59,20 +60,16 @@ function haftaKuni(sana) {
 
 // Guruhdagi o'quvchilar: shu o'qituvchiga biriktirilgan, guruh maktabida
 // o'qiydigan va sinfi guruh sinflaridan biri bo'lganlar
-async function guruhOquvchilari(guruh, oqituvchiId) {
+async function guruhOquvchilari(guruh, oqituvchiId, sana) {
   const sinflar = String(guruh.sinflar || '').split(',').map(s => s.trim()).filter(Boolean);
   if (!sinflar.length) return [];
-  const r = await pool.query(
-    `SELECT o.id, o.ism, o.familiya, o.sinf
-       FROM oqituvchi_oquvchilar oo
-       JOIN oquvchilar o ON o.id = oo.oquvchi_id
-      WHERE oo.oqituvchi_id = $1
-        AND o.maktab_id IS NOT DISTINCT FROM $2
-        AND o.sinf = ANY($3::text[])
-      ORDER BY o.sinf, o.familiya, o.ism`,
-    [oqituvchiId, guruh.maktab_id, sinflar]
-  );
-  return r.rows;
+  // Sana bo'yicha: nofaolga o'tgan o'quvchi chiqgan kunigacha ko'rinadi,
+  // qayta faollashtirilsa eski tarixi ham qaytadi (oquvchiTarix.js)
+  const list = await oqituvchiOquvchilariSanada(oqituvchiId, sana, {
+    maktabId: guruh.maktab_id === undefined ? null : guruh.maktab_id,
+    sinflar,
+  });
+  return list.map(o => ({ id: o.id, ism: o.ism, familiya: o.familiya, sinf: o.sinf, nofaol: o.nofaol }));
 }
 
 // ─── GET /api/baholar/guruh/:guruhId?sana=YYYY-MM-DD ──────────────────────────
@@ -91,7 +88,7 @@ router.get('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
     const guruh = await oqituvchiGuruhi(guruhId, ism);
     if (!guruh) return res.status(404).json({ ok: false, error: 'Guruh topilmadi' });
 
-    const oquvchilar = await guruhOquvchilari(guruh, entityId);
+    const oquvchilar = await guruhOquvchilari(guruh, entityId, String(sana));
     const ids = oquvchilar.map(o => o.id);
 
     let baholar = [];
@@ -163,7 +160,7 @@ router.post('/guruh/:guruhId', requireAuth(['oqituvchi']), async (req, res) => {
     }
 
     // Faqat shu guruhning (shu o'qituvchiga biriktirilgan) o'quvchilariga baho qo'yish mumkin
-    const ruxsat = new Set((await guruhOquvchilari(guruh, entityId)).map(o => o.id));
+    const ruxsat = new Set((await guruhOquvchilari(guruh, entityId, String(sana))).map(o => o.id));
     if (yozuvlar.some(y => !ruxsat.has(y.oid))) {
       return res.status(403).json({ ok: false, error: "Ba'zi o'quvchilar bu guruhga tegishli emas" });
     }

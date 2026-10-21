@@ -896,6 +896,26 @@ ALTER TABLE dars_mavzulari ADD COLUMN IF NOT EXISTS vazifa_fayl_nomi TEXT DEFAUL
 --  yo'qolmasligi uchun.
 ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT '';
 
+-- ─── Nofaol o'quvchi tarixini saqlash (migrations/029) ─────────────────────
+ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS asl_id INTEGER;
+CREATE INDEX IF NOT EXISTS idx_nofaol_asl_id ON nofaol_oquvchilar(asl_id);
+
+DO $$
+DECLARE r RECORD;
+BEGIN
+  FOR r IN
+    SELECT c.conrelid::regclass AS tbl, c.conname
+      FROM pg_constraint c
+     WHERE c.contype = 'f'
+       AND c.confrelid = 'oquvchilar'::regclass
+       AND c.conrelid::regclass::text IN
+           ('oqituvchi_oquvchilar', 'vazifa_javoblari', 'oquvchi_baholar', 'chat_xabarlar')
+  LOOP
+    EXECUTE format('ALTER TABLE %s DROP CONSTRAINT %I', r.tbl, r.conname);
+    RAISE NOTICE 'FK olib tashlandi: %.%', r.tbl, r.conname;
+  END LOOP;
+END $$;
+
 -- ════════════════════════════════════════════════════════════════════════════
 --  MUVAFFAQIYATLI TUGADI
 --  Barcha 31 ta jadval yaratildi
@@ -912,3 +932,14 @@ ALTER TABLE nofaol_oquvchilar ADD COLUMN IF NOT EXISTS maktab_info TEXT DEFAULT 
 \echo '              blog_categories, blog_posts, blog_tags, blog_post_tags,'
 \echo '              dars_mavzulari, vazifa_javoblari, vazifa_javob_fayllari'
 \echo '              direktorlar, chat_xabarlar'
+-- ─── O'quvchining nofaol bo'lgan oraliqlari (migrations/030) ───────────────────
+CREATE TABLE IF NOT EXISTS oquvchi_nofaol_davrlar (
+    id          SERIAL PRIMARY KEY,
+    oquvchi_id  INTEGER NOT NULL,           -- FK yo'q (029 dagi kabi)
+    tugagan     DATE    NOT NULL,           -- oxirgi faol kun (chiqgan sana)
+    tiklangan   DATE    NOT NULL,           -- qayta faollashtirilgan sana
+    yaratilgan  TIMESTAMP DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_nofaol_davr_oquvchi ON oquvchi_nofaol_davrlar(oquvchi_id);
+GRANT ALL PRIVILEGES ON oquvchi_nofaol_davrlar TO iis_user;
+GRANT ALL PRIVILEGES ON SEQUENCE oquvchi_nofaol_davrlar_id_seq TO iis_user;

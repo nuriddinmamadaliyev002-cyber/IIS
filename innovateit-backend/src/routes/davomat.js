@@ -590,10 +590,13 @@ router.post('/sinf-davomat', requireAuth(['oqituvchi']), async (req, res) => {
   try {
     await client.query('BEGIN');
 
-    // Faqat shu sinf va sana uchun o'chirish (boshqa sinflarni o'chirmaslik)
+    // Faqat yuborilgan o'quvchilarning shu sinf va sanadagi yozuvlarini almashtiramiz.
+    // ⚠️ Avval butun sinf+sana o'chirilardi — natijada ro'yxatda ko'rinmagan o'quvchilar
+    // (nofaolga o'tgan yoki boshqa o'qituvchining o'quvchilari) yozuvlari ham yo'qolardi.
+    const ismlar = records.filter(r => r && r.ism && r.status).map(r => String(r.ism));
     await client.query(
-      'DELETE FROM davomat WHERE maktab_id=$1 AND sinf=$2 AND sana=$3',
-      [mid, sinf, sana]
+      'DELETE FROM davomat WHERE maktab_id=$1 AND sinf=$2 AND sana=$3 AND oquvchi_ism = ANY($4::text[])',
+      [mid, sinf, sana, ismlar]
     );
 
     for (const rec of records) {
