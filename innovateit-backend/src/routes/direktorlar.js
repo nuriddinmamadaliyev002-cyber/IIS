@@ -45,7 +45,7 @@ router.get('/me', requireAuth(['direktor']), async (req, res) => {
 
 // ─── Yordamchilar ───────────────────────────────────────────────────────────
 const norm = (v) => String(v || '').trim().toLowerCase().replace(/\s+/g, ' ');
-const parseKunlar  = (v) => String(v || '').split(',').map(Number).filter(n => n >= 1 && n <= 6);
+const parseKunlar  = (v) => String(v || '').split(',').map(Number).filter(n => n >= 0 && n <= 6);
 const parseSinflar = (v) => String(v || '').split(',').map(x => x.trim()).filter(Boolean);
 const sinfSort = (a, b) => (parseInt(a) || 0) - (parseInt(b) || 0) || String(a).localeCompare(String(b));
 

@@ -173,7 +173,7 @@
   }
 
   // ─── Guruh ko'rsatkichlari ─────────────────────────
-  const KUN_QISQA = { '1': 'Du', '2': 'Se', '3': 'Cho', '4': 'Pay', '5': 'Ju', '6': 'Sha' };
+  const KUN_QISQA = { '1': 'Du', '2': 'Se', '3': 'Cho', '4': 'Pay', '5': 'Ju', '6': 'Sha', '0': 'Yak' };
   function sinflarLabel(s) {
     const arr = String(s || '').split(',').map(t => t.trim().replace(/[\s-]*sinf$/i, '')).filter(Boolean);
     arr.sort((a, b) => (parseInt(a, 10) || 0) - (parseInt(b, 10) || 0));

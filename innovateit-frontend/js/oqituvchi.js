@@ -257,6 +257,7 @@ function showApp() {
 
   switchTab(getSavedTab()); // refresh qilinganda o'sha bo'limda qolish
   syncMaktablar();          // maktablar ro'yxati eskirgan bo'lsa — yangilanadi
+  loadYakRuxsat();          // yakshanba ruxsat berilgan maktablar
 }
 
 // ─── Maktab tanlagich ────────────────────────────
@@ -353,6 +354,7 @@ function onMaktabChange() {
   if (g('tab-tahrir').classList.contains('active')) loadGuruhTahrir();
   loadJadval();
   clearGuruhForm();
+  applyYakChip();
   if (g('tab-guruh').classList.contains('active')) initGuruhTab();
   if (g('tab-soat').classList.contains('active'))  { loadSoatStatistika(); initSoatMark(); }
 }
@@ -388,7 +390,7 @@ let guruhOquvchilarNames = new Map(); // sinf -> Map(oquvchiId -> "Familiya Ism"
 let editingGuruhId = null;
 let pendingGuruhData = null; // tasdiqlash oynasi kutayotgan ma'lumotlar
 
-const GURUH_KUN_NOMLARI = { 1: 'Dushanba', 2: 'Seshanba', 3: 'Chorshanba', 4: 'Payshanba', 5: 'Juma', 6: 'Shanba' };
+const GURUH_KUN_NOMLARI = { 1: 'Dushanba', 2: 'Seshanba', 3: 'Chorshanba', 4: 'Payshanba', 5: 'Juma', 6: 'Shanba', 0: 'Yakshanba' };
 
 // Boshlanish/tugash vaqti uchun ruxsat etilgan qiymatlar
 const GURUH_SOAT_VARIANTLARI = ['06','07','08','09','10','11','12','13','14','15','16','17','18'];
@@ -425,7 +427,26 @@ function initGuruhTimeSelects() {
   populateGuruhTimeSelect('guruh-tug-m', GURUH_DAQIQA_VARIANTLARI, 'Daqiqa');
 }
 
+// ─── Yakshanba tugmasi: faqat superadmin ruxsat bergan maktablarda ───────────
+let YAK_RUXSAT = new Set();   // yakshanba dars o'tiladigan maktab id lari
+async function loadYakRuxsat() {
+  try {
+    const r = await api.get('/api/maktablar');
+    if (r && r.ok) YAK_RUXSAT = new Set(r.maktablar.filter(m => m.yakshanba_dars).map(m => String(m.id)));
+  } catch (e) {}
+  applyYakChip();
+}
+// forceShow — tahrirlanayotgan guruhda yakshanba allaqachon bor bo'lsa
+function applyYakChip(forceShow) {
+  const chip = document.querySelector('#guruh-kun-chips [data-k="0"]');
+  if (!chip) return;
+  const ok = !!forceShow || YAK_RUXSAT.has(String(TANLANGAN_MID));
+  chip.style.display = ok ? '' : 'none';
+  if (!ok) chip.classList.remove('sel');
+}
+
 function initGuruhTab() {
+  applyYakChip();
   const warn = g('guruh-maktab-warn'), form = g('guruh-form');
   if (!TANLANGAN_MID) {
     warn.style.display = 'block';
@@ -609,6 +630,7 @@ function updateGuruhSelectedCount() {
 function clearGuruhForm() {
   document.querySelectorAll('#guruh-sinf-chips .sinf-chip').forEach(c => c.classList.remove('sel'));
   document.querySelectorAll('#guruh-kun-chips .kun-chip').forEach(c => c.classList.remove('sel'));
+  applyYakChip();
   g('guruh-oquvchilar-panel').style.display = 'none';
   g('guruh-oquvchilar-list').innerHTML = '';
   populateGuruhTimeSelect('guruh-bosh-s', GURUH_SOAT_VARIANTLARI, 'Soat', true);
@@ -777,7 +799,7 @@ async function actuallySaveGuruh({ effectiveSinflar, kunlar, boshlanish, tugash 
 //  GURUHLARIM (o'qituvchi yaratgan guruhlar ro'yxati)
 // ═══════════════════════════════════════════
 let LAST_GURUHLAR = [];
-const KUN_QISQA = { '1':'Du', '2':'Se', '3':'Cho', '4':'Pay', '5':'Ju', '6':'Sha' };
+const KUN_QISQA = { '1':'Du', '2':'Se', '3':'Cho', '4':'Pay', '5':'Ju', '6':'Sha', '0':'Yak' };
 
 async function loadGuruhlarim() {
   closeGuruhDavomat();
@@ -900,6 +922,7 @@ async function editGuruh(id) {
   ['guruh-bosh-m', 'guruh-tug-m', 'guruh-bosh-s', 'guruh-tug-s'].forEach(id => { const el = g(id); if (el && !el.value) el.selectedIndex = 0; });
 
   (j.kunlar || '').split(',').map(k => k.trim()).filter(Boolean).forEach(k => {
+    if (k === '0') applyYakChip(true);   // guruhda yakshanba bor — tugma ko'rinib tursin
     document.querySelector(`#guruh-kun-chips [data-k="${k}"]`)?.classList.add('sel');
   });
 

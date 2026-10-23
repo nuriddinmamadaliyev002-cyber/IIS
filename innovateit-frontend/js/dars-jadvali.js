@@ -3,9 +3,9 @@
 //  v2.1 — fan ranglari o'qituvchi nomiga qarab
 // ═══════════════════════════════════════════════════
 
-const KUN_NAMES  = ['', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
-const KUN_SHORT  = ['', 'Du', 'Se', 'Cho', 'Pay', 'Ju', 'Sha'];
-const KUNLAR_IDX = [1, 2, 3, 4, 5, 6];
+const KUN_NAMES  = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+const KUN_SHORT  = ['Yak', 'Du', 'Se', 'Cho', 'Pay', 'Ju', 'Sha'];
+let   KUNLAR_IDX = [1, 2, 3, 4, 5, 6]; // yakshanba (0) faqat dars bor bo'lsa oxiriga qo'shiladi
 
 let U         = null;   // { username, parol, ism }
 let TEACHERS  = [];     // Barcha o'qituvchilar
@@ -107,6 +107,7 @@ async function loadJadvallar() {
         sinflar: parseSinflar(j.sinflar),
         kunlar:  parseDays(j.kunlar)
       }));
+      KUNLAR_IDX = JADVALLAR.some(j => j.kunlar.includes(0)) ? [1, 2, 3, 4, 5, 6, 0] : [1, 2, 3, 4, 5, 6];
     }
   } catch {}
 }
@@ -913,7 +914,7 @@ function buildSinfSheet(wb, sinf) {
   }
 
   const ws = XLSX.utils.aoa_to_sheet(rows);
-  ws['!cols'] = [{wch:14}, ...KUN_NAMES.slice(1).map(()=>({wch:22}))];
+  ws['!cols'] = [{wch:14}, ...KUNLAR_IDX.map(()=>({wch:22}))];
   const sheetName = (sinf.length > 31 ? sinf.slice(0,31) : sinf);
   XLSX.utils.book_append_sheet(wb, ws, sheetName);
 }
@@ -922,7 +923,7 @@ function buildTeacherSheet(wb, tName) {
   const tJad = JADVALLAR.filter(j => j.teacher_familiya+' '+j.teacher_ism === tName);
   if (!tJad.length) return;
 
-  const rows = [['Sinf(lar)', ...KUN_NAMES.slice(1)]];
+  const rows = [['Sinf(lar)', ...KUNLAR_IDX.map(k => KUN_NAMES[k])]];
 
   // Har bir jadval qatori
   tJad.forEach(j => {
@@ -969,7 +970,7 @@ function setupVaqtInp(id) {
 
 function parseDays(str) {
   if (!str) return [];
-  return String(str).split(',').map(Number).filter(n => n >= 1 && n <= 6);
+  return String(str).split(',').map(Number).filter(n => n >= 0 && n <= 6);
 }
 function parseSinflar(str) {
   if (!str) return [];

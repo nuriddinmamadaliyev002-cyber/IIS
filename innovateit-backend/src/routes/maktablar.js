@@ -17,6 +17,7 @@ router.get('/', async (req, res) => {
          m.id,
          m.nomi,
          m.yaratilgan,
+         m.yakshanba_dars,
          COUNT(DISTINCT a.id)::int   AS adminlar_soni,
          COUNT(DISTINCT om.id)::int  AS oqituvchilar_soni,
          COUNT(DISTINCT aq.id)::int  AS oquvchilar_soni
@@ -40,13 +41,14 @@ router.post('/', requireAuth(['admin']), async (req, res) => {
     return res.status(403).json({ ok: false, error: 'Faqat superadmin' });
 
   const nomi = req.body.nomi?.trim();
+  const yakshanba = req.body.yakshanba_dars === true || req.body.yakshanba_dars === 'true';
   if (!nomi)
     return res.status(400).json({ ok: false, error: "Maktab nomi kiritilmagan" });
 
   try {
     const result = await pool.query(
-      `INSERT INTO maktablar (nomi) VALUES ($1) RETURNING id, nomi, yaratilgan`,
-      [nomi]
+      `INSERT INTO maktablar (nomi, yakshanba_dars) VALUES ($1, $2) RETURNING id, nomi, yaratilgan, yakshanba_dars`,
+      [nomi, yakshanba]
     );
     res.json({ ok: true, maktab: result.rows[0] });
   } catch (err) {
@@ -64,6 +66,9 @@ router.put('/:id', requireAuth(['admin']), async (req, res) => {
 
   const id   = parseInt(req.params.id);
   const nomi = req.body.nomi?.trim();
+  // yuborilmasa — mavjud qiymat o'zgarmaydi (null → COALESCE)
+  const yakshanba = req.body.yakshanba_dars === undefined ? null
+    : (req.body.yakshanba_dars === true || req.body.yakshanba_dars === 'true');
 
   if (!nomi)
     return res.status(400).json({ ok: false, error: "Maktab nomi kiritilmagan" });
@@ -78,7 +83,7 @@ router.put('/:id', requireAuth(['admin']), async (req, res) => {
 
     try {
       await client.query('BEGIN');
-      await client.query('UPDATE maktablar SET nomi=$1 WHERE id=$2', [nomi, id]);
+      await client.query('UPDATE maktablar SET nomi=$1, yakshanba_dars=COALESCE($3, yakshanba_dars) WHERE id=$2', [nomi, id, yakshanba]);
 
       // maktab_id FK orqali bog'langan — qo'shimcha sinxronlash shart emas
 

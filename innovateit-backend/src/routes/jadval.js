@@ -163,6 +163,19 @@ router.post('/mening-jadvalim', requireAuth(['oqituvchi']), async (req, res) => 
   if (!maktabId || !allowedIds.includes(maktabId))
     return res.status(400).json({ ok: false, error: "Bu maktabga biriktirilmagansiz" });
 
+  // Yakshanba (0) faqat superadmin ruxsat bergan maktablarda tanlanadi
+  const kunTokens = String(p.kunlar).split(',').map(k => k.trim());
+  if (kunTokens.includes('0')) {
+    try {
+      const yk = await pool.query('SELECT yakshanba_dars FROM maktablar WHERE id=$1', [maktabId]);
+      if (!yk.rows[0]?.yakshanba_dars)
+        return res.status(400).json({ ok: false, error: "Bu maktabda yakshanba kuni dars o'tilmaydi" });
+    } catch (err) {
+      console.error('mening-jadvalim yakshanba tekshiruv xatolik:', err.message);
+      return res.status(500).json({ ok: false, error: 'Server xatoligi' });
+    }
+  }
+
   const ismParts = (ism || '').trim().split(' ');
   const familiya = ismParts[0] || '';
   const ismOnly  = ismParts.slice(1).join(' ') || '';

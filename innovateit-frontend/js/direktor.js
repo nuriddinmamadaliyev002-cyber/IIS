@@ -106,8 +106,8 @@ const sum = (n) => (Number(n) || 0).toLocaleString('ru-RU');
 // ═══════════════════════════════════════════════════════════════════════════
 //  O'QITUVCHILAR
 // ═══════════════════════════════════════════════════════════════════════════
-const KUN_SHORT = ['', 'Du', 'Se', 'Cho', 'Pay', 'Ju', 'Sha'];
-const KUN_FULL  = ['', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
+const KUN_SHORT = ['Yak', 'Du', 'Se', 'Cho', 'Pay', 'Ju', 'Sha'];
+const KUN_FULL  = ['Yakshanba', 'Dushanba', 'Seshanba', 'Chorshanba', 'Payshanba', 'Juma', 'Shanba'];
 let TEACHERS = [], MAKTABLAR = [], YETIM = 0;
 
 // HTML xavfsizligi: bazadagi barcha matnlar shu orqali chiqariladi
@@ -246,8 +246,10 @@ function renderTeachers() {
 function weekGrid(lessonsByDay, opts = {}) {
   const today = todayIdx();
   let head = '', body = '';
-  for (let k = 1; k <= 6; k++) head += `<th class="${k === today ? 'today' : ''}">${KUN_FULL[k]}</th>`;
-  for (let k = 1; k <= 6; k++) {
+  const KUNLAR = [1, 2, 3, 4, 5, 6];
+  if ((lessonsByDay[0] || []).length) KUNLAR.push(0); // yakshanba faqat dars bor bo'lsa
+  for (const k of KUNLAR) head += `<th class="${k === today ? 'today' : ''}">${KUN_FULL[k]}</th>`;
+  for (const k of KUNLAR) {
     const items = (lessonsByDay[k] || []).slice().sort((a, b) => String(a.boshlanish).localeCompare(String(b.boshlanish)));
     body += `<td>${items.map(opts.card).join('')}</td>`;
   }

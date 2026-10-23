@@ -35,7 +35,7 @@ function renderMaktablar(list) {
   }
   tb.innerHTML = list.map(m => `
     <tr>
-      <td><strong>${esc(m.nomi)}</strong></td>
+      <td><strong>${esc(m.nomi)}</strong>${m.yakshanba_dars ? ' <span style="background:#e0f2fe;color:#0369a1;border-radius:10px;padding:2px 8px;font-size:11px;font-weight:600;">Yak</span>' : ''}</td>
       <td>${m.adminlar_soni || 0}</td>
       <td>${m.oqituvchilar_soni || 0}</td>
       <td>${m.oquvchilar_soni || 0}</td>
@@ -52,9 +52,11 @@ async function createMaktab() {
   if (!nomi) { showMErr("Maktab nomini kiriting"); return; }
 
   try {
-    const r = await api.createMaktab({ nomi });
+    const yakshanba_dars = !!document.getElementById('m-yakshanba')?.checked;
+    const r = await api.createMaktab({ nomi, yakshanba_dars });
     if (r.ok) {
       document.getElementById('m-nomi').value = '';
+      const yk = document.getElementById('m-yakshanba'); if (yk) yk.checked = false;
       document.getElementById('m-err').style.display = 'none';
       toast('✅ Maktab qo\'shildi!', 'success');
       await loadMaktablar();
@@ -75,7 +77,10 @@ function openMaktabEdit(id, nomi) {
   if (!row) return;
 
   row.cells[0].innerHTML = `
-    <input class="field-input" id="m-edit-${id}" value="${esc(nomi)}" style="width:100%;max-width:200px;">`;
+    <input class="field-input" id="m-edit-${id}" value="${esc(nomi)}" style="width:100%;max-width:200px;">
+    <label style="display:flex;align-items:center;gap:6px;margin-top:6px;font-size:13px;">
+      <input type="checkbox" id="m-edit-yak-${id}" ${(MAKTABLAR.find(x => x.id === id) || {}).yakshanba_dars ? 'checked' : ''}> Yakshanba dars
+    </label>`;
   row.cells[5].innerHTML = `
     <button class="btn-primary" onclick="saveMaktab(${id})">💾 Saqlash</button>
     <button class="btn-small"   onclick="loadMaktablar()">Bekor</button>`;
@@ -87,7 +92,8 @@ async function saveMaktab(id) {
   if (!nomi) { toast('Nom bo\'sh bo\'lishi mumkin emas', 'error'); return; }
 
   try {
-    const r = await api.editMaktab({ id, nomi });
+    const yakshanba_dars = !!document.getElementById('m-edit-yak-' + id)?.checked;
+    const r = await api.editMaktab({ id, nomi, yakshanba_dars });
     if (r.ok) { toast('✅ Yangilandi', 'success'); await loadMaktablar(); if (typeof loadAdmins === 'function') await loadAdmins(); }
     else toast('❌ ' + r.error, 'error');
   } catch(e) { toast('❌ Xatolik', 'error'); }

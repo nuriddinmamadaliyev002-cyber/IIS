@@ -943,3 +943,6 @@ CREATE TABLE IF NOT EXISTS oquvchi_nofaol_davrlar (
 CREATE INDEX IF NOT EXISTS idx_nofaol_davr_oquvchi ON oquvchi_nofaol_davrlar(oquvchi_id);
 GRANT ALL PRIVILEGES ON oquvchi_nofaol_davrlar TO iis_user;
 GRANT ALL PRIVILEGES ON SEQUENCE oquvchi_nofaol_davrlar_id_seq TO iis_user;
+
+-- ─── Maktabda yakshanba kuni dars o'tiladimi (migrations/031) ──────────────────
+ALTER TABLE maktablar ADD COLUMN IF NOT EXISTS yakshanba_dars BOOLEAN NOT NULL DEFAULT FALSE;
