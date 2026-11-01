@@ -138,13 +138,11 @@ router.post('/taklif-qabul', wrap(async (req, res) => {
   const kod = String((req.body && req.body.kod) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
   if (kod.length < 6) return res.status(400).json({ ok: false, error: 'Kod noto\'g\'ri' });
 
+  // Faqat ishtirokchilar kod bilan kiradi. Kurs adminlari Telegram ID orqali
+  // (superadmin biriktiradi) kiradi — ularga taklif kodi berilmaydi.
   let rol, jadval, entityId;
-  let r = await pool.query('SELECT id FROM kurs_adminlar WHERE taklif_kodi=$1', [kod]);
-  if (r.rowCount) { rol = 'kurs_admin'; jadval = 'kurs_adminlar'; entityId = r.rows[0].id; }
-  else {
-    r = await pool.query('SELECT id FROM kurs_ishtirokchilar WHERE taklif_kodi=$1', [kod]);
-    if (r.rowCount) { rol = 'kurs_ishtirokchi'; jadval = 'kurs_ishtirokchilar'; entityId = r.rows[0].id; }
-  }
+  const r = await pool.query('SELECT id FROM kurs_ishtirokchilar WHERE taklif_kodi=$1', [kod]);
+  if (r.rowCount) { rol = 'kurs_ishtirokchi'; jadval = 'kurs_ishtirokchilar'; entityId = r.rows[0].id; }
   if (!rol) return res.status(404).json({ ok: false, error: 'Kod noto\'g\'ri. Kursingiz adminidan kodni qayta so\'rang.' });
 
   const band = await pool.query(
@@ -219,8 +217,8 @@ router.delete('/super/kurslar/:id', superMw, wrap(async (req, res) => {
 
 router.get('/super/kurslar/:id/adminlar', superMw, wrap(async (req, res) => {
   const r = await pool.query(`
-    SELECT a.id, a.familiya, a.ism, a.telefon, a.taklif_kodi,
-           EXISTS (SELECT 1 FROM telegram_users t WHERE t.rol='kurs_admin' AND t.entity_id=a.id AND t.entity_table='kurs_adminlar') AS ulangan
+    SELECT a.id, a.familiya, a.ism, a.telefon, a.telegram_id,
+           (a.telegram_id IS NOT NULL) AS ulangan
       FROM kurs_adminlar a WHERE a.kurs_id=$1 ORDER BY a.id`, [butun(req.params.id)]);
   res.json({ ok: true, adminlar: r.rows });
 }));
@@ -231,29 +229,51 @@ router.post('/super/kurslar/:id/adminlar', superMw, wrap(async (req, res) => {
   if (!ism) return res.status(400).json({ ok: false, error: 'Ism kerak' });
   const k = await pool.query('SELECT 1 FROM online_kurslar WHERE id=$1', [kid]);
   if (!k.rowCount) return res.status(404).json({ ok: false, error: 'Kurs topilmadi' });
-  const kod = await noyobKod('kurs_adminlar', 8);
   const r = await pool.query(
-    'INSERT INTO kurs_adminlar (kurs_id, familiya, ism, telefon, taklif_kodi) VALUES ($1,$2,$3,$4,$5) RETURNING id',
-    [kid, familiya, ism, telefonToza(req.body.telefon), kod]);
-  res.json({ ok: true, id: r.rows[0].id, taklif_kodi: kod });
+    'INSERT INTO kurs_adminlar (kurs_id, familiya, ism, telefon) VALUES ($1,$2,$3,$4) RETURNING id',
+    [kid, familiya, ism, telefonToza(req.body.telefon)]);
+  res.json({ ok: true, id: r.rows[0].id });
 }));
 
+// Tahrirlash + Telegram ID biriktirish/almashtirish/ajratish (bitta so'rovda, tranzaksiyada).
+//   telegram_id: raqam → biriktiradi (eskisi almashadi); '' yoki null → ajratadi; berilmasa → tegilmaydi.
 router.put('/super/adminlar/:id', superMw, wrap(async (req, res) => {
-  const ism = normIsm(req.body.ism);
-  if (!ism) return res.status(400).json({ ok: false, error: 'Ism kerak' });
-  const r = await pool.query('UPDATE kurs_adminlar SET familiya=$1, ism=$2, telefon=$3 WHERE id=$4',
-    [normIsm(req.body.familiya), ism, telefonToza(req.body.telefon), butun(req.params.id)]);
-  if (!r.rowCount) return res.status(404).json({ ok: false, error: 'Admin topilmadi' });
-  res.json({ ok: true });
-}));
-
-router.post('/super/adminlar/:id/kod-yangilash', superMw, wrap(async (req, res) => {
   const id = butun(req.params.id);
-  const kod = await noyobKod('kurs_adminlar', 8);
-  const r = await pool.query('UPDATE kurs_adminlar SET taklif_kodi=$1 WHERE id=$2', [kod, id]);
-  if (!r.rowCount) return res.status(404).json({ ok: false, error: 'Admin topilmadi' });
-  await telegramAjrat('kurs_admin', id);          // eski Telegram biriktirish bekor
-  res.json({ ok: true, taklif_kodi: kod });
+  const ism = normIsm(req.body.ism);
+  if (!id) return res.status(400).json({ ok: false, error: 'Admin ID kerak' });
+  if (!ism) return res.status(400).json({ ok: false, error: 'Ism kerak' });
+
+  let tgId;                                   // undefined = o'zgartirilmaydi
+  if (req.body.telegram_id !== undefined) {
+    const raw = String(req.body.telegram_id == null ? '' : req.body.telegram_id).trim();
+    if (raw === '') tgId = null;
+    else if (/^\d{4,15}$/.test(raw)) tgId = Number(raw);
+    else return res.status(400).json({ ok: false, error: "Telegram ID faqat raqamlardan iborat bo'lishi kerak" });
+  }
+
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cur = await client.query('SELECT telegram_id FROM kurs_adminlar WHERE id=$1 FOR UPDATE', [id]);
+    if (!cur.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ ok: false, error: 'Admin topilmadi' }); }
+
+    await client.query('UPDATE kurs_adminlar SET familiya=$1, ism=$2, telefon=$3 WHERE id=$4',
+      [normIsm(req.body.familiya), ism, telefonToza(req.body.telefon), id]);
+
+    if (tgId !== undefined && String(tgId) !== String(cur.rows[0].telegram_id)) {
+      await telegramAjrat('kurs_admin', id, client);             // eski birikma uziladi
+      if (tgId !== null) {
+        const ismTg = `${normIsm(req.body.familiya)} ${ism}`.trim();
+        await client.query(
+          `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)
+           VALUES ($1,$2,'kurs_admin',$3,'kurs_adminlar')
+           ON CONFLICT (telegram_id, rol, entity_id) DO NOTHING`, [tgId, ismTg, id]);
+      }
+      await client.query('UPDATE kurs_adminlar SET telegram_id=$1 WHERE id=$2', [tgId, id]);
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 }));
 
 router.delete('/super/adminlar/:id', superMw, wrap(async (req, res) => {
