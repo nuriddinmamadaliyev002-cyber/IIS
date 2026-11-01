@@ -86,15 +86,18 @@ async function sertifikatPdf(s) {
   const fio = [s.familiya, s.ism, s.sharif].map(x => String(x || '').trim()).filter(Boolean).join(' ');
   centered(doc, fio, F.serifBold, 40, 1008, 352, 720);
 
-  // ── Sertifikat raqami ──
-  leftAt(doc, s.raqam, F.sansBold, 27, 878, 636, 205);
+  // ── Sertifikat raqami: sertifikatda ko'rinadigan raqam = noyob tekshiruv kodi ──
+  //    (ichki ketma-ket raqam IIS-YYYY-NNNNNN faqat admin ro'yxatlarida qoladi)
+  leftAt(doc, s.tekshiruv_kodi, F.sansBold, 27, 878, 636, 205);
 
-  // ── Berilgan sana ──
-  leftAt(doc, s.sana_matn || sanaMatn(s.berilgan_sana), F.sansBold, 29, 1112, 918, 190);
+  // ── Berilgan sana: sana chiziq USTIDA, "Berilgan sana:" yozuvi chiziq OSTIDA (taqvim belgisi yonida) ──
+  //    (fon rasmida bu yozuv yo'q — u shu yerda chiziladi)
+  centered(doc, s.sana_matn || sanaMatn(s.berilgan_sana), F.sansBold, 30, 1193, 833, 300);
+  leftAt(doc, 'Berilgan sana', F.serifBold, 31, 1106, 913, 220);   // "Direktor Innovate IT School" kabi qalin
 
-  // ── Direktor F.I.Sh. ──
+  // ── Direktor F.I.Sh. — "Direktor Innovate IT School" tepasidagi chiziq ustida ──
   if (s.direktor_fio && String(s.direktor_fio).trim()) {
-    centered(doc, String(s.direktor_fio).trim(), F.serif, 28, 809, 964, 300);
+    centered(doc, String(s.direktor_fio).trim(), F.serifBold, 26, 809, 827, 262);
   }
 
   // ── QR kod (o'ng tomonda, sertifikat raqami qutisining yonida) ──
@@ -109,8 +112,6 @@ async function sertifikatPdf(s) {
      .fillColor('#FFFFFF').strokeColor('#7FB3E6').lineWidth(1.2 * S).fillAndStroke();
   doc.restore();
   doc.image(png, qx * S, qy * S, { width: qs * S, height: qs * S });
-  centered(doc, 'Haqiqiyligini tekshirish', F.sans, 16, qx + qs / 2, qy + qs + 38, 190);
-  centered(doc, s.tekshiruv_kodi, F.sansBold, 19, qx + qs / 2, qy + qs + 62, 190);
 
   doc.end();
   return done;

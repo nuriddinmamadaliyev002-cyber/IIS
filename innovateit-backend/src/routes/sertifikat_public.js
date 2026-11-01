@@ -43,6 +43,7 @@ router.get('/tekshir/:kod', async (req, res) => {
       haqiqiy: s.holat === 'haqiqiy',
       sertifikat: {
         raqam: s.raqam,
+        kod: kod,
         fio: [s.familiya, s.ism, s.sharif].filter(Boolean).join(' '),
         kurs_nomi: s.kurs_nomi,
         berilgan_sana: s.berilgan_sana,

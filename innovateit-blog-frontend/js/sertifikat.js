@@ -37,7 +37,7 @@
         <div class="cert-fio">${esc(s.fio)}</div>
         <div class="cert-kurs">«${esc(s.kurs_nomi)}» kursida muvaffaqiyatli ishtirok etgan</div>
         <div class="cert-meta">
-          <div>Sertifikat raqami<b>${esc(s.raqam)}</b></div>
+          <div>Sertifikat raqami<b>${esc(s.kod || s.raqam)}</b></div>
           <div>Berilgan sana<b>${esc(s.berilgan_sana)}</b></div>
         </div>
         <div class="cert-kurs" style="margin-top:14px;font-size:13px;color:#6b7280;">Tashkilot: Innovate IT School</div>
