@@ -2,9 +2,8 @@
 //  Kurs admini paneli — sozlamalar, savollar, ishtirokchilar, natijalar, sertifikatlar
 // ═══════════════════════════════════════════════════════════════════════════
 (function () {
-  const { esc, toast, req, modal, closeModal, nusxala } = K;
+  const { esc, toast, req, modal, closeModal } = K;
   const $ = id => document.getElementById(id);
-  const BOT_HAVOLA = 'https://t.me/InnovateITSchoolbot';
   let KURS = null, TAB = 'sozlama';
 
   // ─── Boshlash ───
@@ -178,8 +177,8 @@ B) Brauzer"></textarea>
     if (i.sertifikat_id) return i.sertifikat_holat === 'haqiqiy' ? `<span class="k-badge ok">🎓 ${esc(i.sertifikat_raqam)}</span>` : '<span class="k-badge err">Sertifikat bekor</span>';
     if (i.jarayonda) return '<span class="k-badge blue">Test ishlayapti</span>';
     if (i.urinishlar > 0) return '<span class="k-badge warn">O\'tmadi</span>';
-    if (i.ulangan) return '<span class="k-badge blue">Ulangan</span>';
-    return '<span class="k-badge gray">Taklif kutilmoqda</span>';
+    if (i.ulangan) return '<span class="k-badge blue">Telegram ulangan</span>';
+    return '<span class="k-badge gray">Telegram ID yo\'q</span>';
   }
   async function tabIshtirokchilar() {
     yuklanmoqda();
@@ -195,13 +194,12 @@ B) Brauzer"></textarea>
       <div class="k-card" style="padding:0;"><div class="k-tablewrap">
       ${ISH.length ? `<table class="k-table"><thead><tr><th>F.I.Sh.</th><th>Maktab</th><th>Holat</th><th>Urinish</th><th>Eng yaxshi</th><th></th></tr></thead><tbody>
         ${ISH.map(i => `<tr>
-          <td><b>${esc([i.familiya, i.ism, i.sharif].filter(Boolean).join(' '))}</b><div class="k-muted">${esc(i.telefon)}</div></td>
+          <td><b>${esc([i.familiya, i.ism, i.sharif].filter(Boolean).join(' '))}</b><div class="k-muted">${esc(i.telefon)}</div>${i.telegram_id ? `<div class="k-muted">📱 ${esc(i.telegram_id)}</div>` : ''}</td>
           <td>${esc(i.maktab_nomi) || '—'}</td>
           <td>${holatBadge(i)}</td>
           <td>${i.urinishlar}${i.qoshimcha_urinish ? ` <span class="k-muted">(+${i.qoshimcha_urinish})</span>` : ''}</td>
           <td>${i.eng_yaxshi != null ? Number(i.eng_yaxshi) + '%' : '—'}</td>
           <td><div class="k-acts">
-            ${!i.ulangan && !i.sertifikat_id ? `<button class="k-btn sec sm" data-kod="${i.id}">🔑 Taklif</button>` : ''}
             <button class="k-btn gray sm" data-plus="${i.id}" title="Qo'shimcha urinish">＋1</button>
             <button class="k-btn gray sm" data-edit="${i.id}">✏️</button>
             <button class="k-btn red sm" data-del="${i.id}">🗑</button></div></td></tr>`).join('')}
@@ -210,7 +208,6 @@ B) Brauzer"></textarea>
     $('i-add').onclick = () => ishModal(null);
     $('i-bulk').onclick = ishOmmaviy;
     const topish = id => ISH.find(x => x.id == id);
-    document.querySelectorAll('[data-kod]').forEach(b => b.onclick = () => taklifModal(topish(b.dataset.kod)));
     document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => ishModal(topish(b.dataset.edit)));
     document.querySelectorAll('[data-plus]').forEach(b => b.onclick = async () => {
       if (!confirm('Bu ishtirokchiga 1 ta qo\'shimcha urinish berasizmi?')) return;
@@ -225,29 +222,6 @@ B) Brauzer"></textarea>
     });
   }
 
-  function taklifMatn(i) {
-    return `Assalomu alaykum! "${KURS.nomi}" kursiga taklif qilindingiz.\n\n` +
-      `1) Telegramda botni oching: ${BOT_HAVOLA}\n2) /start bosing va "Mini App" tugmasini bosing\n` +
-      `3) So'ralganda quyidagi kodni kiriting:\n\n🔑 ${i.taklif_kodi}\n\nKod faqat bitta Telegram hisobiga bog'lanadi.`;
-  }
-  function taklifModal(i) {
-    modal(`
-      <h3>Taklif kodi</h3>
-      <div class="k-muted">${esc([i.familiya, i.ism].join(' '))} bu kodni Mini App'da kiritadi.</div>
-      <div style="text-align:center;margin:16px 0;"><span class="k-code">${esc(i.taklif_kodi)}</span></div>
-      <textarea class="k-in" id="t-matn" readonly style="min-height:150px;font-size:13.5px;">${esc(taklifMatn(i))}</textarea>
-      <div class="btns">
-        <button class="k-btn red sm" id="t-yangi" title="Eski kod va Telegram biriktirish bekor bo'ladi">♻️ Yangi kod</button><span class="k-sp"></span>
-        <button class="k-btn gray" id="t-yop">Yopish</button><button class="k-btn" id="t-nus">📋 Matnni nusxalash</button></div>`);
-    $('t-yop').onclick = closeModal;
-    $('t-nus').onclick = () => nusxala(taklifMatn(i));
-    $('t-yangi').onclick = async () => {
-      if (!confirm('Yangi kod berilsa, eski kod ishlamaydi va ulangan Telegram hisobi uziladi. Davom etasizmi?')) return;
-      const r = await req('POST', `/api/kurs/admin/ishtirokchilar/${i.id}/kod-yangilash`, {});
-      if (r.ok) { i.taklif_kodi = r.taklif_kodi; toast('Yangi kod yaratildi'); taklifModal(i); } else toast(r.error, 'err');
-    };
-  }
-
   function ishModal(i) {
     modal(`
       <h3>${i ? 'Ishtirokchini tahrirlash' : 'Yangi ishtirokchi'}</h3>
@@ -260,24 +234,41 @@ B) Brauzer"></textarea>
         <div><label class="k-lbl">Telefon</label><input class="k-in" id="f-tel" value="${esc(i ? i.telefon : '')}" inputmode="tel"></div>
         <div><label class="k-lbl">Maktab</label><input class="k-in" id="f-mak" value="${esc(i ? i.maktab_nomi : '')}"></div>
       </div>
+      <label class="k-lbl">📱 Telegram ID <span class="k-muted">(kirish usuli)</span></label>
+      <input class="k-in" id="f-tg" value="${esc(i && i.telegram_id ? i.telegram_id : '')}" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
+      <select class="k-in" id="f-kand" style="margin-top:8px;"><option value="">⏳ Botga /start yozganlar yuklanmoqda…</option></select>
+      <div class="k-hint">Ishtirokchi botga <b>/start</b> yozsa, yuqoridagi ro'yxatda paydo bo'ladi. Telegram ID'ni o'chirsangiz — ishtirokchi ajratiladi. Mini App ishtirokchidan hech narsa so'ramaydi.</div>
       <div class="k-hint">Ishtirokchi test boshida ma'lumotlarini o'zi tasdiqlaydi va to'ldiradi (F.I.Sh. sertifikatga shu holatda chiqadi).</div>
       <div class="k-err" id="f-err"></div>
       <div class="btns"><button class="k-btn gray" id="f-cancel">Bekor</button><button class="k-btn" id="f-ok">Saqlash</button></div>`);
     $('f-cancel').onclick = closeModal;
+    kandidatYukla('f-kand', 'f-tg');
     $('f-ok').onclick = async () => {
-      const body = { familiya: $('f-fam').value, ism: $('f-ism').value, sharif: $('f-shar').value, telefon: $('f-tel').value, maktab_nomi: $('f-mak').value };
+      const tg = $('f-tg').value.trim();
+      if (tg && !/^\d{4,15}$/.test(tg)) { $('f-err').textContent = "Telegram ID faqat raqamlardan iborat bo'lishi kerak"; return; }
+      const body = { familiya: $('f-fam').value, ism: $('f-ism').value, sharif: $('f-shar').value, telefon: $('f-tel').value, maktab_nomi: $('f-mak').value, telegram_id: tg };
       const r = i ? await req('PUT', '/api/kurs/admin/ishtirokchilar/' + i.id, body) : await req('POST', '/api/kurs/admin/ishtirokchilar', body);
       if (!r.ok) { $('f-err').textContent = r.error; return; }
-      closeModal(); toast('Saqlandi ✓'); await tabIshtirokchilar();
-      if (!i && r.id) { const yangi = ISH.find(x => x.id === r.id); if (yangi) taklifModal(yangi); }
+      closeModal(); toast(tg ? 'Saqlandi ✓ — Telegram biriktirildi' : 'Saqlandi ✓'); await tabIshtirokchilar();
     };
+  }
+
+  // "Botga /start yozganlar" ro'yxati → tanlansa Telegram ID maydoniga yoziladi
+  async function kandidatYukla(selId, inputId) {
+    const sel = $(selId); if (!sel) return;
+    const r = await req('GET', '/api/kurs/admin/kandidatlar');
+    if (!$(selId)) return;                                   // modal yopilgan bo'lishi mumkin
+    const L = r.ok ? r.kandidatlar : [];
+    sel.innerHTML = `<option value="">${r.ok ? (L.length ? '— yoki botga /start yozganlar ro\'yxatidan tanlang —' : '— hozircha hech kim botga /start yozmagan —') : '❌ Ro\'yxatni yuklab bo\'lmadi'}</option>` +
+      L.map(k => `<option value="${esc(k.telegram_id)}">${esc(k.telegram_ism || "Noma'lum")}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${esc(k.telegram_id)}</option>`).join('');
+    sel.onchange = () => { if (sel.value) $(inputId).value = sel.value; };
   }
 
   function ishOmmaviy() {
     modal(`
       <h3>Ro'yxatdan qo'shish</h3>
-      <div class="k-muted">Har qatorda bitta ishtirokchi: <b>Familiya Ism Sharif ; telefon ; maktab</b> (telefon va maktab ixtiyoriy). Excel'dan ustunlarni nusxalab qo'ysangiz ham bo'ladi.</div>
-      <textarea class="k-in" id="o-matn" style="min-height:200px;font-size:13.5px;" placeholder="Karimova Dilnoza Anvar qizi; +998901112233; 12-maktab
+      <div class="k-muted">Har qatorda bitta ishtirokchi: <b>Familiya Ism Sharif ; telefon ; maktab ; fan ; Telegram ID</b> (telefon, maktab, fan va Telegram ID ixtiyoriy). Excel'dan ustunlarni nusxalab qo'ysangiz ham bo'ladi.</div>
+      <textarea class="k-in" id="o-matn" style="min-height:200px;font-size:13.5px;" placeholder="Karimova Dilnoza Anvar qizi; +998901112233; 12-maktab; Informatika; 816464166
 Toshmatov Jasur Akbar oʻgʻli; ; 5-maktab"></textarea>
       <div class="k-err" id="o-err"></div>
       <div class="btns"><button class="k-btn gray" id="o-cancel">Bekor</button><button class="k-btn" id="o-ok">Qo'shish</button></div>`, { keng: true });

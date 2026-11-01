@@ -6,22 +6,22 @@
 //    kurs_admin     → /api/kurs/admin/...      o'z kursining sozlamalari, savollari, ishtirokchilari
 //    kurs_ishtirokchi → /api/kurs/ish/...      o'z profili, test, sertifikat
 //  Ochiq:
-//    POST /api/kurs/taklif-qabul               Telegram'ni taklif kodi bilan biriktirish
 //    GET  /api/sertifikat/tekshir/:kod         sertifikat haqiqiyligini tekshirish (routes/sertifikat_public.js)
 //
 //  Kirish: Telegram Mini App (initData imzosi tekshiriladi — routes/telegram.js /kirish).
+//  Telegram ID'ni superadmin (kurs adminiga) va kurs admini (ishtirokchiga) biriktiradi — Mini App kod so'ramaydi.
 // ═══════════════════════════════════════════════════════════════════════════
 const { Router } = require('express');
 const crypto = require('crypto');
 const pool = require('../db');
 const { requireAuth } = require('../middleware/jwt');
-const { tekshirYoki } = require('../telegramVerify');
 const { sertifikatPdf } = require('../sertifikatPdf');
 
 const router = Router();
 
 // ─── Yordamchilar ────────────────────────────────────────────────────────────
 const wrap = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(err => {
+  if (err && err.xabar) return res.status(409).json({ ok: false, error: err.xabar });
   console.error('kurslar xatolik:', err);
   res.status(500).json({ ok: false, error: 'Server xatoligi' });
 });
@@ -32,24 +32,6 @@ function tasodifiyKod(uzunlik) {
   let s = '';
   for (let i = 0; i < uzunlik; i++) s += KOD_ALIFBO[b[i] % KOD_ALIFBO.length];
   return s;
-}
-
-// Oddiy xotiradagi tezlik cheklovi (bitta PM2 instance)
-function limiter(max, oynaMs) {
-  const m = new Map();
-  setInterval(() => { const n = Date.now(); for (const [k, v] of m) if (v.t < n) m.delete(k); }, 60 * 1000).unref();
-  return (key) => {
-    const n = Date.now();
-    let v = m.get(key);
-    if (!v || v.t < n) { v = { c: 0, t: n + oynaMs }; m.set(key, v); }
-    v.c++;
-    return v.c <= max;
-  };
-}
-const kodUrinishLimit = limiter(10, 15 * 60 * 1000);
-
-function clientIp(req) {
-  return String(req.headers['x-real-ip'] || (req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || '').trim();
 }
 
 // Ism-familiya: o' / g' → oʻ / gʻ, ortiqcha bo'sh joylar, kichik/KATTA harf tartibi
@@ -70,16 +52,6 @@ function matn(s, maks) { return String(s == null ? '' : s).replace(/\s+/g, ' ').
 function telefonToza(s) { return String(s == null ? '' : s).replace(/[^\d+]/g, '').slice(0, 20); }
 function butun(v) { const n = Number(v); return Number.isInteger(n) ? n : NaN; }
 
-async function noyobKod(jadval, uzunlik) {
-  for (let i = 0; i < 8; i++) {
-    const kod = tasodifiyKod(uzunlik);
-    const r = await pool.query(`SELECT 1 FROM kurs_adminlar WHERE taklif_kodi=$1
-                                UNION ALL SELECT 1 FROM kurs_ishtirokchilar WHERE taklif_kodi=$1`, [kod]);
-    if (r.rowCount === 0) return kod;
-  }
-  throw new Error('Kod yaratib bo\'lmadi');
-}
-
 const ROLLAR = {
   kurs_admin:       { jadval: 'kurs_adminlar' },
   kurs_ishtirokchi: { jadval: 'kurs_ishtirokchilar' },
@@ -87,6 +59,29 @@ const ROLLAR = {
 async function telegramAjrat(rol, entityId, client = pool) {
   await client.query('DELETE FROM telegram_users WHERE rol=$1 AND entity_id=$2 AND entity_table=$3',
     [rol, entityId, ROLLAR[rol].jadval]);
+}
+
+// Telegram ID'ni tekshirish: undefined = o'zgartirilmaydi, null = ajratish, son = biriktirish
+function tgIdOqi(v) {
+  if (v === undefined) return { qiymat: undefined };
+  const raw = String(v == null ? '' : v).trim();
+  if (raw === '') return { qiymat: null };
+  if (/^\d{4,15}$/.test(raw)) return { qiymat: Number(raw) };
+  return { xato: "Telegram ID faqat raqamlardan iborat bo'lishi kerak" };
+}
+// Ishtirokchining Telegram ID'sini o'rnatish (eski birikma uziladi). client — tranzaksiya ichida.
+async function ishtirokchiTgOrnat(client, kursId, id, tgId, ismTg) {
+  await telegramAjrat('kurs_ishtirokchi', id, client);
+  if (tgId !== null) {
+    const band = await client.query(
+      'SELECT 1 FROM kurs_ishtirokchilar WHERE kurs_id=$1 AND telegram_id=$2 AND id<>$3', [kursId, tgId, id]);
+    if (band.rowCount) { const e = new Error('band'); e.xabar = "Bu Telegram ID shu kursning boshqa ishtirokchisiga biriktirilgan"; throw e; }
+    await client.query(
+      `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)
+       VALUES ($1,$2,'kurs_ishtirokchi',$3,'kurs_ishtirokchilar')
+       ON CONFLICT (telegram_id, rol, entity_id) DO NOTHING`, [tgId, ismTg || null, id]);
+  }
+  await client.query('UPDATE kurs_ishtirokchilar SET telegram_id=$1 WHERE id=$2', [tgId, id]);
 }
 
 // ─── Middleware'lar ──────────────────────────────────────────────────────────
@@ -125,42 +120,6 @@ async function ishtirokchiMw(req, res, next) {
     next();
   } catch (e) { console.error(e); res.status(500).json({ ok: false, error: 'Server xatoligi' }); }
 }
-
-// ═══════════════════════════════════════════════════════════════════════════
-//  TAKLIF KODI → TELEGRAM BIRIKTIRISH (ochiq, lekin initData imzosi shart)
-// ═══════════════════════════════════════════════════════════════════════════
-router.post('/taklif-qabul', wrap(async (req, res) => {
-  const tg = tekshirYoki(req, res);
-  if (!tg) return;
-  if (!kodUrinishLimit('tg:' + tg.id) || !kodUrinishLimit('ip:' + clientIp(req))) {
-    return res.status(429).json({ ok: false, error: 'Juda ko\'p urinish. 15 daqiqadan keyin qayta urinib ko\'ring.' });
-  }
-  const kod = String((req.body && req.body.kod) || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
-  if (kod.length < 6) return res.status(400).json({ ok: false, error: 'Kod noto\'g\'ri' });
-
-  // Faqat ishtirokchilar kod bilan kiradi. Kurs adminlari Telegram ID orqali
-  // (superadmin biriktiradi) kiradi — ularga taklif kodi berilmaydi.
-  let rol, jadval, entityId;
-  const r = await pool.query('SELECT id FROM kurs_ishtirokchilar WHERE taklif_kodi=$1', [kod]);
-  if (r.rowCount) { rol = 'kurs_ishtirokchi'; jadval = 'kurs_ishtirokchilar'; entityId = r.rows[0].id; }
-  if (!rol) return res.status(404).json({ ok: false, error: 'Kod noto\'g\'ri. Kursingiz adminidan kodni qayta so\'rang.' });
-
-  const band = await pool.query(
-    'SELECT telegram_id FROM telegram_users WHERE rol=$1 AND entity_id=$2 AND entity_table=$3', [rol, entityId, jadval]);
-  if (band.rowCount && Number(band.rows[0].telegram_id) !== tg.id) {
-    return res.status(409).json({ ok: false, error: 'Bu kod boshqa Telegram hisobiga ulangan. Admindan yangi kod so\'rang.' });
-  }
-  await pool.query(
-    `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)
-     VALUES ($1,$2,$3,$4,$5) ON CONFLICT (telegram_id, rol, entity_id) DO NOTHING`,
-    [tg.id, tg.ism || null, rol, entityId, jadval]);
-
-  const { buildAuthResponse } = require('./telegram');
-  const row = { rol, entity_id: entityId, entity_table: jadval };
-  const out = await buildAuthResponse(row, tg.id);
-  if (!out) return res.status(404).json({ ok: false, error: 'Ma\'lumot topilmadi' });
-  res.json(out);
-}));
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  SUPERADMIN: kurslar va kurs adminlari
@@ -411,9 +370,9 @@ router.post('/admin/savollar/ommaviy', adminMw, wrap(async (req, res) => {
 // ─── Ishtirokchilar ───
 router.get('/admin/ishtirokchilar', adminMw, wrap(async (req, res) => {
   const r = await pool.query(`
-    SELECT i.id, i.familiya, i.ism, i.sharif, i.telefon, i.maktab_nomi, i.fan, i.taklif_kodi, i.qoshimcha_urinish,
+    SELECT i.id, i.familiya, i.ism, i.sharif, i.telefon, i.maktab_nomi, i.fan, i.telegram_id, i.qoshimcha_urinish,
            (i.profil_vaqti IS NOT NULL) AS profil_toldirilgan,
-           EXISTS (SELECT 1 FROM telegram_users t WHERE t.rol='kurs_ishtirokchi' AND t.entity_id=i.id AND t.entity_table='kurs_ishtirokchilar') AS ulangan,
+           (i.telegram_id IS NOT NULL) AS ulangan,
            (SELECT COUNT(*) FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='tugagan')::int AS urinishlar,
            (SELECT MAX(u.foiz) FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='tugagan') AS eng_yaxshi,
            EXISTS (SELECT 1 FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='jarayonda') AS jarayonda,
@@ -424,84 +383,115 @@ router.get('/admin/ishtirokchilar', adminMw, wrap(async (req, res) => {
   res.json({ ok: true, ishtirokchilar: r.rows });
 }));
 
+// Botga /start yozgan, hali hech qaysi rolga biriktirilmagan odamlar (Telegram ID tanlash uchun)
+router.get('/admin/kandidatlar', adminMw, wrap(async (req, res) => {
+  const r = await pool.query(
+    `SELECT k.telegram_id, k.telegram_ism, k.telegram_username
+       FROM telegram_kandidatlar k
+       LEFT JOIN telegram_users tu ON tu.telegram_id = k.telegram_id
+      WHERE tu.id IS NULL
+      ORDER BY k.oxirgi_faollik DESC LIMIT 200`);
+  res.json({ ok: true, kandidatlar: r.rows });
+}));
+
 function ishtirokchiMaydon(b) {
   return {
     familiya: normIsm(b.familiya), ism: normIsm(b.ism), sharif: normIsm(b.sharif),
     telefon: telefonToza(b.telefon), maktab_nomi: matn(b.maktab_nomi, 150), fan: matn(b.fan, 80),
   };
 }
+const ishTgIsm = f => `${f.familiya} ${f.ism}`.trim();
 
 router.post('/admin/ishtirokchilar', adminMw, wrap(async (req, res) => {
   const f = ishtirokchiMaydon(req.body);
   if (!f.familiya && !f.ism) return res.status(400).json({ ok: false, error: 'Familiya yoki ism kiriting' });
-  const kod = await noyobKod('kurs_ishtirokchilar', 8);
-  const r = await pool.query(
-    `INSERT INTO kurs_ishtirokchilar (kurs_id, familiya, ism, sharif, telefon, maktab_nomi, fan, taklif_kodi)
-     VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-    [req.kursId, f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan, kod]);
-  res.json({ ok: true, id: r.rows[0].id, taklif_kodi: kod });
+  const tg = tgIdOqi(req.body.telegram_id);
+  if (tg.xato) return res.status(400).json({ ok: false, error: tg.xato });
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const r = await client.query(
+      `INSERT INTO kurs_ishtirokchilar (kurs_id, familiya, ism, sharif, telefon, maktab_nomi, fan)
+       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+      [req.kursId, f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan]);
+    if (tg.qiymat) await ishtirokchiTgOrnat(client, req.kursId, r.rows[0].id, tg.qiymat, ishTgIsm(f));
+    await client.query('COMMIT');
+    res.json({ ok: true, id: r.rows[0].id });
+  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 }));
 
-// Ko'p ishtirokchini bir martada: har qatorda  "Familiya Ism Sharif ; telefon ; maktab ; fan"
+// Ko'p ishtirokchini bir martada: har qatorda  "Familiya Ism Sharif ; telefon ; maktab ; fan ; telegram_id"
 router.post('/admin/ishtirokchilar/ommaviy', adminMw, wrap(async (req, res) => {
   const qatorlar = String(req.body.matn || '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean);
   if (!qatorlar.length) return res.status(400).json({ ok: false, error: 'Ro\'yxat bo\'sh' });
   if (qatorlar.length > 500) return res.status(400).json({ ok: false, error: 'Bir martada 500 tadan ko\'p ishtirokchi kiritib bo\'lmaydi' });
-  const royxat = [], xatolar = [];
+  const royxat = [], xatolar = [], korilgan = new Set();
   qatorlar.forEach((q, i) => {
     const qismlar = q.split(/[;\t|]/).map(x => x.trim());
     const so = qismlar[0].split(/\s+/).filter(Boolean);
     if (so.length < 2) { xatolar.push(`${i + 1}-qator: familiya va ismni kiriting`); return; }
+    const tg = tgIdOqi(qismlar[4] === undefined ? undefined : qismlar[4]);
+    if (tg.xato) { xatolar.push(`${i + 1}-qator: ${tg.xato}`); return; }
+    if (tg.qiymat) {
+      if (korilgan.has(tg.qiymat)) { xatolar.push(`${i + 1}-qator: Telegram ID ro'yxatda takrorlangan`); return; }
+      korilgan.add(tg.qiymat);
+    }
     royxat.push({
       familiya: normIsm(so[0]), ism: normIsm(so[1]), sharif: normIsm(so.slice(2).join(' ')),
       telefon: telefonToza(qismlar[1]), maktab_nomi: matn(qismlar[2], 150), fan: matn(qismlar[3], 80),
+      tg: tg.qiymat || null,
     });
   });
   if (xatolar.length) return res.status(400).json({ ok: false, error: xatolar.slice(0, 8).join('\n'), xatolar });
   const client = await pool.connect();
-  const yaratilgan = [];
+  let qoshildi = 0;
   try {
     await client.query('BEGIN');
     for (const f of royxat) {
-      const kod = await noyobKod('kurs_ishtirokchilar', 8);
       const r = await client.query(
-        `INSERT INTO kurs_ishtirokchilar (kurs_id, familiya, ism, sharif, telefon, maktab_nomi, fan, taklif_kodi)
-         VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`,
-        [req.kursId, f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan, kod]);
-      yaratilgan.push(r.rows[0].id);
+        `INSERT INTO kurs_ishtirokchilar (kurs_id, familiya, ism, sharif, telefon, maktab_nomi, fan)
+         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+        [req.kursId, f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan]);
+      if (f.tg) await ishtirokchiTgOrnat(client, req.kursId, r.rows[0].id, f.tg, ishTgIsm(f));
+      qoshildi++;
     }
     await client.query('COMMIT');
   } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
-  res.json({ ok: true, qoshildi: yaratilgan.length });
+  res.json({ ok: true, qoshildi });
 }));
 
+// Tahrirlash + Telegram ID biriktirish/almashtirish/ajratish (telegram_id berilmasa tegilmaydi)
 router.put('/admin/ishtirokchilar/:id', adminMw, wrap(async (req, res) => {
   const f = ishtirokchiMaydon(req.body);
   if (!f.familiya && !f.ism) return res.status(400).json({ ok: false, error: 'Familiya yoki ism kiriting' });
-  const r = await pool.query(
-    `UPDATE kurs_ishtirokchilar SET familiya=$1, ism=$2, sharif=$3, telefon=$4, maktab_nomi=$5, fan=$6
-      WHERE id=$7 AND kurs_id=$8`,
-    [f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan, butun(req.params.id), req.kursId]);
-  if (!r.rowCount) return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' });
-  res.json({ ok: true });
+  const tg = tgIdOqi(req.body.telegram_id);
+  if (tg.xato) return res.status(400).json({ ok: false, error: tg.xato });
+  const id = butun(req.params.id);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    const cur = await client.query('SELECT telegram_id FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2 FOR UPDATE', [id, req.kursId]);
+    if (!cur.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' }); }
+    await client.query(
+      `UPDATE kurs_ishtirokchilar SET familiya=$1, ism=$2, sharif=$3, telefon=$4, maktab_nomi=$5, fan=$6 WHERE id=$7`,
+      [f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan, id]);
+    if (tg.qiymat !== undefined && String(tg.qiymat) !== String(cur.rows[0].telegram_id)) {
+      await ishtirokchiTgOrnat(client, req.kursId, id, tg.qiymat, ishTgIsm(f));
+    }
+    await client.query('COMMIT');
+    res.json({ ok: true });
+  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
 }));
 
 router.delete('/admin/ishtirokchilar/:id', adminMw, wrap(async (req, res) => {
   const id = butun(req.params.id);
   const c = await pool.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1', [id]);
   if (c.rowCount) return res.status(409).json({ ok: false, error: 'Sertifikat berilgan ishtirokchini o\'chirib bo\'lmaydi. Avval sertifikatni bekor qiling.' });
+  const own = await pool.query('SELECT 1 FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2', [id, req.kursId]);
+  if (!own.rowCount) return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' });
   await telegramAjrat('kurs_ishtirokchi', id);
   await pool.query('DELETE FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2', [id, req.kursId]);
   res.json({ ok: true });
-}));
-
-router.post('/admin/ishtirokchilar/:id/kod-yangilash', adminMw, wrap(async (req, res) => {
-  const id = butun(req.params.id);
-  const kod = await noyobKod('kurs_ishtirokchilar', 8);
-  const r = await pool.query('UPDATE kurs_ishtirokchilar SET taklif_kodi=$1 WHERE id=$2 AND kurs_id=$3', [kod, id, req.kursId]);
-  if (!r.rowCount) return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' });
-  await telegramAjrat('kurs_ishtirokchi', id);
-  res.json({ ok: true, taklif_kodi: kod });
 }));
 
 router.post('/admin/ishtirokchilar/:id/urinish-qoshish', adminMw, wrap(async (req, res) => {
