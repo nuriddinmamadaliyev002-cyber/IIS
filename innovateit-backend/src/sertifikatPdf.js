@@ -1,0 +1,119 @@
+// ═══════════════════════════════════════════════════════════════════════════
+//  Sertifikat PDF generatori (pdfkit + qrcode)
+//
+//  • Fon: assets/sertifikat-fon.png (maydonlarsiz shablon). Koordinatalar fon
+//    rasmining PIKSEL fazosida (1537×1023) berilgan va rasm o'lchamiga
+//    mutanosib o'lchanadi — yuqori sifatli (bir xil nisbatli) rasm bilan
+//    almashtirilsa, kod o'zgarmaydi.
+//  • Shrift: Liberation (OFL) — oʻ, gʻ belgilarini to'g'ri chiqaradi.
+//  • QR: tekshiruv sahifasiga olib boradi (CERT_VERIFY_BASE/sertifikat.html?k=KOD).
+//  • PDF diskka SAQLANMAYDI — har so'rovda bazadagi ma'lumotdan yasaladi.
+// ═══════════════════════════════════════════════════════════════════════════
+const path   = require('path');
+const PDFDocument = require('pdfkit');
+const QRCode = require('qrcode');
+
+const ASSETS = path.join(__dirname, '../assets');
+const BG     = path.join(ASSETS, 'sertifikat-fon.png');
+const F = {
+  serif:     path.join(ASSETS, 'fonts/LiberationSerif-Regular.ttf'),
+  serifBold: path.join(ASSETS, 'fonts/LiberationSerif-Bold.ttf'),
+  sansBold:  path.join(ASSETS, 'fonts/LiberationSans-Bold.ttf'),
+  sans:      path.join(ASSETS, 'fonts/LiberationSans-Regular.ttf'),
+};
+
+// Fon rasmi o'lchamlari (piksel) — koordinatalar shu fazoda
+const IMG_W = 1537, IMG_H = 1023;
+const PAGE_W = 842;                       // pt (A4 gorizontal eni)
+const S = PAGE_W / IMG_W;                 // piksel → pt
+const PAGE_H = IMG_H * S;
+
+const NAVY = '#0B1F5C';
+
+function verifyBase() {
+  return (process.env.CERT_VERIFY_BASE || 'https://innovateitschool.uz').replace(/\/+$/, '');
+}
+function verifyUrl(kod) {
+  return `${verifyBase()}/sertifikat.html?k=${encodeURIComponent(kod)}`;
+}
+
+// "2026-11-01" yoki Date → "01.11.2026"
+function sanaMatn(d) {
+  const dt = (d instanceof Date) ? d : new Date(d);
+  if (isNaN(dt.getTime())) return '';
+  const p = n => String(n).padStart(2, '0');
+  // Sana ustuni DATE (vaqt mintaqasisiz) — mahalliy komponentlardan foydalanamiz
+  return `${p(dt.getDate())}.${p(dt.getMonth() + 1)}.${dt.getFullYear()}`;
+}
+
+// Matnni berilgan kenglikka sig'diradi (shrift kichraytiriladi)
+function fit(doc, text, font, size, maxW, minSize = 12) {
+  doc.font(font);
+  let sz = size;
+  while (sz > minSize && doc.fontSize(sz * S).widthOfString(text) > maxW * S) sz -= 1;
+  return sz;
+}
+
+// Matnni piksel koordinatalarida yozish. (cx, baseline) — markaz va asos chizig'i.
+function centered(doc, text, font, size, cx, baseline, maxW, color = NAVY) {
+  const sz = fit(doc, text, font, size, maxW);
+  doc.font(font).fontSize(sz * S).fillColor(color);
+  const w = doc.widthOfString(text);
+  const top = baseline * S - sz * S * 0.89;      // asos chizig'idan yuqori chetga
+  doc.text(text, cx * S - w / 2, top, { lineBreak: false });
+}
+function leftAt(doc, text, font, size, x, baseline, maxW, color = NAVY) {
+  const sz = fit(doc, text, font, size, maxW);
+  doc.font(font).fontSize(sz * S).fillColor(color);
+  const top = baseline * S - sz * S * 0.89;
+  doc.text(text, x * S, top, { lineBreak: false });
+}
+
+/**
+ * @param {object} s  { raqam, tekshiruv_kodi, familiya, ism, sharif, direktor_fio, berilgan_sana }
+ * @returns {Promise<Buffer>}
+ */
+async function sertifikatPdf(s) {
+  const doc = new PDFDocument({ size: [PAGE_W, PAGE_H], margin: 0, autoFirstPage: true,
+    info: { Title: `Sertifikat ${s.raqam}`, Author: 'Innovate IT School', Subject: 'Sertifikat' } });
+  const chunks = [];
+  doc.on('data', c => chunks.push(c));
+  const done = new Promise((res, rej) => { doc.on('end', () => res(Buffer.concat(chunks))); doc.on('error', rej); });
+
+  doc.image(BG, 0, 0, { width: PAGE_W, height: PAGE_H });
+
+  // ── Ishtirokchi F.I.Sh. ──
+  const fio = [s.familiya, s.ism, s.sharif].map(x => String(x || '').trim()).filter(Boolean).join(' ');
+  centered(doc, fio, F.serifBold, 40, 1008, 352, 720);
+
+  // ── Sertifikat raqami ──
+  leftAt(doc, s.raqam, F.sansBold, 27, 878, 636, 205);
+
+  // ── Berilgan sana ──
+  leftAt(doc, s.sana_matn || sanaMatn(s.berilgan_sana), F.sansBold, 29, 1112, 918, 190);
+
+  // ── Direktor F.I.Sh. ──
+  if (s.direktor_fio && String(s.direktor_fio).trim()) {
+    centered(doc, String(s.direktor_fio).trim(), F.serif, 28, 809, 964, 300);
+  }
+
+  // ── QR kod (o'ng tomonda, sertifikat raqami qutisining yonida) ──
+  const url = verifyUrl(s.tekshiruv_kodi);
+  const png = await QRCode.toBuffer(url, {
+    errorCorrectionLevel: 'M', margin: 0, width: 600,
+    color: { dark: '#0A1A4A', light: '#FFFFFF' },
+  });
+  const qx = 1160, qy = 566, qs = 140;            // piksel fazosida
+  doc.save();
+  doc.roundedRect((qx - 14) * S, (qy - 14) * S, (qs + 28) * S, (qs + 28) * S, 10 * S)
+     .fillColor('#FFFFFF').strokeColor('#7FB3E6').lineWidth(1.2 * S).fillAndStroke();
+  doc.restore();
+  doc.image(png, qx * S, qy * S, { width: qs * S, height: qs * S });
+  centered(doc, 'Haqiqiyligini tekshirish', F.sans, 16, qx + qs / 2, qy + qs + 38, 190);
+  centered(doc, s.tekshiruv_kodi, F.sansBold, 19, qx + qs / 2, qy + qs + 62, 190);
+
+  doc.end();
+  return done;
+}
+
+module.exports = { sertifikatPdf, verifyUrl, sanaMatn };

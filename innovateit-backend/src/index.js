@@ -29,6 +29,8 @@ const baholarRouter     = require('./routes/baholar');
 const chatRouter        = require('./routes/chat');
 const chatGuruhRouter   = require('./routes/chat_guruh');
 const chatFaylPublic    = require('./routes/chat_fayl_public');
+const kurslarRouter     = require('./routes/kurslar');
+const sertifikatPublic  = require('./routes/sertifikat_public');
 const { requireAuth }  = require('./middleware/jwt');
 
 
@@ -176,6 +178,8 @@ app.use('/api/baholar',         baholarRouter);
 app.use('/api/chat/f',          chatFaylPublic);   // imzolangan fayl havolasi (JWT siz, token bilan)
 app.use('/api/chat/guruh',      chatGuruhRouter);  // guruh chati
 app.use('/api/chat',            chatRouter);
+app.use('/api/kurs',            kurslarRouter);    // online kurslar (superadmin / kurs admin / ishtirokchi)
+app.use('/api/sertifikat',      sertifikatPublic); // ochiq: sertifikat haqiqiyligini tekshirish
 app.use('/miniapp', express.static(path.join(__dirname, '../../telegram-bot/miniapp')));
 
 

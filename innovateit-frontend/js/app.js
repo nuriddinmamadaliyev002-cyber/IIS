@@ -247,13 +247,13 @@ function setTopbarSection(txt) {
 
 const TAB_TITLES = {
   s: "O'quvchilar", a: 'Adminlar', b: 'Buxgalterlar', d: 'Direktorlar', m: 'Maktablar',
-  sr: "So'rovlar", oq: "O'qituvchilar", pf: 'Portfolio', bl: 'Blog', sl: 'Sales'
+  sr: "So'rovlar", oq: "O'qituvchilar", pf: 'Portfolio', bl: 'Blog', sl: 'Sales', kr: 'Online kurslar'
 };
 
 function switchTab(t) {
   if (TAB_TITLES[t]) setTopbarSection(TAB_TITLES[t]);
   setMobileStudentView('list');
-  const allTabs = ['s', 'a', 'b', 'd', 'm', 'sr', 'oq', 'pf', 'bl', 'sl'];
+  const allTabs = ['s', 'a', 'b', 'd', 'm', 'sr', 'oq', 'pf', 'bl', 'sl', 'kr'];
   allTabs.forEach(id => {
     const el = g('tab-' + id);
     if (el) el.style.display = (t === id) ? 'block' : 'none';
@@ -269,6 +269,7 @@ function switchTab(t) {
   if (t === 'pf') loadPortfolioTab();
   if (t === 'bl' && typeof loadBlogTab === 'function') loadBlogTab();
   if (t === 'sl' && typeof loadSalesTab === 'function') loadSalesTab();
+  if (t === 'kr' && typeof loadKurslarTab === 'function') loadKurslarTab();
 }
 
 // ─────────────────────────────────────────────

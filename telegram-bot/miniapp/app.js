@@ -86,6 +86,8 @@ function handleAuthResult(data) {
     direktor:  `${WEB_PANEL_URL}/direktor.html?tg_token=${tok}&tg_ism=${ism}`,
     oqituvchi: `${WEB_PANEL_URL}/oqituvchi.html?tg_token=${tok}&tg_ism=${ism}`,
     oquvchi:   `${WEB_PANEL_URL}/oquvchi.html?tg_token=${tok}&tg_ism=${ism}`,
+    kurs_admin:       `${WEB_PANEL_URL}/kurs-admin.html?tg_token=${tok}&tg_ism=${ism}`,
+    kurs_ishtirokchi: `${WEB_PANEL_URL}/kurs.html?tg_token=${tok}&tg_ism=${ism}`,
   };
 
   if (panelUrls[ROL]) {
@@ -161,6 +163,8 @@ function showRoleChooser(tgId, roles) {
     direktor:  { icon: '🏛', label: 'Direktor' },
     oqituvchi: { label: "O'qituvchi" },
     oquvchi:   { label: "O'quvchi" },
+    kurs_admin:       { icon: '🎓', label: 'Kurs admini' },
+    kurs_ishtirokchi: { icon: '📝', label: 'Kurs ishtirokchisi' },
   };
 
   // Har bir yozuv uchun ikonkani aniqlaymiz — o'qituvchi/o'quvchi uchun
@@ -209,10 +213,37 @@ function showRoleChooser(tgId, roles) {
     </div>`;
 }
 
+// ─── Imzolangan kirish ───────────────────────────────────────────────────────
+// Telegram initData (HMAC imzolangan) serverga yuboriladi — Telegram ID'ni
+// mijoz o'zi yozib yuborib boshqa odam nomidan kira olmaydi. Server tomonda
+// TELEGRAM_BOT_TOKEN sozlanmagan bo'lsa (501) — eski usulga qaytiladi
+// (kurs rollari bundan mustasno: ular faqat imzolangan kirish orqali ishlaydi).
+async function postJson(path, body) {
+  const res = await fetch(`${API_BASE}${path}`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
+  });
+  let data = {};
+  try { data = await res.json(); } catch (_) {}
+  return { status: res.status, data };
+}
+
+async function kirishTekshir(tgId) {
+  if (tg && tg.initData) {
+    const r = await postJson('/telegram/kirish', { initData: tg.initData });
+    if (r.status !== 501) return r.data;        // 501 = server imzoni tekshirishga sozlanmagan
+  }
+  const res = await fetch(`${API_BASE}/telegram/check/${tgId}`);
+  return res.json();
+}
+
 async function chooseRole(tgId, rol, entityId) {
   try {
-    const res  = await fetch(`${API_BASE}/telegram/check/${tgId}/${rol}/${entityId}`);
-    const data = await res.json();
+    let data;
+    const imzolangan = (tg && tg.initData)
+      ? await postJson('/telegram/kirish/tanlash', { initData: tg.initData, rol, entityId })
+      : null;
+    if (imzolangan && imzolangan.status !== 501) data = imzolangan.data;
+    else data = await (await fetch(`${API_BASE}/telegram/check/${tgId}/${rol}/${entityId}`)).json();
     if (!data.ok) throw new Error(data.error);
     handleAuthResult(data);
   } catch (e) {
@@ -231,8 +262,7 @@ window.addEventListener('DOMContentLoaded', async () => {
   }
 
   try {
-    const res  = await fetch(`${API_BASE}/telegram/check/${tgId}`);
-    const data = await res.json();
+    const data = await kirishTekshir(tgId);
 
     if (!data.ok) throw new Error(data.error);
 
@@ -276,6 +306,7 @@ function showKutish(tgId, holat) {
     iconEl.textContent  = '🔒';
     titleEl.textContent = 'Siz hali tizimga biriktirilmagansiz';
     subEl.textContent   = 'Iltimos, maktab adminingizga murojaat qiling va quyidagi Telegram ID\'ni unga yuboring.';
+    kursKodTugmasi(tgId);
   } else if (holat === 'xatolik') {
     iconEl.textContent  = '⚠️';
     titleEl.textContent = 'Xatolik yuz berdi';
@@ -857,4 +888,60 @@ if (tg) {
   tg.BackButton.onClick(() => {
     if (document.getElementById('listPage').classList.contains('active')) goBack();
   });
+}
+
+
+// ═══════════════════════════════════════════
+//  ONLINE KURS — taklif kodi bilan kirish
+//  Kurs admini yoki ishtirokchisi o'ziga berilgan kodni kiritib,
+//  Telegram hisobini kursga biriktiradi (imzolangan initData bilan).
+// ═══════════════════════════════════════════
+function kursKodTugmasi(tgId) {
+  if (document.getElementById('kursKodBtn')) return;
+  const asos = document.getElementById('kutishBtn');
+  const b = document.createElement('button');
+  b.id = 'kursKodBtn';
+  b.className = 'btn-primary';
+  b.style.cssText = 'max-width:320px;margin-top:8px;background:#0ea5e9;';
+  b.textContent = '🎓 Kurs kodim bor';
+  b.onclick = () => kursKodForma(tgId);
+  asos.parentNode.insertBefore(b, asos);
+}
+
+function kursKodForma(tgId) {
+  showPage('loadingPage');
+  const el = document.getElementById('loadingPage');
+  el.innerHTML = `
+    <div style="display:flex;flex-direction:column;align-items:center;gap:14px;padding:40px 24px;text-align:center;width:100%;max-width:340px;margin:0 auto;">
+      <div style="font-size:44px;">🎓</div>
+      <div style="font-size:19px;font-weight:700;color:#06223D;">Kurs kodini kiriting</div>
+      <div style="font-size:13px;color:#06223D;">Kurs adminingiz bergan 8 belgili kodni yozing</div>
+      <input id="kursKodInput" maxlength="12" autocomplete="off" autocapitalize="characters" placeholder="XXXXXXXX"
+        style="width:100%;padding:14px;border-radius:12px;border:2px solid #fff;font-size:22px;font-weight:700;letter-spacing:.2em;text-align:center;text-transform:uppercase;">
+      <div id="kursKodErr" style="color:#7f1d1d;font-size:13px;min-height:18px;"></div>
+      <button id="kursKodOk" style="width:100%;padding:14px;border:none;border-radius:12px;background:#06223D;color:#fff;font-size:16px;font-weight:700;cursor:pointer;">Kirish</button>
+      <button id="kursKodBack" style="background:none;border:none;color:#06223D;font-size:14px;cursor:pointer;text-decoration:underline;">← Orqaga</button>
+    </div>`;
+  const inp = document.getElementById('kursKodInput');
+  inp.focus();
+  document.getElementById('kursKodBack').onclick = () => showKutish(tgId, 'biriktirilmagan');
+  const yubor = async () => {
+    const err = document.getElementById('kursKodErr');
+    err.textContent = '';
+    const kod = inp.value.trim();
+    if (kod.length < 6) { err.textContent = 'Kodni to\'liq kiriting'; return; }
+    if (!(tg && tg.initData)) { err.textContent = 'Bu amal faqat Telegram ichida ishlaydi'; return; }
+    const btn = document.getElementById('kursKodOk');
+    btn.disabled = true; btn.textContent = '…';
+    try {
+      const r = await postJson('/kurs/taklif-qabul', { initData: tg.initData, kod });
+      if (r.data && r.data.ok) { handleAuthResult(r.data); return; }
+      err.textContent = (r.data && r.data.error) || 'Xatolik yuz berdi';
+    } catch (e) {
+      err.textContent = 'Serverga ulanib bo\'lmadi';
+    }
+    btn.disabled = false; btn.textContent = 'Kirish';
+  };
+  document.getElementById('kursKodOk').onclick = yubor;
+  inp.addEventListener('keydown', e => { if (e.key === 'Enter') yubor(); });
 }

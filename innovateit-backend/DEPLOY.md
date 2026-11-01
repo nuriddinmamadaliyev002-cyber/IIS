@@ -289,3 +289,16 @@ sudo nginx -t && sudo systemctl reload nginx
 Chat fayllari `innovateit-backend/chat_uploads/` da (nginx orqali ochiq EMAS, `.gitignore` da).
 Papka serverda avtomatik yaratiladi. Disk to'lib qolmasligi uchun vaqti-vaqti bilan
 `du -sh /var/www/IIS/innovateit-backend/chat_uploads` ni tekshirib turing.
+
+---
+
+## Online kurslar (sertifikat moduli) — qo'shimcha sozlash
+
+1. **Yangi paketlar**: `cd innovateit-backend && npm install --production` (`pdfkit`, `qrcode` qo'shilgan — `deploy.sh` buni o'zi qiladi).
+2. **`.env` ga qo'shing** (`.env.example` ga qarang):
+   - `TELEGRAM_BOT_TOKEN` — botning tokeni (`telegram-bot/.env` dagi bilan bir xil). Mini App `initData` imzosini tekshirish uchun kerak.
+   - `CERT_VERIFY_BASE=https://innovateitschool.uz` — sertifikatdagi QR shu saytga olib boradi.
+3. **Baza**: `deploy.sh` `innovateit_schema_setup.sql` ni ishga tushiradi — yangi jadvallar (`online_kurslar`, `kurs_*`) o'zi yaratiladi (`migrations/032_online_kurslar.sql` ham shu mazmunda).
+4. **Qayta ishga tushirish**: `pm2 restart innovateit-crm` (deploy.sh qiladi).
+5. **nginx**: o'zgartirish shart emas — `/sertifikat.html` blog saytining statik fayli, `/api/sertifikat/...` mavjud `/api/` proxy orqali ketadi.
+6. Sertifikat shabloni: `innovateit-backend/assets/sertifikat-fon.png` (maydonlarsiz fon). Yuqori sifatli (xuddi shu nisbatli, masalan 3508×2335) rasm bilan shu nom ostida almashtirsangiz, kod o'zgarmaydi.

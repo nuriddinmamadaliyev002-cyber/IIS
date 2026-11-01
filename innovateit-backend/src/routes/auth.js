@@ -68,7 +68,7 @@ router.post('/login-viewer', async (req, res) => {
 // ajratilgan) bo'lsa, eski token/sessiya bilan maktab tanlagichi yangilanmay
 // qolardi. Javobda ham yangi ro'yxat qaytariladi — panel shu bilan tanlagichni
 // qayta quradi.
-router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi', 'sales', 'direktor']), async (req, res) => {
+router.post('/refresh', requireAuth(['admin', 'buxgalter', 'viewer', 'oqituvchi', 'oquvchi', 'sales', 'direktor', 'kurs_admin', 'kurs_ishtirokchi']), async (req, res) => {
   let payload = req.user;
   let extra   = {};
 

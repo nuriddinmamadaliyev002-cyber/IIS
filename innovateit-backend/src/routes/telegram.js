@@ -28,7 +28,7 @@ setInterval(() => {
 }, 60 * 1000).unref();
 
 router.post('/go-code',
-  requireAuth(['admin', 'buxgalter', 'oqituvchi', 'oquvchi', 'sales', 'direktor']),
+  requireAuth(['admin', 'buxgalter', 'oqituvchi', 'oquvchi', 'sales', 'direktor', 'kurs_admin', 'kurs_ishtirokchi']),
   (req, res) => {
     const token = (req.headers['authorization'] || '').slice(7);
     const code  = crypto.randomBytes(6).toString('base64url'); // 8 belgi
@@ -96,6 +96,18 @@ async function buildAuthResponse(tgUser, tgId) {
       `SELECT id, ism, familiya FROM direktorlar WHERE id=$1`,
       [entity_id]
     );
+  } else if (entity_table === 'kurs_adminlar') {
+    entityRes = await pool.query(
+      `SELECT a.id, a.ism, a.familiya, k.id AS kurs_id, k.nomi AS kurs_nomi
+         FROM kurs_adminlar a JOIN online_kurslar k ON k.id = a.kurs_id WHERE a.id=$1`,
+      [entity_id]
+    );
+  } else if (entity_table === 'kurs_ishtirokchilar') {
+    entityRes = await pool.query(
+      `SELECT i.id, i.ism, i.familiya, k.id AS kurs_id, k.nomi AS kurs_nomi
+         FROM kurs_ishtirokchilar i JOIN online_kurslar k ON k.id = i.kurs_id WHERE i.id=$1`,
+      [entity_id]
+    );
   } else if (entity_table === 'sales_xodimlar') {
     entityRes = await pool.query(
       `SELECT s.id, s.ism, s.familiya,
@@ -147,6 +159,10 @@ async function buildAuthResponse(tgUser, tgId) {
   if (rol === 'direktor') {
     tokenPayload.id = entity_id; // maktabga bog'lanmagan — barcha maktablarni ko'radi
   }
+  if (rol === 'kurs_admin' || rol === 'kurs_ishtirokchi') {
+    tokenPayload.kursId   = entity.kurs_id;
+    tokenPayload.kursNomi = entity.kurs_nomi;
+  }
   if (rol === 'oquvchi') {
     tokenPayload.maktabId = entity.maktab_id || null;
     tokenPayload.maktab   = entity.maktab    || '';
@@ -178,6 +194,10 @@ async function buildAuthResponse(tgUser, tgId) {
   roleLabel = "Sotuv bo'limi xodimi";
 } else if (rol === 'direktor') {
   roleLabel = 'Direktor';
+} else if (rol === 'kurs_admin') {
+  roleLabel = `${entity.kurs_nomi} — kurs admini`;
+} else if (rol === 'kurs_ishtirokchi') {
+  roleLabel = `Kurs ishtirokchisi`;
 }
 
   
@@ -202,16 +222,17 @@ async function buildAuthResponse(tgUser, tgId) {
 // Miniapp har ochilganda shu endpointni chaqiradi
 // Javob: { ok, found, rol, ism, maktablar?, sinf? }  YOKI
 //        bir necha rolga bog'langan bo'lsa: { ok, found, multiple:true, roles:[{rol,ism}] }
-router.get('/check/:telegramId', async (req, res) => {
-  const tgId = parseInt(req.params.telegramId);
-  if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
+// Kurs rollari (online kurslar) FAQAT imzosi tekshirilgan kirish (POST /kirish) orqali beriladi —
+// Telegram ID'ni mijoz o'zi yozib yuboradigan eski GET yo'llari ularni ko'rmaydi.
+const KURS_ROLLARI_SQL = " AND rol NOT IN ('kurs_admin','kurs_ishtirokchi')";
 
+async function tekshirish(tgId, res, kurslarniKorsat) {
   try {
     // telegram_users jadvalidan tekshirish — bitta odam bir nechta rolga
     // (masalan ham buxgalter, ham sales) VA bitta rol ichida bir nechta
     // entity'ga (masalan bir nechta maktabga admin) bog'langan bo'lishi mumkin
     const tgRes = await pool.query(
-      'SELECT * FROM telegram_users WHERE telegram_id=$1',
+      'SELECT * FROM telegram_users WHERE telegram_id=$1' + (kurslarniKorsat ? '' : KURS_ROLLARI_SQL),
       [tgId]
     );
 
@@ -257,18 +278,19 @@ router.get('/check/:telegramId', async (req, res) => {
     console.error('telegram/check xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
+}
+
+router.get('/check/:telegramId', async (req, res) => {
+  const tgId = parseInt(req.params.telegramId);
+  if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
+  return tekshirish(tgId, res, false);
 });
 
 // ─── GET /api/telegram/check/:telegramId/:rol/:entityId ──────────────────────
 // Bir nechta birikmaga ega foydalanuvchi Mini App'da aniq birikmani
 // (masalan aynan qaysi maktab admini) tanlagandan keyin shu birikma uchun
 // JWT token olish uchun chaqiriladi.
-router.get('/check/:telegramId/:rol/:entityId', async (req, res) => {
-  const tgId    = parseInt(req.params.telegramId);
-  const rol     = req.params.rol;
-  const entityId = parseInt(req.params.entityId);
-  if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
-
+async function tanlash(tgId, rol, entityId, res) {
   try {
     const tgRes = await pool.query(
       'SELECT * FROM telegram_users WHERE telegram_id=$1 AND rol=$2 AND entity_id=$3',
@@ -284,6 +306,33 @@ router.get('/check/:telegramId/:rol/:entityId', async (req, res) => {
     console.error('telegram/check/:rol/:entityId xatolik:', err.message);
     res.status(500).json({ ok: false, error: 'Server xatoligi' });
   }
+}
+
+router.get('/check/:telegramId/:rol/:entityId', async (req, res) => {
+  const tgId     = parseInt(req.params.telegramId);
+  const rol      = req.params.rol;
+  const entityId = parseInt(req.params.entityId);
+  if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
+  if (/^kurs_/.test(rol)) return res.status(404).json({ ok: false, error: 'Bu birikma topilmadi' });
+  return tanlash(tgId, rol, entityId, res);
+});
+
+// ─── IMZOLANGAN KIRISH (Mini App initData tekshiriladi) ───────────────────────
+//  POST /api/telegram/kirish          { initData }                     — /check/:telegramId bilan bir xil javob
+//  POST /api/telegram/kirish/tanlash  { initData, rol, entityId }      — bir nechta birikmadan birini tanlash
+//  TELEGRAM_BOT_TOKEN .env da bo'lmasa 501 qaytaradi (Mini App eski yo'lga qaytadi — kurs rollaridan tashqari).
+const { tekshirYoki } = require('../telegramVerify');
+router.post('/kirish', async (req, res) => {
+  const tg = tekshirYoki(req, res);
+  if (!tg) return;
+  return tekshirish(tg.id, res, true);
+});
+router.post('/kirish/tanlash', async (req, res) => {
+  const tg = tekshirYoki(req, res);
+  if (!tg) return;
+  const entityId = parseInt(req.body.entityId);
+  if (!req.body.rol || !entityId) return res.status(400).json({ ok: false, error: "Ma'lumot to'liq emas" });
+  return tanlash(tg.id, String(req.body.rol), entityId, res);
 });
 
 // ─── GET /api/telegram/check/:telegramId/:rol ─────────────────────────────────
@@ -293,6 +342,7 @@ router.get('/check/:telegramId/:rol', async (req, res) => {
   const tgId = parseInt(req.params.telegramId);
   const rol  = req.params.rol;
   if (!tgId) return res.status(400).json({ ok: false, error: "TelegramID noto'g'ri" });
+  if (/^kurs_/.test(rol)) return res.status(404).json({ ok: false, error: 'Bu birikma topilmadi' });
 
   try {
     const tgRes = await pool.query(
@@ -833,3 +883,4 @@ async function notifyUser(telegramId, holat) {
 }
 
 module.exports = router;
+module.exports.buildAuthResponse = buildAuthResponse;
