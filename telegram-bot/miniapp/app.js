@@ -90,6 +90,15 @@ function handleAuthResult(data) {
     kurs_ishtirokchi: `${WEB_PANEL_URL}/kurs.html?tg_token=${tok}&tg_ism=${ism}`,
   };
 
+  // Kurs ishtirokchisi: panel Mini App oynasining O'ZIDA ochiladi. tg.openLink Telegram'ning
+  // "Open this link?" tasdiqlash oynasini chiqaradi (uni o'chirib bo'lmaydi), ichkarida ochilsa
+  // hech qanday oyna chiqmaydi. Token ?tg_token= orqali beriladi va panel uni URL'dan darrov olib tashlaydi.
+  if (ROL === 'kurs_ishtirokchi') {
+    showPage('loadingPage');
+    window.location.replace(panelUrls[ROL]);
+    return;
+  }
+
   if (panelUrls[ROL]) {
     goToPanel(panelUrls[ROL]);
     return;

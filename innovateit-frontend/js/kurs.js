@@ -88,10 +88,25 @@
         <div class="k-hint" style="margin-top:10px;">Sertifikatdagi QR kodni skaner qilgan har kim uning haqiqiyligini tekshira oladi.</div>
       </div>`;
   }
+  // Mini App (Telegram ichki oynasi) ichida fayl yuklab olish ishonchsiz: u yerda sahifa
+  // tashqi brauzerda ochiladi (bir martalik kod bilan, qayta kirish shart emas), PDF'ni
+  // shu yerda bosib yuklab olinadi. Oddiy brauzerda to'g'ridan-to'g'ri yuklanadi.
+  async function pdfYukla(s) {
+    const tgApp = window.Telegram && window.Telegram.WebApp;
+    if (tgApp && tgApp.initData && tgApp.openLink) {
+      const r = await req('POST', '/api/telegram/go-code', {});
+      if (r.ok && r.code) {
+        toast('Brauzer ochiladi — PDF\'ni u yerda yuklab oling');
+        tgApp.openLink(location.origin + '/kurs.html?c=' + encodeURIComponent(r.code));
+        return;
+      }
+    }
+    K.blob('/api/kurs/ish/sertifikat/pdf', `sertifikat-${s.raqam}.pdf`);
+  }
   function bindSertifikat() {
     const s = ME && ME.sertifikat;
     if (!s) return;
-    if ($('b-pdf')) $('b-pdf').onclick = () => K.blob('/api/kurs/ish/sertifikat/pdf', `sertifikat-${s.raqam}.pdf`);
+    if ($('b-pdf')) $('b-pdf').onclick = () => pdfYukla(s);
     if ($('b-nus')) $('b-nus').onclick = () => K.nusxala(TEKSHIRUV_BASE + s.tekshiruv_kodi);
   }
 
