@@ -1,0 +1,65 @@
+/* Imtihon sahifasi (imtihonlar.html) — online kurs ishtirokchisi uchun. kurs.css dan olingan, #im-app ichida ishlaydi. */
+#im-app{--k-cyan:#05BFF6;--k-blue:#2563eb;--k-navy:#0B1F5C;--k-card:#fff;--k-border:#e3e8f0;--k-text:#111827;--k-muted:#6b7280;--k-ok:#16a34a;--k-ok-bg:#ecfdf3;--k-err:#dc2626;--k-err-bg:#fef2f2;--k-warn:#d97706;--k-warn-bg:#fffbeb;max-width:720px;margin:0 auto;color:var(--k-text);font-size:15px;line-height:1.45;text-align:left}
+#im-app *{box-sizing:border-box}
+#im-app h2,#im-app h3{margin:0;line-height:1.2}
+#im-app button,#im-app input{font-family:inherit;font-size:15px}
+#im-app .k-card{background: var(--k-card); border: 1.5px solid var(--k-border); border-radius: 16px; padding: 18px; margin-bottom: 14px;}
+#im-app .k-card h3{font-size: 16px; margin-bottom: 4px;}
+#im-app .k-muted{color: var(--k-muted); font-size: 13.5px;}
+#im-app .k-row{display: flex; gap: 10px; flex-wrap: wrap; align-items: center;}
+#im-app .k-sp{flex: 1;}
+#im-app .k-grid2{display: grid; grid-template-columns: 1fr 1fr; gap: 12px;}
+#im-app .k-btn{border: none; border-radius: 11px; padding: 10px 16px; font-weight: 600; cursor: pointer; background: var(--k-blue); color: #fff; display: inline-flex; align-items: center; gap: 6px; line-height: 1.2;}
+#im-app .k-btn:hover{opacity: .9;}
+#im-app .k-btn:disabled{opacity: .55; cursor: not-allowed;}
+#im-app .k-btn.sec{background: #eef2ff; color: #3730a3;}
+#im-app .k-btn.gray{background: #f3f4f6; color: #374151;}
+#im-app .k-btn.ok{background: var(--k-ok);}
+#im-app .k-btn.red{background: var(--k-err);}
+#im-app .k-btn.sm{padding: 6px 10px; font-size: 13px; border-radius: 9px;}
+#im-app .k-btn.lg{padding: 14px 22px; font-size: 16px; border-radius: 13px;}
+#im-app .k-lbl{display: block; font-size: 12px; font-weight: 700; color: #6b7280; margin: 12px 0 5px; text-transform: uppercase; letter-spacing: .03em;}
+#im-app .k-in{width: 100%; padding: 10px 12px; border: 1.5px solid var(--k-border); border-radius: 11px; background: #fff; color: #111827; color-scheme: light;}
+#im-app .k-in:focus{outline: none; border-color: var(--k-cyan); box-shadow: 0 0 0 3px rgba(5,191,246,.18);}
+#im-app .k-hint{font-size: 12.5px; color: var(--k-muted); margin-top: 4px;}
+#im-app .k-stats{display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 14px;}
+#im-app .k-stats{grid-template-columns: repeat(2, 1fr);}
+#im-app .k-stat{background: #fff; border: 1.5px solid var(--k-border); border-radius: 14px; padding: 12px 14px;}
+#im-app .k-stat .n{font-size: 24px; font-weight: 700; color: var(--k-navy);}
+#im-app .k-stat .l{font-size: 12px; color: var(--k-muted);}
+#im-app .k-badge{display: inline-block; padding: 3px 9px; border-radius: 99px; font-size: 12px; font-weight: 700; white-space: nowrap;}
+#im-app .k-badge.ok{background: var(--k-ok-bg); color: var(--k-ok);}
+#im-app .k-badge.err{background: var(--k-err-bg); color: var(--k-err);}
+#im-app .k-badge.warn{background: var(--k-warn-bg); color: var(--k-warn);}
+#im-app .k-badge.gray{background: #f3f4f6; color: #4b5563;}
+#im-app .k-badge.blue{background: #eff6ff; color: var(--k-blue);}
+#im-app .k-err{color: var(--k-err); font-size: 13.5px; margin-top: 10px; white-space: pre-line; min-height: 18px;}
+#im-app .k-empty{text-align: center; color: var(--k-muted); padding: 28px 10px;}
+#im-app .k-spin{text-align: center; padding: 30px; color: var(--k-muted);}
+#im-app .t-bar{display: flex; align-items: center; gap: 10px; margin-bottom: 10px;}
+#im-app .t-timer{font-weight: 700; font-variant-numeric: tabular-nums; background: #eef2ff; color: #3730a3; padding: 6px 12px; border-radius: 99px;}
+#im-app .t-timer.low{background: var(--k-err-bg); color: var(--k-err); animation: tpulse 1s infinite;}
+#im-app .t-prog{height: 8px; background: #e5e7eb; border-radius: 99px; overflow: hidden; margin-bottom: 14px;}
+#im-app .t-prog > i{display: block; height: 100%; background: linear-gradient(90deg, var(--k-cyan), var(--k-blue)); transition: width .25s;}
+#im-app .t-q{font-size: 18px; font-weight: 600; margin: 4px 0 14px;}
+#im-app .t-opt{display: flex; gap: 12px; align-items: flex-start; width: 100%; text-align: left; background: #fff; border: 2px solid var(--k-border); border-radius: 14px; padding: 13px 14px; margin-bottom: 10px; cursor: pointer; font-size: 16px; color: #111827;}
+#im-app .t-opt .dot{width: 22px; height: 22px; border-radius: 50%; border: 2px solid #cbd5e1; flex-shrink: 0; margin-top: 1px;}
+#im-app .t-opt.on{border-color: var(--k-blue); background: #eff6ff;}
+#im-app .t-opt.on .dot{border-color: var(--k-blue); background: radial-gradient(circle, var(--k-blue) 45%, transparent 50%);}
+#im-app .t-nav{display: flex; gap: 10px; justify-content: space-between; margin-top: 14px;}
+#im-app .t-map{display: flex; flex-wrap: wrap; gap: 6px; margin-top: 16px;}
+#im-app .t-map button{width: 36px; height: 36px; border-radius: 9px; border: 1.5px solid var(--k-border); background: #fff; cursor: pointer; font-weight: 600; color: #374151;}
+#im-app .t-map button.done{background: #dbeafe; border-color: #93c5fd; color: #1e40af;}
+#im-app .t-map button.cur{outline: 2px solid var(--k-navy);}
+#im-app .k-result{text-align: center; padding: 10px 0;}
+#im-app .k-result .big{font-size: 54px; font-weight: 800;}
+#im-app .k-result .big.ok{color: var(--k-ok);}
+#im-app .k-result .big.err{color: var(--k-err);}
+#im-app .k-cert{border: 2px dashed #7fb3e6; background: linear-gradient(135deg, #f0f9ff, #fff); border-radius: 16px; padding: 18px; text-align: center;}
+#im-app .k-cert .num{font-size: 22px; font-weight: 800; color: var(--k-navy); letter-spacing: .02em;}
+@media(max-width:640px){#im-app .k-grid2{grid-template-columns:1fr}}
+@keyframes tpulse{50%{opacity:.55}}
+#k-toasts{position:fixed;left:50%;bottom:20px;transform:translateX(-50%);z-index:200;display:flex;flex-direction:column;gap:8px;align-items:center;width:calc(100% - 28px);max-width:420px;pointer-events:none}
+.k-toast{background:#111827;color:#fff;padding:11px 16px;border-radius:12px;font-size:14px;transition:opacity .3s;box-shadow:0 6px 20px rgba(0,0,0,.25)}.k-toast.err{background:#dc2626}
+#im-app .im-note{background:#f0f9ff;border:1.5px solid #bae6fd;color:#0c4a6e;border-radius:12px;padding:10px 12px;font-size:13.5px;margin-top:12px}
+#im-app .im-kurs{font-size:13px;color:var(--k-muted);margin-bottom:10px}

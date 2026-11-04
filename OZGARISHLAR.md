@@ -35,3 +35,13 @@ Superadmin kurs + admin yaratadi → admin Telegram Mini App'da kodni kiritadi �
 - Sertifikat PDF diskka saqlanmaydi, har safar bazadan yasaladi.
 - Fon rasmi hozirgi 1537×1023; bosib chiqarish uchun yuqori sifatli (xuddi shu nisbatli) rasmni assets/sertifikat-fon.png nomi bilan qo'ying.
 - Eski GET /api/telegram/check/:id yo'li boshqa rollar uchun o'zgarishsiz qoldi (imzosiz). Kurs rollari FAQAT imzolangan POST /api/telegram/kirish orqali. Mini App'ni yangilab, TELEGRAM_BOT_TOKEN sozlangach, eski yo'lni butunlay o'chirish tavsiya etiladi.
+
+## Yangilanish: Telegram'siz imtihon (imtihonlar.html)
+- Ishtirokchilar endi Telegram orqali KIRMAYDI va kurs admini ularni qo'shmaydi. Kurs uchun umumiy login/parol bor
+  (kurs admini yoki superadmin belgilaydi) → innovateitschool.uz/imtihonlar.html.
+- Imtihon vaqt oralig'i (Toshkent vaqti) admin panelida: Sozlamalar → «Imtihon: kirish va vaqt». Test faqat shu oraliqda boshlanadi.
+- Ishtirokchi F.I.Sh., sharif, maktab va telefonini kiritadi. Bir xil familiya+ism ikkinchi marta qabul qilinmaydi
+  (lotin/kirill, apostrof, katta-kichik harf va tartib farqi hisobga olinmaydi). Xato bo'lsa admin yozuvni o'chiradi.
+- Yangi/o'zgargan: migrations/035_kurs_imtihon_login.sql (+ innovateit_schema_setup.sql), routes/kurslar.js, routes/telegram.js,
+  middleware/jwt.js, innovateit-blog-frontend/imtihonlar.html + css/imtihon.css + js/imtihon.js, js/kurs-admin.js, js/kurslar-super.js,
+  telegram-bot/miniapp/app.js. O'CHIRILDI: innovateit-frontend/js/kurs.js (kurs.html endi imtihonlar.html ga yo'naltiradi).

@@ -87,17 +87,7 @@ function handleAuthResult(data) {
     oqituvchi: `${WEB_PANEL_URL}/oqituvchi.html?tg_token=${tok}&tg_ism=${ism}`,
     oquvchi:   `${WEB_PANEL_URL}/oquvchi.html?tg_token=${tok}&tg_ism=${ism}`,
     kurs_admin:       `${WEB_PANEL_URL}/kurs-admin.html?tg_token=${tok}&tg_ism=${ism}`,
-    kurs_ishtirokchi: `${WEB_PANEL_URL}/kurs.html?tg_token=${tok}&tg_ism=${ism}`,
   };
-
-  // Kurs ishtirokchisi: panel Mini App oynasining O'ZIDA ochiladi. tg.openLink Telegram'ning
-  // "Open this link?" tasdiqlash oynasini chiqaradi (uni o'chirib bo'lmaydi), ichkarida ochilsa
-  // hech qanday oyna chiqmaydi. Token ?tg_token= orqali beriladi va panel uni URL'dan darrov olib tashlaydi.
-  if (ROL === 'kurs_ishtirokchi') {
-    showPage('loadingPage');
-    window.location.replace(panelUrls[ROL]);
-    return;
-  }
 
   if (panelUrls[ROL]) {
     goToPanel(panelUrls[ROL]);
@@ -173,7 +163,6 @@ function showRoleChooser(tgId, roles) {
     oqituvchi: { label: "O'qituvchi" },
     oquvchi:   { label: "O'quvchi" },
     kurs_admin:       { icon: '🎓', label: 'Kurs admini' },
-    kurs_ishtirokchi: { icon: '📝', label: 'Kurs ishtirokchisi' },
   };
 
   // Har bir yozuv uchun ikonkani aniqlaymiz — o'qituvchi/o'quvchi uchun

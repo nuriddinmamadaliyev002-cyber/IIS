@@ -6,15 +6,20 @@
 //    kurs_admin     → /api/kurs/admin/...      o'z kursining sozlamalari, savollari, ishtirokchilari
 //    kurs_ishtirokchi → /api/kurs/ish/...      o'z profili, test, sertifikat
 //  Ochiq:
+//    POST /api/kurs/imtihon/kirish             kurs login/paroli bilan kirish (imtihonlar.html)
+//    GET  /api/kurs/imtihon/holat              imtihon vaqti holati (kirish tokeni bilan)
+//    POST /api/kurs/imtihon/royxat             ishtirokchi ma'lumotini kiritadi → ishtirokchi tokeni
 //    GET  /api/sertifikat/tekshir/:kod         sertifikat haqiqiyligini tekshirish (routes/sertifikat_public.js)
 //
-//  Kirish: Telegram Mini App (initData imzosi tekshiriladi — routes/telegram.js /kirish).
-//  Telegram ID'ni superadmin (kurs adminiga) va kurs admini (ishtirokchiga) biriktiradi — Mini App kod so'ramaydi.
+//  Kirish: kurs admini — Telegram Mini App (superadmin Telegram ID biriktiradi, routes/telegram.js /kirish).
+//          ishtirokchi — Telegram'siz: kursning umumiy login/paroli bilan innovateitschool.uz/imtihonlar.html;
+//          imtihon faqat admin belgilagan vaqt oralig'ida; bir xil familiya+ism ikkinchi marta topshira olmaydi.
 // ═══════════════════════════════════════════════════════════════════════════
 const { Router } = require('express');
 const crypto = require('crypto');
 const pool = require('../db');
-const { requireAuth } = require('../middleware/jwt');
+const bcrypt = require('bcryptjs');
+const { requireAuth, generateToken } = require('../middleware/jwt');
 const { sertifikatPdf } = require('../sertifikatPdf');
 
 const router = Router();
@@ -61,27 +66,60 @@ async function telegramAjrat(rol, entityId, client = pool) {
     [rol, entityId, ROLLAR[rol].jadval]);
 }
 
-// Telegram ID'ni tekshirish: undefined = o'zgartirilmaydi, null = ajratish, son = biriktirish
-function tgIdOqi(v) {
-  if (v === undefined) return { qiymat: undefined };
-  const raw = String(v == null ? '' : v).trim();
-  if (raw === '') return { qiymat: null };
-  if (/^\d{4,15}$/.test(raw)) return { qiymat: Number(raw) };
-  return { xato: "Telegram ID faqat raqamlardan iborat bo'lishi kerak" };
+// ─── Imtihon: login/parol, vaqt oynasi, ism kaliti ───────────────────────────
+const IMTIHON_URL = (process.env.CERT_VERIFY_BASE || 'https://innovateitschool.uz').replace(/\/+$/, '') + '/imtihonlar.html';
+const LOGIN_RE = /^[a-z0-9._-]{4,30}$/;
+const LOCAL_DT_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/;       // <input type="datetime-local"> (Toshkent vaqti)
+const DUMMY_HASH = bcrypt.hashSync('imtihon-dummy-parol', 10);  // login topilmasa ham bir xil vaqt sarflanadi
+
+// Oddiy xotiradagi tezlik cheklovi (bitta PM2 instance). Faqat MUVAFFAQIYATSIZ urinishlar sanaladi —
+// bitta maktab (bitta IP) dan ko'p odam to'g'ri parol bilan kirishi mumkin.
+function xatoChegarasi(max, oynaMs) {
+  const m = new Map();
+  setInterval(() => { const n = Date.now(); for (const [k, v] of m) if (v.t < n) m.delete(k); }, 60 * 1000).unref();
+  return {
+    bloklangan(key) { const v = m.get(key); return !!v && v.t > Date.now() && v.c >= max; },
+    xato(key) {
+      const n = Date.now(); let v = m.get(key);
+      if (!v || v.t < n) { v = { c: 0, t: n + oynaMs }; m.set(key, v); }
+      v.c++;
+    },
+  };
 }
-// Ishtirokchining Telegram ID'sini o'rnatish (eski birikma uziladi). client — tranzaksiya ichida.
-async function ishtirokchiTgOrnat(client, kursId, id, tgId, ismTg) {
-  await telegramAjrat('kurs_ishtirokchi', id, client);
-  if (tgId !== null) {
-    const band = await client.query(
-      'SELECT 1 FROM kurs_ishtirokchilar WHERE kurs_id=$1 AND telegram_id=$2 AND id<>$3', [kursId, tgId, id]);
-    if (band.rowCount) { const e = new Error('band'); e.xabar = "Bu Telegram ID shu kursning boshqa ishtirokchisiga biriktirilgan"; throw e; }
-    await client.query(
-      `INSERT INTO telegram_users (telegram_id, telegram_ism, rol, entity_id, entity_table)
-       VALUES ($1,$2,'kurs_ishtirokchi',$3,'kurs_ishtirokchilar')
-       ON CONFLICT (telegram_id, rol, entity_id) DO NOTHING`, [tgId, ismTg || null, id]);
-  }
-  await client.query('UPDATE kurs_ishtirokchilar SET telegram_id=$1 WHERE id=$2', [tgId, id]);
+const kirishXatolari = xatoChegarasi(20, 15 * 60 * 1000);
+function clientIp(req) {
+  return String(req.headers['x-real-ip'] || (req.headers['x-forwarded-for'] || '').split(',')[0] || req.ip || '').trim();
+}
+
+const HOLAT_XABAR = {
+  yopiq: 'Kurs hozircha yopiq',
+  sozlanmagan: 'Imtihon vaqti hali belgilanmagan',
+  kutilmoqda: 'Imtihon hali boshlanmagan',
+  yopilgan: 'Imtihon vaqti tugagan',
+};
+// holat: ochiq | kutilmoqda | yopilgan | sozlanmagan | yopiq  (server soati bo'yicha)
+function imtihonHolat(k, now = Date.now()) {
+  if (k.holat !== 'faol') return 'yopiq';
+  if (!k.imtihon_boshlanish || !k.imtihon_tugash) return 'sozlanmagan';
+  if (now < new Date(k.imtihon_boshlanish).getTime()) return 'kutilmoqda';
+  if (now >= new Date(k.imtihon_tugash).getTime()) return 'yopilgan';
+  return 'ochiq';
+}
+const ms = d => (d ? new Date(d).getTime() : null);
+
+// Ism kaliti: kirill → lotin, apostrof/bo'shliq/belgilar olib tashlanadi, "ye"→"e", familiya/ism tartibi
+// farqi hisobga olinmaydi. "Oʻrinov Ali" = "Orinov Ali" = "Али Ўринов" = "ali o'rinov".
+const KIRILL = { а:'a', б:'b', в:'v', г:'g', д:'d', е:'e', ё:'yo', ж:'j', з:'z', и:'i', й:'y', к:'k', л:'l', м:'m', н:'n',
+  о:'o', п:'p', р:'r', с:'s', т:'t', у:'u', ф:'f', х:'x', ц:'ts', ч:'ch', ш:'sh', щ:'sh', ъ:'', ы:'i', ь:'', э:'e',
+  ю:'yu', я:'ya', ў:'o', қ:'q', ғ:'g', ҳ:'h' };
+function kalitBolak(s) {
+  let t = String(s == null ? '' : s).toLowerCase();
+  t = t.replace(/[а-яёўқғҳ]/g, ch => (KIRILL[ch] !== undefined ? KIRILL[ch] : ch));
+  t = t.replace(/[^a-z0-9]/g, '').replace(/ye/g, 'e');
+  return t;
+}
+function ismKalit(familiya, ism) {
+  return [kalitBolak(familiya), kalitBolak(ism)].sort().join('|');
 }
 
 // ─── Middleware'lar ──────────────────────────────────────────────────────────
@@ -112,7 +150,7 @@ async function ishtirokchiMw(req, res, next) {
     if (req.user.isSuper) return res.status(403).json({ ok: false, error: 'Ishtirokchi uchun' });
     const r = await pool.query(
       `SELECT i.*, k.nomi AS kurs_nomi, k.tavsif AS kurs_tavsif, k.holat AS kurs_holat, k.otish_foiz,
-              k.urinish_limit, k.savol_soni, k.vaqt_daqiqa, k.direktor_fio
+              k.urinish_limit, k.savol_soni, k.vaqt_daqiqa, k.direktor_fio, k.imtihon_boshlanish, k.imtihon_tugash
          FROM kurs_ishtirokchilar i JOIN online_kurslar k ON k.id = i.kurs_id
         WHERE i.id=$1`, [req.user.entityId]);
     if (r.rowCount === 0) return res.status(403).json({ ok: false, error: 'Ishtirokchi topilmadi (kursdan chiqarilgan bo\'lishi mumkin)' });
@@ -133,9 +171,13 @@ router.get('/super/kurslar', superMw, wrap(async (req, res) => {
            (SELECT COUNT(*) FROM kurs_adminlar a WHERE a.kurs_id=k.id)::int          AS adminlar_soni,
            (SELECT COUNT(*) FROM kurs_ishtirokchilar i WHERE i.kurs_id=k.id)::int    AS ishtirokchilar_soni,
            (SELECT COUNT(*) FROM kurs_savollar s WHERE s.kurs_id=k.id)::int          AS savollar_soni,
-           (SELECT COUNT(*) FROM kurs_sertifikatlar c WHERE c.kurs_id=k.id AND c.holat='haqiqiy')::int AS sertifikatlar_soni
+           (SELECT COUNT(*) FROM kurs_sertifikatlar c WHERE c.kurs_id=k.id AND c.holat='haqiqiy')::int AS sertifikatlar_soni,
+           k.imtihon_login, (k.imtihon_parol_hash IS NOT NULL) AS imtihon_parol_bor,
+           k.imtihon_boshlanish, k.imtihon_tugash,
+           to_char(k.imtihon_boshlanish AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI') AS imtihon_boshlanish_matn,
+           to_char(k.imtihon_tugash AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI')     AS imtihon_tugash_matn
       FROM online_kurslar k ORDER BY k.id DESC`);
-  res.json({ ok: true, kurslar: r.rows });
+  res.json({ ok: true, kurslar: r.rows.map(k => ({ ...k, imtihon_holat: imtihonHolat(k) })) });
 }));
 
 router.post('/super/kurslar', superMw, wrap(async (req, res) => {
@@ -368,30 +410,21 @@ router.post('/admin/savollar/ommaviy', adminMw, wrap(async (req, res) => {
 }));
 
 // ─── Ishtirokchilar ───
+//  Ishtirokchilar admin tomonidan QO'SHILMAYDI: ular imtihonlar.html orqali o'zi ro'yxatdan o'tadi.
+//  Admin ro'yxatni ko'radi, noto'g'ri yozilgan ma'lumotni tuzatadi, xato yozilgan yozuvni o'chiradi
+//  (shunda odam qayta topshira oladi) va kerak bo'lsa qo'shimcha urinish beradi.
 router.get('/admin/ishtirokchilar', adminMw, wrap(async (req, res) => {
   const r = await pool.query(`
-    SELECT i.id, i.familiya, i.ism, i.sharif, i.telefon, i.maktab_nomi, i.fan, i.telegram_id, i.qoshimcha_urinish,
-           (i.profil_vaqti IS NOT NULL) AS profil_toldirilgan,
-           (i.telegram_id IS NOT NULL) AS ulangan,
+    SELECT i.id, i.familiya, i.ism, i.sharif, i.telefon, i.maktab_nomi, i.fan, i.qoshimcha_urinish,
+           to_char(i.yaratilgan AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI') AS royxat_vaqti,
            (SELECT COUNT(*) FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='tugagan')::int AS urinishlar,
            (SELECT MAX(u.foiz) FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='tugagan') AS eng_yaxshi,
            EXISTS (SELECT 1 FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='jarayonda') AS jarayonda,
            c.id AS sertifikat_id, c.raqam AS sertifikat_raqam, c.holat AS sertifikat_holat
       FROM kurs_ishtirokchilar i
       LEFT JOIN kurs_sertifikatlar c ON c.ishtirokchi_id = i.id
-     WHERE i.kurs_id=$1 ORDER BY i.familiya, i.ism, i.id`, [req.kursId]);
+     WHERE i.kurs_id=$1 ORDER BY i.yaratilgan DESC, i.id DESC`, [req.kursId]);
   res.json({ ok: true, ishtirokchilar: r.rows });
-}));
-
-// Botga /start yozgan, hali hech qaysi rolga biriktirilmagan odamlar (Telegram ID tanlash uchun)
-router.get('/admin/kandidatlar', adminMw, wrap(async (req, res) => {
-  const r = await pool.query(
-    `SELECT k.telegram_id, k.telegram_ism, k.telegram_username
-       FROM telegram_kandidatlar k
-       LEFT JOIN telegram_users tu ON tu.telegram_id = k.telegram_id
-      WHERE tu.id IS NULL
-      ORDER BY k.oxirgi_faollik DESC LIMIT 200`);
-  res.json({ ok: true, kandidatlar: r.rows });
 }));
 
 function ishtirokchiMaydon(b) {
@@ -400,93 +433,178 @@ function ishtirokchiMaydon(b) {
     telefon: telefonToza(b.telefon), maktab_nomi: matn(b.maktab_nomi, 150), fan: matn(b.fan, 80),
   };
 }
-const ishTgIsm = f => `${f.familiya} ${f.ism}`.trim();
+const ISM_RE = /^[\p{L}ʻʼ'\-. ]{2,60}$/u;
+const TAKROR_XABAR = "Bu familiya va ism bilan imtihon allaqachon topshirilgan yoki boshlangan. Xatolik bo'lsa, kurs adminiga murojaat qiling.";
 
-router.post('/admin/ishtirokchilar', adminMw, wrap(async (req, res) => {
-  const f = ishtirokchiMaydon(req.body);
-  if (!f.familiya && !f.ism) return res.status(400).json({ ok: false, error: 'Familiya yoki ism kiriting' });
-  const tg = tgIdOqi(req.body.telegram_id);
-  if (tg.xato) return res.status(400).json({ ok: false, error: tg.xato });
-  const client = await pool.connect();
-  try {
-    await client.query('BEGIN');
-    const r = await client.query(
-      `INSERT INTO kurs_ishtirokchilar (kurs_id, familiya, ism, sharif, telefon, maktab_nomi, fan)
-       VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-      [req.kursId, f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan]);
-    if (tg.qiymat) await ishtirokchiTgOrnat(client, req.kursId, r.rows[0].id, tg.qiymat, ishTgIsm(f));
-    await client.query('COMMIT');
-    res.json({ ok: true, id: r.rows[0].id });
-  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
-}));
-
-// Ko'p ishtirokchini bir martada: har qatorda  "Familiya Ism Sharif ; telefon ; maktab ; fan ; telegram_id"
-router.post('/admin/ishtirokchilar/ommaviy', adminMw, wrap(async (req, res) => {
-  const qatorlar = String(req.body.matn || '').replace(/\r/g, '').split('\n').map(x => x.trim()).filter(Boolean);
-  if (!qatorlar.length) return res.status(400).json({ ok: false, error: 'Ro\'yxat bo\'sh' });
-  if (qatorlar.length > 500) return res.status(400).json({ ok: false, error: 'Bir martada 500 tadan ko\'p ishtirokchi kiritib bo\'lmaydi' });
-  const royxat = [], xatolar = [], korilgan = new Set();
-  qatorlar.forEach((q, i) => {
-    const qismlar = q.split(/[;\t|]/).map(x => x.trim());
-    const so = qismlar[0].split(/\s+/).filter(Boolean);
-    if (so.length < 2) { xatolar.push(`${i + 1}-qator: familiya va ismni kiriting`); return; }
-    const tg = tgIdOqi(qismlar[4] === undefined ? undefined : qismlar[4]);
-    if (tg.xato) { xatolar.push(`${i + 1}-qator: ${tg.xato}`); return; }
-    if (tg.qiymat) {
-      if (korilgan.has(tg.qiymat)) { xatolar.push(`${i + 1}-qator: Telegram ID ro'yxatda takrorlangan`); return; }
-      korilgan.add(tg.qiymat);
-    }
-    royxat.push({
-      familiya: normIsm(so[0]), ism: normIsm(so[1]), sharif: normIsm(so.slice(2).join(' ')),
-      telefon: telefonToza(qismlar[1]), maktab_nomi: matn(qismlar[2], 150), fan: matn(qismlar[3], 80),
-      tg: tg.qiymat || null,
-    });
-  });
-  if (xatolar.length) return res.status(400).json({ ok: false, error: xatolar.slice(0, 8).join('\n'), xatolar });
-  const client = await pool.connect();
-  let qoshildi = 0;
-  try {
-    await client.query('BEGIN');
-    for (const f of royxat) {
-      const r = await client.query(
-        `INSERT INTO kurs_ishtirokchilar (kurs_id, familiya, ism, sharif, telefon, maktab_nomi, fan)
-         VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
-        [req.kursId, f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan]);
-      if (f.tg) await ishtirokchiTgOrnat(client, req.kursId, r.rows[0].id, f.tg, ishTgIsm(f));
-      qoshildi++;
-    }
-    await client.query('COMMIT');
-  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
-  res.json({ ok: true, qoshildi });
-}));
-
-// Tahrirlash + Telegram ID biriktirish/almashtirish/ajratish (telegram_id berilmasa tegilmaydi)
 router.put('/admin/ishtirokchilar/:id', adminMw, wrap(async (req, res) => {
   const f = ishtirokchiMaydon(req.body);
-  if (!f.familiya && !f.ism) return res.status(400).json({ ok: false, error: 'Familiya yoki ism kiriting' });
-  const tg = tgIdOqi(req.body.telegram_id);
-  if (tg.xato) return res.status(400).json({ ok: false, error: tg.xato });
-  const id = butun(req.params.id);
-  const client = await pool.connect();
+  if (!f.familiya || !f.ism) return res.status(400).json({ ok: false, error: 'Familiya va ismni kiriting' });
+  if (kalitBolak(f.familiya).length < 2 || kalitBolak(f.ism).length < 2) return res.status(400).json({ ok: false, error: 'Familiya va ism lotin yoki kirill harflarida bo\'lsin' });
   try {
-    await client.query('BEGIN');
-    const cur = await client.query('SELECT telegram_id FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2 FOR UPDATE', [id, req.kursId]);
-    if (!cur.rowCount) { await client.query('ROLLBACK'); return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' }); }
-    await client.query(
-      `UPDATE kurs_ishtirokchilar SET familiya=$1, ism=$2, sharif=$3, telefon=$4, maktab_nomi=$5, fan=$6 WHERE id=$7`,
-      [f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan, id]);
-    if (tg.qiymat !== undefined && String(tg.qiymat) !== String(cur.rows[0].telegram_id)) {
-      await ishtirokchiTgOrnat(client, req.kursId, id, tg.qiymat, ishTgIsm(f));
-    }
-    await client.query('COMMIT');
+    const r = await pool.query(
+      `UPDATE kurs_ishtirokchilar SET familiya=$1, ism=$2, sharif=$3, telefon=$4, maktab_nomi=$5, fan=$6, ism_kalit=$7
+        WHERE id=$8 AND kurs_id=$9`,
+      [f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan, ismKalit(f.familiya, f.ism), butun(req.params.id), req.kursId]);
+    if (!r.rowCount) return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' });
     res.json({ ok: true });
-  } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ ok: false, error: 'Bu familiya va ism bilan boshqa ishtirokchi allaqachon bor' });
+    throw e;
+  }
+}));
+
+// ─── Imtihon sozlamalari: umumiy login/parol va vaqt oynasi ───
+//  Kurs admini o'z kursi uchun, superadmin istalgan kurs uchun belgilaydi. Vaqt Toshkent vaqti bilan.
+const PAROL_HARF = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+function tasodifiyParol(n = 8) {
+  let s = '';
+  for (let i = 0; i < n; i++) s += PAROL_HARF[crypto.randomInt(PAROL_HARF.length)];
+  return s;
+}
+async function imtihonOl(kid) {
+  const r = await pool.query(`
+    SELECT holat, imtihon_login, (imtihon_parol_hash IS NOT NULL) AS parol_bor, imtihon_boshlanish, imtihon_tugash,
+           to_char(imtihon_boshlanish AT TIME ZONE 'Asia/Tashkent','YYYY-MM-DD"T"HH24:MI') AS boshlanish_local,
+           to_char(imtihon_tugash AT TIME ZONE 'Asia/Tashkent','YYYY-MM-DD"T"HH24:MI')     AS tugash_local,
+           to_char(imtihon_boshlanish AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI')   AS boshlanish_matn,
+           to_char(imtihon_tugash AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI')       AS tugash_matn
+      FROM online_kurslar WHERE id=$1`, [kid]);
+  if (!r.rowCount) return null;
+  const k = r.rows[0];
+  return {
+    login: k.imtihon_login || '', parol_bor: k.parol_bor,
+    boshlanish: k.boshlanish_local || '', tugash: k.tugash_local || '',
+    boshlanish_matn: k.boshlanish_matn || '', tugash_matn: k.tugash_matn || '',
+    holat: imtihonHolat(k), url: IMTIHON_URL,
+  };
+}
+async function imtihonSaqla(kid, b, res) {
+  const login = String(b.login == null ? '' : b.login).trim().toLowerCase();
+  const bosh = String(b.boshlanish || '').trim(), tug = String(b.tugash || '').trim();
+  if (login && !LOGIN_RE.test(login)) return res.status(400).json({ ok: false, error: 'Login 4–30 belgi: lotin harflari, raqam, nuqta, chiziqcha yoki pastki chiziq' });
+  if ((bosh && !LOCAL_DT_RE.test(bosh)) || (tug && !LOCAL_DT_RE.test(tug))) return res.status(400).json({ ok: false, error: 'Sana va vaqt formati noto\'g\'ri' });
+  if (!!bosh !== !!tug) return res.status(400).json({ ok: false, error: 'Boshlanish va tugash vaqtini birga kiriting (yoki ikkalasini ham bo\'sh qoldiring)' });
+  if (bosh && tug && !(bosh < tug)) return res.status(400).json({ ok: false, error: 'Tugash vaqti boshlanishdan keyin bo\'lishi kerak' });
+  try {
+    await pool.query(
+      `UPDATE online_kurslar SET imtihon_login=$1,
+              imtihon_boshlanish = CASE WHEN $2::text = '' THEN NULL ELSE ($2::timestamp AT TIME ZONE 'Asia/Tashkent') END,
+              imtihon_tugash     = CASE WHEN $3::text = '' THEN NULL ELSE ($3::timestamp AT TIME ZONE 'Asia/Tashkent') END
+        WHERE id=$4`, [login || null, bosh, tug, kid]);
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ ok: false, error: 'Bu login boshqa kursda band. Boshqasini tanlang' });
+    throw e;
+  }
+  res.json({ ok: true, imtihon: await imtihonOl(kid) });
+}
+// Yangi parol yaratadi va FAQAT shu javobda ochiq ko'rsatadi (bazada hash). Eski kirish tokenlari bekor bo'ladi.
+async function imtihonParol(kid, b, res) {
+  let parol = String(b.parol == null ? '' : b.parol).trim();
+  if (parol && parol.length < 6) return res.status(400).json({ ok: false, error: 'Parol kamida 6 belgi bo\'lsin' });
+  if (parol.length > 60) return res.status(400).json({ ok: false, error: 'Parol juda uzun' });
+  if (!parol) parol = tasodifiyParol(8);
+  const r = await pool.query('UPDATE online_kurslar SET imtihon_parol_hash=$1 WHERE id=$2', [bcrypt.hashSync(parol, 10), kid]);
+  if (!r.rowCount) return res.status(404).json({ ok: false, error: 'Kurs topilmadi' });
+  res.json({ ok: true, parol, imtihon: await imtihonOl(kid) });
+}
+
+router.get('/admin/imtihon', adminMw, wrap(async (req, res) => {
+  const im = await imtihonOl(req.kursId);
+  if (!im) return res.status(404).json({ ok: false, error: 'Kurs topilmadi' });
+  res.json({ ok: true, imtihon: im });
+}));
+router.put('/admin/imtihon', adminMw, wrap((req, res) => imtihonSaqla(req.kursId, req.body || {}, res)));
+router.post('/admin/imtihon/parol', adminMw, wrap((req, res) => imtihonParol(req.kursId, req.body || {}, res)));
+
+router.get('/super/kurslar/:id/imtihon', superMw, wrap(async (req, res) => {
+  const im = await imtihonOl(butun(req.params.id));
+  if (!im) return res.status(404).json({ ok: false, error: 'Kurs topilmadi' });
+  res.json({ ok: true, imtihon: im });
+}));
+router.put('/super/kurslar/:id/imtihon', superMw, wrap((req, res) => imtihonSaqla(butun(req.params.id), req.body || {}, res)));
+router.post('/super/kurslar/:id/imtihon/parol', superMw, wrap((req, res) => imtihonParol(butun(req.params.id), req.body || {}, res)));
+
+// ═══════════════════════════════════════════════════════════════════════════
+//  OCHIQ: imtihonlar.html — login/parol bilan kirish, ro'yxatdan o'tish
+// ═══════════════════════════════════════════════════════════════════════════
+const pvOl = hash => crypto.createHash('sha256').update(String(hash || '')).digest('hex').slice(0, 12);
+
+router.post('/imtihon/kirish', wrap(async (req, res) => {
+  const ip = clientIp(req);
+  if (kirishXatolari.bloklangan(ip)) return res.status(429).json({ ok: false, error: 'Juda ko\'p xato urinish. 15 daqiqadan keyin qayta urinib ko\'ring.' });
+  const login = String((req.body && req.body.login) || '').trim().toLowerCase().slice(0, 60);
+  const parol = String((req.body && req.body.parol) || '').slice(0, 100);
+  const r = login ? await pool.query('SELECT id, nomi, holat, imtihon_parol_hash FROM online_kurslar WHERE lower(imtihon_login)=$1', [login]) : { rowCount: 0, rows: [] };
+  const k = r.rows[0];
+  const togri = bcrypt.compareSync(parol, (k && k.imtihon_parol_hash) || DUMMY_HASH) && !!k && !!k.imtihon_parol_hash;
+  if (!togri) { kirishXatolari.xato(ip); return res.status(401).json({ ok: false, error: 'Login yoki parol noto\'g\'ri' }); }
+  const token = generateToken({ role: 'imtihon_kirish', kursId: k.id, pv: pvOl(k.imtihon_parol_hash), isSuper: false }, '3h');
+  res.json({ ok: true, token, kurs: { nomi: k.nomi } });
+}));
+
+async function kirishMw(req, res, next) {
+  try {
+    const r = await pool.query('SELECT * FROM online_kurslar WHERE id=$1', [req.user.kursId]);
+    const k = r.rows[0];
+    if (!k || !k.imtihon_parol_hash || pvOl(k.imtihon_parol_hash) !== req.user.pv) {
+      return res.status(401).json({ ok: false, error: 'Kirish eskirgan. Qaytadan kiring.', expired: true });
+    }
+    req.kurs = k;
+    next();
+  } catch (e) { console.error(e); res.status(500).json({ ok: false, error: 'Server xatoligi' }); }
+}
+const kirishAuth = [requireAuth(['imtihon_kirish']), kirishMw];
+
+function holatJavob(k) {
+  const holat = imtihonHolat(k);
+  return { holat, xabar: holat === 'ochiq' ? '' : HOLAT_XABAR[holat], server_vaqti: Date.now(),
+           boshlanish: ms(k.imtihon_boshlanish), tugash: ms(k.imtihon_tugash) };
+}
+router.get('/imtihon/holat', kirishAuth, wrap(async (req, res) => {
+  const t = await pool.query(
+    `SELECT to_char($1::timestamptz AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI') AS b,
+            to_char($2::timestamptz AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI') AS t`, [req.kurs.imtihon_boshlanish, req.kurs.imtihon_tugash]);
+  res.json({ ok: true, kurs: { nomi: req.kurs.nomi, tavsif: req.kurs.tavsif, savol_soni: req.kurs.savol_soni, vaqt_daqiqa: req.kurs.vaqt_daqiqa, otish_foiz: req.kurs.otish_foiz },
+             ...holatJavob(req.kurs), boshlanish_matn: t.rows[0].b || '', tugash_matn: t.rows[0].t || '' });
+}));
+
+router.post('/imtihon/royxat', kirishAuth, wrap(async (req, res) => {
+  const k = req.kurs;
+  const holat = imtihonHolat(k);
+  if (holat !== 'ochiq') return res.status(403).json({ ok: false, error: HOLAT_XABAR[holat], holat });
+  const f = ishtirokchiMaydon(req.body || {});
+  if (!ISM_RE.test(f.familiya) || kalitBolak(f.familiya).length < 2) return res.status(400).json({ ok: false, error: 'Familiyani to\'g\'ri kiriting' });
+  if (!ISM_RE.test(f.ism) || kalitBolak(f.ism).length < 2) return res.status(400).json({ ok: false, error: 'Ismni to\'g\'ri kiriting' });
+  if (!ISM_RE.test(f.sharif) || kalitBolak(f.sharif).length < 2) return res.status(400).json({ ok: false, error: 'Sharifni to\'g\'ri kiriting (masalan: Abdulla oʻgʻli)' });
+  if (f.maktab_nomi.length < 2) return res.status(400).json({ ok: false, error: 'Maktabingiz nomini kiriting' });
+  if (f.telefon.replace(/\D/g, '').length < 9) return res.status(400).json({ ok: false, error: 'Telefon raqamini to\'g\'ri kiriting' });
+  const kalit = ismKalit(f.familiya, f.ism);
+
+  // Eski (kalitsiz) yozuvlar bilan ham solishtiramiz
+  const eski = await pool.query('SELECT familiya, ism FROM kurs_ishtirokchilar WHERE kurs_id=$1 AND ism_kalit IS NULL', [k.id]);
+  if (eski.rows.some(x => ismKalit(x.familiya, x.ism) === kalit)) return res.status(409).json({ ok: false, error: TAKROR_XABAR, takror: true });
+  let id;
+  try {
+    const r = await pool.query(
+      `INSERT INTO kurs_ishtirokchilar (kurs_id, familiya, ism, sharif, telefon, maktab_nomi, fan, ism_kalit, profil_vaqti)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8,NOW()) RETURNING id`,
+      [k.id, f.familiya, f.ism, f.sharif, f.telefon, f.maktab_nomi, f.fan, kalit]);
+    id = r.rows[0].id;
+  } catch (e) {
+    if (e.code === '23505') return res.status(409).json({ ok: false, error: TAKROR_XABAR, takror: true });
+    throw e;
+  }
+  const token = generateToken({
+    ism: `${f.familiya} ${f.ism}`.trim(), rol: 'kurs_ishtirokchi', role: 'kurs_ishtirokchi', entityId: id,
+    entityTable: 'kurs_ishtirokchilar', isSuper: false, kursId: k.id, kursNomi: k.nomi,
+  }, '8h');
+  res.json({ ok: true, token });
 }));
 
 router.delete('/admin/ishtirokchilar/:id', adminMw, wrap(async (req, res) => {
   const id = butun(req.params.id);
   const c = await pool.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1', [id]);
-  if (c.rowCount) return res.status(409).json({ ok: false, error: 'Sertifikat berilgan ishtirokchini o\'chirib bo\'lmaydi. Avval sertifikatni bekor qiling.' });
+  if (c.rowCount) return res.status(409).json({ ok: false, error: 'Sertifikat berilgan ishtirokchini o\'chirib bo\'lmaydi (sertifikat yozuvi saqlanib qoladi).' });
   const own = await pool.query('SELECT 1 FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2', [id, req.kursId]);
   if (!own.rowCount) return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' });
   await telegramAjrat('kurs_ishtirokchi', id);
@@ -680,7 +798,7 @@ router.get('/ish/men', ishMw, wrap(async (req, res) => {
   res.json({
     ok: true,
     ishtirokchi: { familiya: ish.familiya, ism: ish.ism, sharif: ish.sharif, telefon: ish.telefon,
-                   maktab_nomi: ish.maktab_nomi, fan: ish.fan, profil_toldirilgan: !!ish.profil_vaqti },
+                   maktab_nomi: ish.maktab_nomi, fan: ish.fan },
     kurs: { nomi: ish.kurs_nomi, tavsif: ish.kurs_tavsif, holat: ish.kurs_holat, otish_foiz: ish.otish_foiz,
             urinish_limit: limit, vaqt_daqiqa: ish.vaqt_daqiqa,
             savollar_soni: ish.savol_soni ? Math.min(ish.savol_soni, soni.rows[0].n) : soni.rows[0].n },
@@ -688,27 +806,8 @@ router.get('/ish/men', ishMw, wrap(async (req, res) => {
     qolgan_urinish: Math.max(0, limit - tugagan - (faol ? 1 : 0)),
     faol_urinish_id: faol ? faol.id : null,
     sertifikat: ser.rows[0] || null,
+    imtihon: holatJavob({ holat: ish.kurs_holat, imtihon_boshlanish: ish.imtihon_boshlanish, imtihon_tugash: ish.imtihon_tugash }),
   });
-}));
-
-router.put('/ish/profil', ishMw, wrap(async (req, res) => {
-  const b = req.body;
-  const f = {
-    familiya: normIsm(b.familiya), ism: normIsm(b.ism), sharif: normIsm(b.sharif),
-    maktab_nomi: matn(b.maktab_nomi, 150), fan: matn(b.fan, 80), telefon: telefonToza(b.telefon),
-  };
-  const ISM_RE = /^[\p{L}ʻʼ'\-. ]{2,60}$/u;
-  if (!ISM_RE.test(f.familiya)) return res.status(400).json({ ok: false, error: 'Familiyani to\'g\'ri kiriting' });
-  if (!ISM_RE.test(f.ism))      return res.status(400).json({ ok: false, error: 'Ismni to\'g\'ri kiriting' });
-  if (!ISM_RE.test(f.sharif))   return res.status(400).json({ ok: false, error: 'Sharifni to\'g\'ri kiriting (masalan: Abdulla oʻgʻli)' });
-  if (f.maktab_nomi.length < 2) return res.status(400).json({ ok: false, error: 'Ish joyingiz (maktab)ni kiriting' });
-  if (f.telefon && f.telefon.replace(/\D/g, '').length < 9) return res.status(400).json({ ok: false, error: 'Telefon raqamini to\'g\'ri kiriting' });
-  const s = await pool.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1', [req.ish.id]);
-  if (s.rowCount) return res.status(409).json({ ok: false, error: 'Sertifikat berilgandan keyin ma\'lumotni o\'zgartirib bo\'lmaydi. Xato bo\'lsa kurs adminiga murojaat qiling.' });
-  await pool.query(
-    `UPDATE kurs_ishtirokchilar SET familiya=$1, ism=$2, sharif=$3, maktab_nomi=$4, fan=$5, telefon=$6, profil_vaqti=NOW() WHERE id=$7`,
-    [f.familiya, f.ism, f.sharif, f.maktab_nomi, f.fan, f.telefon, req.ish.id]);
-  res.json({ ok: true });
 }));
 
 router.post('/ish/test/boshlash', ishMw, wrap(async (req, res) => {
@@ -723,7 +822,8 @@ router.post('/ish/test/boshlash', ishMw, wrap(async (req, res) => {
   }
 
   if (ish.kurs_holat !== 'faol') return res.status(403).json({ ok: false, error: 'Kurs hozircha yopiq' });
-  if (!ish.profil_vaqti) return res.status(400).json({ ok: false, error: 'Avval ma\'lumotlaringizni tasdiqlang', profilKerak: true });
+  const oyna = imtihonHolat({ holat: ish.kurs_holat, imtihon_boshlanish: ish.imtihon_boshlanish, imtihon_tugash: ish.imtihon_tugash });
+  if (oyna !== 'ochiq') return res.status(403).json({ ok: false, error: HOLAT_XABAR[oyna] + '. Yangi test faqat belgilangan vaqt oralig\'ida boshlanadi.' });
   const s = await pool.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1', [ish.id]);
   if (s.rowCount) return res.status(409).json({ ok: false, error: 'Siz allaqachon sertifikat olgansiz' });
 
@@ -799,4 +899,4 @@ router.get('/ish/sertifikat/pdf', ishMw, wrap(async (req, res) => {
 }));
 
 module.exports = router;
-module.exports._test = { savollarParse, normIsm };
+module.exports._test = { savollarParse, normIsm, ismKalit, imtihonHolat };

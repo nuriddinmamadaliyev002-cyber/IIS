@@ -31,12 +31,20 @@
   const view = html => { $('view').innerHTML = html; };
   const yuklanmoqda = () => view('<div class="k-spin">⏳ Yuklanmoqda…</div>');
 
+  function imtihonBadge(h) {
+    const m = { ochiq: ['ok', '🟢 Imtihon hozir ochiq'], kutilmoqda: ['blue', '⏳ Boshlanishi kutilmoqda'], yopilgan: ['gray', '🔒 Vaqti tugagan'],
+                sozlanmagan: ['warn', '⚠️ Vaqt belgilanmagan'], yopiq: ['err', '⛔ Kurs yopiq'] }[h] || ['gray', h];
+    return `<span class="k-badge ${m[0]}">${m[1]}</span>`;
+  }
+
   // ═══ 1. SOZLAMALAR ═══
   async function tabSozlama() {
     yuklanmoqda();
     await loadKurs();
     const k = KURS;
     if (!k) return view('<div class="k-empty">Kurs ma\'lumotini olib bo\'lmadi</div>');
+    const im = await req('GET', '/api/kurs/admin/imtihon');
+    const I = im.ok ? im.imtihon : null;
     view(`
       <div class="k-stats">
         <div class="k-stat"><div class="n">${k.ishtirokchilar_soni}</div><div class="l">Ishtirokchilar</div></div>
@@ -44,6 +52,20 @@
         <div class="k-stat"><div class="n">${k.urinishlar_soni}</div><div class="l">Topshirilgan testlar</div></div>
         <div class="k-stat"><div class="n">${k.sertifikatlar_soni}</div><div class="l">Berilgan sertifikatlar</div></div>
       </div>
+      ${I ? `<div class="k-card">
+        <h3>Imtihon: kirish va vaqt</h3>
+        <div class="k-muted">Ishtirokchilar <b>${esc(I.url)}</b> sahifasida shu login va parol bilan kiradi va imtihonni faqat quyidagi vaqt oralig'ida boshlay oladi. Vaqt — Toshkent vaqti.</div>
+        <div class="k-row" style="margin:8px 0;">${imtihonBadge(I.holat)}</div>
+        <div class="k-grid2">
+          <div><label class="k-lbl">Login</label><input class="k-in" id="m-login" maxlength="30" autocomplete="off" value="${esc(I.login)}" placeholder="masalan: raqamli2026"></div>
+          <div><label class="k-lbl">Parol</label><div class="k-row"><input class="k-in" id="m-parol" autocomplete="off" placeholder="${I.parol_bor ? '•••••• (o\'zgartirish uchun yangisini yozing)' : 'parol belgilanmagan'}"><button class="k-btn sec sm" id="m-gen" type="button">🎲</button></div></div>
+          <div><label class="k-lbl">Boshlanish</label><input class="k-in" id="m-bosh" type="datetime-local" value="${esc(I.boshlanish)}"></div>
+          <div><label class="k-lbl">Tugash</label><input class="k-in" id="m-tug" type="datetime-local" value="${esc(I.tugash)}"></div>
+        </div>
+        <div class="k-hint">Imtihon shu oraliqda boshlanadi; boshlangan test o'z vaqti (${k.vaqt_daqiqa ? k.vaqt_daqiqa + ' daqiqa' : 'cheklanmagan'}) davomida tugatiladi. Parol saqlangandan keyin ko'rsatilmaydi — ishtirokchilarga yetkazing.</div>
+        <div class="k-err" id="m-err"></div>
+        <div class="k-row" style="margin-top:12px;"><button class="k-btn" id="m-save">💾 Saqlash</button><button class="k-btn gray" id="m-copy">📋 Havola va login nusxalash</button></div>
+      </div>` : ''}
       <div class="k-card">
         <h3>Test sozlamalari</h3>
         <div class="k-muted">Bu qiymatlarni faqat siz belgilaysiz. O'zgartirish keyingi testlarga ta'sir qiladi.</div>
@@ -61,6 +83,21 @@
         <div class="k-err" id="s-err"></div>
         <div class="k-row" style="margin-top:12px;"><button class="k-btn" id="s-save">💾 Saqlash</button></div>
       </div>`);
+    if (I) {
+      $('m-gen').onclick = () => { const h = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const a = new Uint32Array(8); crypto.getRandomValues(a); $('m-parol').value = Array.from(a, x => h[x % h.length]).join(''); };
+      $('m-copy').onclick = () => K.nusxala(`${I.url}\nLogin: ${$('m-login').value.trim()}${$('m-parol').value ? '\nParol: ' + $('m-parol').value : ''}`);
+      $('m-save').onclick = async () => {
+        $('m-err').textContent = '';
+        const r = await req('PUT', '/api/kurs/admin/imtihon', { login: $('m-login').value, boshlanish: $('m-bosh').value, tugash: $('m-tug').value });
+        if (!r.ok) { $('m-err').textContent = r.error || 'Xatolik'; return; }
+        const parol = $('m-parol').value.trim();
+        if (parol) {
+          const p = await req('POST', '/api/kurs/admin/imtihon/parol', { parol });
+          if (!p.ok) { $('m-err').textContent = p.error || 'Parolni saqlab bo\'lmadi'; return; }
+        }
+        toast('Saqlandi ✓'); tabSozlama();
+      };
+    }
     $('s-save').onclick = async () => {
       $('s-err').textContent = '';
       const body = {
@@ -177,8 +214,7 @@ B) Brauzer"></textarea>
     if (i.sertifikat_id) return i.sertifikat_holat === 'haqiqiy' ? `<span class="k-badge ok">🎓 ${esc(i.sertifikat_raqam)}</span>` : '<span class="k-badge err">Sertifikat bekor</span>';
     if (i.jarayonda) return '<span class="k-badge blue">Test ishlayapti</span>';
     if (i.urinishlar > 0) return '<span class="k-badge warn">O\'tmadi</span>';
-    if (i.ulangan) return '<span class="k-badge blue">Telegram ulangan</span>';
-    return '<span class="k-badge gray">Telegram ID yo\'q</span>';
+    return '<span class="k-badge gray">Test boshlamagan</span>';
   }
   async function tabIshtirokchilar() {
     yuklanmoqda();
@@ -188,13 +224,12 @@ B) Brauzer"></textarea>
     view(`
       <div class="k-row" style="margin-bottom:12px;">
         <h3 style="font-size:18px;">Ishtirokchilar (${ISH.length})</h3><span class="k-sp"></span>
-        <button class="k-btn sec" id="i-bulk">📋 Ro'yxatdan qo'shish</button>
-        <button class="k-btn" id="i-add">➕ Ishtirokchi</button>
       </div>
+      <div class="k-muted" style="margin-bottom:10px;">Ishtirokchilar imtihonlar sahifasida o'zi ro'yxatdan o'tadi. Xato yozilgan yozuvni tuzating; sertifikat olmagan odam qayta topshirishi kerak bo'lsa — 🗑 bilan o'chiring.</div>
       <div class="k-card" style="padding:0;"><div class="k-tablewrap">
       ${ISH.length ? `<table class="k-table"><thead><tr><th>F.I.Sh.</th><th>Maktab</th><th>Holat</th><th>Urinish</th><th>Eng yaxshi</th><th></th></tr></thead><tbody>
         ${ISH.map(i => `<tr>
-          <td><b>${esc([i.familiya, i.ism, i.sharif].filter(Boolean).join(' '))}</b><div class="k-muted">${esc(i.telefon)}</div>${i.telegram_id ? `<div class="k-muted">📱 ${esc(i.telegram_id)}</div>` : ''}</td>
+          <td><b>${esc([i.familiya, i.ism, i.sharif].filter(Boolean).join(' '))}</b><div class="k-muted">${esc(i.telefon)}</div><div class="k-muted">${esc(i.royxat_vaqti)}</div></td>
           <td>${esc(i.maktab_nomi) || '—'}</td>
           <td>${holatBadge(i)}</td>
           <td>${i.urinishlar}${i.qoshimcha_urinish ? ` <span class="k-muted">(+${i.qoshimcha_urinish})</span>` : ''}</td>
@@ -203,10 +238,8 @@ B) Brauzer"></textarea>
             <button class="k-btn gray sm" data-plus="${i.id}" title="Qo'shimcha urinish">＋1</button>
             <button class="k-btn gray sm" data-edit="${i.id}">✏️</button>
             <button class="k-btn red sm" data-del="${i.id}">🗑</button></div></td></tr>`).join('')}
-        </tbody></table>` : '<div class="k-empty">Hali ishtirokchi yo\'q.</div>'}
+        </tbody></table>` : '<div class="k-empty">Hali hech kim ro\'yxatdan o\'tmagan.</div>'}
       </div></div>`);
-    $('i-add').onclick = () => ishModal(null);
-    $('i-bulk').onclick = ishOmmaviy;
     const topish = id => ISH.find(x => x.id == id);
     document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => ishModal(topish(b.dataset.edit)));
     document.querySelectorAll('[data-plus]').forEach(b => b.onclick = async () => {
@@ -216,7 +249,7 @@ B) Brauzer"></textarea>
     });
     document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       const i = topish(b.dataset.del);
-      if (!confirm(`${i.familiya} ${i.ism} ni kursdan o'chirasizmi? Uning natijalari ham o'chadi.`)) return;
+      if (!confirm(`${i.familiya} ${i.ism} yozuvini o'chirasizmi? Test natijalari ham o'chadi; odam imtihonni qayta topshira oladi. (Sertifikat berilgan yozuvni o'chirib bo'lmaydi.)`)) return;
       const r = await req('DELETE', '/api/kurs/admin/ishtirokchilar/' + i.id);
       if (r.ok) { toast('O\'chirildi'); tabIshtirokchilar(); } else toast(r.error, 'err');
     });
@@ -224,60 +257,25 @@ B) Brauzer"></textarea>
 
   function ishModal(i) {
     modal(`
-      <h3>${i ? 'Ishtirokchini tahrirlash' : 'Yangi ishtirokchi'}</h3>
+      <h3>Ishtirokchi ma'lumotini tuzatish</h3>
       <div class="k-grid2">
-        <div><label class="k-lbl">Familiya</label><input class="k-in" id="f-fam" value="${esc(i ? i.familiya : '')}"></div>
-        <div><label class="k-lbl">Ism</label><input class="k-in" id="f-ism" value="${esc(i ? i.ism : '')}"></div>
+        <div><label class="k-lbl">Familiya</label><input class="k-in" id="f-fam" value="${esc(i.familiya)}"></div>
+        <div><label class="k-lbl">Ism</label><input class="k-in" id="f-ism" value="${esc(i.ism)}"></div>
       </div>
-      <label class="k-lbl">Sharif (ixtiyoriy)</label><input class="k-in" id="f-shar" value="${esc(i ? i.sharif : '')}" placeholder="Masalan: Abdulla oʻgʻli">
+      <label class="k-lbl">Sharif</label><input class="k-in" id="f-shar" value="${esc(i.sharif)}" placeholder="Masalan: Abdulla oʻgʻli">
       <div class="k-grid2">
-        <div><label class="k-lbl">Telefon</label><input class="k-in" id="f-tel" value="${esc(i ? i.telefon : '')}" inputmode="tel"></div>
-        <div><label class="k-lbl">Maktab</label><input class="k-in" id="f-mak" value="${esc(i ? i.maktab_nomi : '')}"></div>
+        <div><label class="k-lbl">Telefon</label><input class="k-in" id="f-tel" value="${esc(i.telefon)}" inputmode="tel"></div>
+        <div><label class="k-lbl">Maktab</label><input class="k-in" id="f-mak" value="${esc(i.maktab_nomi)}"></div>
       </div>
-      <label class="k-lbl">📱 Telegram ID <span class="k-muted">(kirish usuli)</span></label>
-      <input class="k-in" id="f-tg" value="${esc(i && i.telegram_id ? i.telegram_id : '')}" inputmode="numeric" placeholder="masalan: 816464166" autocomplete="off">
-      <select class="k-in" id="f-kand" style="margin-top:8px;"><option value="">⏳ Botga /start yozganlar yuklanmoqda…</option></select>
-      <div class="k-hint">Ishtirokchi botga <b>/start</b> yozsa, yuqoridagi ro'yxatda paydo bo'ladi. Telegram ID'ni o'chirsangiz — ishtirokchi ajratiladi. Mini App ishtirokchidan hech narsa so'ramaydi.</div>
-      <div class="k-hint">Ishtirokchi test boshida ma'lumotlarini o'zi tasdiqlaydi va to'ldiradi (F.I.Sh. sertifikatga shu holatda chiqadi).</div>
+      <div class="k-hint">Sertifikat berilgan bo'lsa, undagi ism avtomatik o'zgarmaydi — «Sertifikatlar» bo'limida alohida tuzatiladi.</div>
       <div class="k-err" id="f-err"></div>
       <div class="btns"><button class="k-btn gray" id="f-cancel">Bekor</button><button class="k-btn" id="f-ok">Saqlash</button></div>`);
     $('f-cancel').onclick = closeModal;
-    kandidatYukla('f-kand', 'f-tg');
     $('f-ok').onclick = async () => {
-      const tg = $('f-tg').value.trim();
-      if (tg && !/^\d{4,15}$/.test(tg)) { $('f-err').textContent = "Telegram ID faqat raqamlardan iborat bo'lishi kerak"; return; }
-      const body = { familiya: $('f-fam').value, ism: $('f-ism').value, sharif: $('f-shar').value, telefon: $('f-tel').value, maktab_nomi: $('f-mak').value, telegram_id: tg };
-      const r = i ? await req('PUT', '/api/kurs/admin/ishtirokchilar/' + i.id, body) : await req('POST', '/api/kurs/admin/ishtirokchilar', body);
+      const body = { familiya: $('f-fam').value, ism: $('f-ism').value, sharif: $('f-shar').value, telefon: $('f-tel').value, maktab_nomi: $('f-mak').value, fan: i.fan || '' };
+      const r = await req('PUT', '/api/kurs/admin/ishtirokchilar/' + i.id, body);
       if (!r.ok) { $('f-err').textContent = r.error; return; }
-      closeModal(); toast(tg ? 'Saqlandi ✓ — Telegram biriktirildi' : 'Saqlandi ✓'); await tabIshtirokchilar();
-    };
-  }
-
-  // "Botga /start yozganlar" ro'yxati → tanlansa Telegram ID maydoniga yoziladi
-  async function kandidatYukla(selId, inputId) {
-    const sel = $(selId); if (!sel) return;
-    const r = await req('GET', '/api/kurs/admin/kandidatlar');
-    if (!$(selId)) return;                                   // modal yopilgan bo'lishi mumkin
-    const L = r.ok ? r.kandidatlar : [];
-    sel.innerHTML = `<option value="">${r.ok ? (L.length ? '— yoki botga /start yozganlar ro\'yxatidan tanlang —' : '— hozircha hech kim botga /start yozmagan —') : '❌ Ro\'yxatni yuklab bo\'lmadi'}</option>` +
-      L.map(k => `<option value="${esc(k.telegram_id)}">${esc(k.telegram_ism || "Noma'lum")}${k.telegram_username ? ' (@' + esc(k.telegram_username) + ')' : ''} — ${esc(k.telegram_id)}</option>`).join('');
-    sel.onchange = () => { if (sel.value) $(inputId).value = sel.value; };
-  }
-
-  function ishOmmaviy() {
-    modal(`
-      <h3>Ro'yxatdan qo'shish</h3>
-      <div class="k-muted">Har qatorda bitta ishtirokchi: <b>Familiya Ism Sharif ; telefon ; maktab ; fan ; Telegram ID</b> (telefon, maktab, fan va Telegram ID ixtiyoriy). Excel'dan ustunlarni nusxalab qo'ysangiz ham bo'ladi.</div>
-      <textarea class="k-in" id="o-matn" style="min-height:200px;font-size:13.5px;" placeholder="Karimova Dilnoza Anvar qizi; +998901112233; 12-maktab; Informatika; 816464166
-Toshmatov Jasur Akbar oʻgʻli; ; 5-maktab"></textarea>
-      <div class="k-err" id="o-err"></div>
-      <div class="btns"><button class="k-btn gray" id="o-cancel">Bekor</button><button class="k-btn" id="o-ok">Qo'shish</button></div>`, { keng: true });
-    $('o-cancel').onclick = closeModal;
-    $('o-ok').onclick = async () => {
-      $('o-ok').disabled = true;
-      const r = await req('POST', '/api/kurs/admin/ishtirokchilar/ommaviy', { matn: $('o-matn').value });
-      $('o-ok').disabled = false;
-      if (r.ok) { closeModal(); toast(r.qoshildi + ' ta ishtirokchi qo\'shildi ✓'); tabIshtirokchilar(); } else $('o-err').textContent = r.error;
+      closeModal(); toast('Saqlandi ✓'); await tabIshtirokchilar();
     };
   }
 

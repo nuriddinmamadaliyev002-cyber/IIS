@@ -232,7 +232,7 @@ async function tekshirish(tgId, res, kurslarniKorsat) {
     // (masalan ham buxgalter, ham sales) VA bitta rol ichida bir nechta
     // entity'ga (masalan bir nechta maktabga admin) bog'langan bo'lishi mumkin
     const tgRes = await pool.query(
-      'SELECT * FROM telegram_users WHERE telegram_id=$1' + (kurslarniKorsat ? '' : KURS_ROLLARI_SQL),
+      'SELECT * FROM telegram_users WHERE telegram_id=$1' + (kurslarniKorsat ? " AND rol <> 'kurs_ishtirokchi'" : KURS_ROLLARI_SQL),
       [tgId]
     );
 

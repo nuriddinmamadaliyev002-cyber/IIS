@@ -1,8 +1,9 @@
 // ═══════════════════════════════════════════════════════════════════════════
 //  ONLINE KURSLAR (Superadmin tabi)
 //  Superadmin kurs yaratadi va har bir kurs uchun admin tayinlaydi. Admin
-//  Telegram Mini App'da taklif kodini kiritib o'z paneliga kiradi; savollar,
-//  ishtirokchilar va sozlamalarni o'zi boshqaradi.
+//  Telegram ID orqali o'z paneliga kiradi. Ishtirokchilar Telegram'siz,
+//  imtihonlar.html da kursning umumiy login/paroli bilan kiradi (login, parol va
+//  imtihon vaqtini kurs admini yoki superadmin belgilaydi).
 //  Yordamchilar (g, esc2, toast, api) app.js / api.js dan olinadi.
 // ═══════════════════════════════════════════════════════════════════════════
 let KR_DATA = [];
@@ -71,12 +72,49 @@ async function loadKurslarTab() {
             <span class="kr-chip">❓ ${k.savollar_soni} savol</span><span class="kr-chip">🎓 ${k.sertifikatlar_soni} sertifikat</span>
             <span class="kr-chip">o'tish ${k.otish_foiz}% · ${k.urinish_limit} urinish</span>
           </div>
+          <div style="margin-top:8px;font-size:12.5px;color:#4b5563;">📝 ${krHolatChip(k.imtihon_holat)}
+            ${k.imtihon_login ? `<span class="kr-chip">login: <b>${esc2(k.imtihon_login)}</b>${k.imtihon_parol_bor ? '' : ' (parol yo\'q)'}</span>` : ''}
+            ${k.imtihon_boshlanish_matn ? `<span class="kr-chip">🕒 ${esc2(k.imtihon_boshlanish_matn)} — ${esc2(k.imtihon_tugash_matn)}</span>` : ''}</div>
         </div>
+        <button class="kr-btn s" onclick="krImtihon(${k.id})">📝 Imtihon</button>
         <button class="kr-btn s" onclick="krAdminlar(${k.id})">👤 Adminlar</button>
         <button class="kr-btn g" onclick="krKursModal(${k.id})">✏️</button>
         <button class="kr-btn r" onclick="krKursOchir(${k.id})">🗑</button>
       </div>
     </div>`).join('');
+}
+
+function krHolatChip(h) {
+  const m = { ochiq: ['#ecfdf3', '#16a34a', '🟢 Imtihon ochiq'], kutilmoqda: ['#eff6ff', '#2563eb', '⏳ Kutilmoqda'], yopilgan: ['#f3f4f6', '#4b5563', '🔒 Vaqti tugagan'],
+              sozlanmagan: ['#fffbeb', '#b45309', '⚠️ Vaqt belgilanmagan'], yopiq: ['#fef2f2', '#dc2626', '⛔ Kurs yopiq'] }[h] || ['#f3f4f6', '#4b5563', h || ''];
+  return `<span class="kr-chip" style="background:${m[0]};color:${m[1]};">${m[2]}</span>`;
+}
+
+// ─── Imtihon: login/parol va vaqt oynasi (kurs admini ham o'zi belgilay oladi) ───
+async function krImtihon(kursId) {
+  const k = KR_DATA.find(x => x.id === kursId);
+  const r = await api.get(`/api/kurs/super/kurslar/${kursId}/imtihon`);
+  if (!r.ok) return toast(r.error, 'err');
+  const I = r.imtihon;
+  krModal(`
+    <h3>📝 Imtihon: kirish va vaqt</h3>
+    <div style="font-size:13px;color:#6b7280;margin-bottom:6px;">${esc2(k.nomi)} — ${krHolatChip(I.holat)}</div>
+    <div style="font-size:12.5px;color:#6b7280;">Ishtirokchilar <b>${esc2(I.url)}</b> da shu login/parol bilan kiradi. Vaqt — Toshkent vaqti.</div>
+    <label>Login</label><input id="im-login" maxlength="30" autocomplete="off" value="${esc2(I.login)}" placeholder="masalan: raqamli2026">
+    <label>Parol</label>
+    <div class="kr-row"><input id="im-parol" autocomplete="off" style="flex:1;" placeholder="${I.parol_bor ? "•••••• (o'zgartirish uchun yangisini yozing)" : 'parol belgilanmagan'}"><button class="kr-btn s" type="button" id="im-gen">🎲</button></div>
+    <div class="kr-row"><div style="flex:1;min-width:180px;"><label>Boshlanish</label><input id="im-bosh" type="datetime-local" value="${esc2(I.boshlanish)}"></div>
+      <div style="flex:1;min-width:180px;"><label>Tugash</label><input id="im-tug" type="datetime-local" value="${esc2(I.tugash)}"></div></div>
+    <div class="kr-err" id="im-err"></div>
+    <div class="kr-row" style="justify-content:flex-end;margin-top:12px;"><button class="kr-btn g" onclick="krClose()">Bekor</button><button class="kr-btn" id="im-ok">Saqlash</button></div>`);
+  g('im-gen').onclick = () => { const h = 'abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789'; const a = new Uint32Array(8); crypto.getRandomValues(a); g('im-parol').value = Array.from(a, x => h[x % h.length]).join(''); };
+  g('im-ok').onclick = async () => {
+    const x = await api.put(`/api/kurs/super/kurslar/${kursId}/imtihon`, { login: g('im-login').value, boshlanish: g('im-bosh').value, tugash: g('im-tug').value });
+    if (!x.ok) { g('im-err').textContent = x.error; return; }
+    const parol = g('im-parol').value.trim();
+    if (parol) { const p = await api.post(`/api/kurs/super/kurslar/${kursId}/imtihon/parol`, { parol }); if (!p.ok) { g('im-err').textContent = p.error; return; } }
+    krClose(); toast('Saqlandi ✓', 'ok'); loadKurslarTab();
+  };
 }
 
 function krKursModal(id) {
