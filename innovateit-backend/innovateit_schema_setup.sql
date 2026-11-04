@@ -1031,7 +1031,7 @@ CREATE TABLE IF NOT EXISTS kurs_sertifikatlar (
     kurs_id         INTEGER NOT NULL REFERENCES online_kurslar(id),            -- o'chirilmaydi: sertifikat bor kurs o'chirilmaydi
     ishtirokchi_id  INTEGER NOT NULL REFERENCES kurs_ishtirokchilar(id),
     urinish_id      INTEGER REFERENCES kurs_urinishlar(id) ON DELETE SET NULL,
-    raqam           TEXT    NOT NULL UNIQUE,     -- IIS-2026-000123
+    raqam           TEXT    NOT NULL UNIQUE,     -- 10 ta tasodifiy harf/raqam (eski: IIS-2026-000123)
     tekshiruv_kodi  TEXT    NOT NULL UNIQUE,     -- QR va sertifikat ustidagi qisqa kod
     familiya        TEXT    NOT NULL,
     ism             TEXT    NOT NULL,
@@ -1047,6 +1047,11 @@ CREATE TABLE IF NOT EXISTS kurs_sertifikatlar (
     UNIQUE (ishtirokchi_id)                      -- bitta ishtirokchi — bitta sertifikat
 );
 CREATE INDEX IF NOT EXISTS idx_kurs_sertifikatlar_kurs ON kurs_sertifikatlar(kurs_id);
+
+-- ─── 36. SERTIFIKAT TURI (migrations/036) ──────────────────────────────────────
+--  otdi=TRUE  → «kursini XX% bilan muvaffaqiyatli tugatganini tasdiqlaydi»
+--  otdi=FALSE → «kursida XX% bilan faol ishtirok etganini tasdiqlaydi» (o'tish balidan past)
+ALTER TABLE kurs_sertifikatlar ADD COLUMN IF NOT EXISTS otdi BOOLEAN NOT NULL DEFAULT TRUE;
 
 CREATE TABLE IF NOT EXISTS kurs_sertifikat_hisoblagich (
     yil    INTEGER PRIMARY KEY,

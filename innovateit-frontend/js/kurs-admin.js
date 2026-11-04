@@ -211,7 +211,7 @@ B) Brauzer"></textarea>
   // ═══ 3. ISHTIROKCHILAR ═══
   let ISH = [];
   function holatBadge(i) {
-    if (i.sertifikat_id) return i.sertifikat_holat === 'haqiqiy' ? `<span class="k-badge ok">🎓 ${esc(i.sertifikat_raqam)}</span>` : '<span class="k-badge err">Sertifikat bekor</span>';
+    if (i.sertifikat_id) return i.sertifikat_holat === 'haqiqiy' ? `<span class="k-badge ${i.sertifikat_otdi === false ? 'warn' : 'ok'}" title="${i.sertifikat_otdi === false ? 'Faol ishtirok sertifikati (o\'tmagan)' : 'Muvaffaqiyatli tugatgan'}">🎓 ${esc(i.sertifikat_raqam)}</span>` : '<span class="k-badge err">Sertifikat bekor</span>';
     if (i.jarayonda) return '<span class="k-badge blue">Test ishlayapti</span>';
     if (i.urinishlar > 0) return '<span class="k-badge warn">O\'tmadi</span>';
     return '<span class="k-badge gray">Test boshlamagan</span>';
@@ -313,8 +313,9 @@ B) Brauzer"></textarea>
     view(`
       <h3 style="font-size:18px;margin-bottom:12px;">Berilgan sertifikatlar (${S.length})</h3>
       <div class="k-card" style="padding:0;"><div class="k-tablewrap">
-      ${S.length ? `<table class="k-table"><thead><tr><th>Raqam</th><th>F.I.Sh.</th><th>Sana</th><th>Ball</th><th>Holat</th><th></th></tr></thead><tbody>
+      ${S.length ? `<table class="k-table"><thead><tr><th>Raqam</th><th>F.I.Sh.</th><th>Sana</th><th>Ball</th><th>Turi</th><th>Holat</th><th></th></tr></thead><tbody>
         ${S.map(s => `<tr><td><b>${esc(s.raqam)}</b></td><td>${esc([s.familiya, s.ism, s.sharif].filter(Boolean).join(' '))}</td><td>${esc(s.berilgan_sana)}</td><td>${Number(s.foiz)}%</td>
+          <td>${s.otdi === false ? '<span class="k-badge warn">Faol ishtirok</span>' : '<span class="k-badge ok">Tugatgan</span>'}</td>
           <td>${s.holat === 'haqiqiy' ? '<span class="k-badge ok">Haqiqiy</span>' : `<span class="k-badge err" title="${esc(s.bekor_sababi)}">Bekor</span>`}</td>
           <td><div class="k-acts">
             ${s.holat === 'haqiqiy' ? `<button class="k-btn sec sm" data-pdf="${s.id}" data-r="${esc(s.raqam)}">📄 PDF</button>` : ''}

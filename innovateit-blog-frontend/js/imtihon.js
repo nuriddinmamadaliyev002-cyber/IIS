@@ -205,9 +205,12 @@
     ME = r;
     const k = r.kurs, s = r.sertifikat, oyna = r.imtihon || { holat: 'ochiq' };
 
+    // Sertifikat kartasi: o'tgan bo'lsa, yoki «faol ishtirok» sertifikati bo'lib urinishlar qolmagan bo'lsa.
+    // (Admin qo'shimcha urinish bergan bo'lsa, test qoidalari va boshlash tugmasi ko'rsatiladi.)
+    const sertTayyor = !!(s && s.holat === 'haqiqiy' && (s.otdi !== false || (r.qolgan_urinish <= 0 && !r.faol_urinish_id)));
     let amal = '';
-    if (s && s.holat === 'haqiqiy') amal = '';
-    else if (s) amal = '<div class="k-card"><span class="k-badge err">Sertifikat bekor qilingan</span><div class="k-muted" style="margin-top:6px;">Savollar uchun kurs adminiga murojaat qiling.</div></div>';
+    if (sertTayyor) amal = '';
+    else if (s && s.holat !== 'haqiqiy') amal = '<div class="k-card"><span class="k-badge err">Sertifikat bekor qilingan</span><div class="k-muted" style="margin-top:6px;">Savollar uchun kurs adminiga murojaat qiling.</div></div>';
     else if (r.faol_urinish_id) amal = '<button class="k-btn ok lg" id="b-davom" style="width:100%;justify-content:center;">▶️ Testni davom ettirish</button>';
     else if (k.holat !== 'faol') amal = '<div class="k-card k-empty">Kurs hozircha yopiq.</div>';
     else if (r.qolgan_urinish <= 0) amal = '<div class="k-card"><b>Urinishlar tugagan.</b><div class="k-muted">Qo\'shimcha urinish uchun kurs adminiga murojaat qiling.</div></div>';
@@ -221,7 +224,7 @@
           <button class="k-btn gray sm" id="b-chiq">Chiqish</button></div>
         ${k.tavsif ? `<p class="k-muted" style="margin:6px 0 0;">${esc(k.tavsif)}</p>` : ''}
       </div>
-      ${s && s.holat === 'haqiqiy' ? sertifikatKarta(s) : `
+      ${sertTayyor ? sertifikatKarta(s) : `
       <div class="k-card">
         <h3>Test qoidalari</h3>
         <div class="k-grid2" style="margin-top:10px;">
@@ -253,7 +256,7 @@
     return `
       <div class="k-cert" style="margin-bottom:14px;">
         <div style="font-size:42px;">🎓</div>
-        <div style="font-weight:700;margin-top:2px;">Tabriklaymiz! Sertifikatingiz tayyor</div>
+        <div style="font-weight:700;margin-top:2px;">${s.otdi === false ? 'Ishtirok sertifikatingiz tayyor' : 'Tabriklaymiz! Sertifikatingiz tayyor'}</div>
         <div class="num" style="margin:8px 0;">${esc(s.raqam)}</div>
         <div class="k-muted">Berilgan sana: ${esc(s.berilgan_sana)}</div>
         <div class="k-row" style="justify-content:center;margin-top:14px;">
@@ -392,6 +395,7 @@
       <div class="k-card k-result">
         <div class="big ${n.otdi ? 'ok' : 'err'}">${n.foiz}%</div>
         <div style="font-size:18px;font-weight:700;margin:4px 0;">${n.otdi ? '🎉 Testdan muvaffaqiyatli o\'tdingiz!' : 'Afsuski, o\'tish balidan o\'ta olmadingiz'}</div>
+        ${!n.otdi && r.sertifikat ? '<div class="k-muted">Urinishlar tugadi — sizga «faol ishtirok» sertifikati berildi.</div>' : ''}
         <div class="k-muted">To'g'ri javoblar: ${n.togri} / ${n.jami}</div>
       </div>
       ${r.sertifikat ? sertifikatKarta(r.sertifikat) : ''}

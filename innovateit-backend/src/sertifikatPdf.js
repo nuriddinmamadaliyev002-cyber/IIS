@@ -69,8 +69,32 @@ function leftAt(doc, text, font, size, x, baseline, maxW, color = NAVY) {
   doc.text(text, x * S, top, { lineBreak: false });
 }
 
+// 86 → "86%", 86.5 → "86.5%", 86.00 → "86%"
+function foizMatn(v) {
+  const n = Number(v);
+  if (!isFinite(n)) return '';
+  return `${Math.round(n * 100) / 100}%`;
+}
+
+// Bir qatorda turli shriftli bo'laklar (markazlashgan). Sig'masa butun qator birga kichrayadi.
+function aralash(doc, parts, size, cx, baseline, maxW, color = NAVY) {
+  const width = sz => parts.reduce((w, p) => w + doc.font(p.font).fontSize(sz * S).widthOfString(p.t), 0);
+  let sz = size;
+  while (sz > 12 && width(sz) > maxW * S) sz -= 1;
+  let x = cx * S - width(sz) / 2;
+  const top = baseline * S - sz * S * 0.89;
+  for (const p of parts) {
+    doc.font(p.font).fontSize(sz * S).fillColor(color);
+    doc.text(p.t, x, top, { lineBreak: false });
+    x += doc.widthOfString(p.t);
+  }
+}
+
 /**
- * @param {object} s  { raqam, tekshiruv_kodi, familiya, ism, sharif, direktor_fio, berilgan_sana }
+ * @param {object} s  { raqam, tekshiruv_kodi, familiya, ism, sharif, direktor_fio, berilgan_sana,
+ *                      foiz, otdi }
+ *   otdi=true  → «kursini XX% bilan muvaffaqiyatli tugatganini tasdiqlaydi.»
+ *   otdi=false → «kursida XX% bilan faol ishtirok etganini tasdiqlaydi.»   (o'tish balidan past)
  * @returns {Promise<Buffer>}
  */
 async function sertifikatPdf(s) {
@@ -86,6 +110,20 @@ async function sertifikatPdf(s) {
   const fio = [s.familiya, s.ism, s.sharif].map(x => String(x || '').trim()).filter(Boolean).join(' ');
   //    Chiziqning chap boshidan ("...sharifi:" dan keyin) yoziladi; uzun bo'lsa shrift kichrayadi.
   leftAt(doc, fio, F.serifBold, 40, 652, 352, 700);
+
+  // ── Natija qatori (fonda bu qator yo'q): foiz qalin shriftda ──
+  //    «kursini [86%] bilan muvaffaqiyatli tugatganini tasdiqlaydi.»  /  «kursida [45%] bilan faol ishtirok etganini tasdiqlaydi.»
+  const otdi = s.otdi === undefined ? true : !!s.otdi;
+  const foiz = foizMatn(s.foiz);
+  if (foiz) {
+    aralash(doc, [
+      { t: otdi ? 'kursini ' : 'kursida ', font: F.serif },
+      { t: foiz,                            font: F.serifBold },
+      { t: otdi ? ' bilan muvaffaqiyatli tugatganini tasdiqlaydi.' : ' bilan faol ishtirok etganini tasdiqlaydi.', font: F.serif },
+    ], 31, 773, 537, 780);
+  } else {
+    centered(doc, 'kursida muvaffaqiyatli ishtirok etganligini tasdiqlaydi.', F.serif, 31, 773, 537, 780);
+  }
 
   // ── Sertifikat raqami: rasmiy reestr raqami (IIS-YYYY-NNNNNN) ──
   //    Tekshiruv kodi alohida — QR kod ostida.

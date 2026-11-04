@@ -420,7 +420,7 @@ router.get('/admin/ishtirokchilar', adminMw, wrap(async (req, res) => {
            (SELECT COUNT(*) FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='tugagan')::int AS urinishlar,
            (SELECT MAX(u.foiz) FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='tugagan') AS eng_yaxshi,
            EXISTS (SELECT 1 FROM kurs_urinishlar u WHERE u.ishtirokchi_id=i.id AND u.holat='jarayonda') AS jarayonda,
-           c.id AS sertifikat_id, c.raqam AS sertifikat_raqam, c.holat AS sertifikat_holat
+           c.id AS sertifikat_id, c.raqam AS sertifikat_raqam, c.holat AS sertifikat_holat, c.otdi AS sertifikat_otdi
       FROM kurs_ishtirokchilar i
       LEFT JOIN kurs_sertifikatlar c ON c.ishtirokchi_id = i.id
      WHERE i.kurs_id=$1 ORDER BY i.yaratilgan DESC, i.id DESC`, [req.kursId]);
@@ -632,7 +632,7 @@ router.get('/admin/natijalar', adminMw, wrap(async (req, res) => {
 
 router.get('/admin/sertifikatlar', adminMw, wrap(async (req, res) => {
   const r = await pool.query(`
-    SELECT c.id, c.raqam, c.tekshiruv_kodi, c.familiya, c.ism, c.sharif, c.foiz, c.holat, c.bekor_sababi,
+    SELECT c.id, c.raqam, c.tekshiruv_kodi, c.familiya, c.ism, c.sharif, c.foiz, c.otdi, c.holat, c.bekor_sababi,
            to_char(c.berilgan_sana,'DD.MM.YYYY') AS berilgan_sana, i.maktab_nomi
       FROM kurs_sertifikatlar c JOIN kurs_ishtirokchilar i ON i.id = c.ishtirokchi_id
      WHERE c.kurs_id=$1 ORDER BY c.id DESC`, [req.kursId]);
@@ -708,14 +708,14 @@ async function muddatiOtganlarniYakunla(ishId) {
   for (const row of r.rows) await yakunla(row.id, null);
 }
 
-// Urinishni yakunlash: ball hisoblanadi, o'tgan bo'lsa sertifikat beriladi.
+// Urinishni yakunlash: ball hisoblanadi; o'tgan bo'lsa (yoki urinishlar tugagan bo'lsa) sertifikat beriladi.
 // yuborilgan = mijoz yuborgan javoblar (null bo'lsa saqlanganlari ishlatiladi)
 async function yakunla(urinishId, yuborilgan) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
     const ur = await client.query(
-      `SELECT u.*, k.otish_foiz, k.nomi AS kurs_nomi, k.direktor_fio
+      `SELECT u.*, k.otish_foiz, k.urinish_limit, k.nomi AS kurs_nomi, k.direktor_fio
          FROM kurs_urinishlar u JOIN online_kurslar k ON k.id = u.kurs_id WHERE u.id=$1 FOR UPDATE OF u`, [urinishId]);
     if (!ur.rowCount) { await client.query('ROLLBACK'); return null; }
     const u = ur.rows[0];
@@ -739,32 +739,47 @@ async function yakunla(urinishId, yuborilgan) {
       `UPDATE kurs_urinishlar SET holat='tugagan', tugagan=NOW(), javoblar=$1::jsonb, togri_soni=$2, jami=$3, foiz=$4, otdi=$5 WHERE id=$6`,
       [JSON.stringify(javoblar), togri, jami, foiz, otdi, urinishId]);
 
-    if (otdi) {
-      const mavjud = await client.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1', [u.ishtirokchi_id]);
+    // Sertifikat: o'tgan bo'lsa darhol («muvaffaqiyatli tugatgan»); o'tmagan bo'lsa — urinishlar
+    // tugagandan keyin («faol ishtirok etgan», eng yuqori natija bilan). Urinish qolgan bo'lsa
+    // qayta topshirib o'tishi mumkin, shuning uchun hozircha sertifikat berilmaydi.
+    const qosh = (await client.query('SELECT qoshimcha_urinish FROM kurs_ishtirokchilar WHERE id=$1', [u.ishtirokchi_id])).rows[0];
+    const tugaganSoni = (await client.query(
+      `SELECT COUNT(*)::int AS n FROM kurs_urinishlar WHERE ishtirokchi_id=$1 AND holat='tugagan'`, [u.ishtirokchi_id])).rows[0].n;
+    const limit = Number(u.urinish_limit) + Number(qosh ? qosh.qoshimcha_urinish : 0);
+    if (otdi || tugaganSoni >= limit) {
+      const eng = (await client.query(
+        `SELECT COALESCE(MAX(foiz),0) AS f FROM kurs_urinishlar WHERE ishtirokchi_id=$1 AND holat='tugagan'`, [u.ishtirokchi_id])).rows[0].f;
+      const sertFoiz = otdi ? foiz : Number(eng);
+      const mavjud = await client.query('SELECT id, otdi FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1 FOR UPDATE', [u.ishtirokchi_id]);
       if (!mavjud.rowCount) {
         const ish = (await client.query('SELECT familiya, ism, sharif FROM kurs_ishtirokchilar WHERE id=$1', [u.ishtirokchi_id])).rows[0];
-        const yil = parseInt((await client.query(`SELECT to_char(NOW() AT TIME ZONE 'Asia/Tashkent','YYYY') AS y`)).rows[0].y, 10);
-        // Raqam: IIS-YY-XXXXX (YY = yil oxirgi 2 raqami, XXXXX = tasodifiy 5 belgi). Takrorlanmaslik UNIQUE + tekshiruv bilan.
-        const yy = String(yil % 100).padStart(2, '0');
-        let raqam = null;
-        for (let i = 0; i < 12 && !raqam; i++) {
-          const r = `IIS-${yy}-${tasodifiyKod(5)}`;
-          const bor = await client.query('SELECT 1 FROM kurs_sertifikatlar WHERE raqam=$1', [r]);
-          if (!bor.rowCount) raqam = r;
-        }
-        if (!raqam) throw new Error('Sertifikat raqami yaratib bo\'lmadi');
-        let kod = null;
-        for (let i = 0; i < 8 && !kod; i++) {
-          const k = tasodifiyKod(10);
-          const bor = await client.query('SELECT 1 FROM kurs_sertifikatlar WHERE tekshiruv_kodi=$1', [k]);
-          if (!bor.rowCount) kod = k;
-        }
-        if (!kod) throw new Error('Tekshiruv kodi yaratib bo\'lmadi');
+        // Raqam va tekshiruv kodi: har biri 10 ta tasodifiy harf/raqam, o'zaro va boshqalar bilan takrorlanmaydi
+        const noyob = async (ustun, boshqa) => {
+          for (let i = 0; i < 12; i++) {
+            const k = tasodifiyKod(10);
+            if (k === boshqa) continue;
+            const bor = await client.query(`SELECT 1 FROM kurs_sertifikatlar WHERE ${ustun}=$1`, [k]);
+            if (!bor.rowCount) return k;
+          }
+          throw new Error(ustun + ' yaratib bo\'lmadi');
+        };
+        const raqam = await noyob('raqam', null);
+        const kod = await noyob('tekshiruv_kodi', raqam);
         await client.query(
           `INSERT INTO kurs_sertifikatlar
-             (kurs_id, ishtirokchi_id, urinish_id, raqam, tekshiruv_kodi, familiya, ism, sharif, kurs_nomi, direktor_fio, foiz, berilgan_sana)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,(NOW() AT TIME ZONE 'Asia/Tashkent')::date)`,
-          [u.kurs_id, u.ishtirokchi_id, urinishId, raqam, kod, ish.familiya, ish.ism, ish.sharif, u.kurs_nomi, u.direktor_fio, foiz]);
+             (kurs_id, ishtirokchi_id, urinish_id, raqam, tekshiruv_kodi, familiya, ism, sharif, kurs_nomi, direktor_fio, foiz, otdi, berilgan_sana)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,(NOW() AT TIME ZONE 'Asia/Tashkent')::date)`,
+          [u.kurs_id, u.ishtirokchi_id, urinishId, raqam, kod, ish.familiya, ish.ism, ish.sharif, u.kurs_nomi, u.direktor_fio, sertFoiz, otdi]);
+      } else if (!mavjud.rows[0].otdi) {
+        // Oldin «faol ishtirok» sertifikati berilgan (admin qo'shimcha urinish bergan) — endi o'tgan bo'lsa yangilanadi
+        if (otdi) {
+          await client.query(
+            `UPDATE kurs_sertifikatlar SET otdi=TRUE, foiz=$1, urinish_id=$2, direktor_fio=$3,
+                    berilgan_sana=(NOW() AT TIME ZONE 'Asia/Tashkent')::date WHERE id=$4`,
+            [foiz, urinishId, u.direktor_fio, mavjud.rows[0].id]);
+        } else {
+          await client.query('UPDATE kurs_sertifikatlar SET foiz=GREATEST(foiz,$1) WHERE id=$2', [sertFoiz, mavjud.rows[0].id]);
+        }
       }
     }
     await client.query('COMMIT');
@@ -777,7 +792,7 @@ async function yakunla(urinishId, yuborilgan) {
 
 async function natijaJavob(ishId, u) {
   const s = await pool.query(
-    `SELECT raqam, tekshiruv_kodi, holat, to_char(berilgan_sana,'DD.MM.YYYY') AS berilgan_sana FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1`, [ishId]);
+    `SELECT raqam, tekshiruv_kodi, holat, otdi, to_char(berilgan_sana,'DD.MM.YYYY') AS berilgan_sana FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1`, [ishId]);
   return {
     ok: true,
     natija: { togri: u.togri_soni, jami: u.jami, foiz: Number(u.foiz), otdi: u.otdi },
@@ -792,7 +807,7 @@ router.get('/ish/men', ishMw, wrap(async (req, res) => {
     pool.query(`SELECT id, holat, muddat, togri_soni, jami, foiz, otdi,
                        to_char(boshlangan AT TIME ZONE 'Asia/Tashkent','DD.MM.YYYY HH24:MI') AS boshlangan
                   FROM kurs_urinishlar WHERE ishtirokchi_id=$1 ORDER BY id DESC`, [ish.id]),
-    pool.query(`SELECT raqam, tekshiruv_kodi, holat, to_char(berilgan_sana,'DD.MM.YYYY') AS berilgan_sana
+    pool.query(`SELECT raqam, tekshiruv_kodi, holat, otdi, to_char(berilgan_sana,'DD.MM.YYYY') AS berilgan_sana
                   FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1`, [ish.id]),
     pool.query('SELECT COUNT(*)::int AS n FROM kurs_savollar WHERE kurs_id=$1', [ish.kurs_id]),
   ]);
@@ -828,7 +843,8 @@ router.post('/ish/test/boshlash', ishMw, wrap(async (req, res) => {
   if (ish.kurs_holat !== 'faol') return res.status(403).json({ ok: false, error: 'Kurs hozircha yopiq' });
   const oyna = imtihonHolat({ holat: ish.kurs_holat, imtihon_boshlanish: ish.imtihon_boshlanish, imtihon_tugash: ish.imtihon_tugash });
   if (oyna !== 'ochiq') return res.status(403).json({ ok: false, error: HOLAT_XABAR[oyna] + '. Yangi test faqat belgilangan vaqt oralig\'ida boshlanadi.' });
-  const s = await pool.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1', [ish.id]);
+  // Faqat o'tgan (otdi=TRUE) sertifikat qayta topshirishni to'sadi; «faol ishtirok» sertifikati bo'lsa, qo'shimcha urinish berilgan taqdirda topshirish mumkin
+  const s = await pool.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1 AND otdi', [ish.id]);
   if (s.rowCount) return res.status(409).json({ ok: false, error: 'Siz allaqachon sertifikat olgansiz' });
 
   const tugagan = (await pool.query(`SELECT COUNT(*)::int AS n FROM kurs_urinishlar WHERE ishtirokchi_id=$1 AND holat='tugagan'`, [ish.id])).rows[0].n;

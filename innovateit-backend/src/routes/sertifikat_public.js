@@ -32,7 +32,7 @@ router.get('/tekshir/:kod', async (req, res) => {
 
   try {
     const r = await pool.query(
-      `SELECT raqam, familiya, ism, sharif, kurs_nomi, holat,
+      `SELECT raqam, familiya, ism, sharif, kurs_nomi, holat, otdi,
               to_char(berilgan_sana,'DD.MM.YYYY') AS berilgan_sana
          FROM kurs_sertifikatlar WHERE tekshiruv_kodi=$1`, [kod]);
     res.set('Cache-Control', 'no-store');
@@ -48,6 +48,7 @@ router.get('/tekshir/:kod', async (req, res) => {
         kurs_nomi: s.kurs_nomi,
         berilgan_sana: s.berilgan_sana,
         holat: s.holat,
+        otdi: s.otdi,
       },
     });
   } catch (e) {

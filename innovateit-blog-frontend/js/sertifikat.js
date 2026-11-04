@@ -35,7 +35,7 @@
         <div class="cert-ico">${ok ? '✅' : '⛔'}</div>
         <div class="cert-title">${ok ? 'Sertifikat haqiqiy' : 'Sertifikat bekor qilingan'}</div>
         <div class="cert-fio">${esc(s.fio)}</div>
-        <div class="cert-kurs">«${esc(s.kurs_nomi)}» kursida muvaffaqiyatli ishtirok etgan</div>
+        <div class="cert-kurs">«${esc(s.kurs_nomi)}» ${s.otdi === false ? 'kursida faol ishtirok etgan' : 'kursini muvaffaqiyatli tugatgan'}</div>
         <div class="cert-meta">
           <div>Sertifikat raqami<b>${esc(s.raqam)}</b></div>
           <div>Tekshirish kodi<b>${esc(s.kod)}</b></div>
