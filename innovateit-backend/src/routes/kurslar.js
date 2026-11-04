@@ -744,11 +744,15 @@ async function yakunla(urinishId, yuborilgan) {
       if (!mavjud.rowCount) {
         const ish = (await client.query('SELECT familiya, ism, sharif FROM kurs_ishtirokchilar WHERE id=$1', [u.ishtirokchi_id])).rows[0];
         const yil = parseInt((await client.query(`SELECT to_char(NOW() AT TIME ZONE 'Asia/Tashkent','YYYY') AS y`)).rows[0].y, 10);
-        // Atomik hisoblagich: bir vaqtda ikki sertifikat bir xil raqam olmaydi
-        const h = await client.query(
-          `INSERT INTO kurs_sertifikat_hisoblagich (yil, oxirgi) VALUES ($1, 1)
-           ON CONFLICT (yil) DO UPDATE SET oxirgi = kurs_sertifikat_hisoblagich.oxirgi + 1 RETURNING oxirgi`, [yil]);
-        const raqam = `IIS-${yil}-${String(h.rows[0].oxirgi).padStart(6, '0')}`;
+        // Raqam: IIS-YY-XXXXX (YY = yil oxirgi 2 raqami, XXXXX = tasodifiy 5 belgi). Takrorlanmaslik UNIQUE + tekshiruv bilan.
+        const yy = String(yil % 100).padStart(2, '0');
+        let raqam = null;
+        for (let i = 0; i < 12 && !raqam; i++) {
+          const r = `IIS-${yy}-${tasodifiyKod(5)}`;
+          const bor = await client.query('SELECT 1 FROM kurs_sertifikatlar WHERE raqam=$1', [r]);
+          if (!bor.rowCount) raqam = r;
+        }
+        if (!raqam) throw new Error('Sertifikat raqami yaratib bo\'lmadi');
         let kod = null;
         for (let i = 0; i < 8 && !kod; i++) {
           const k = tasodifiyKod(10);

@@ -84,11 +84,12 @@ async function sertifikatPdf(s) {
 
   // ── Ishtirokchi F.I.Sh. ──
   const fio = [s.familiya, s.ism, s.sharif].map(x => String(x || '').trim()).filter(Boolean).join(' ');
-  centered(doc, fio, F.serifBold, 40, 1008, 352, 720);
+  //    Chiziqning chap boshidan ("...sharifi:" dan keyin) yoziladi; uzun bo'lsa shrift kichrayadi.
+  leftAt(doc, fio, F.serifBold, 40, 652, 352, 700);
 
   // ── Sertifikat raqami: rasmiy reestr raqami (IIS-YYYY-NNNNNN) ──
   //    Tekshiruv kodi alohida — QR kod ostida.
-  leftAt(doc, s.raqam, F.sansBold, 25, 878, 636, 210);
+  leftAt(doc, s.raqam, F.sansBold, 25, 878, 631, 210);
 
   // ── Berilgan sana: sana chiziq USTIDA, "Berilgan sana:" yozuvi chiziq OSTIDA (taqvim belgisi yonida) ──
   //    (fon rasmida bu yozuv yo'q — u shu yerda chiziladi)
@@ -100,20 +101,20 @@ async function sertifikatPdf(s) {
     centered(doc, String(s.direktor_fio).trim(), F.serifBold, 26, 809, 827, 262);
   }
 
-  // ── QR kod (o'ng tomonda, sertifikat raqami qutisining yonida) ──
+  // ── QR kod: pastki o'ng burchakda kichik oq quti; QR tagida tekshiruv kodi ──
   const url = verifyUrl(s.tekshiruv_kodi);
   const png = await QRCode.toBuffer(url, {
     errorCorrectionLevel: 'M', margin: 0, width: 600,
     color: { dark: '#0A1A4A', light: '#FFFFFF' },
   });
-  const qx = 1160, qy = 566, qs = 140;            // piksel fazosida
+  const bx = 1405, by = 867, bw = 91, bh = 107;   // quti (piksel fazosida)
+  const qs = 75, qx = bx + (bw - qs) / 2, qy = by + 8;
   doc.save();
-  doc.roundedRect((qx - 14) * S, (qy - 14) * S, (qs + 28) * S, (qs + 28) * S, 10 * S)
-     .fillColor('#FFFFFF').strokeColor('#7FB3E6').lineWidth(1.2 * S).fillAndStroke();
+  doc.roundedRect(bx * S, by * S, bw * S, bh * S, 5 * S)
+     .fillColor('#FFFFFF').strokeColor('#7FB3E6').lineWidth(1 * S).fillAndStroke();
   doc.restore();
   doc.image(png, qx * S, qy * S, { width: qs * S, height: qs * S });
-  centered(doc, 'Tekshirish kodi', F.sans, 16, qx + qs / 2, qy + qs + 38, 190);
-  centered(doc, s.tekshiruv_kodi, F.sansBold, 19, qx + qs / 2, qy + qs + 62, 190);
+  centered(doc, s.tekshiruv_kodi, F.sansBold, 12, bx + bw / 2, qy + qs + 17, bw - 8);
 
   doc.end();
   return done;
