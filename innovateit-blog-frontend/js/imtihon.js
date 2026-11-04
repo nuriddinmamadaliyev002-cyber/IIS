@@ -19,7 +19,10 @@
     del(k) { try { localStorage.removeItem(k); } catch (_) {} },
   };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-  const view = html => { $('im-app').innerHTML = html; window.scrollTo(0, 0); };
+  // blog.css da html{scroll-behavior:smooth} bor — shuning uchun sahifa "suzib" ketmasligi uchun
+  // har doim behavior:'instant' bilan suramiz. saqla=true bo'lsa joriy surilish holati o'zgarmaydi.
+  const sur = y => window.scrollTo({ top: y, left: 0, behavior: 'instant' });
+  const view = (html, saqla) => { $('im-app').innerHTML = html; if (!saqla) sur(0); };
 
   function toast(msg, tur) {
     let box = $('k-toasts');
@@ -295,6 +298,18 @@
 
   function javobBelgilandi(q) { return TEST.javoblar[q.id] !== undefined; }
 
+  // Savol almashganda sahifa boshiga (banner/sarlavhaga) emas, aynan savol qatoriga suramiz
+  // (yopishqoq sayt sarlavhasi balandligini hisobga olib).
+  function savolgaSur() {
+    const el = document.querySelector('.t-bar');
+    if (!el) return;
+    const hdr = document.querySelector('.site-header');
+    const h = hdr ? hdr.offsetHeight : 0;
+    sur(Math.max(0, el.getBoundingClientRect().top + window.scrollY - h - 10));
+  }
+
+  // Savol almashtirilganda (oldingi/keyingi/raqam) — savolga suradi.
+  // Variant belgilanganda sahifa qayta chizilmaydi (pastga qarang), shuning uchun siljish ham bo'lmaydi.
   function savolChiz() {
     const T = TEST, n = T.savollar.length, q = T.savollar[T.i];
     const tanlangan = T.javoblar[q.id];
@@ -310,9 +325,20 @@
           ${T.i < n - 1 ? '<button class="k-btn" id="t-next">Keyingi →</button>' : '<button class="k-btn ok" id="t-fin">✔ Yakunlash</button>'}
         </div>
       </div>
-      <div class="t-map">${T.savollar.map((s, j) => `<button data-j="${j}" class="${javobBelgilandi(s) ? 'done' : ''} ${j === T.i ? 'cur' : ''}">${j + 1}</button>`).join('')}</div>`);
+      <div class="t-map">${T.savollar.map((s, j) => `<button data-j="${j}" class="${javobBelgilandi(s) ? 'done' : ''} ${j === T.i ? 'cur' : ''}">${j + 1}</button>`).join('')}</div>`, true);
+    savolgaSur();
     tik();
-    document.querySelectorAll('.t-opt').forEach(b => b.onclick = () => { T.javoblar[q.id] = +b.dataset.i; saqlashKechiktir(); savolChiz(); });
+    // Variant belgilanganda butun sahifani qayta chizmaymiz — faqat holatni yangilaymiz (ekran joyida qoladi)
+    const opts = document.querySelectorAll('.t-opt');
+    opts.forEach(b => b.onclick = () => {
+      T.javoblar[q.id] = +b.dataset.i;
+      saqlashKechiktir();
+      opts.forEach(x => x.classList.toggle('on', x === b));
+      const bar = document.querySelector('.t-prog i');
+      if (bar) bar.style.width = (T.savollar.filter(javobBelgilandi).length / n) * 100 + '%';
+      const mb = document.querySelector(`.t-map button[data-j="${T.i}"]`);
+      if (mb) mb.classList.add('done');
+    });
     $('t-prev').onclick = () => { T.i--; savolChiz(); };
     if ($('t-next')) $('t-next').onclick = () => { T.i++; savolChiz(); };
     if ($('t-fin')) $('t-fin').onclick = tasdiq;
