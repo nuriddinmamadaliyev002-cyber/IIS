@@ -601,14 +601,25 @@ router.post('/imtihon/royxat', kirishAuth, wrap(async (req, res) => {
   res.json({ ok: true, token });
 }));
 
+// Ishtirokchi o'chirilganda uning BARCHA ma'lumoti o'chadi: urinishlar (CASCADE) va sertifikati ham.
+// Sertifikat o'chgach uning tekshiruv kodi/QR va PDF yuklash ham ishlamaydi. Qaytarib bo'lmaydi.
 router.delete('/admin/ishtirokchilar/:id', adminMw, wrap(async (req, res) => {
   const id = butun(req.params.id);
-  const c = await pool.query('SELECT 1 FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1', [id]);
-  if (c.rowCount) return res.status(409).json({ ok: false, error: 'Sertifikat berilgan ishtirokchini o\'chirib bo\'lmaydi (sertifikat yozuvi saqlanib qoladi).' });
   const own = await pool.query('SELECT 1 FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2', [id, req.kursId]);
   if (!own.rowCount) return res.status(404).json({ ok: false, error: 'Ishtirokchi topilmadi' });
-  await telegramAjrat('kurs_ishtirokchi', id);
-  await pool.query('DELETE FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2', [id, req.kursId]);
+  const client = await pool.connect();
+  try {
+    await client.query('BEGIN');
+    await telegramAjrat('kurs_ishtirokchi', id, client);
+    await client.query('DELETE FROM kurs_sertifikatlar WHERE ishtirokchi_id=$1 AND kurs_id=$2', [id, req.kursId]);
+    await client.query('DELETE FROM kurs_ishtirokchilar WHERE id=$1 AND kurs_id=$2', [id, req.kursId]);   // urinishlar CASCADE
+    await client.query('COMMIT');
+  } catch (e) {
+    await client.query('ROLLBACK').catch(() => {});
+    throw e;
+  } finally {
+    client.release();
+  }
   res.json({ ok: true });
 }));
 

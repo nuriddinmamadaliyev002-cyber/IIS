@@ -225,7 +225,7 @@ B) Brauzer"></textarea>
       <div class="k-row" style="margin-bottom:12px;">
         <h3 style="font-size:18px;">Ishtirokchilar (${ISH.length})</h3><span class="k-sp"></span>
       </div>
-      <div class="k-muted" style="margin-bottom:10px;">Ishtirokchilar imtihonlar sahifasida o'zi ro'yxatdan o'tadi. Xato yozilgan yozuvni tuzating; sertifikat olmagan odam qayta topshirishi kerak bo'lsa — 🗑 bilan o'chiring.</div>
+      <div class="k-muted" style="margin-bottom:10px;">Ishtirokchilar imtihonlar sahifasida o'zi ro'yxatdan o'tadi. Xato yozilgan yozuvni tuzating; 🗑 bilan o'chirsangiz, ishtirokchining barcha ma'lumoti (sertifikati bilan) butunlay o'chadi.</div>
       <div class="k-card" style="padding:0;"><div class="k-tablewrap">
       ${ISH.length ? `<table class="k-table"><thead><tr><th>F.I.Sh.</th><th>Maktab</th><th>Holat</th><th>Urinish</th><th>Eng yaxshi</th><th></th></tr></thead><tbody>
         ${ISH.map(i => `<tr>
@@ -249,7 +249,8 @@ B) Brauzer"></textarea>
     });
     document.querySelectorAll('[data-del]').forEach(b => b.onclick = async () => {
       const i = topish(b.dataset.del);
-      if (!confirm(`${i.familiya} ${i.ism} yozuvini o'chirasizmi? Test natijalari ham o'chadi; odam imtihonni qayta topshira oladi. (Sertifikat berilgan yozuvni o'chirib bo'lmaydi.)`)) return;
+      const sert = i.sertifikat_id ? `\n\nSertifikati (${i.sertifikat_raqam}) ham o'chiriladi — uning tekshiruv kodi va QR kodi endi ishlamaydi.` : '';
+      if (!confirm(`${i.familiya} ${i.ism} va uning barcha ma'lumotlari (test natijalari${i.sertifikat_id ? ', sertifikati' : ''}) butunlay o'chiriladi.${sert}\n\nBu amalni qaytarib bo'lmaydi. O'chirasizmi?`)) return;
       const r = await req('DELETE', '/api/kurs/admin/ishtirokchilar/' + i.id);
       if (r.ok) { toast('O\'chirildi'); tabIshtirokchilar(); } else toast(r.error, 'err');
     });
