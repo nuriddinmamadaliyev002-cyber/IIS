@@ -216,19 +216,52 @@ B) Brauzer"></textarea>
     if (i.urinishlar > 0) return '<span class="k-badge warn">O\'tmadi</span>';
     return '<span class="k-badge gray">Test boshlamagan</span>';
   }
+  // Holat filtri: kalit → [yorliq, mos kelish sharti]
+  const ISH_FILTRLAR = {
+    all:        ['Barchasi',               () => true],
+    boshlamagan:['Test boshlamagan',       i => !i.sertifikat_id && !i.jarayonda && !(i.urinishlar > 0)],
+    jarayonda:  ['Test ishlayapti',        i => !i.sertifikat_id && !!i.jarayonda],
+    otmadi:     ['O\'tmadi',               i => !i.sertifikat_id && !i.jarayonda && i.urinishlar > 0],
+    tugatgan:   ['Tugatgan (sertifikat)',  i => i.sertifikat_id && i.sertifikat_holat === 'haqiqiy' && i.sertifikat_otdi !== false],
+    faol:       ['Faol ishtirok',          i => i.sertifikat_id && i.sertifikat_holat === 'haqiqiy' && i.sertifikat_otdi === false],
+    bekor:      ['Sertifikat bekor',       i => i.sertifikat_id && i.sertifikat_holat !== 'haqiqiy'],
+  };
+  let ISH_FILTR = 'all';   // tanlangan filtr o'chirish/tahrirlashdan keyin ham saqlanadi
+
   async function tabIshtirokchilar() {
     yuklanmoqda();
     const r = await req('GET', '/api/kurs/admin/ishtirokchilar');
     if (!r.ok) return view(`<div class="k-empty">❌ ${esc(r.error)}</div>`);
     ISH = r.ishtirokchilar;
+    if (!ISH_FILTRLAR[ISH_FILTR]) ISH_FILTR = 'all';
     view(`
       <div class="k-row" style="margin-bottom:12px;">
-        <h3 style="font-size:18px;">Ishtirokchilar (${ISH.length})</h3><span class="k-sp"></span>
+        <h3 style="font-size:18px;" id="ish-sarlavha"></h3><span class="k-sp"></span>
       </div>
       <div class="k-muted" style="margin-bottom:10px;">Ishtirokchilar imtihonlar sahifasida o'zi ro'yxatdan o'tadi. Xato yozilgan yozuvni tuzating; 🗑 bilan o'chirsangiz, ishtirokchining barcha ma'lumoti (sertifikati bilan) butunlay o'chadi.</div>
-      <div class="k-card" style="padding:0;"><div class="k-tablewrap">
-      ${ISH.length ? `<table class="k-table"><thead><tr><th>F.I.Sh.</th><th>Maktab</th><th>Holat</th><th>Urinish</th><th>Eng yaxshi</th><th></th></tr></thead><tbody>
-        ${ISH.map(i => `<tr>
+      <div id="ish-filtr" style="display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px;"></div>
+      <div class="k-card" style="padding:0;"><div class="k-tablewrap" id="ish-jadval"></div></div>`);
+    ishFiltrChiz();
+    ishJadval();
+  }
+
+  // Filtr tugmalari (har birida soni ko'rsatiladi). Bo'sh filtr — o'chirilgan holda emas, 0 bilan ko'rinadi.
+  function ishFiltrChiz() {
+    $('ish-filtr').innerHTML = Object.entries(ISH_FILTRLAR).map(([k, [nom, f]]) => {
+      const n = ISH.filter(f).length;
+      return `<button class="k-btn sm ${k === ISH_FILTR ? '' : 'gray'}" data-filtr="${k}">${esc(nom)} <b>${n}</b></button>`;
+    }).join('');
+    document.querySelectorAll('[data-filtr]').forEach(b => b.onclick = () => {
+      ISH_FILTR = b.dataset.filtr; ishFiltrChiz(); ishJadval();
+    });
+  }
+
+  function ishJadval() {
+    const f = ISH_FILTRLAR[ISH_FILTR][1];
+    const royxat = ISH.filter(f);
+    $('ish-sarlavha').textContent = ISH_FILTR === 'all' ? `Ishtirokchilar (${ISH.length})` : `Ishtirokchilar (${royxat.length} / ${ISH.length})`;
+    $('ish-jadval').innerHTML = royxat.length ? `<table class="k-table"><thead><tr><th>F.I.Sh.</th><th>Maktab</th><th>Holat</th><th>Urinish</th><th>Eng yaxshi</th><th></th></tr></thead><tbody>
+        ${royxat.map(i => `<tr>
           <td><b>${esc([i.familiya, i.ism, i.sharif].filter(Boolean).join(' '))}</b><div class="k-muted">${esc(i.telefon)}</div><div class="k-muted">${esc(i.royxat_vaqti)}</div></td>
           <td>${esc(i.maktab_nomi) || '—'}</td>
           <td>${holatBadge(i)}</td>
@@ -238,8 +271,7 @@ B) Brauzer"></textarea>
             <button class="k-btn gray sm" data-plus="${i.id}" title="Qo'shimcha urinish">＋1</button>
             <button class="k-btn gray sm" data-edit="${i.id}">✏️</button>
             <button class="k-btn red sm" data-del="${i.id}">🗑</button></div></td></tr>`).join('')}
-        </tbody></table>` : '<div class="k-empty">Hali hech kim ro\'yxatdan o\'tmagan.</div>'}
-      </div></div>`);
+        </tbody></table>` : `<div class="k-empty">${ISH.length ? 'Bu holatda ishtirokchi yo\'q.' : 'Hali hech kim ro\'yxatdan o\'tmagan.'}</div>`;
     const topish = id => ISH.find(x => x.id == id);
     document.querySelectorAll('[data-edit]').forEach(b => b.onclick = () => ishModal(topish(b.dataset.edit)));
     document.querySelectorAll('[data-plus]').forEach(b => b.onclick = async () => {
