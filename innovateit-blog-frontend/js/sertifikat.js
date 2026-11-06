@@ -41,8 +41,39 @@
           <div>Tekshirish kodi<b>${esc(s.kod)}</b></div>
           <div>Berilgan sana<b>${esc(s.berilgan_sana)}</b></div>
         </div>
+        ${ok ? `<div class="cert-dl">
+          <button type="button" id="cert-dl-btn" class="cert-dl-btn">⬇ Sertifikatni yuklab olish (PDF)</button>
+          <div class="cert-dl-err" id="cert-dl-err" role="alert"></div>
+        </div>` : ''}
         <div class="cert-kurs" style="margin-top:14px;font-size:13px;color:#6b7280;">Tashkilot: Innovate IT School</div>
       </div>`);
+    const dl = $('cert-dl-btn');
+    if (dl) dl.onclick = () => yuklab(s.kod, s.raqam, dl);
+  }
+
+  // PDF ni fetch bilan olamiz (xatolikni sahifada ko'rsatish uchun) va brauzerga fayl sifatida saqlatamiz
+  async function yuklab(kod, raqam, btn) {
+    const err = $('cert-dl-err'); err.textContent = '';
+    const eski = btn.textContent;
+    btn.disabled = true; btn.textContent = '⏳ Tayyorlanmoqda…';
+    try {
+      const res = await fetch(`${BASE}/api/sertifikat/pdf/${encodeURIComponent(kod)}`);
+      if (!res.ok) {
+        let m = 'Yuklab bo\'lmadi. Birozdan keyin qayta urinib ko\'ring.';
+        try { const j = await res.json(); if (j && j.error) m = j.error; } catch (_) {}
+        throw new Error(m);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'sertifikat-' + String(raqam || kod).replace(/[^A-Za-z0-9_-]/g, '') + '.pdf';
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 30000);
+    } catch (e) {
+      err.textContent = e.message || 'Yuklab bo\'lmadi';
+    } finally {
+      btn.disabled = false; btn.textContent = eski;
+    }
   }
 
   $('cert-form').addEventListener('submit', e => {

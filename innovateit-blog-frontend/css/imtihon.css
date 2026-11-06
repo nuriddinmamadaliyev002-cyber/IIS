@@ -63,3 +63,15 @@
 .k-toast{background:#111827;color:#fff;padding:11px 16px;border-radius:12px;font-size:14px;transition:opacity .3s;box-shadow:0 6px 20px rgba(0,0,0,.25)}.k-toast.err{background:#dc2626}
 #im-app .im-note{background:#f0f9ff;border:1.5px solid #bae6fd;color:#0c4a6e;border-radius:12px;padding:10px 12px;font-size:13.5px;margin-top:12px}
 #im-app .im-kurs{font-size:13px;color:var(--k-muted);margin-bottom:10px}
+
+/* Parol ko'rsatish/yashirish (ko'z) tugmasi */
+#im-app .k-pw{position:relative}
+#im-app .k-pw .k-in{padding-right:48px}
+#im-app .k-eye{position:absolute;top:50%;right:6px;transform:translateY(-50%);width:38px;height:38px;border:0;background:transparent;border-radius:9px;color:#6b7280;cursor:pointer;display:flex;align-items:center;justify-content:center;padding:0}
+#im-app .k-eye:hover{color:#0B1F5C;background:#f1f5f9}
+#im-app .k-eye:focus-visible{outline:2px solid var(--k-cyan);outline-offset:1px}
+#im-app .k-eye svg{width:22px;height:22px;display:block}
+#im-app .k-eye .i-off{display:none}
+#im-app .k-eye[aria-pressed="true"] .i-on{display:none}
+#im-app .k-eye[aria-pressed="true"] .i-off{display:block}
+#im-app .k-eye[aria-pressed="true"]{color:var(--k-blue)}

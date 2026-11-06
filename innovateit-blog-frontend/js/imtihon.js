@@ -95,11 +95,24 @@
         ${xabar ? `<div class="im-note">${esc(xabar)}</div>` : ''}
         <form id="k-form" autocomplete="off">
           <label class="k-lbl" for="k-login">Login</label><input class="k-in" id="k-login" autocapitalize="none" autocorrect="off" spellcheck="false" autocomplete="off">
-          <label class="k-lbl" for="k-parol">Parol</label><input class="k-in" id="k-parol" type="password" autocomplete="off">
+          <label class="k-lbl" for="k-parol">Parol</label><div class="k-pw"><input class="k-in" id="k-parol" type="password" autocomplete="off">
+            <button type="button" class="k-eye" id="k-eye" aria-label="Parolni ko'rsatish" aria-pressed="false" title="Parolni ko'rsatish">
+              <svg class="i-on" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              <svg class="i-off" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>
+            </button></div>
           <div class="k-err" id="k-err"></div>
           <button class="k-btn lg" id="k-ok" type="submit" style="width:100%;justify-content:center;margin-top:10px;">Kirish</button>
         </form>
       </div>`);
+    // Parolni ko'rsatish / yashirish (ko'z tugmasi)
+    $('k-eye').onclick = () => {
+      const p = $('k-parol'), b = $('k-eye'), korsat = p.type === 'password';
+      p.type = korsat ? 'text' : 'password';
+      b.setAttribute('aria-pressed', korsat);
+      b.setAttribute('aria-label', korsat ? 'Parolni yashirish' : "Parolni ko'rsatish");
+      b.title = b.getAttribute('aria-label');
+      p.focus();
+    };
     $('k-form').onsubmit = async e => {
       e.preventDefault();
       $('k-err').textContent = '';
